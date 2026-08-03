@@ -1,0 +1,51 @@
+# Environment configuration and secrets
+config/config.php
+config/*.local.php
+*.env
+.env
+.env.*
+
+# Logs
+error_log
+*.log
+logs/
+
+# Backups and archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.sql
+*.sql.gz
+storage/backups/
+backups/
+
+# Runtime and temporary data
+tmp/
+storage/cache/
+storage/sessions/
+storage/logs/
+storage/tmp/
+
+# User-generated files
+uploads/
+public/uploads/
+
+# Generated result files
+results/*
+!results/.gitkeep
+
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Old temporary installer copies
+*_old_*
+*.bak
+*.backup
+
+# Keep the application database schema in Git
+!database/
+!database/schema.sql

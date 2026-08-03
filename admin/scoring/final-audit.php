@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__,2).'/bootstrap.php';
+use App\Core\Auth;
+use App\Core\Database;
+use App\Services\SchemaUpdater;
+Auth::requireAdmin();
+$pdo=Database::connection();SchemaUpdater::run($pdo);
+$roundId=(int)($_GET['round_id']??0);
+$r=$pdo->prepare("SELECT r.*,e.name event_name,e.event_date FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:id");$r->execute(['id'=>$roundId]);$round=$r->fetch();
+if(!$round){http_response_code(404);exit('Round not found.');}
+$j=$pdo->prepare("SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");$j->execute(['r'=>$roundId]);$judges=$j->fetchAll();
+$p=$pdo->prepare("SELECT fp.*,fr.final_rank FROM bdc_scoring_final_pairs fp LEFT JOIN bdc_scoring_final_results fr ON fr.pair_id=fp.id AND fr.round_id=fp.round_id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY COALESCE(fr.final_rank,999999),fp.pair_number");$p->execute(['r'=>$roundId]);$pairs=$p->fetchAll();
+$m=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM bdc_scoring_final_marks WHERE round_id=:r");$m->execute(['r'=>$roundId]);$marks=[];foreach($m->fetchAll() as $row)$marks[$row['pair_id']][$row['judge_id']]=$row['rank_value'];
+$groups=array_chunk($judges,12);
+?><!doctype html><html><head><meta charset="utf-8"><title><?=e($round['event_name'])?> Final Judge Audit</title><style>@page{size:A4 landscape;margin:7mm}body{font-family:Arial;margin:0;background:#eee}.toolbar{padding:10px;background:#fff;text-align:right}.page{width:283mm;min-height:196mm;margin:8mm auto;background:#fff;padding:7mm;page-break-after:always}h1{font-size:16pt;margin:0}h2{font-size:11pt}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5pt}th,td{border:1px solid #333;padding:1.5mm;text-align:center}th:nth-child(2),td:nth-child(2){text-align:left;width:58mm}.meta{font-size:8pt;color:#555}@media print{body{background:#fff}.toolbar{display:none}.page{margin:0;width:auto;min-height:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<?php foreach($groups as $groupIndex=>$judgeGroup):?><section class="page"><h1><?=e($round['event_name'])?></h1><h2>FINAL · JUDGE AUDIT <?=$groupIndex+1?>/<?=count($groups)?></h2><div class="meta">Date <?=e((string)$round['event_date'])?> · Judges J<?=(int)$judgeGroup[0]['judge_order']?>–J<?=(int)$judgeGroup[count($judgeGroup)-1]['judge_order']?></div><table><thead><tr><th>Final</th><th>Couple</th><?php foreach($judgeGroup as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?></tr></thead><tbody><?php foreach($pairs as $pair):?><tr><td><?=isset($pair['final_rank'])?'#'.(int)$pair['final_rank']:'—'?></td><td><strong>Couple <?=(int)$pair['pair_number']?></strong> · <?=e($pair['leader_name'])?> &amp; <?=e($pair['follower_name'])?></td><?php foreach($judgeGroup as $judge):?><td><?=e((string)($marks[$pair['id']][$judge['id']]??''))?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table><div class="meta" style="margin-top:4mm"><?php foreach($judgeGroup as $judge):?><span style="margin-right:6mm"><strong>J<?=(int)$judge['judge_order']?></strong> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div></section><?php endforeach;?></body></html>

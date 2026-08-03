@@ -1,0 +1,12 @@
+Deploy first to BDC_STAGING.
+
+1. Create a new Heats event.
+2. Copy the Registration Desk link.
+3. Open it in a private/incognito browser without Admin login.
+4. Search a competitor, assign role and bib, and click Add & Ready.
+5. Confirm the competitor appears on the Heats page and sync counts update.
+6. Change the bib at the desk and confirm the Heats entry changes.
+7. Mark Ready off/on and confirm live counters.
+8. Confirm the desk link cannot access Admin pages.
+
+config/config.php is excluded.
