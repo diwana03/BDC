@@ -9,7 +9,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $userId=(int)(Auth::user()['id']??0);
 $error=''; $notice='';
 

@@ -10,7 +10,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requirePermission('competitors.edit');
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $search = trim((string)($_GET['q'] ?? ''));
 $keepId = (int)($_GET['keep_id'] ?? $_POST['keep_id'] ?? 0);

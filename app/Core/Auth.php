@@ -7,15 +7,25 @@ final class Auth
 {
     public static function attempt(string $email, string $password): bool
     {
+        $pdo=Database::connection();
+        $ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');
+        $emailHash=hash('sha256',strtolower(trim($email)));
+        $cleanup=$pdo->prepare('DELETE FROM bdc_login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 DAY)');
+        $cleanup->execute();
+        $limit=$pdo->prepare('SELECT COUNT(*) FROM bdc_login_attempts WHERE ip_address=:ip AND email_hash=:email AND attempted_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
+        $limit->execute(['ip'=>$ip,'email'=>$emailHash]);
+        if((int)$limit->fetchColumn()>=5){self::audit(null,'login_rate_limited',[]);return false;}
         $stmt = Database::connection()->prepare('SELECT id,email,password_hash,full_name,role,status FROM bdc_users WHERE email=:email LIMIT 1');
         $stmt->execute(['email'=>strtolower(trim($email))]);
         $user=$stmt->fetch();
         if (!$user || $user['status'] !== 'active' || !password_verify($password,$user['password_hash'])) {
-            self::audit(null,'login_failed',['email'=>$email]); return false;
+            $pdo->prepare('INSERT INTO bdc_login_attempts(ip_address,email_hash) VALUES(:ip,:email)')->execute(['ip'=>$ip,'email'=>$emailHash]);
+            self::audit(null,'login_failed',['email_hash'=>$emailHash]); return false;
         }
         session_regenerate_id(true);
         $_SESSION['user']=['id'=>(int)$user['id'],'email'=>$user['email'],'full_name'=>$user['full_name'],'role'=>$user['role']];
         $_SESSION['last_activity']=time();
+        $pdo->prepare('DELETE FROM bdc_login_attempts WHERE ip_address=:ip AND email_hash=:email')->execute(['ip'=>$ip,'email'=>$emailHash]);
         Database::connection()->prepare('UPDATE bdc_users SET last_login_at=NOW() WHERE id=:id')->execute(['id'=>$user['id']]);
         self::audit((int)$user['id'],'login_success',[]); return true;
     }

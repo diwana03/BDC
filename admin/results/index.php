@@ -10,7 +10,7 @@ use App\Services\SchemaUpdater;
 if(!Auth::check()){header('Location: ../');exit;}
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 // v2.0.40: repair permissions on HTML archives created by earlier builds.
 $publicResultRoot=dirname(__DIR__,2).'/public/results';

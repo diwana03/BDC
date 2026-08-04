@@ -9,7 +9,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requirePermission('competitors.edit');
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $error='';$success='';
 $sourceId=(int)($_GET['source_id']??$_POST['source_id']??0);
 $destinationId=(int)($_GET['destination_id']??$_POST['destination_id']??0);

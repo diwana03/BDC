@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Database;use App\Services\SchemaUpdater;
-Auth::requireAdmin();$pdo=Database::connection();SchemaUpdater::run($pdo);
+Auth::requireAdmin();$pdo=Database::connection();
 $eventId=(int)($_GET['event_id']??0);
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY event_date DESC,name LIMIT 300")->fetchAll();
 $params=[];$where='';if($eventId){$where='WHERE t.event_id=:event';$params=['event'=>$eventId];}

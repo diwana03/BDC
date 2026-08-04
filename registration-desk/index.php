@@ -5,7 +5,7 @@ use App\Core\Database;
 use App\Core\Csrf;
 use App\Services\SchemaUpdater;
 
-$pdo=Database::connection();SchemaUpdater::run($pdo);
+$pdo=Database::connection();
 $token=trim((string)($_GET['token']??$_POST['token']??''));
 if($token===''){http_response_code(403);exit('Registration Desk link is missing.');}
 $hash=hash('sha256',$token);

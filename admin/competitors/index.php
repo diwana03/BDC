@@ -11,7 +11,7 @@ use App\Services\DivisionProgressionService;
 Auth::requirePermission('competitors.view');
 
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $q        = trim((string)($_GET['q'] ?? ''));
 $filter   = (string)($_GET['filter'] ?? '');

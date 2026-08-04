@@ -11,7 +11,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requireSuperAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $message='';
 $error='';

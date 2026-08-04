@@ -1,10 +1,10 @@
 {
-  "version": "2.1.0",
-  "build": 2100,
+  "version": "2.2.0",
+  "build": 2200,
   "status": "production-ready",
   "release_date": "2026-08-03",
   "minimum_php": "8.1",
-  "database_version": "2.0.43",
+  "database_version": "2.2.0",
   "features": [
     "Release Manager foundation",
     "Environment visibility",

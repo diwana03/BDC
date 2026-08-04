@@ -18,7 +18,11 @@ return [
         'password' => 'CHANGE_ME',
         'charset' => 'utf8mb4',
     ],
-    'security' => ['session_timeout_minutes' => 120, 'password_min_length' => 10],
+    'security' => [
+        'session_timeout_minutes' => 120,
+        'password_min_length' => 10,
+        'secure_cookies' => true,
+    ],
     'backup' => [
         'cron_token' => 'CHANGE_TO_A_LONG_RANDOM_SECRET',
         'scheduled_type' => 'full',

@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS bdc_audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO bdc_settings (setting_key, setting_value) VALUES
-('app_version', '0.4.0'),
+('app_version', '2.2.0'),
 ('novice_max_points', '25'),
 ('intermediate_min_novice_points', '20'),
 ('intermediate_max_points', '30'),

@@ -23,10 +23,15 @@ if (!is_file($configPath)) {
 
 \App\Core\Config::load($configPath);
 
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+
 session_name((string) \App\Core\Config::get('app.session_name', 'bdc_portal_session'));
 session_set_cookie_params([
     'httponly' => true,
-    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'secure' => (bool) \App\Core\Config::get('security.secure_cookies', true),
     'samesite' => 'Lax',
     'path' => (string) \App\Core\Config::get('app.base_path', '/portal'),
 ]);

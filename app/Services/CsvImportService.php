@@ -15,7 +15,7 @@ final class CsvImportService
 
     public function __construct(private PDO $pdo)
     {
-        SchemaUpdater::run($pdo);
+
     }
 
     public function inspect(string $path): array

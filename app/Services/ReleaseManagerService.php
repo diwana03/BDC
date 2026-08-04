@@ -9,7 +9,7 @@ use PDO;
 
 final class ReleaseManagerService
 {
-    public const VERSION='2.0.43';
+    public const VERSION='2.2.0';
 
     public static function environment():string
     {

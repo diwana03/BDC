@@ -8,7 +8,7 @@ use App\Services\DivisionProgressionService;
 use App\Services\SchemaUpdater;
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $division=(string)($_GET['division']??'novice');
 $role=(string)($_GET['role']??'leader');

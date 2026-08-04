@@ -11,7 +11,7 @@ use App\Core\Database;
 
 Auth::requireSuperAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $automation=new BackupAutomationService(dirname(__DIR__,2));
 $manual=new BackupService(dirname(__DIR__,2));
 $message='';$error='';

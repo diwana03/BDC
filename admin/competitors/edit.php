@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\SchemaUpdater;
-Auth::requirePermission('competitors.edit');$pdo=Database::connection();SchemaUpdater::run($pdo);
+Auth::requirePermission('competitors.edit');$pdo=Database::connection();
 $id=(int)($_GET['id']??$_POST['id']??0);$error='';$success='';
 $blank=['id'=>0,'bdc_id'=>'','exact_name'=>'','email'=>'','instagram'=>'','phone'=>'','country'=>'','dance_role'=>'unknown','current_division'=>'unknown','photo_url'=>'','status'=>'active','admin_notes'=>'','show_on_leaderboard'=>1,'novice_manual_out'=>0,'intermediate_manual_out'=>0,'division_override_reason'=>''];
 if($_SERVER['REQUEST_METHOD']==='POST'){

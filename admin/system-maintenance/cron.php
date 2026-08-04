@@ -15,7 +15,7 @@ if($expected==='' || !hash_equals($expected,$provided)){
 }
 
 try{
- $pdo=Database::connection();SchemaUpdater::run($pdo);
+ $pdo=Database::connection();
  $automation=new BackupAutomationService(dirname(__DIR__,2));
  $result=$automation->run(false,null);
  echo json_encode(['ok'=>true,'result'=>$result],JSON_UNESCAPED_SLASHES);

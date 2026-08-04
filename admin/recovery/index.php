@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\AutosaveService;use App\Services\SchemaUpdater;
-Auth::requireAdmin();$pdo=Database::connection();SchemaUpdater::run($pdo);$uid=(int)Auth::user()['id'];$message='';
+Auth::requireAdmin();$pdo=Database::connection();$uid=(int)Auth::user()['id'];$message='';
 if($_SERVER['REQUEST_METHOD']==='POST'&&Csrf::verify($_POST['_csrf']??null)){
  $id=(int)($_POST['draft_id']??0);if($id){AutosaveService::discard($pdo,$uid,$id);$message='Draft discarded.';}
 }

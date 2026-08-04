@@ -9,7 +9,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $roundId=(int)($_GET['round_id']??0);
 

@@ -7,7 +7,7 @@ use App\Services\SchemaUpdater;
 header('Content-Type: application/json; charset=utf-8');
 try{
  Auth::requireAdmin();
- $pdo=Database::connection();SchemaUpdater::run($pdo);
+ $pdo=Database::connection();
  $roundId=(int)($_GET['round_id']??0);
  $roundStmt=$pdo->prepare("SELECT event_id,division FROM bdc_scoring_rounds WHERE id=:id");
  $roundStmt->execute(['id'=>$roundId]);$round=$roundStmt->fetch();

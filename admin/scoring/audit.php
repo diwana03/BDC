@@ -5,7 +5,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
 Auth::requireAdmin();
-$pdo=Database::connection();SchemaUpdater::run($pdo);
+$pdo=Database::connection();
 $roundId=(int)($_GET['round_id']??0);
 $roundStmt=$pdo->prepare("SELECT r.*,e.name event_name,e.event_date FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:id");
 $roundStmt->execute(['id'=>$roundId]);$round=$roundStmt->fetch();

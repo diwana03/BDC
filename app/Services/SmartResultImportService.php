@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace App\Services;
 use PDO; use RuntimeException;
 final class SmartResultImportService {
- public function __construct(private PDO $pdo){ SchemaUpdater::run($pdo); }
+ public function __construct(private PDO $pdo){  }
  public function analyse(string $path,string $kind): array {
   $ext=strtolower(pathinfo($path,PATHINFO_EXTENSION));
   if($ext==='pdf') return ['format'=>'pdf','total_rows'=>0,'issues'=>[],'can_import_points'=>false];

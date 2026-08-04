@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 $configFile = __DIR__ . '/config/config.php';
+$lockPath = __DIR__ . '/storage/installed.lock';
+if (is_file($lockPath) || is_file($configFile)) {
+    http_response_code(404);
+    exit('Not found.');
+}
 $message = '';
 $error = '';
 $tested = false;
@@ -126,7 +131,7 @@ $defaults = [
 <div class="card shadow-sm">
 <div class="card-body p-4 p-md-5">
 <h1 class="h3">BDC Portal Database Setup</h1>
-<p class="text-muted">Version 0.3.1</p>
+<p class="text-muted">Version 2.2.0</p>
 
 <?php if (is_file($configFile)): ?>
 <div class="alert alert-warning">

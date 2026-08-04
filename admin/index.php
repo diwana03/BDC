@@ -19,7 +19,7 @@ if (!Auth::check()) {
     $csrfToken = Csrf::token(); require dirname(__DIR__) . '/app/Views/auth/login.php'; exit;
 }
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 $stats = [
  'competitors'=>(int)$pdo->query('SELECT COUNT(*) FROM bdc_competitors')->fetchColumn(),
  'events'=>(int)$pdo->query('SELECT COUNT(*) FROM bdc_events')->fetchColumn(),

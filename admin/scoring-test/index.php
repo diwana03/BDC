@@ -12,7 +12,7 @@ use App\Services\ScoringTestEngine;
 
 Auth::requireSuperAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 if(!isset($_SESSION['bdc_scoring_test'])){
     $_SESSION['bdc_scoring_test']=[

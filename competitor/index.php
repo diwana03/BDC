@@ -3,7 +3,7 @@ declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
 use App\Core\Database;
 use App\Services\SchemaUpdater;
-$pdo=Database::connection(); SchemaUpdater::run($pdo);
+$pdo=Database::connection();
 $id=(int)($_GET['id']??0);
 $requestedGroup=(int)($_GET['career_group_id']??0);
 

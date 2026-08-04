@@ -10,7 +10,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 function bdcV230IsSuperAdmin():bool{try{if(method_exists(\App\Core\Auth::class,'isSuperAdmin')&&\App\Core\Auth::isSuperAdmin())return true;}catch(\Throwable $e){}$u=\App\Core\Auth::user();$r=strtolower(str_replace(['-',' '],'_',trim((string)($u['role']??$u['user_role']??''))));return in_array($r,['super_admin','superadmin','owner','root','system_admin'],true)||!empty($u['is_super_admin']);}
 
 
