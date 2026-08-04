@@ -146,7 +146,7 @@ body{background:#f5f6f8;color:#20242a}
 <main class="container pb-5">
  <section class="card board-card filter-card mb-4">
   <div class="card-body">
-   <form method="get" class="row g-3 align-items-end">
+   <form method="get" class="row g-3 align-items-end" id="leaderboard-filters">
     <div class="col-md-5">
      <label class="form-label">Division</label>
      <select class="form-select" name="division">
@@ -166,7 +166,7 @@ body{background:#f5f6f8;color:#20242a}
     <div class="col-md-2"><button class="btn btn-dark w-100">Show Rankings</button></div>
     <div class="col-12">
      <label class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" name="show_out" value="1" <?=$showOut?'checked':''?>>
+      <input class="form-check-input" type="checkbox" name="show_out" value="1" <?=$showOut?'checked':''?> data-auto-submit>
       <span class="form-check-label">Show Out of Division competitors</span>
      </label>
     </div>
@@ -229,5 +229,12 @@ body{background:#f5f6f8;color:#20242a}
   </div>
  </section>
 </main>
+<script>
+document.querySelectorAll('[data-auto-submit]').forEach(function (control) {
+ control.addEventListener('change', function () {
+  document.getElementById('leaderboard-filters').submit();
+ });
+});
+</script>
 </body>
 </html>
