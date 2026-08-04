@@ -12,7 +12,7 @@ BDC Portal is a server-rendered PHP 8.1 and MySQL application for competitor ide
 
 ## Supported release
 
-- Application: 2.2.0
+- Application: 2.3.0-dev1
 - PHP: 8.1 or newer
 - Database: MySQL 8-compatible
 
