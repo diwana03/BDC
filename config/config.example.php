@@ -28,4 +28,14 @@ return [
         'scheduled_type' => 'full',
         'keep_per_type' => 10,
     ],
+    'deployment' => [
+        'enabled' => false,
+        'repository_path' => '/home/account/BDC_DEV',
+        'source_branch' => 'develop',
+        'staging_path' => '/home/account/public_html/example/BDC_STAGING',
+        'production_path' => '/home/account/public_html/example/portal',
+        'backup_path' => '/home/account/deployment_backups',
+        'staging_health_url' => 'https://example.com/BDC_STAGING/health.php',
+        'production_health_url' => 'https://example.com/portal/health.php',
+    ],
 ];
