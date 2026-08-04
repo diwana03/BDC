@@ -35,6 +35,18 @@ $stmt=$pdo->prepare("
   ROUND(SUM(CASE WHEN pt.division='intermediate' THEN pt.points ELSE 0 END),2) intermediate_points,
   ROUND(SUM(CASE WHEN pt.division='advanced' THEN pt.points ELSE 0 END),2) advanced_points,
   COUNT(DISTINCT CASE WHEN pt.division=:selected_division THEN pt.event_id END) selected_events,
+  SUBSTRING_INDEX(
+   GROUP_CONCAT(
+    CASE
+     WHEN pt.division=:selected_division_placement
+      AND NULLIF(TRIM(pt.placement),'') IS NOT NULL
+     THEN pt.placement
+    END
+    ORDER BY COALESCE(e.event_date,DATE(pt.created_at)) DESC,pt.id DESC
+    SEPARATOR '||'
+   ),
+   '||',1
+  ) last_placement,
   MAX(CASE WHEN pt.division=:selected_division_date THEN COALESCE(e.event_date,DATE(pt.created_at)) END) last_result_date
  FROM bdc_competitors c
  LEFT JOIN bdc_point_transactions pt
@@ -47,6 +59,7 @@ $stmt=$pdo->prepare("
 ");
 $stmt->execute([
  'selected_division'=>$division,
+ 'selected_division_placement'=>$division,
  'selected_division_date'=>$division,
  'role'=>$role,
 ]);
@@ -197,7 +210,7 @@ body{background:#f5f6f8;color:#20242a}
    <div class="table-responsive">
     <table class="table align-middle mb-0">
      <thead class="table-light">
-      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th>Events</th><th>Last Result</th><th class="text-end">Points</th></tr>
+      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th>Events</th><th>Placement</th><th>Last Result</th><th class="text-end">Points</th></tr>
      </thead>
      <tbody>
      <?php foreach($rows as $row):?>
@@ -218,11 +231,12 @@ body{background:#f5f6f8;color:#20242a}
        </td>
        <td><?=e((string)($row['country']?:'—'))?></td>
        <td><?=(int)$row['selected_events']?></td>
+       <td><?=e((string)($row['last_placement']?:'—'))?></td>
        <td><?=e((string)($row['last_result_date']?:'—'))?></td>
        <td class="text-end points"><?=number_format((float)$row['total_points'],1)?></td>
       </tr>
      <?php endforeach;?>
-     <?php if(!$rows):?><tr><td colspan="6" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
+     <?php if(!$rows):?><tr><td colspan="7" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
      </tbody>
     </table>
    </div>
