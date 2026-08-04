@@ -30,10 +30,15 @@ storage/tmp/
 # User-generated files
 uploads/
 public/uploads/
+!uploads/
+uploads/*
+!uploads/.gitkeep
 
 # Generated result files
 results/*
 !results/.gitkeep
+public/results/*
+!public/results/.gitkeep
 
 # Operating-system and editor files
 .DS_Store
