@@ -8,6 +8,65 @@ use App\Core\Database;
 use App\Services\SchemaUpdater;
 
 Auth::requireAdmin();
+
+$scoringMode=(string)($_GET['mode']??'');
+if(
+ $_SERVER['REQUEST_METHOD']==='GET'
+ && !isset($_GET['round_id'])
+ && !in_array($scoringMode,['manual'],true)
+){
+ $automatedSelected=$scoringMode==='automated';
+ ?>
+ <!doctype html>
+ <html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Select Scoring Mode | BDC Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+   body{min-height:100vh;background:#f4f6f9}
+   .mode-shell{max-width:980px}
+   .mode-card{height:100%;border:1px solid #dfe3e8;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.07)}
+   .mode-icon{display:grid;width:58px;height:58px;place-items:center;border-radius:15px;background:#111827;color:#fff;font-size:1.7rem}
+   .mode-card-future{background:#f8f9fb;color:#667085}
+  </style>
+ </head>
+ <body>
+ <nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></nav>
+ <main class="container mode-shell py-5">
+  <div class="text-center mb-5">
+   <h1 class="display-6 fw-bold">Select Scoring Mode</h1>
+   <p class="text-muted mb-0">Choose how this competition will be scored.</p>
+  </div>
+  <?php if($automatedSelected):?>
+   <div class="alert alert-info text-center mb-4"><strong>Automated Scoring</strong> is planned for a future version.</div>
+  <?php endif;?>
+  <div class="row g-4">
+   <div class="col-md-6">
+    <section class="card mode-card"><div class="card-body p-4 d-flex flex-column">
+     <div class="mode-icon mb-4">✎</div>
+     <h2 class="h3">Manual Scoring</h2>
+     <p class="text-muted flex-grow-1">Open the existing BDC scoring dashboard and enter judges' scores manually.</p>
+     <a class="btn btn-dark btn-lg" href="?mode=manual">Continue to Manual Scoring</a>
+    </div></section>
+   </div>
+   <div class="col-md-6">
+    <section class="card mode-card mode-card-future"><div class="card-body p-4 d-flex flex-column">
+     <div class="mode-icon mb-4">⚙</div>
+     <h2 class="h3">Automated Scoring</h2>
+     <p class="flex-grow-1">Automated scoring will be introduced in a future version.</p>
+     <a class="btn btn-outline-secondary btn-lg" href="?mode=automated">Future Version</a>
+    </div></section>
+   </div>
+  </div>
+ </main>
+ </body>
+ </html>
+ <?php
+ exit;
+}
+
 $pdo=Database::connection();
 
 $userId=(int)(Auth::user()['id']??0);
@@ -1304,11 +1363,15 @@ $csrf=Csrf::token();
 <input class="form-control" type="date" name="new_event_date">
 <div class="form-text">Optional now. Complete or correct it later in Events &amp; Tickets.</div>
 </div>
-<div class="col-12 d-flex flex-wrap gap-2">
-<button class="btn btn-success" name="round_type" value="heats">Create Heats Round</button>
-<button class="btn btn-dark" name="round_type" value="final">Create Final Round</button>
+<div class="col-12">
+<h3 class="h6 mb-2">Competition Format</h3>
+<p class="text-muted small mb-2">Choose the first round for this event and division.</p>
+<div class="d-flex flex-wrap gap-2">
+<button class="btn btn-success" name="round_type" value="heats">Start with Heats</button>
+<button class="btn btn-dark" name="round_type" value="final">Go Straight to Final</button>
 </div>
-<div class="col-12"><small class="text-muted">Use Final directly when attendance is low and no Heats qualification is required.</small></div>
+</div>
+<div class="col-12"><small class="text-muted">Starting with Heats keeps the existing options to continue to either Semifinal or Final. Go Straight to Final when no qualification round is required.</small></div>
 </form>
 </div></div>
 <div class="card shadow-sm"><div class="card-body">
@@ -1358,7 +1421,7 @@ $csrf=Csrf::token();
 </td>
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="./" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['round_type']==='final'):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
