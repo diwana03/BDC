@@ -29,10 +29,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             DeploymentPipelineService::discover($pdo);
             $message='Available releases have been refreshed.';
         }elseif($action==='deploy_staging'){
+            @set_time_limit(0);
+            ignore_user_abort(true);
             $jobId=DeploymentPipelineService::queue($pdo,(int)($_POST['release_id']??0),$action,$userId);
             DeploymentPipelineService::runQueuedJob($pdo,$jobId);
             $message='Release deployed successfully to Staging. It is now ready for your testing.';
         }elseif($action==='deploy_production'){
+            @set_time_limit(0);
+            ignore_user_abort(true);
             $preflight=ReleaseManagerService::health($pdo);
             if(count(array_filter($preflight,fn($check)=>(bool)$check['status']))!==count($preflight)){
                 throw new RuntimeException('Production deployment is blocked until every system check is ready.');
@@ -46,6 +50,16 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $jobId=DeploymentPipelineService::queue($pdo,$releaseId,$action,$userId);
             DeploymentPipelineService::runQueuedJob($pdo,$jobId);
             $message='Release deployed successfully to Production.';
+        }elseif($action==='refresh_status'){
+            $waitingJob=DeploymentPipelineService::nextJob($pdo);
+            if($waitingJob){
+                @set_time_limit(0);
+                ignore_user_abort(true);
+                DeploymentPipelineService::execute($pdo,$waitingJob);
+                $message='Waiting deployment processed successfully. Status is now current.';
+            }else{
+                $message='Deployment status refreshed. No waiting job was found.';
+            }
         }elseif($action==='health_check'){
             $checks=ReleaseManagerService::health($pdo);
             $message=count(array_filter($checks,fn($c)=>$c['status']))===count($checks)
@@ -164,7 +178,7 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
 <div><h1 class="section-title h3 mb-1">Current Releases</h1><p class="text-muted mb-0">See what is installed before choosing an update.</p></div>
-<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="discover"><button class="btn btn-outline-primary" <?=$settings['enabled']?'':'disabled'?>>Refresh Available Releases</button></form>
+<div class="d-flex flex-wrap gap-2"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="refresh_status"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>>Refresh Status</button></form><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="discover"><button class="btn btn-outline-primary" <?=$settings['enabled']?'':'disabled'?>>Refresh Available Releases</button></form></div>
 </div>
 
 <div class="row g-4 mb-5">
@@ -234,4 +248,14 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php if(!$jobs):?><tr><td colspan="5" class="text-center text-muted py-4">No deployment activity yet.</td></tr><?php endif;?>
 </tbody></table></div></div></div>
 </main>
+<script>
+document.querySelectorAll('form').forEach(function(form){
+  form.addEventListener('submit',function(){
+    var action=form.querySelector('input[name="action"]');
+    if(!action||!['deploy_staging','deploy_production','refresh_status'].includes(action.value))return;
+    var button=form.querySelector('button[type="submit"],button:not([type])');
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':'Deploying… please wait';}
+  });
+});
+</script>
 </body></html>
