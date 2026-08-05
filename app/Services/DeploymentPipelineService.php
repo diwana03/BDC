@@ -169,7 +169,7 @@ final class DeploymentPipelineService
         try{
             self::runProcess(['git','-C',$repo,'archive','--format=tar','--output='.$tmp.'/release.tar',$sha],$output);
             self::runProcess(['tar','-xf',$tmp.'/release.tar','-C',$tree],$output);
-            self::runProcess(['rsync','-a','--delete','--exclude=config/config.php','--exclude=config/config.local.php','--exclude=storage/','--exclude=uploads/','--exclude=public/results/',$tree.'/',$target.'/'],$output);
+            self::runProcess(['rsync','-a','--chmod=D755','--delete','--exclude=config/config.php','--exclude=config/config.local.php','--exclude=storage/','--exclude=uploads/','--exclude=public/results/',$tree.'/',$target.'/'],$output);
         }finally{
             self::deleteTree($tmp);
         }
