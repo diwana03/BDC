@@ -9,7 +9,7 @@ use PDO;
 
 final class ReleaseManagerService
 {
-    public const VERSION='2.3.0-dev1';
+    public const VERSION='2.3.0-dev2';
 
     public static function environment():string
     {
@@ -19,6 +19,12 @@ final class ReleaseManagerService
     public static function environmentLabel():string
     {
         return self::environment()==='staging'?'BDC_STAGING':'PRODUCTION';
+    }
+
+    public static function isReleaseManagerAvailable():bool
+    {
+        return self::environment()==='staging'
+            && (bool)Config::get('deployment.enabled',false);
     }
 
     public static function versionInfo():array
@@ -33,6 +39,25 @@ final class ReleaseManagerService
             'status'=>'development',
             'release_date'=>'2026-08-05',
         ];
+    }
+
+    public static function installedVersion(string $root):?array
+    {
+        $root=rtrim($root,'/');
+        if($root===''||!is_dir($root))return null;
+
+        $manifest=$root.'/storage/release.json';
+        if(is_file($manifest)&&is_readable($manifest)){
+            $data=json_decode((string)file_get_contents($manifest),true);
+            if(is_array($data)&&isset($data['version']))return $data;
+        }
+
+        $versionFile=$root.'/VERSION.json';
+        if(is_file($versionFile)&&is_readable($versionFile)){
+            $data=json_decode((string)file_get_contents($versionFile),true);
+            if(is_array($data)&&isset($data['version']))return $data;
+        }
+        return null;
     }
 
     public static function recordCurrentRelease(?int $userId=null):void
