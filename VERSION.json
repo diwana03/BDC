@@ -1,11 +1,12 @@
 {
-  "version": "2.3.2-dev5",
-  "build": 2325,
+  "version": "2.3.2-dev6",
+  "build": 2326,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Eligibility history derived only from recorded competition participation, never the current-division label",
     "Point-and-history based division eligibility for direct Finals",
     "Irreversible progression prevents returning to Novice after Intermediate competition",
     "Known ineligible BDC competitors blocked from Add Anyway overrides",

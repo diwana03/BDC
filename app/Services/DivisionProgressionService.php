@@ -104,11 +104,12 @@ final class DivisionProgressionService
         bool $competedAllStar=false
     ):array{
         $division=self::normaliseDivision($division);
-        $committed=self::normaliseDivision($committedDivision);
-        $committedRank=self::ORDER[$committed]??0;
-        $hasIntermediateHistory=$competedIntermediate||$competedAdvanced||$competedAllStar||$committedRank>=self::ORDER['intermediate'];
-        $hasAdvancedHistory=$competedAdvanced||$competedAllStar||$committedRank>=self::ORDER['advanced'];
-        $hasAllStarHistory=$competedAllStar||$committedRank>=self::ORDER['all_star'];
+        // current_division is an administrative label, not proof of participation.
+        // Irreversible progression must be based on recorded results/points history;
+        // otherwise a mistakenly updated label can make an ineligible dancer eligible.
+        $hasIntermediateHistory=$competedIntermediate||$competedAdvanced||$competedAllStar;
+        $hasAdvancedHistory=$competedAdvanced||$competedAllStar;
+        $hasAllStarHistory=$competedAllStar;
 
         if($division==='novice'){
             if($hasIntermediateHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Intermediate or above and cannot return to Novice.'];
