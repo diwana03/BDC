@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev1",
-  "build": 2331,
+  "version": "2.3.3-dev2",
+  "build": 2332,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Database sync controls provide loading feedback and inline configuration errors instead of appearing disabled",
+    "Database sync schedule can be saved before Production read-only credentials are configured",
     "Role-specific Intermediate eligibility using the selected Leader or Follower record",
     "Known Novice dancers below 20 role-specific points blocked from Intermediate Finals",
     "Registration Desk Leader and Follower panels with instant bib and status saving",

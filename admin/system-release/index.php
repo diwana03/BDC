@@ -19,6 +19,9 @@ Auth::requireSuperAdmin();
 $pdo=Database::connection();
 $message='';
 $error='';
+$databaseSyncMessage='';
+$databaseSyncError='';
+$action='';
 $userId=(int)(Auth::user()['id']??0);
 $recoveredJobs=DeploymentPipelineService::recoverStaleJobs($pdo);
 
@@ -76,12 +79,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             }
         }elseif($action==='save_database_sync_schedule'){
             StagingDatabaseSyncService::saveSchedule((string)($_POST['schedule']??'off'));
-            $message='Production to Staging sync schedule updated.';
+            $databaseSyncMessage='Production to Staging sync schedule updated.';
         }elseif($action==='sync_production_to_staging'){
             $busy=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
             if($busy>0)throw new RuntimeException('Database sync is blocked while a deployment is running.');
             $result=StagingDatabaseSyncService::sync($userId);
-            $message=$result['message'];
+            $databaseSyncMessage=$result['message'];
         }elseif($action==='health_check'){
             $checks=ReleaseManagerService::health($pdo);
             $message=count(array_filter($checks,fn($c)=>$c['status']))===count($checks)
@@ -91,7 +94,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             throw new RuntimeException('Please choose a valid action.');
         }
     }catch(Throwable $e){
-        $error=$e->getMessage();
+        if(in_array($action,['save_database_sync_schedule','sync_production_to_staging'],true)){
+            $databaseSyncError=$e->getMessage();
+        }else{
+            $error=$e->getMessage();
+        }
     }
 }
 
@@ -248,10 +255,13 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
 <div><h2 class="h4 section-title mb-1">Production Data to Staging</h2><p class="text-muted mb-2">One-way refresh only. Production is a read-only source and Staging is the only target.</p>
 <div class="small"><strong>Last status:</strong> <?=e(ucfirst((string)($databaseSyncStatus['status']??'never')))?><?php if(!empty($databaseSyncStatus['last_success'])):?> · <?=e((string)$databaseSyncStatus['last_success'])?><?php endif;?> · Schedule: <?=e(ucfirst((string)$databaseSyncSettings['schedule']))?></div></div>
-<div class="d-flex flex-wrap gap-2"><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_database_sync_schedule"><select class="form-select" name="schedule"><option value="off" <?=$databaseSyncSettings['schedule']==='off'?'selected':''?>>Off</option><option value="daily" <?=$databaseSyncSettings['schedule']==='daily'?'selected':''?>>Daily</option><option value="weekly" <?=$databaseSyncSettings['schedule']==='weekly'?'selected':''?>>Weekly</option></select><button class="btn btn-outline-primary" <?=$databaseSyncSettings['enabled']?'':'disabled'?>>Save</button></form><form method="post" onsubmit="return confirm('Replace current Staging test data with the latest Production data? A full Staging backup will be created first. This can never write to Production.')">
+<div class="d-flex flex-wrap gap-2"><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_database_sync_schedule"><select class="form-select" name="schedule"><option value="off" <?=$databaseSyncSettings['schedule']==='off'?'selected':''?>>Off</option><option value="daily" <?=$databaseSyncSettings['schedule']==='daily'?'selected':''?>>Daily</option><option value="weekly" <?=$databaseSyncSettings['schedule']==='weekly'?'selected':''?>>Weekly</option></select><button type="submit" class="btn btn-outline-primary">Save</button></form><form method="post" onsubmit="return confirm('Replace current Staging test data with the latest Production data? A full Staging backup will be created first. This can never write to Production.')">
 <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="sync_production_to_staging">
-<button class="btn btn-warning" <?=($databaseSyncSettings['enabled']&&$activeJobs===0)?'':'disabled'?>>Live Sync Now</button>
+<button type="submit" class="btn btn-warning" <?=$activeJobs===0?'':'disabled'?>>Live Sync Now</button>
 </form></div></div>
+<?php if($databaseSyncMessage):?><div class="alert alert-success mt-3 mb-0 py-2"><?=e($databaseSyncMessage)?></div><?php endif;?>
+<?php if($databaseSyncError):?><div class="alert alert-danger mt-3 mb-0 py-2"><strong>Database sync could not start.</strong><br><?=e($databaseSyncError)?></div><?php endif;?>
+<?php if(!$databaseSyncSettings['enabled']):?><div class="alert alert-warning mt-3 mb-0 py-2"><strong>Setup required:</strong> add the protected Staging-only <code>staging_database_sync</code> settings and Production read-only database credentials. Save is available now; Live Sync will explain any missing setting.</div><?php endif;?>
 <div class="alert alert-secondary mt-3 mb-0 py-2 small">Safety lock: this application exposes no source or target selector, refuses to run outside Staging, rejects identical databases, uses separately configured Production read-only credentials, backs up Staging first, and restores Staging automatically if the import fails.</div>
 </div></div>
 
@@ -320,9 +330,9 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 document.querySelectorAll('form').forEach(function(form){
   form.addEventListener('submit',function(){
     var action=form.querySelector('input[name="action"]');
-    if(!action||!['deploy_staging','deploy_production','validate_production','rollback_production','refresh_status'].includes(action.value))return;
+    if(!action||!['deploy_staging','deploy_production','validate_production','rollback_production','refresh_status','save_database_sync_schedule','sync_production_to_staging'].includes(action.value))return;
     var button=form.querySelector('button[type="submit"],button:not([type])');
-    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':(action.value==='validate_production'?'Validating Production…':(action.value==='rollback_production'?'Rolling Back Production…':'Starting Deployment…'));}
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':(action.value==='validate_production'?'Validating Production…':(action.value==='rollback_production'?'Rolling Back Production…':(action.value==='save_database_sync_schedule'?'Saving…':(action.value==='sync_production_to_staging'?'Starting Sync…':'Starting Deployment…'))));}
   });
 });
 <?php if($activeJobs>0):?>
