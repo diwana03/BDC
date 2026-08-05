@@ -180,6 +180,45 @@ final class DeploymentPipelineService
         }
     }
 
+    public static function validateProduction(PDO $pdo,int $releaseId):array
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        $release=self::release($pdo,$releaseId);
+        if((string)$release['status']!=='production'){
+            throw new RuntimeException('Only a release already deployed to Production can be validated.');
+        }
+
+        $installed=ReleaseManagerService::installedVersion($config['production_path']);
+        if(!$installed)throw new RuntimeException('The installed Production release manifest could not be read.');
+        if(!hash_equals((string)$release['commit_sha'],(string)($installed['commit_sha']??''))){
+            throw new RuntimeException('Production validation failed because the installed commit does not match this release.');
+        }
+        if(!hash_equals((string)$release['version'],(string)($installed['version']??''))){
+            throw new RuntimeException('Production validation failed because the installed version does not match this release.');
+        }
+        if(($installed['environment']??'')!=='production'){
+            throw new RuntimeException('Production validation failed because the installed manifest has the wrong environment.');
+        }
+
+        $output=[];
+        self::assertHealth($config['production_health_url'],$output);
+        $validatedAt=date(DATE_ATOM);
+        $marker='[PRODUCTION_VALIDATED] Production '.$release['version'].' at commit '.substr((string)$release['commit_sha'],0,12).' validated at '.$validatedAt.'.';
+        $stmt=$pdo->prepare("UPDATE bdc_deployment_jobs
+            SET output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),:marker)
+            WHERE release_id=:release_id AND target_environment='production' AND status='success'
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute(['marker'=>$marker,'release_id'=>$releaseId]);
+        if($stmt->rowCount()!==1)throw new RuntimeException('The successful Production deployment record could not be found.');
+
+        return [
+            'version'=>(string)$release['version'],
+            'commit_sha'=>(string)$release['commit_sha'],
+            'validated_at'=>$validatedAt,
+        ];
+    }
+
     public static function recoverStaleJobs(PDO $pdo):int
     {
         $pdo->beginTransaction();
