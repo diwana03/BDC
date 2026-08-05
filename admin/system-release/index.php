@@ -14,6 +14,7 @@ $pdo=Database::connection();
 $message='';
 $error='';
 $userId=(int)(Auth::user()['id']??0);
+$recoveredJobs=DeploymentPipelineService::recoverStaleJobs($pdo);
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
     try{
@@ -50,7 +51,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 
 $settings=DeploymentPipelineService::settings();
-$releases=$pdo->query('SELECT * FROM bdc_release_candidates ORDER BY discovered_at DESC,id DESC LIMIT 20')->fetchAll();
+$latestSourceSha='';
+try{$latestSourceSha=DeploymentPipelineService::latestSourceSha();}catch(Throwable){}
+$releaseStmt=$pdo->prepare('SELECT * FROM bdc_release_candidates ORDER BY (commit_sha=:latest_sha) DESC,discovered_at DESC,id DESC LIMIT 8');
+$releaseStmt->execute(['latest_sha'=>$latestSourceSha]);
+$releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
 $checks=ReleaseManagerService::health($pdo);
 $csrf=Csrf::token();
@@ -99,6 +104,7 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <main class="container py-4 py-lg-5">
 <?php if($message):?><div class="alert alert-success shadow-sm border-0"><?=e($message)?></div><?php endif;?>
 <?php if($error):?><div class="alert alert-danger shadow-sm border-0"><strong>Deployment could not be completed.</strong><br><?=e($error)?></div><?php endif;?>
+<?php if($recoveredJobs>0):?><div class="alert alert-warning shadow-sm border-0">An old deployment that stopped responding was cleared automatically. You can deploy again now.</div><?php endif;?>
 <?php if(!$settings['enabled']):?><div class="alert alert-warning"><strong>Release Manager is not ready.</strong> Deployment settings must be enabled first.</div><?php endif;?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
@@ -130,22 +136,23 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <div class="card shadow-sm mb-5"><div class="card-body p-4 text-center text-muted">No releases found. Click “Refresh Available Releases”.</div></div>
 <?php else:?>
 <div class="row g-3 mb-5">
-<?php foreach($releases as $release):$status=(string)$release['status'];?>
+<?php foreach($releases as $release):$status=(string)$release['status'];$isLatest=$latestSourceSha!==''&&hash_equals($latestSourceSha,(string)$release['commit_sha']);?>
 <div class="col-12"><div class="card release-card shadow-sm"><div class="card-body p-4">
 <div class="row align-items-center g-3">
 <div class="col-lg-7">
-<div class="d-flex flex-wrap align-items-center gap-2 mb-1"><h3 class="h5 mb-0"><?=e($release['version'])?></h3><span class="badge text-bg-<?=statusClass($status)?>"><?=e(friendlyStatus($status))?></span></div>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-1"><h3 class="h5 mb-0"><?=e($release['version'])?></h3><?php if($isLatest):?><span class="badge text-bg-primary">Latest, recommended</span><?php endif;?><span class="badge text-bg-<?=statusClass($status)?>"><?=e(friendlyStatus($status))?></span></div>
 <div class="text-muted mb-2"><?=e($release['subject'])?></div>
 <div class="small text-muted">Release code <span class="sha"><?=e(substr($release['commit_sha'],0,12))?></span></div>
 </div>
 <div class="col-lg-5"><div class="d-flex flex-wrap justify-content-lg-end gap-2">
-<?php if(in_array($status,['new','failed','passed'],true)):?>
+<?php if($isLatest&&in_array($status,['new','failed','passed'],true)):?>
 <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_staging"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>><?=$status==='passed'?'Redeploy to Staging':'Deploy to Staging'?></button></form>
 <?php endif;?>
-<?php if(in_array($status,['passed','approved'],true)):?>
+<?php if($isLatest&&in_array($status,['passed','approved'],true)):?>
 <form method="post" onsubmit="return confirm('Deploy <?=e($release['version'])?> to the LIVE Production website? A backup and health check will run automatically.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-production" <?=$settings['enabled']?'':'disabled'?>>Deploy to Production</button></form>
 <?php elseif(in_array($status,['queued','testing','running'],true)):?><span class="text-muted align-self-center">Deployment in progress…</span>
 <?php elseif($status==='production'):?><span class="text-success fw-bold align-self-center">✓ Live</span><?php endif;?>
+<?php if(!$isLatest&&!in_array($status,['queued','testing','running','production'],true)):?><span class="text-muted small align-self-center">Previous release</span><?php endif;?>
 </div></div>
 </div></div></div></div>
 <?php endforeach;?>
