@@ -1,11 +1,12 @@
 {
-  "version": "2.3.2-dev1",
-  "build": 2321,
+  "version": "2.3.2-dev2",
+  "build": 2322,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Round-specific Registration Desk support for Heats, Semifinal and Final",
     "Scoring mode selector for Manual and future Automated scoring",
     "Direct-to-Final competition format option during scoring setup",
     "Existing Heats-to-Semifinal and Heats-to-Final progression preserved",
@@ -62,6 +63,6 @@
     "Compact Final report",
     "Final Judge Audit",
     "Secure event-specific Registration Desk portal",
-    "Live bib and check-in sync to Heats"
+    "Live bib and check-in sync to the selected scoring round"
   ]
 }
