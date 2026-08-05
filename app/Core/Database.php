@@ -20,7 +20,10 @@ final class Database
         $port = (int) Config::get('database.port', 3306);
         $name = (string) Config::get('database.name', '');
         $user = (string) Config::get('database.user', '');
-        $password = (string) Config::get('database.password', '');
+        $password = Secret::required(
+            'BDC_DB_PASSWORD',
+            (string) Config::get('database.password_file', '')
+        );
         $charset = (string) Config::get('database.charset', 'utf8mb4');
 
         if ($name === '' || $user === '') {

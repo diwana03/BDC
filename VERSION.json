@@ -1,11 +1,16 @@
 {
-  "version": "2.3.3-dev2",
-  "build": 2332,
+  "version": "2.3.3-dev3",
+  "build": 2333,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Registration Desk competitor search, eligibility validation and direct scoring-round entry",
+    "Registration Desk provisional competitor workflow with mandatory audited reason",
+    "Registration Desk bib assignment during competitor entry with duplicate protection",
+    "Database passwords loaded from server environment or protected files outside the application directory",
+    "Installer writes database passwords to owner-only secret files and never to PHP configuration",
     "Database sync controls provide loading feedback and inline configuration errors instead of appearing disabled",
     "Database sync schedule can be saved before Production read-only credentials are configured",
     "Role-specific Intermediate eligibility using the selected Leader or Follower record",

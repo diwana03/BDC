@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Config;
+use App\Core\Secret;
 use RuntimeException;
 
 final class StagingDatabaseSyncService
@@ -41,7 +42,10 @@ final class StagingDatabaseSyncService
         $control=\App\Core\Database::connection();
         if((int)$control->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN('queued','running')")->fetchColumn()>0)throw new RuntimeException('Database sync is blocked while a deployment is running.');
         if((int)$control->query("SELECT COUNT(*) FROM bdc_scoring_rounds WHERE status NOT IN('completed','archived','published','discarded') AND updated_at>DATE_SUB(NOW(),INTERVAL 15 MINUTE)")->fetchColumn()>0)throw new RuntimeException('Database sync is blocked because a scoring round was active during the last 15 minutes.');
-        $source=$settings['source'];$target=(array)Config::get('database',[]);self::validateDatabase($source,'Production read-only source');self::validateDatabase($target,'Staging target');
+        $source=$settings['source'];$target=(array)Config::get('database',[]);
+        $source['password']=Secret::required('BDC_PRODUCTION_READONLY_DB_PASSWORD',(string)($source['password_file']??''));
+        $target['password']=Secret::required('BDC_DB_PASSWORD',(string)($target['password_file']??''));
+        self::validateDatabase($source,'Production read-only source');self::validateDatabase($target,'Staging target');
         if((string)$source['name']===(string)$target['name']&&(string)$source['host']===(string)$target['host'])throw new RuntimeException('Sync aborted: Production source and Staging target resolve to the same database.');
         $backupRoot=rtrim((string)Config::get('deployment.backup_path',dirname(__DIR__,2).'/storage/backups'),'/').'/staging-db-sync';
         if(!is_dir($backupRoot)&&!mkdir($backupRoot,0700,true))throw new RuntimeException('Cannot create the Staging database sync backup directory.');

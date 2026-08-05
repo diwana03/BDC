@@ -32,12 +32,33 @@ function writeConfig(array $data, string $path): void
     @chmod($path, 0640);
 }
 
+function writeDatabaseSecret(string $password, string $path, string $applicationRoot): void
+{
+    $resolvedDirectory = dirname($path);
+    if ($path === '' || $path[0] !== '/') {
+        throw new RuntimeException('The database password file must use an absolute server path.');
+    }
+    $normalisedRoot = rtrim(str_replace('\\', '/', $applicationRoot), '/') . '/';
+    $normalisedPath = str_replace('\\', '/', $path);
+    if (str_starts_with($normalisedPath, $normalisedRoot)) {
+        throw new RuntimeException('The password file must be outside the public application directory.');
+    }
+    if (!is_dir($resolvedDirectory) && !mkdir($resolvedDirectory, 0700, true)) {
+        throw new RuntimeException('Could not create the protected secret directory.');
+    }
+    if (file_put_contents($path, $password . "\n", LOCK_EX) === false) {
+        throw new RuntimeException('Could not write the protected database password file.');
+    }
+    @chmod($path, 0600);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $host = trim((string) ($_POST['host'] ?? 'localhost'));
     $port = (int) ($_POST['port'] ?? 3306);
     $name = trim((string) ($_POST['database'] ?? ''));
     $user = trim((string) ($_POST['username'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
+    $passwordFile = trim((string) ($_POST['password_file'] ?? dirname(__DIR__, 2) . '/.bdc-secrets/database-password'));
     $basePath = '/' . trim((string) ($_POST['base_path'] ?? 'portal'), '/');
 
     if ($host === '' || $name === '' || $user === '' || $password === '') {
@@ -57,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $hostName = $_SERVER['HTTP_HOST'] ?? 'bachatadancecouncil.com';
 
+                writeDatabaseSecret($password, $passwordFile, __DIR__);
                 $config = [
                     'app' => [
                         'name' => 'Bachata Dance Council Portal',
@@ -72,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'port' => $port,
                         'name' => $name,
                         'user' => $user,
-                        'password' => $password,
+                        'password_file' => $passwordFile,
                         'charset' => 'utf8mb4',
                     ],
                     'security' => [
@@ -113,6 +135,7 @@ $defaults = [
     'port' => $_POST['port'] ?? '3306',
     'database' => $_POST['database'] ?? 'zqculgmy_bdcportal',
     'username' => $_POST['username'] ?? 'zqculgmy_bdcapp',
+    'password_file' => $_POST['password_file'] ?? dirname(__DIR__, 2) . '/.bdc-secrets/database-password',
     'base_path' => $_POST['base_path'] ?? 'portal',
 ];
 ?>
@@ -173,7 +196,13 @@ A configuration file already exists. Saving will replace its database settings.
 <div class="mb-3">
 <label class="form-label">Database password</label>
 <input class="form-control" type="password" name="password" required>
-<div class="form-text">The password is not displayed or logged by this page.</div>
+<div class="form-text">Used only to test the connection and create the protected secret file. It is never written into PHP configuration.</div>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Protected password file</label>
+<input class="form-control" name="password_file" value="<?= h((string)$defaults['password_file']) ?>" required>
+<div class="form-text">Absolute server path outside the public application folder. The installer creates it with owner-only permissions.</div>
 </div>
 
 <div class="mb-4">

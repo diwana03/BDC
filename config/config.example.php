@@ -15,7 +15,9 @@ return [
         'port' => 3306,
         'name' => 'zqculgmy_bdcportal',
         'user' => 'zqculgmy_bdcapp',
-        'password' => 'CHANGE_ME',
+        // Password is never stored in PHP. Set BDC_DB_PASSWORD in the server
+        // environment, or point to a protected file outside public_html.
+        'password_file' => '/home/account/.bdc-secrets/database-password',
         'charset' => 'utf8mb4',
     ],
     'security' => [
@@ -49,7 +51,8 @@ return [
             'port' => 3306,
             'name' => 'production_database',
             'user' => 'production_readonly_user',
-            'password' => 'CHANGE_ME',
+            // Set BDC_PRODUCTION_READONLY_DB_PASSWORD, or use a protected file.
+            'password_file' => '/home/account/.bdc-secrets/production-readonly-password',
             'charset' => 'utf8mb4',
         ],
     ],
