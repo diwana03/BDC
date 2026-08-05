@@ -56,15 +56,48 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 
 $settings=DeploymentPipelineService::settings();
+$current=ReleaseManagerService::installedVersion(dirname(__DIR__,2))??ReleaseManagerService::versionInfo();
 $latestSourceSha='';
 try{$latestSourceSha=DeploymentPipelineService::latestSourceSha();}catch(Throwable){}
+
+/*
+ * A direct CLI deployment bypasses the queue worker. Reconcile the database
+ * only when the installed version matches the exact latest release candidate.
+ */
+if($latestSourceSha!==''&&!empty($current['version'])){
+    $reconcileStmt=$pdo->prepare('SELECT id,version,status FROM bdc_release_candidates WHERE commit_sha=:sha LIMIT 1');
+    $reconcileStmt->execute(['sha'=>$latestSourceSha]);
+    $installedRelease=$reconcileStmt->fetch();
+    if($installedRelease
+        &&hash_equals((string)$installedRelease['version'],(string)$current['version'])
+        &&in_array((string)$installedRelease['status'],['new','failed','queued','testing'],true)
+    ){
+        $pdo->beginTransaction();
+        try{
+            $pdo->prepare("UPDATE bdc_deployment_jobs
+                SET status='success',completed_at=NOW(),
+                    output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),
+                    'Direct CLI deployment detected and reconciled from the installed Staging version.')
+                WHERE release_id=:id AND target_environment='staging' AND status IN ('queued','running')")
+                ->execute(['id'=>$installedRelease['id']]);
+            $pdo->prepare("UPDATE bdc_release_candidates
+                SET status='passed',staging_tested_sha=commit_sha,staged_at=COALESCE(staged_at,NOW()),passed_at=NOW()
+                WHERE id=:id")
+                ->execute(['id'=>$installedRelease['id']]);
+            $pdo->commit();
+            $message=$message?:'Direct Staging deployment detected. Release Manager records were synchronized.';
+        }catch(Throwable $e){
+            if($pdo->inTransaction())$pdo->rollBack();
+            $error=$error?:'The installed release is healthy, but its deployment history could not be synchronized: '.$e->getMessage();
+        }
+    }
+}
 $releaseStmt=$pdo->prepare('SELECT * FROM bdc_release_candidates ORDER BY (commit_sha=:latest_sha) DESC,discovered_at DESC,id DESC LIMIT 8');
 $releaseStmt->execute(['latest_sha'=>$latestSourceSha]);
 $releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
 $checks=ReleaseManagerService::health($pdo);
 $csrf=Csrf::token();
-$current=ReleaseManagerService::installedVersion(dirname(__DIR__,2))??ReleaseManagerService::versionInfo();
 $production=ReleaseManagerService::installedVersion($settings['production_path']);
 if(!$production){
     $production=$pdo->query("SELECT r.version,r.commit_sha,j.completed_at AS deployed_at FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id WHERE j.target_environment='production' AND j.status='success' ORDER BY j.completed_at DESC,j.id DESC LIMIT 1")->fetch()?:null;
