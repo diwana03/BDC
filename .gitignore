@@ -37,6 +37,7 @@ uploads/*
 # Generated result files
 results/*
 !results/.gitkeep
+!results/index.php
 public/results/*
 !public/results/.gitkeep
 
