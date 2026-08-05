@@ -50,8 +50,18 @@ final class DeploymentPipelineService
         return $config;
     }
 
+    public static function latestSourceSha():string
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        $sha=trim(self::runGit($config['repository_path'],['rev-parse','origin/'.$config['source_branch']]));
+        if(!preg_match(self::SHA_PATTERN,$sha))throw new RuntimeException('The latest source release could not be identified.');
+        return $sha;
+    }
+
     public static function queue(PDO $pdo,int $releaseId,string $action,int $userId):int
     {
+        self::recoverStaleJobs($pdo);
         $release=self::release($pdo,$releaseId);
         $allowed=[
             'deploy_staging'=>['new','failed','passed'],
@@ -81,6 +91,7 @@ final class DeploymentPipelineService
 
     public static function nextJob(PDO $pdo):?array
     {
+        self::recoverStaleJobs($pdo);
         $pdo->beginTransaction();
         try{
             $job=$pdo->query("SELECT * FROM bdc_deployment_jobs WHERE status='queued' ORDER BY id LIMIT 1 FOR UPDATE")->fetch();
@@ -116,15 +127,16 @@ final class DeploymentPipelineService
 
     public static function execute(PDO $pdo,array $job):void
     {
-        $config=self::settings();
-        self::assertEnabled($config);
-        $sha=(string)$job['commit_sha'];
-        if(!preg_match(self::SHA_PATTERN,$sha))throw new RuntimeException('Invalid release commit.');
-        $target=$job['target_environment']==='staging'?$config['staging_path']:$config['production_path'];
-        self::assertSafeTarget($target);
         $output=[];
         $productionBackup=null;
+        $config=[];
         try{
+            $config=self::settings();
+            self::assertEnabled($config);
+            $sha=(string)$job['commit_sha'];
+            if(!preg_match(self::SHA_PATTERN,$sha))throw new RuntimeException('Invalid release commit.');
+            $target=$job['target_environment']==='staging'?$config['staging_path']:$config['production_path'];
+            self::assertSafeTarget($target);
             self::runGit($config['repository_path'],['fetch','--quiet','origin',$config['source_branch']]);
             self::runGit($config['repository_path'],['cat-file','-e',$sha.'^{commit}']);
             if($job['target_environment']==='production'){
@@ -145,7 +157,7 @@ final class DeploymentPipelineService
             }
         }catch(\Throwable $e){
             $output[]='FAILED: '.$e->getMessage();
-            if($job['target_environment']==='production'&&is_string($productionBackup)){
+            if($job['target_environment']==='production'&&is_string($productionBackup)&&$config!==[]){
                 try{
                     self::restoreProductionFiles($config,$productionBackup,$output);
                     self::assertHealth($config['production_health_url'],$output);
@@ -158,6 +170,32 @@ final class DeploymentPipelineService
                 ->execute(['output'=>implode("\n",$output),'id'=>$job['id']]);
             $pdo->prepare("UPDATE bdc_release_candidates SET status='failed' WHERE id=:id")
                 ->execute(['id'=>$job['release_id']]);
+            throw $e;
+        }
+    }
+
+    public static function recoverStaleJobs(PDO $pdo):int
+    {
+        $pdo->beginTransaction();
+        try{
+            $stale=$pdo->query("SELECT id,release_id,status FROM bdc_deployment_jobs
+                WHERE (status='queued' AND requested_at<DATE_SUB(NOW(),INTERVAL 10 MINUTE))
+                   OR (status='running' AND COALESCE(started_at,requested_at)<DATE_SUB(NOW(),INTERVAL 60 MINUTE))
+                FOR UPDATE")->fetchAll();
+            if(!$stale){$pdo->commit();return 0;}
+            $jobUpdate=$pdo->prepare("UPDATE bdc_deployment_jobs
+                SET status='failed',completed_at=NOW(),output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),'Automatically closed after the deployment stopped responding.')
+                WHERE id=:id");
+            $releaseUpdate=$pdo->prepare("UPDATE bdc_release_candidates SET status='failed'
+                WHERE id=:id AND status IN ('queued','testing')");
+            foreach($stale as $job){
+                $jobUpdate->execute(['id'=>$job['id']]);
+                $releaseUpdate->execute(['id'=>$job['release_id']]);
+            }
+            $pdo->commit();
+            return count($stale);
+        }catch(\Throwable $e){
+            if($pdo->inTransaction())$pdo->rollBack();
             throw $e;
         }
     }
@@ -270,4 +308,3 @@ final class DeploymentPipelineService
         rmdir($path);
     }
 }
-
