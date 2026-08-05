@@ -82,11 +82,53 @@ final class DeploymentPipelineService
         $target=$action==='deploy_staging'?'staging':'production';
         $busy=$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
         if((int)$busy>0)throw new RuntimeException('Another deployment is already queued or running.');
-        $stmt=$pdo->prepare("INSERT INTO bdc_deployment_jobs(release_id,action,target_environment,commit_sha,requested_by)
-            VALUES(:release_id,:action,:target,:sha,:uid)");
-        $stmt->execute(['release_id'=>$releaseId,'action'=>$action,'target'=>$target,'sha'=>$release['commit_sha'],'uid'=>$userId]);
+        $stmt=$pdo->prepare("INSERT INTO bdc_deployment_jobs(release_id,action,target_environment,commit_sha,requested_by,output)
+            VALUES(:release_id,:action,:target,:sha,:uid,:output)");
+        $stmt->execute([
+            'release_id'=>$releaseId,
+            'action'=>$action,
+            'target'=>$target,
+            'sha'=>$release['commit_sha'],
+            'uid'=>$userId,
+            'output'=>'Queued from the web Release Manager at '.date(DATE_ATOM).'.',
+        ]);
         $pdo->prepare("UPDATE bdc_release_candidates SET status='queued' WHERE id=:id")->execute(['id'=>$releaseId]);
         return (int)$pdo->lastInsertId();
+    }
+
+    public static function startWorker(PDO $pdo,int $jobId=0):int
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        $script=dirname(__DIR__,2).'/bin/deployment-worker.php';
+        if(!is_file($script))throw new RuntimeException('The deployment worker script is missing.');
+
+        if($jobId>0){
+            $stmt=$pdo->prepare("SELECT id FROM bdc_deployment_jobs WHERE id=:id AND status='queued'");
+            $stmt->execute(['id'=>$jobId]);
+            if(!$stmt->fetchColumn())throw new RuntimeException('The selected deployment is no longer waiting. Refresh the page for its current status.');
+        }else{
+            $jobId=(int)$pdo->query("SELECT id FROM bdc_deployment_jobs WHERE status='queued' ORDER BY id LIMIT 1")->fetchColumn();
+            if($jobId<1)return 0;
+        }
+
+        $php=PHP_BINDIR.'/php';
+        if(!is_file($php)||!is_executable($php))$php='php';
+        $logDir=rtrim($config['backup_path'],'/');
+        if(!is_dir($logDir)&&!mkdir($logDir,0700,true))throw new RuntimeException('The deployment worker log directory cannot be created.');
+        $log=$logDir.'/deployment-worker.log';
+        $command='nohup '.escapeshellarg($php).' '.escapeshellarg($script)
+            .' >> '.escapeshellarg($log).' 2>&1 < /dev/null & echo $!';
+        $lines=[];
+        exec($command,$lines,$code);
+        $pid=(int)trim((string)($lines[0]??''));
+        if($code!==0||$pid<1)throw new RuntimeException('The web server could not start the deployment worker.');
+
+        $stmt=$pdo->prepare("UPDATE bdc_deployment_jobs
+            SET output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),:line)
+            WHERE id=:id AND status='queued'");
+        $stmt->execute(['line'=>'Background worker started from the web dashboard (process '.$pid.').','id'=>$jobId]);
+        return $jobId;
     }
 
     public static function nextJob(PDO $pdo):?array
@@ -127,7 +169,9 @@ final class DeploymentPipelineService
 
     public static function execute(PDO $pdo,array $job):void
     {
-        $output=[];
+        $existingOutput=trim((string)($job['output']??''));
+        $output=$existingOutput===''?[]:(preg_split('/\R/',$existingOutput)?:[]);
+        $output[]='Deployment worker began processing at '.date(DATE_ATOM).'.';
         $productionBackup=null;
         $config=[];
         try{
@@ -219,6 +263,79 @@ final class DeploymentPipelineService
         ];
     }
 
+    public static function rollbackProduction(PDO $pdo,int $deploymentJobId,int $userId):array
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        $stmt=$pdo->prepare("SELECT j.*,r.version FROM bdc_deployment_jobs j
+            JOIN bdc_release_candidates r ON r.id=j.release_id
+            WHERE j.id=:id AND j.action='deploy_production' AND j.target_environment='production' AND j.status='success'");
+        $stmt->execute(['id'=>$deploymentJobId]);
+        $deployment=$stmt->fetch();
+        if(!$deployment)throw new RuntimeException('Only a successful Production deployment can be rolled back.');
+
+        $output=(string)($deployment['output']??'');
+        if(!preg_match('/(?:\[PRODUCTION_BACKUP\]\s*|Production files backed up to\s+)([^\r\n]+)/',$output,$match)){
+            throw new RuntimeException('The verified pre-deployment Production backup could not be identified.');
+        }
+        $backup=realpath(trim($match[1]));
+        $backupRoot=realpath($config['backup_path']);
+        if($backup===false||$backupRoot===false||!str_starts_with($backup.DIRECTORY_SEPARATOR,$backupRoot.DIRECTORY_SEPARATOR)){
+            throw new RuntimeException('The Production backup path is missing or outside the configured backup directory.');
+        }
+        $previousManifestPath=$backup.'/files/storage/release.json';
+        $previousManifest=is_file($previousManifestPath)
+            ?json_decode((string)file_get_contents($previousManifestPath),true)
+            :null;
+        if(!is_array($previousManifest)||empty($previousManifest['version'])||empty($previousManifest['commit_sha'])
+            ||($previousManifest['environment']??'')!=='production'
+            ||!preg_match(self::SHA_PATTERN,(string)$previousManifest['commit_sha'])){
+            throw new RuntimeException('The backup does not contain a valid previous Production release manifest.');
+        }
+
+        $insert=$pdo->prepare("INSERT INTO bdc_deployment_jobs(
+            release_id,action,target_environment,commit_sha,requested_by,status,started_at,output
+        ) VALUES(:release_id,'rollback_production','production',:sha,:uid,'running',NOW(),:output)");
+        $insert->execute([
+            'release_id'=>$deployment['release_id'],
+            'sha'=>$deployment['commit_sha'],
+            'uid'=>$userId,
+            'output'=>'Rollback requested for Production deployment job #'.$deploymentJobId.'.',
+        ]);
+        $rollbackJobId=(int)$pdo->lastInsertId();
+        $rollbackOutput=['Rollback requested for Production deployment job #'.$deploymentJobId.'.'];
+
+        try{
+            self::restoreProductionFiles($config,$backup,$rollbackOutput);
+            if(!copy($previousManifestPath,rtrim($config['production_path'],'/').'/storage/release.json')){
+                throw new RuntimeException('The previous Production release manifest could not be restored.');
+            }
+            self::assertHealth($config['production_health_url'],$rollbackOutput);
+            $rollbackOutput[]='Production rolled back to '.$previousManifest['version'].' at commit '.substr((string)$previousManifest['commit_sha'],0,12).'.';
+            $pdo->prepare("UPDATE bdc_deployment_jobs SET status='success',completed_at=NOW(),output=:output WHERE id=:id")
+                ->execute(['output'=>implode("\n",$rollbackOutput),'id'=>$rollbackJobId]);
+            $pdo->prepare("UPDATE bdc_release_candidates SET status='rolled_back' WHERE id=:id")
+                ->execute(['id'=>$deployment['release_id']]);
+            $pdo->prepare("UPDATE bdc_release_candidates SET status='production',production_at=NOW() WHERE commit_sha=:sha")
+                ->execute(['sha'=>$previousManifest['commit_sha']]);
+            return ['version'=>(string)$previousManifest['version'],'commit_sha'=>(string)$previousManifest['commit_sha']];
+        }catch(\Throwable $e){
+            $rollbackOutput[]='ROLLBACK FAILED: '.$e->getMessage();
+            try{
+                self::deployTree($config['repository_path'],(string)$deployment['commit_sha'],$config['production_path'],$rollbackOutput);
+                self::writeReleaseManifest($config['production_path'],(string)$deployment['version'],(string)$deployment['commit_sha'],'production');
+                self::runProcess(['php',$config['production_path'].'/bin/migrate.php'],$rollbackOutput);
+                self::assertHealth($config['production_health_url'],$rollbackOutput);
+                $rollbackOutput[]='The original Production release was restored after the rollback failed.';
+            }catch(\Throwable $restoreError){
+                $rollbackOutput[]='ORIGINAL RELEASE RESTORE FAILED: '.$restoreError->getMessage();
+            }
+            $pdo->prepare("UPDATE bdc_deployment_jobs SET status='failed',completed_at=NOW(),output=:output WHERE id=:id")
+                ->execute(['output'=>implode("\n",$rollbackOutput),'id'=>$rollbackJobId]);
+            throw $e;
+        }
+    }
+
     public static function recoverStaleJobs(PDO $pdo):int
     {
         $pdo->beginTransaction();
@@ -292,6 +409,7 @@ final class DeploymentPipelineService
         $databaseSource=$config['production_path'].'/storage/backups/database/'.$databaseName;
         if(!is_file($databaseSource)||!copy($databaseSource,$backup.'/'.$databaseName))throw new RuntimeException('Production database backup could not be retained with the release backup.');
         $output=array_merge(array_slice($output,0,$before),['Production database backed up: '.$backup.'/'.$databaseName]);
+        $output[]='[PRODUCTION_BACKUP] '.$backup;
         $output[]='Production files backed up to '.$backup;
         return $backup;
     }

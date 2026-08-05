@@ -21,6 +21,20 @@ $error='';
 $userId=(int)(Auth::user()['id']??0);
 $recoveredJobs=DeploymentPipelineService::recoverStaleJobs($pdo);
 
+if(isset($_GET['status'])){
+    DeploymentPipelineService::recoverStaleJobs($pdo);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $statusJobs=$pdo->query("SELECT j.id,j.status,j.target_environment,j.output,r.version
+        FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id
+        ORDER BY j.id DESC LIMIT 15")->fetchAll();
+    echo json_encode([
+        'active'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn(),
+        'jobs'=>$statusJobs,
+    ],JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if($_SERVER['REQUEST_METHOD']==='POST'){
     try{
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Your session expired. Please refresh and try again.');
@@ -29,14 +43,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             DeploymentPipelineService::discover($pdo);
             $message='Available releases have been refreshed.';
         }elseif($action==='deploy_staging'){
-            @set_time_limit(0);
-            ignore_user_abort(true);
             $jobId=DeploymentPipelineService::queue($pdo,(int)($_POST['release_id']??0),$action,$userId);
-            DeploymentPipelineService::runQueuedJob($pdo,$jobId);
-            $message='Release deployed successfully to Staging. It is now ready for your testing.';
+            DeploymentPipelineService::startWorker($pdo,$jobId);
+            $message='Staging deployment started. This page will update automatically.';
         }elseif($action==='deploy_production'){
-            @set_time_limit(0);
-            ignore_user_abort(true);
             $preflight=ReleaseManagerService::health($pdo);
             if(count(array_filter($preflight,fn($check)=>(bool)$check['status']))!==count($preflight)){
                 throw new RuntimeException('Production deployment is blocked until every system check is ready.');
@@ -48,18 +58,18 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                 DeploymentPipelineService::queue($pdo,$releaseId,'approve',$userId);
             }
             $jobId=DeploymentPipelineService::queue($pdo,$releaseId,$action,$userId);
-            DeploymentPipelineService::runQueuedJob($pdo,$jobId);
-            $message='Release deployed successfully to Production.';
+            DeploymentPipelineService::startWorker($pdo,$jobId);
+            $message='Production deployment started. This page will update automatically.';
         }elseif($action==='validate_production'){
             $validated=DeploymentPipelineService::validateProduction($pdo,(int)($_POST['release_id']??0));
             $message='Production deployment validated successfully: '.$validated['version'].' at commit '.substr($validated['commit_sha'],0,12).'.';
+        }elseif($action==='rollback_production'){
+            $rolledBack=DeploymentPipelineService::rollbackProduction($pdo,(int)($_POST['deployment_job_id']??0),$userId);
+            $message='Production rolled back successfully to '.$rolledBack['version'].' at commit '.substr($rolledBack['commit_sha'],0,12).'.';
         }elseif($action==='refresh_status'){
-            $waitingJob=DeploymentPipelineService::nextJob($pdo);
-            if($waitingJob){
-                @set_time_limit(0);
-                ignore_user_abort(true);
-                DeploymentPipelineService::execute($pdo,$waitingJob);
-                $message='Waiting deployment processed successfully. Status is now current.';
+            $started=DeploymentPipelineService::startWorker($pdo);
+            if($started>0){
+                $message='Waiting deployment restarted. This page will update automatically.';
             }else{
                 $message='Deployment status refreshed. No waiting job was found.';
             }
@@ -127,6 +137,16 @@ $releaseStmt=$pdo->prepare('SELECT * FROM bdc_release_candidates ORDER BY (commi
 $releaseStmt->execute(['latest_sha'=>$latestSourceSha]);
 $releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
+$activeJobs=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
+$latestProductionJob=null;
+foreach($jobs as $candidateJob){
+    if((string)$candidateJob['action']==='deploy_production'
+        &&(string)$candidateJob['target_environment']==='production'
+        &&(string)$candidateJob['status']==='success'){
+        $latestProductionJob=$candidateJob;
+        break;
+    }
+}
 $productionValidatedReleaseIds=[];
 foreach($jobs as $job){
     if((string)$job['target_environment']==='production'
@@ -149,6 +169,7 @@ function statusClass(string $status):string
     return match($status){
         'production','passed','success'=>'success',
         'approved'=>'primary',
+        'rolled_back','cancelled'=>'secondary',
         'failed'=>'danger',
         'testing','running'=>'warning',
         'queued'=>'info',
@@ -163,6 +184,8 @@ function friendlyStatus(string $status):string
         'passed'=>'Tested on Staging',
         'approved'=>'Ready for Production',
         'production'=>'Live in Production',
+        'rolled_back'=>'Rolled Back',
+        'cancelled'=>'Cancelled',
         'failed'=>'Needs Retry',
         'testing','running'=>'Deploying',
         'queued'=>'Waiting',
@@ -253,6 +276,14 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 </div>
 </div></div>
 
+<?php if($latestProductionJob):?>
+<div class="card shadow-sm mb-4 border border-danger-subtle"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+<div><h2 class="h5 mb-1">Production Recovery</h2><p class="text-muted mb-0">Restore the verified file backup created immediately before the latest Production deployment. Configuration, storage, uploads and published results remain protected. Database data is not rolled back.</p></div>
+<form method="post" onsubmit="return confirm('ROLL BACK LIVE PRODUCTION to the release installed before deployment job #<?=(int)$latestProductionJob['id']?>? This restores application files only and keeps Production data.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="rollback_production"><input type="hidden" name="deployment_job_id" value="<?=(int)$latestProductionJob['id']?>"><button class="btn btn-outline-danger" <?=$activeJobs===0?'':'disabled'?>>Rollback Latest Production Deployment</button></form>
+</div></div></div>
+<?php endif;?>
+
 <div class="card shadow-sm mb-4"><div class="card-body p-4">
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h2 class="h5 mb-1">System Check</h2><p class="text-muted mb-0">A quick readiness check in plain language.</p></div><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="health_check"><button class="btn btn-outline-secondary">Check Again</button></form></div>
 <div class="row g-2 mt-2"><?php foreach($checks as $check):?><div class="col-md-6 col-lg-4"><div class="border rounded-3 p-3"><span class="status-dot <?=$check['status']?'bg-success':'bg-danger'?> me-2"></span><strong><?=e($check['name'])?></strong><div class="small text-muted ms-4"><?=$check['status']?'Ready':'Needs attention'?></div></div></div><?php endforeach;?></div>
@@ -267,10 +298,20 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 document.querySelectorAll('form').forEach(function(form){
   form.addEventListener('submit',function(){
     var action=form.querySelector('input[name="action"]');
-    if(!action||!['deploy_staging','deploy_production','validate_production','refresh_status'].includes(action.value))return;
+    if(!action||!['deploy_staging','deploy_production','validate_production','rollback_production','refresh_status'].includes(action.value))return;
     var button=form.querySelector('button[type="submit"],button:not([type])');
-    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':(action.value==='validate_production'?'Validating Production…':'Deploying… please wait');}
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':(action.value==='validate_production'?'Validating Production…':(action.value==='rollback_production'?'Rolling Back Production…':'Starting Deployment…'));}
   });
 });
+<?php if($activeJobs>0):?>
+(function pollDeployment(){
+  window.setTimeout(function(){
+    fetch('?status=1',{headers:{'Accept':'application/json'},cache:'no-store'})
+      .then(function(response){if(!response.ok)throw new Error('Status request failed');return response.json();})
+      .then(function(data){if(Number(data.active)===0){window.location.reload();return;}pollDeployment();})
+      .catch(function(){pollDeployment();});
+  },3000);
+})();
+<?php endif;?>
 </script>
 </body></html>
