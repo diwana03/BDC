@@ -94,6 +94,26 @@ final class DeploymentPipelineService
         }catch(\Throwable $e){$pdo->rollBack();throw $e;}
     }
 
+    public static function runQueuedJob(PDO $pdo,int $jobId):void
+    {
+        $pdo->beginTransaction();
+        try{
+            $stmt=$pdo->prepare("SELECT * FROM bdc_deployment_jobs WHERE id=:id AND status='queued' FOR UPDATE");
+            $stmt->execute(['id'=>$jobId]);
+            $job=$stmt->fetch();
+            if(!$job)throw new RuntimeException('The deployment is no longer waiting to run.');
+            $pdo->prepare("UPDATE bdc_deployment_jobs SET status='running',started_at=NOW() WHERE id=:id")
+                ->execute(['id'=>$jobId]);
+            $pdo->prepare("UPDATE bdc_release_candidates SET status='testing' WHERE id=:id")
+                ->execute(['id'=>$job['release_id']]);
+            $pdo->commit();
+        }catch(\Throwable $e){
+            if($pdo->inTransaction())$pdo->rollBack();
+            throw $e;
+        }
+        self::execute($pdo,$job);
+    }
+
     public static function execute(PDO $pdo,array $job):void
     {
         $config=self::settings();
@@ -250,3 +270,4 @@ final class DeploymentPipelineService
         rmdir($path);
     }
 }
+
