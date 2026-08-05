@@ -9,6 +9,11 @@ use App\Core\Database;
 use App\Services\DeploymentPipelineService;
 use App\Services\ReleaseManagerService;
 
+if(!ReleaseManagerService::isReleaseManagerAvailable()){
+    http_response_code(404);
+    exit('Not found.');
+}
+
 Auth::requireSuperAdmin();
 $pdo=Database::connection();
 $message='';
@@ -59,8 +64,11 @@ $releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
 $checks=ReleaseManagerService::health($pdo);
 $csrf=Csrf::token();
-$current=ReleaseManagerService::versionInfo();
-$production=$pdo->query("SELECT r.version,r.commit_sha,j.completed_at FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id WHERE j.target_environment='production' AND j.status='success' ORDER BY j.completed_at DESC,j.id DESC LIMIT 1")->fetch()?:null;
+$current=ReleaseManagerService::installedVersion(dirname(__DIR__,2))??ReleaseManagerService::versionInfo();
+$production=ReleaseManagerService::installedVersion($settings['production_path']);
+if(!$production){
+    $production=$pdo->query("SELECT r.version,r.commit_sha,j.completed_at AS deployed_at FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id WHERE j.target_environment='production' AND j.status='success' ORDER BY j.completed_at DESC,j.id DESC LIMIT 1")->fetch()?:null;
+}
 $allHealthy=count(array_filter($checks,fn($c)=>$c['status']))===count($checks);
 
 function statusClass(string $status):string
@@ -117,12 +125,14 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <div class="text-uppercase small fw-bold text-muted mb-2">Current Staging Release</div>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e((string)($current['version']??'Unknown'))?></div><span class="badge rounded-pill soft-primary px-3 py-2">Staging</span></div>
 <p class="text-muted mb-0">This is the version currently running on this Staging dashboard.</p>
+<?php if(!empty($current['commit_sha'])):?><div class="small text-muted mt-2">Commit <span class="sha"><?=e(substr((string)$current['commit_sha'],0,12))?></span></div><?php endif;?>
 </div></div></div>
 <div class="col-lg-5"><div class="card shadow-sm h-100"><div class="card-body p-4">
 <div class="text-uppercase small fw-bold text-muted mb-2">Current Production Release</div>
 <?php if($production):?>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e($production['version'])?></div><span class="badge rounded-pill soft-success px-3 py-2">Live</span></div>
-<p class="text-muted mb-0">Deployed <?=e($production['completed_at'])?></p>
+<p class="text-muted mb-0">Deployed <?=e((string)($production['deployed_at']??'time not recorded'))?></p>
+<?php if(!empty($production['commit_sha'])):?><div class="small text-muted mt-2">Commit <span class="sha"><?=e(substr((string)$production['commit_sha'],0,12))?></span></div><?php endif;?>
 <?php else:?><div class="h4 mb-2">Not recorded yet</div><p class="text-muted mb-0">The first successful Production deployment will appear here.</p><?php endif;?>
 </div></div></div>
 </div>
