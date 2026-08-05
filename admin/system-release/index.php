@@ -50,6 +50,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $jobId=DeploymentPipelineService::queue($pdo,$releaseId,$action,$userId);
             DeploymentPipelineService::runQueuedJob($pdo,$jobId);
             $message='Release deployed successfully to Production.';
+        }elseif($action==='validate_production'){
+            $validated=DeploymentPipelineService::validateProduction($pdo,(int)($_POST['release_id']??0));
+            $message='Production deployment validated successfully: '.$validated['version'].' at commit '.substr($validated['commit_sha'],0,12).'.';
         }elseif($action==='refresh_status'){
             $waitingJob=DeploymentPipelineService::nextJob($pdo);
             if($waitingJob){
@@ -124,6 +127,15 @@ $releaseStmt=$pdo->prepare('SELECT * FROM bdc_release_candidates ORDER BY (commi
 $releaseStmt->execute(['latest_sha'=>$latestSourceSha]);
 $releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
+$productionValidatedReleaseIds=[];
+foreach($jobs as $job){
+    if((string)$job['target_environment']==='production'
+        &&(string)$job['status']==='success'
+        &&str_contains((string)($job['output']??''),'[PRODUCTION_VALIDATED]')
+    ){
+        $productionValidatedReleaseIds[(int)$job['release_id']]=true;
+    }
+}
 $checks=ReleaseManagerService::health($pdo);
 $csrf=Csrf::token();
 $production=ReleaseManagerService::installedVersion($settings['production_path']);
@@ -222,7 +234,10 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php if($isLatest&&in_array($status,['passed','approved'],true)):?>
 <form method="post" onsubmit="return confirm('Deploy the exact Staging-tested release <?=e($release['version'])?> to LIVE Production? Production files and the database will be backed up first.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-production" <?=($settings['enabled']&&$allHealthy)?'':'disabled'?>>Deploy <?=e($release['version'])?> to Production</button></form>
 <?php elseif(in_array($status,['queued','testing','running'],true)):?><span class="text-muted align-self-center">Deployment in progress…</span>
-<?php elseif($status==='production'):?><span class="text-success fw-bold align-self-center">✓ Live</span><?php endif;?>
+<?php elseif($status==='production'):?>
+<form method="post" onsubmit="return confirm('Validate that the live Production version, commit and health check all match this release?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="validate_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-outline-success" <?=$settings['enabled']?'':'disabled'?>>Validate Production Deployment</button></form>
+<?php if(isset($productionValidatedReleaseIds[(int)$release['id']])):?><span class="text-success fw-bold align-self-center">✓ Production Validated</span><?php else:?><span class="text-success fw-bold align-self-center">✓ Live</span><?php endif;?>
+<?php endif;?>
 <?php if(!$isLatest&&!in_array($status,['queued','testing','running','production'],true)):?><span class="text-muted small align-self-center">Previous release</span><?php endif;?>
 </div></div>
 </div></div></div></div>
@@ -252,9 +267,9 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 document.querySelectorAll('form').forEach(function(form){
   form.addEventListener('submit',function(){
     var action=form.querySelector('input[name="action"]');
-    if(!action||!['deploy_staging','deploy_production','refresh_status'].includes(action.value))return;
+    if(!action||!['deploy_staging','deploy_production','validate_production','refresh_status'].includes(action.value))return;
     var button=form.querySelector('button[type="submit"],button:not([type])');
-    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':'Deploying… please wait';}
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent=action.value==='refresh_status'?'Refreshing…':(action.value==='validate_production'?'Validating Production…':'Deploying… please wait');}
   });
 });
 </script>
