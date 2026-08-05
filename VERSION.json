@@ -1,11 +1,14 @@
 {
-  "version": "2.3.0",
-  "build": 2300,
-  "status": "production",
+  "version": "2.3.1-dev1",
+  "build": 2311,
+  "status": "development",
   "release_date": "2026-08-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Web-only deployment processing without manual CLI worker",
+    "Refresh Status control that processes and reconciles waiting jobs",
+    "Deployment buttons remain active in the web request until completion",
     "Production deployment plan and protected-data summary",
     "Production preflight gate requiring all system checks",
     "Exact Staging-tested commit promotion to Production",
