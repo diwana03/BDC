@@ -75,6 +75,16 @@ if($latestSourceSha!==''&&!empty($current['version'])){
         $pdo->beginTransaction();
         try{
             $pdo->prepare("UPDATE bdc_deployment_jobs
+                SET status='failed',completed_at=NOW(),
+                    output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),
+                    'Superseded by a verified direct CLI Staging deployment.')
+                WHERE target_environment='staging' AND status IN ('queued','running') AND release_id<>:id")
+                ->execute(['id'=>$installedRelease['id']]);
+            $pdo->prepare("UPDATE bdc_release_candidates
+                SET status='failed'
+                WHERE status IN ('queued','testing') AND id<>:id")
+                ->execute(['id'=>$installedRelease['id']]);
+            $pdo->prepare("UPDATE bdc_deployment_jobs
                 SET status='success',completed_at=NOW(),
                     output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),
                     'Direct CLI deployment detected and reconciled from the installed Staging version.')
