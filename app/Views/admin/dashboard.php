@@ -51,7 +51,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
         <?php if((int)$stats['profile_requests']>0):?><i><?= (int)$stats['profile_requests'] ?></i><?php endif;?>
       </a>
       <a href="<?= e(url('admin/system-maintenance/')) ?>"><span>☁</span>Backup &amp; Recovery</a>
-      <?php if(App\Core\Auth::isSuperAdmin()):?><a href="<?= e(url('admin/system-release/')) ?>"><span>⚙</span>Release Manager</a><?php endif;?>
+      <?php if(App\Core\Auth::isSuperAdmin()&&ReleaseManagerService::isReleaseManagerAvailable()):?><a href="<?= e(url('admin/system-release/')) ?>"><span>⚙</span>Release Manager</a><?php endif;?>
 
       <?php if(App\Core\Auth::isSuperAdmin()):?>
       <div class="admin-sidebar-label-v203">Super Admin</div>
@@ -206,7 +206,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
 
     <footer class="admin-footer-v203">
       <span>© <?= date('Y') ?> Bachata Dance Council. All rights reserved.</span>
-      <span>BDC Admin Portal v2.0.3</span>
+      <span>BDC Admin Portal v<?=e((string)($bdcVersion['version']??ReleaseManagerService::VERSION))?> · <?=e(ReleaseManagerService::environmentLabel())?></span>
     </footer>
   </main>
 </div>
