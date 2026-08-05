@@ -104,9 +104,11 @@ final class DeploymentPipelineService
         if(!is_file($script))throw new RuntimeException('The deployment worker script is missing.');
 
         if($jobId>0){
-            $stmt=$pdo->prepare("SELECT id FROM bdc_deployment_jobs WHERE id=:id AND status='queued'");
+            $stmt=$pdo->prepare("SELECT status FROM bdc_deployment_jobs WHERE id=:id");
             $stmt->execute(['id'=>$jobId]);
-            if(!$stmt->fetchColumn())throw new RuntimeException('The selected deployment is no longer waiting. Refresh the page for its current status.');
+            $status=$stmt->fetchColumn();
+            if($status==='running')return $jobId;
+            if($status!=='queued')throw new RuntimeException('The selected deployment is not waiting or running. Refresh the page for its current status.');
         }else{
             $jobId=(int)$pdo->query("SELECT id FROM bdc_deployment_jobs WHERE status='queued' ORDER BY id LIMIT 1")->fetchColumn();
             if($jobId<1)return 0;
@@ -218,8 +220,9 @@ final class DeploymentPipelineService
             }
             $pdo->prepare("UPDATE bdc_deployment_jobs SET status='failed',completed_at=NOW(),output=:output WHERE id=:id")
                 ->execute(['output'=>implode("\n",$output),'id'=>$job['id']]);
-            $pdo->prepare("UPDATE bdc_release_candidates SET status='failed' WHERE id=:id")
-                ->execute(['id'=>$job['release_id']]);
+            $releaseStatus=$job['target_environment']==='production'?'approved':'failed';
+            $pdo->prepare("UPDATE bdc_release_candidates SET status=:status WHERE id=:id")
+                ->execute(['status'=>$releaseStatus,'id'=>$job['release_id']]);
             throw $e;
         }
     }
@@ -340,7 +343,7 @@ final class DeploymentPipelineService
     {
         $pdo->beginTransaction();
         try{
-            $stale=$pdo->query("SELECT id,release_id,status FROM bdc_deployment_jobs
+            $stale=$pdo->query("SELECT id,release_id,status,target_environment FROM bdc_deployment_jobs
                 WHERE (status='queued' AND requested_at<DATE_SUB(NOW(),INTERVAL 10 MINUTE))
                    OR (status='running' AND COALESCE(started_at,requested_at)<DATE_SUB(NOW(),INTERVAL 60 MINUTE))
                 FOR UPDATE")->fetchAll();
@@ -348,11 +351,14 @@ final class DeploymentPipelineService
             $jobUpdate=$pdo->prepare("UPDATE bdc_deployment_jobs
                 SET status='failed',completed_at=NOW(),output=CONCAT(COALESCE(output,''),IF(COALESCE(output,'')='','',CHAR(10)),'Automatically closed after the deployment stopped responding.')
                 WHERE id=:id");
-            $releaseUpdate=$pdo->prepare("UPDATE bdc_release_candidates SET status='failed'
+            $releaseUpdate=$pdo->prepare("UPDATE bdc_release_candidates SET status=:status
                 WHERE id=:id AND status IN ('queued','testing')");
             foreach($stale as $job){
                 $jobUpdate->execute(['id'=>$job['id']]);
-                $releaseUpdate->execute(['id'=>$job['release_id']]);
+                $releaseUpdate->execute([
+                    'status'=>$job['target_environment']==='production'?'approved':'failed',
+                    'id'=>$job['release_id'],
+                ]);
             }
             $pdo->commit();
             return count($stale);

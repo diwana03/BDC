@@ -115,7 +115,10 @@ if($latestSourceSha!==''&&!empty($current['version'])){
     $reconcileStmt=$pdo->prepare('SELECT id,version,status FROM bdc_release_candidates WHERE commit_sha=:sha LIMIT 1');
     $reconcileStmt->execute(['sha'=>$latestSourceSha]);
     $installedRelease=$reconcileStmt->fetch();
-    if($installedRelease
+    $activeProductionJobs=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs
+        WHERE target_environment='production' AND status IN ('queued','running')")->fetchColumn();
+    if($activeProductionJobs===0
+        &&$installedRelease
         &&hash_equals((string)$installedRelease['version'],(string)$current['version'])
         &&in_array((string)$installedRelease['status'],['new','failed','queued','testing'],true)
     ){
