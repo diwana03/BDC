@@ -1,11 +1,15 @@
 {
-  "version": "2.3.2-dev2",
-  "build": 2322,
+  "version": "2.3.2-dev4",
+  "build": 2324,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Straight-to-Final BDC competitor search and direct entry",
+    "Audited warning override for wrong-division or not-yet-listed competitors",
+    "Independent Leader and Follower counts for direct Finals",
+    "Absolute HTTPS Registration Desk links for Open Desk and Copy Link",
     "Round-specific Registration Desk support for Heats, Semifinal and Final",
     "Scoring mode selector for Manual and future Automated scoring",
     "Direct-to-Final competition format option during scoring setup",
