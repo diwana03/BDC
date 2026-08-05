@@ -11,53 +11,155 @@ use App\Services\ReleaseManagerService;
 
 Auth::requireSuperAdmin();
 $pdo=Database::connection();
-$message='';$error='';$userId=(int)(Auth::user()['id']??0);
+$message='';
+$error='';
+$userId=(int)(Auth::user()['id']??0);
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
     try{
-        if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
+        if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Your session expired. Please refresh and try again.');
         $action=(string)($_POST['action']??'');
         if($action==='discover'){
             DeploymentPipelineService::discover($pdo);
-            $message='GitHub develop checked. The release list is current.';
+            $message='Available releases have been refreshed.';
         }elseif($action==='deploy_staging'){
             $jobId=DeploymentPipelineService::queue($pdo,(int)($_POST['release_id']??0),$action,$userId);
-            $message='Deployment job #'.$jobId.' queued for Staging. It will run within one minute.';
+            DeploymentPipelineService::runQueuedJob($pdo,$jobId);
+            $message='Release deployed successfully to Staging. It is now ready for your testing.';
+        }elseif($action==='deploy_production'){
+            $releaseId=(int)($_POST['release_id']??0);
+            $statusStmt=$pdo->prepare('SELECT status FROM bdc_release_candidates WHERE id=:id');
+            $statusStmt->execute(['id'=>$releaseId]);
+            if($statusStmt->fetchColumn()==='passed'){
+                DeploymentPipelineService::queue($pdo,$releaseId,'approve',$userId);
+            }
+            $jobId=DeploymentPipelineService::queue($pdo,$releaseId,$action,$userId);
+            DeploymentPipelineService::runQueuedJob($pdo,$jobId);
+            $message='Release deployed successfully to Production.';
         }elseif($action==='health_check'){
             $checks=ReleaseManagerService::health($pdo);
-            $message=count(array_filter($checks,fn($c)=>$c['status']))===count($checks)?'All dashboard health checks passed.':'Health check completed with warnings.';
-        }else throw new RuntimeException('Unknown action.');
-    }catch(Throwable $e){$error=$e->getMessage();}
+            $message=count(array_filter($checks,fn($c)=>$c['status']))===count($checks)
+                ?'Everything is ready for deployment.'
+                :'System check completed. One or more items need attention.';
+        }else{
+            throw new RuntimeException('Please choose a valid action.');
+        }
+    }catch(Throwable $e){
+        $error=$e->getMessage();
+    }
 }
 
 $settings=DeploymentPipelineService::settings();
-$releases=$pdo->query('SELECT * FROM bdc_release_candidates ORDER BY discovered_at DESC,id DESC LIMIT 50')->fetchAll();
-$jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 30')->fetchAll();
-$checks=ReleaseManagerService::health($pdo);$csrf=Csrf::token();
-$selectedReleaseId=(int)($_GET['release_id']??$_POST['release_id']??($releases[0]['id']??0));
-$selectedRelease=null;
-foreach($releases as $release){
-    if((int)$release['id']===$selectedReleaseId){$selectedRelease=$release;break;}
-}
-if($selectedRelease===null&&$releases){$selectedRelease=$releases[0];$selectedReleaseId=(int)$selectedRelease['id'];}
+$releases=$pdo->query('SELECT * FROM bdc_release_candidates ORDER BY discovered_at DESC,id DESC LIMIT 20')->fetchAll();
+$jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
+$checks=ReleaseManagerService::health($pdo);
+$csrf=Csrf::token();
+$current=ReleaseManagerService::versionInfo();
+$production=$pdo->query("SELECT r.version,r.commit_sha,j.completed_at FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id WHERE j.target_environment='production' AND j.status='success' ORDER BY j.completed_at DESC,j.id DESC LIMIT 1")->fetch()?:null;
+$allHealthy=count(array_filter($checks,fn($c)=>$c['status']))===count($checks);
 
-function statusClass(string $status):string{return match($status){'production','passed','success'=>'success','approved'=>'primary','failed'=>'danger','testing','running'=>'warning','queued'=>'info','rolled_back'=>'secondary',default=>'dark'};}
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Deployment Dashboard | BDC</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>body{background:#f3f5f7}.card{border:0;border-radius:14px}.sha{font-family:monospace}.pipeline{font-weight:700}.health-dot{width:11px;height:11px;border-radius:50%;display:inline-block}</style></head><body>
-<div class="text-center py-2 bg-dark text-white fw-bold">SECURE DEVELOPMENT DEPLOYMENT DASHBOARD</div>
-<nav class="navbar navbar-dark bg-primary"><div class="container-fluid"><a class="navbar-brand" href="<?=e(url('admin/'))?>">BDC Admin</a><span class="text-white">Exact Commit Release Control</span></div></nav>
-<main class="container py-4">
-<?php if($message):?><div class="alert alert-success"><?=e($message)?></div><?php endif;?><?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?>
-<?php if(!$settings['enabled']):?><div class="alert alert-warning"><strong>Dashboard not enabled.</strong> Add the deployment settings from <code>config/config.example.php</code> to this environment's protected <code>config/config.php</code>.</div><?php endif;?>
-<div class="card shadow-sm mb-4"><div class="card-body"><div class="d-flex flex-wrap justify-content-between gap-3 align-items-center"><div><h1 class="h4 mb-1">Development Release Dashboard</h1><div class="pipeline text-muted">Choose exact release → Deploy to Staging → Test</div></div><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="discover"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>>Refresh Release List</button></form></div></div></div>
-<div class="alert alert-info"><strong>Staging only.</strong> Production deployment is not available from this dashboard yet.</div>
-<div class="row g-4 mb-4"><div class="col-lg-8"><div class="card shadow-sm h-100"><div class="card-body"><h2 class="h5">Select a Release</h2>
-<?php if($releases):?>
-<form method="get" class="mb-4"><label class="form-label" for="release_id">Development releases</label><select class="form-select" id="release_id" name="release_id" size="10" onchange="this.form.submit()">
-<?php foreach($releases as $r):?><option value="<?=(int)$r['id']?>" <?=$selectedReleaseId===(int)$r['id']?'selected':''?>><?=e($r['version'].' | '.substr($r['commit_sha'],0,12).' | '.ucwords(str_replace('_',' ',$r['status'])).' | '.$r['subject'])?></option><?php endforeach;?>
-</select><noscript><button class="btn btn-outline-primary mt-2">View Selected Release</button></noscript></form>
-<?php if($selectedRelease):?><div class="border rounded-3 p-3 bg-light"><div class="d-flex flex-wrap justify-content-between gap-2"><div><div class="text-muted small">SELECTED RELEASE</div><h3 class="h5 mb-1"><?=e($selectedRelease['version'])?></h3></div><span class="badge text-bg-<?=statusClass($selectedRelease['status'])?> align-self-start"><?=e(ucwords(str_replace('_',' ',$selectedRelease['status'])))?></span></div><dl class="row mt-3 mb-3"><dt class="col-sm-3">Commit</dt><dd class="col-sm-9 sha text-break"><?=e($selectedRelease['commit_sha'])?></dd><dt class="col-sm-3">Change</dt><dd class="col-sm-9"><?=e($selectedRelease['subject'])?></dd><dt class="col-sm-3">Discovered</dt><dd class="col-sm-9"><?=e($selectedRelease['discovered_at'])?></dd></dl>
-<?php if(in_array($selectedRelease['status'],['new','failed','passed'],true)):?><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_staging"><input type="hidden" name="release_id" value="<?=(int)$selectedRelease['id']?>"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>><?=($selectedRelease['status']==='passed')?'Retest on Staging':'Deploy Selected Release to Staging'?></button></form><?php else:?><div class="text-muted">This release is currently <?=e(str_replace('_',' ',$selectedRelease['status']))?> and cannot be queued again.</div><?php endif;?></div><?php endif;?>
-<?php else:?><p class="text-muted mb-0">Click Refresh Release List to load Development releases.</p><?php endif;?></div></div></div>
-<div class="col-lg-4"><div class="card shadow-sm h-100"><div class="card-body"><h2 class="h5">Staging Safety</h2><ul class="mb-0"><li>Super Admin and CSRF protected</li><li>One deployment job at a time</li><li>Exact 40 character commit SHA</li><li>Configuration, uploads, storage and results preserved</li><li>Health check required for a passing release</li><li>No Production deployment control</li></ul><hr><?php foreach($checks as $c):?><div class="d-flex gap-2 py-1"><span class="health-dot mt-1 <?=$c['status']?'bg-success':'bg-danger'?>"></span><small><?=e($c['name'])?></small></div><?php endforeach;?></div></div></div></div>
-<div class="card shadow-sm"><div class="card-body"><h2 class="h5">Deployment History</h2><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Job</th><th>Release</th><th>Commit</th><th>Target</th><th>Status</th><th>Requested</th><th>Log</th></tr></thead><tbody><?php foreach($jobs as $j):?><tr><td>#<?=(int)$j['id']?></td><td><?=e($j['version'])?></td><td class="sha"><?=e(substr($j['commit_sha'],0,12))?></td><td><?=e(strtoupper($j['target_environment']))?></td><td><span class="badge text-bg-<?=statusClass($j['status'])?>"><?=e($j['status'])?></span></td><td><?=e($j['requested_at'])?></td><td><details><summary>View</summary><pre class="small text-wrap"><?=e($j['output'])?></pre></details></td></tr><?php endforeach;?></tbody></table></div></div></div>
-</main></body></html>
+function statusClass(string $status):string
+{
+    return match($status){
+        'production','passed','success'=>'success',
+        'approved'=>'primary',
+        'failed'=>'danger',
+        'testing','running'=>'warning',
+        'queued'=>'info',
+        default=>'secondary'
+    };
+}
+
+function friendlyStatus(string $status):string
+{
+    return match($status){
+        'new'=>'Available',
+        'passed'=>'Tested on Staging',
+        'approved'=>'Ready for Production',
+        'production'=>'Live in Production',
+        'failed'=>'Needs Retry',
+        'testing','running'=>'Deploying',
+        'queued'=>'Waiting',
+        default=>ucwords(str_replace('_',' ',$status))
+    };
+}
+?><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Release Manager | BDC</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;border-radius:18px}.release-card{transition:.18s ease}.release-card:hover{transform:translateY(-2px)}.version{font-size:2rem;font-weight:800}.sha{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.section-title{font-weight:800}.soft-success{background:#eaf8ef;color:#176b36}.soft-primary{background:#eaf1ff;color:#174ea6}.btn{border-radius:10px;font-weight:700}.btn-production{background:#111827;color:#fff}.btn-production:hover{background:#000;color:#fff}.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark"><div class="container py-2"><a class="navbar-brand fw-bold" href="<?=e(url('admin/'))?>">BDC Release Manager</a><span class="text-white-50">Simple and safe updates</span></div></nav>
+<main class="container py-4 py-lg-5">
+<?php if($message):?><div class="alert alert-success shadow-sm border-0"><?=e($message)?></div><?php endif;?>
+<?php if($error):?><div class="alert alert-danger shadow-sm border-0"><strong>Deployment could not be completed.</strong><br><?=e($error)?></div><?php endif;?>
+<?php if(!$settings['enabled']):?><div class="alert alert-warning"><strong>Release Manager is not ready.</strong> Deployment settings must be enabled first.</div><?php endif;?>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+<div><h1 class="section-title h3 mb-1">Current Releases</h1><p class="text-muted mb-0">See what is installed before choosing an update.</p></div>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="discover"><button class="btn btn-outline-primary" <?=$settings['enabled']?'':'disabled'?>>Refresh Available Releases</button></form>
+</div>
+
+<div class="row g-4 mb-5">
+<div class="col-lg-7"><div class="card shadow-sm h-100"><div class="card-body p-4">
+<div class="text-uppercase small fw-bold text-muted mb-2">Current Staging Release</div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e((string)($current['version']??'Unknown'))?></div><span class="badge rounded-pill soft-primary px-3 py-2">Staging</span></div>
+<p class="text-muted mb-0">This is the version currently running on this Staging dashboard.</p>
+</div></div></div>
+<div class="col-lg-5"><div class="card shadow-sm h-100"><div class="card-body p-4">
+<div class="text-uppercase small fw-bold text-muted mb-2">Current Production Release</div>
+<?php if($production):?>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e($production['version'])?></div><span class="badge rounded-pill soft-success px-3 py-2">Live</span></div>
+<p class="text-muted mb-0">Deployed <?=e($production['completed_at'])?></p>
+<?php else:?><div class="h4 mb-2">Not recorded yet</div><p class="text-muted mb-0">The first successful Production deployment will appear here.</p><?php endif;?>
+</div></div></div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+<div><h2 class="section-title h3 mb-1">Available Releases</h2><p class="text-muted mb-0">Deploy to Staging first. After testing, the Production button becomes available.</p></div>
+<div class="small fw-bold <?=$allHealthy?'text-success':'text-danger'?>"><span class="status-dot <?=$allHealthy?'bg-success':'bg-danger'?> me-2"></span><?=$allHealthy?'System ready':'System needs attention'?></div>
+</div>
+
+<?php if(!$releases):?>
+<div class="card shadow-sm mb-5"><div class="card-body p-4 text-center text-muted">No releases found. Click “Refresh Available Releases”.</div></div>
+<?php else:?>
+<div class="row g-3 mb-5">
+<?php foreach($releases as $release):$status=(string)$release['status'];?>
+<div class="col-12"><div class="card release-card shadow-sm"><div class="card-body p-4">
+<div class="row align-items-center g-3">
+<div class="col-lg-7">
+<div class="d-flex flex-wrap align-items-center gap-2 mb-1"><h3 class="h5 mb-0"><?=e($release['version'])?></h3><span class="badge text-bg-<?=statusClass($status)?>"><?=e(friendlyStatus($status))?></span></div>
+<div class="text-muted mb-2"><?=e($release['subject'])?></div>
+<div class="small text-muted">Release code <span class="sha"><?=e(substr($release['commit_sha'],0,12))?></span></div>
+</div>
+<div class="col-lg-5"><div class="d-flex flex-wrap justify-content-lg-end gap-2">
+<?php if(in_array($status,['new','failed','passed'],true)):?>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_staging"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>><?=$status==='passed'?'Redeploy to Staging':'Deploy to Staging'?></button></form>
+<?php endif;?>
+<?php if(in_array($status,['passed','approved'],true)):?>
+<form method="post" onsubmit="return confirm('Deploy <?=e($release['version'])?> to the LIVE Production website? A backup and health check will run automatically.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-production" <?=$settings['enabled']?'':'disabled'?>>Deploy to Production</button></form>
+<?php elseif(in_array($status,['queued','testing','running'],true)):?><span class="text-muted align-self-center">Deployment in progress…</span>
+<?php elseif($status==='production'):?><span class="text-success fw-bold align-self-center">✓ Live</span><?php endif;?>
+</div></div>
+</div></div></div></div>
+<?php endforeach;?>
+</div>
+<?php endif;?>
+
+<div class="card shadow-sm mb-4"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h2 class="h5 mb-1">System Check</h2><p class="text-muted mb-0">A quick readiness check in plain language.</p></div><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="health_check"><button class="btn btn-outline-secondary">Check Again</button></form></div>
+<div class="row g-2 mt-2"><?php foreach($checks as $check):?><div class="col-md-6 col-lg-4"><div class="border rounded-3 p-3"><span class="status-dot <?=$check['status']?'bg-success':'bg-danger'?> me-2"></span><strong><?=e($check['name'])?></strong><div class="small text-muted ms-4"><?=$check['status']?'Ready':'Needs attention'?></div></div></div><?php endforeach;?></div>
+</div></div>
+
+<div class="card shadow-sm"><div class="card-body p-4"><h2 class="h5 mb-3">Recent Activity</h2><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Release</th><th>Destination</th><th>Result</th><th>Time</th><th>Details</th></tr></thead><tbody>
+<?php foreach($jobs as $job):?><tr><td><strong><?=e($job['version'])?></strong></td><td><?=e(ucfirst($job['target_environment']))?></td><td><span class="badge text-bg-<?=statusClass($job['status'])?>"><?=e(friendlyStatus($job['status']))?></span></td><td><?=e($job['requested_at'])?></td><td><details><summary class="text-primary">View details</summary><pre class="small text-wrap mt-2 mb-0"><?=e($job['output'])?></pre></details></td></tr><?php endforeach;?>
+<?php if(!$jobs):?><tr><td colspan="5" class="text-center text-muted py-4">No deployment activity yet.</td></tr><?php endif;?>
+</tbody></table></div></div></div>
+</main>
+</body></html>
