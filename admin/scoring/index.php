@@ -6,6 +6,7 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Services\DivisionProgressionService;
 use App\Services\SchemaUpdater;
 
 Auth::requireAdmin();
@@ -627,10 +628,10 @@ try{
    if(preg_match('/^(BDC-\d+)/i',$term,$m))$selectedBdc=strtoupper($m[1]);
    $comp=null;
    if($entryMode!=='create'){
-    $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status FROM bdc_competitors WHERE bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact) ORDER BY exact_name LIMIT 1");
+    $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact) ORDER BY exact_name LIMIT 1");
     $c->execute(['bdc'=>$selectedBdc!==''?$selectedBdc:$term,'num'=>ctype_digit($term)?(int)$term:0,'exact'=>$term]);$comp=$c->fetch()?:null;
     if(!$comp){
-     $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status FROM bdc_competitors WHERE exact_name LIKE :like ORDER BY exact_name LIMIT 2");
+     $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE exact_name LIKE :like ORDER BY exact_name LIMIT 2");
      $c->execute(['like'=>'%'.$term.'%']);$matches=$c->fetchAll();
      if(count($matches)===1)$comp=$matches[0];
      elseif(count($matches)>1)throw new RuntimeException('Several competitors match this name. Select the correct BDC ID from the suggestions.');
@@ -654,12 +655,37 @@ try{
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
    }
    $competitorDivision=(string)($comp['current_division']??'unknown');
-   $divisionMismatch=$entryMode!=='create' && $competitorDivision!==$roundForEntry['division'];
-   if($divisionMismatch && (!$overrideDivision || $overrideReason==='')){
-    throw new RuntimeException('Warning: '.$comp['exact_name'].' is currently classified as '.ucwords(str_replace('_',' ',$competitorDivision)).', not '.ucwords(str_replace('_',' ',$roundForEntry['division'])).'. Tick Add Anyway and enter the reason if their points or division are not updated.');
+   $divisionMismatch=false;
+   if($entryMode!=='create'){
+    $pointStmt=$pdo->prepare("SELECT
+      COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,
+      COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,
+      COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points
+     FROM bdc_point_transactions WHERE competitor_id=:competitor");
+    $pointStmt->execute(['competitor'=>$comp['id']]);$points=$pointStmt->fetch()?:[];
+    $historyStmt=$pdo->prepare("SELECT
+      MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
+      MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,
+      MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star
+     FROM (
+      SELECT division FROM bdc_participant_results WHERE competitor_id=:participant
+      UNION ALL
+      SELECT division FROM bdc_point_transactions WHERE competitor_id=:transaction
+     ) history");
+    $historyStmt->execute(['participant'=>$comp['id'],'transaction'=>$comp['id']]);$history=$historyStmt->fetch()?:[];
+    $eligibility=DivisionProgressionService::eligibilityFor(
+     (string)$roundForEntry['division'],
+     (float)($points['novice_points']??0),(float)($points['intermediate_points']??0),(float)($points['advanced_points']??0),
+     (string)($comp['current_division']??'unknown'),
+     !empty($history['competed_intermediate']),!empty($history['competed_advanced']),!empty($history['competed_all_star'])
+    );
+    $divisionMismatch=!$eligibility['eligible'];
+    if($divisionMismatch){
+     throw new RuntimeException('Cannot add '.$comp['exact_name'].' to '.DivisionProgressionService::label((string)$roundForEntry['division']).': '.$eligibility['reason'].' Known BDC competitors cannot bypass division eligibility. Update their official points or competition history first.');
+    }
    }
    $pdo->prepare("INSERT INTO bdc_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name) VALUES(:r,:c,:role,:bib,:n) ON DUPLICATE KEY UPDATE bib_number=VALUES(bib_number),display_name=VALUES(display_name),entry_status='active'")->execute(['r'=>$roundId,'c'=>$comp['id'],'role'=>$role,'bib'=>$bib,'n'=>$comp['exact_name']]);
-   auditScoring($pdo,$roundId,$userId,'entry_added',['competitor_id'=>$comp['id'],'bdc_id'=>$comp['bdc_id'],'role'=>$role,'bib'=>$bib,'provisional'=>$entryMode==='create','division'=>$competitorDivision,'division_override'=>$entryMode==='create'||$divisionMismatch,'override_reason'=>($entryMode==='create'||$divisionMismatch)?$overrideReason:null]);
+   auditScoring($pdo,$roundId,$userId,'entry_added',['competitor_id'=>$comp['id'],'bdc_id'=>$comp['bdc_id'],'role'=>$role,'bib'=>$bib,'provisional'=>$entryMode==='create','division'=>$competitorDivision,'division_override'=>$entryMode==='create','override_reason'=>$entryMode==='create'?$overrideReason:null]);
    $notice=ucfirst($role).' added: '.$comp['exact_name'].' ('.$comp['bdc_id'].').';
   }elseif($action==='update_bib'){
    $roundId=(int)($_POST['round_id']??0);$entryId=(int)($_POST['entry_id']??0);$newBib=(int)($_POST['bib_number']??0);
@@ -1180,7 +1206,18 @@ try{
 }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();$error=$e->getMessage();}
 
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY event_date DESC,name")->fetchAll();
-$competitorSuggestions=$pdo->query("SELECT bdc_id,exact_name,dance_role,current_division,status FROM bdc_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
+$competitorSuggestions=$pdo->query("SELECT c.id,c.bdc_id,c.exact_name,c.dance_role,c.current_division,c.status,
+ COALESCE(SUM(CASE WHEN p.division='novice' THEN p.points ELSE 0 END),0) novice_points,
+ COALESCE(SUM(CASE WHEN p.division='intermediate' THEN p.points ELSE 0 END),0) intermediate_points,
+ COALESCE(SUM(CASE WHEN p.division='advanced' THEN p.points ELSE 0 END),0) advanced_points,
+ GREATEST(MAX(CASE WHEN p.division='intermediate' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='intermediate')) competed_intermediate,
+ GREATEST(MAX(CASE WHEN p.division='advanced' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='advanced')) competed_advanced,
+ GREATEST(MAX(CASE WHEN p.division='all_star' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='all_star')) competed_all_star
+ FROM bdc_competitors c
+ LEFT JOIN bdc_point_transactions p ON p.competitor_id=c.id
+ WHERE c.status<>'archived'
+ GROUP BY c.id,c.bdc_id,c.exact_name,c.dance_role,c.current_division,c.status
+ ORDER BY c.exact_name LIMIT 1500")->fetchAll();
 $round=$roundId?loadRound($pdo,$roundId):null;
 $registrationDeskLink=null;$registrationDeskUrl='';
 if($round){
@@ -1439,7 +1476,10 @@ $csrf=Csrf::token();
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
 <div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['round_type']==='final'):?>
-<?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,fn($suggestion)=>(string)$suggestion['current_division']===(string)$round['division']));?>
+<?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,function($suggestion)use($round){
+ $check=DivisionProgressionService::eligibilityFor((string)$round['division'],(float)$suggestion['novice_points'],(float)$suggestion['intermediate_points'],(float)$suggestion['advanced_points'],(string)$suggestion['current_division'],!empty($suggestion['competed_intermediate']),!empty($suggestion['competed_advanced']),!empty($suggestion['competed_all_star']));
+ return $check['eligible'];
+}));?>
 <datalist id="finalCompetitorSuggestions"><?php foreach($finalDivisionSuggestions as $suggestion):?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' · '.ucfirst($suggestion['dance_role']).' · '.ucwords(str_replace('_',' ',$suggestion['current_division'])))?></option><?php endforeach;?></datalist>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
@@ -1474,9 +1514,10 @@ $csrf=Csrf::token();
     <div class="col-9"><label class="form-label">BDC competitor</label><input class="form-control" name="competitor_search" list="finalCompetitorSuggestions" placeholder="Name or BDC ID" required><div class="form-text">Select a matching <?=e(ucwords(str_replace('_',' ',$round['division'])))?> competitor.</div></div>
     <div class="col-12"><button class="btn btn-<?=e($finalRoleMeta[1])?> w-100" name="entry_mode" value="existing">Add from BDC Database</button></div>
     <div class="col-12 mt-3"><div class="border border-warning rounded p-2 bg-warning-subtle">
-     <div class="form-check"><input class="form-check-input" type="checkbox" name="override_division" value="1" id="override_<?=$finalRole?>"><label class="form-check-label fw-semibold" for="override_<?=$finalRole?>">Add Anyway, BDC level or points not updated</label></div>
+     <div class="small fw-semibold mb-2">Missing from BDC only</div>
+     <div class="form-check"><input class="form-check-input" type="checkbox" name="override_division" value="1" id="override_<?=$finalRole?>"><label class="form-check-label" for="override_<?=$finalRole?>">Confirm this dancer has no existing BDC record</label></div>
      <input class="form-control form-control-sm mt-2" name="override_reason" maxlength="255" placeholder="Required reason for override">
-     <button class="btn btn-outline-dark btn-sm mt-2" name="entry_mode" value="create" onclick="return confirm('Create a provisional BDC record and add this competitor directly to the Final? The override reason will be audited.')">Add Non-BDC / Not Updated</button>
+     <button class="btn btn-outline-dark btn-sm mt-2" name="entry_mode" value="create" onclick="return confirm('Create a provisional BDC record and add this missing competitor directly to the Final? Existing ineligible BDC competitors cannot use this option. The reason will be audited.')">Add Missing Non-BDC Competitor</button>
     </div></div>
    </form>
   </div></div>

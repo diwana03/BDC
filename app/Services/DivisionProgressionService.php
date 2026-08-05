@@ -86,6 +86,54 @@ final class DivisionProgressionService
         )===self::normaliseDivision($division);
     }
 
+    /**
+     * Competition-entry eligibility. Recorded participation is irreversible:
+     * once a dancer competes above Novice, they cannot return to a lower division.
+     * Threshold overlap remains allowed (20–25 Novice points and 25–30 Intermediate points).
+     *
+     * @return array{eligible:bool,reason:string}
+     */
+    public static function eligibilityFor(
+        string $division,
+        float $novicePoints,
+        float $intermediatePoints,
+        float $advancedPoints,
+        ?string $committedDivision,
+        bool $competedIntermediate=false,
+        bool $competedAdvanced=false,
+        bool $competedAllStar=false
+    ):array{
+        $division=self::normaliseDivision($division);
+        $committed=self::normaliseDivision($committedDivision);
+        $committedRank=self::ORDER[$committed]??0;
+        $hasIntermediateHistory=$competedIntermediate||$competedAdvanced||$competedAllStar||$committedRank>=self::ORDER['intermediate'];
+        $hasAdvancedHistory=$competedAdvanced||$competedAllStar||$committedRank>=self::ORDER['advanced'];
+        $hasAllStarHistory=$competedAllStar||$committedRank>=self::ORDER['all_star'];
+
+        if($division==='novice'){
+            if($hasIntermediateHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Intermediate or above and cannot return to Novice.'];
+            if($novicePoints>25.0)return ['eligible'=>false,'reason'=>'this dancer has more than 25 Novice points.'];
+            return ['eligible'=>true,'reason'=>'eligible for Novice.'];
+        }
+        if($division==='intermediate'){
+            if($hasAdvancedHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Advanced or above and cannot return to Intermediate.'];
+            if($intermediatePoints>30.0)return ['eligible'=>false,'reason'=>'this dancer has more than 30 Intermediate points.'];
+            if($novicePoints>=20.0||$hasIntermediateHistory)return ['eligible'=>true,'reason'=>'eligible for Intermediate.'];
+            return ['eligible'=>false,'reason'=>'this dancer has fewer than 20 Novice points and no recorded Intermediate competition history.'];
+        }
+        if($division==='advanced'){
+            if($hasAllStarHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in All Star and cannot return to Advanced.'];
+            if($advancedPoints>40.0)return ['eligible'=>false,'reason'=>'this dancer has more than 40 Advanced points.'];
+            if($intermediatePoints>=25.0||$hasAdvancedHistory)return ['eligible'=>true,'reason'=>'eligible for Advanced.'];
+            return ['eligible'=>false,'reason'=>'this dancer has fewer than 25 Intermediate points and no recorded Advanced competition history.'];
+        }
+        if($division==='all_star'){
+            if($advancedPoints>=40.0||$hasAllStarHistory)return ['eligible'=>true,'reason'=>'eligible for All Star.'];
+            return ['eligible'=>false,'reason'=>'this dancer has fewer than 40 Advanced points and no recorded All Star competition history.'];
+        }
+        return ['eligible'=>false,'reason'=>'the selected division is not valid for BDC eligibility.'];
+    }
+
     public static function statusLabel(
         string $selectedDivision,
         string $effectiveDivision

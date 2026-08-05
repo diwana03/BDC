@@ -1,11 +1,14 @@
 {
-  "version": "2.3.2-dev4",
-  "build": 2324,
+  "version": "2.3.2-dev5",
+  "build": 2325,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Point-and-history based division eligibility for direct Finals",
+    "Irreversible progression prevents returning to Novice after Intermediate competition",
+    "Known ineligible BDC competitors blocked from Add Anyway overrides",
     "Straight-to-Final BDC competitor search and direct entry",
     "Audited warning override for wrong-division or not-yet-listed competitors",
     "Independent Leader and Follower counts for direct Finals",
