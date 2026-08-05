@@ -6,6 +6,12 @@ require dirname(__DIR__).'/bootstrap.php';
 
 use App\Core\Database;
 use App\Services\DeploymentPipelineService;
+use App\Services\ReleaseManagerService;
+
+if(!ReleaseManagerService::isReleaseManagerAvailable()){
+    fwrite(STDERR,"Release Manager worker is available only on Staging.\n");
+    exit(1);
+}
 
 $lock=fopen(sys_get_temp_dir().'/bdc-deployment-worker.lock','c');
 if($lock===false||!flock($lock,LOCK_EX|LOCK_NB))exit(0);
