@@ -628,11 +628,11 @@ try{
    if(preg_match('/^(BDC-\d+)/i',$term,$m))$selectedBdc=strtoupper($m[1]);
    $comp=null;
    if($entryMode!=='create'){
-    $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact) ORDER BY exact_name LIMIT 1");
-    $c->execute(['bdc'=>$selectedBdc!==''?$selectedBdc:$term,'num'=>ctype_digit($term)?(int)$term:0,'exact'=>$term]);$comp=$c->fetch()?:null;
+    $c=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE (bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact)) AND dance_role IN(:role,'both') ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");
+    $c->execute(['bdc'=>$selectedBdc!==''?$selectedBdc:$term,'num'=>ctype_digit($term)?(int)$term:0,'exact'=>$term,'role'=>$role,'preferred'=>$role]);$comp=$c->fetch()?:null;
     if(!$comp){
-     $c=$pdo->prepare("SELECT id,bdc_id,exact_name,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE exact_name LIKE :like ORDER BY exact_name LIMIT 2");
-     $c->execute(['like'=>'%'.$term.'%']);$matches=$c->fetchAll();
+     $c=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE exact_name LIKE :like AND dance_role IN(:role,'both') ORDER BY exact_name,id LIMIT 2");
+     $c->execute(['like'=>'%'.$term.'%','role'=>$role]);$matches=$c->fetchAll();
      if(count($matches)===1)$comp=$matches[0];
      elseif(count($matches)>1)throw new RuntimeException('Several competitors match this name. Select the correct BDC ID from the suggestions.');
     }
@@ -661,18 +661,18 @@ try{
       COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,
       COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,
       COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points
-     FROM bdc_point_transactions WHERE competitor_id=:competitor");
-    $pointStmt->execute(['competitor'=>$comp['id']]);$points=$pointStmt->fetch()?:[];
+     FROM bdc_point_transactions WHERE competitor_id=:competitor AND dance_role IN(:role,'both')");
+    $pointStmt->execute(['competitor'=>$comp['id'],'role'=>$role]);$points=$pointStmt->fetch()?:[];
     $historyStmt=$pdo->prepare("SELECT
       MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
       MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,
       MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star
      FROM (
-      SELECT division FROM bdc_participant_results WHERE competitor_id=:participant
+      SELECT division FROM bdc_participant_results WHERE competitor_id=:participant AND dance_role IN(:participant_role,'both')
       UNION ALL
-      SELECT division FROM bdc_point_transactions WHERE competitor_id=:transaction
+      SELECT division FROM bdc_point_transactions WHERE competitor_id=:transaction AND dance_role IN(:transaction_role,'both')
      ) history");
-    $historyStmt->execute(['participant'=>$comp['id'],'transaction'=>$comp['id']]);$history=$historyStmt->fetch()?:[];
+    $historyStmt->execute(['participant'=>$comp['id'],'participant_role'=>$role,'transaction'=>$comp['id'],'transaction_role'=>$role]);$history=$historyStmt->fetch()?:[];
     $eligibility=DivisionProgressionService::eligibilityFor(
      (string)$roundForEntry['division'],
      (float)($points['novice_points']??0),(float)($points['intermediate_points']??0),(float)($points['advanced_points']??0),
@@ -1207,12 +1207,12 @@ try{
 
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY event_date DESC,name")->fetchAll();
 $competitorSuggestions=$pdo->query("SELECT c.id,c.bdc_id,c.exact_name,c.dance_role,c.current_division,c.status,
- COALESCE(SUM(CASE WHEN p.division='novice' THEN p.points ELSE 0 END),0) novice_points,
- COALESCE(SUM(CASE WHEN p.division='intermediate' THEN p.points ELSE 0 END),0) intermediate_points,
- COALESCE(SUM(CASE WHEN p.division='advanced' THEN p.points ELSE 0 END),0) advanced_points,
- GREATEST(MAX(CASE WHEN p.division='intermediate' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='intermediate')) competed_intermediate,
- GREATEST(MAX(CASE WHEN p.division='advanced' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='advanced')) competed_advanced,
- GREATEST(MAX(CASE WHEN p.division='all_star' THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='all_star')) competed_all_star
+ COALESCE(SUM(CASE WHEN p.division='novice' AND p.dance_role IN(c.dance_role,'both') THEN p.points ELSE 0 END),0) novice_points,
+ COALESCE(SUM(CASE WHEN p.division='intermediate' AND p.dance_role IN(c.dance_role,'both') THEN p.points ELSE 0 END),0) intermediate_points,
+ COALESCE(SUM(CASE WHEN p.division='advanced' AND p.dance_role IN(c.dance_role,'both') THEN p.points ELSE 0 END),0) advanced_points,
+ GREATEST(MAX(CASE WHEN p.division='intermediate' AND p.dance_role IN(c.dance_role,'both') THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='intermediate' AND pr.dance_role IN(c.dance_role,'both'))) competed_intermediate,
+ GREATEST(MAX(CASE WHEN p.division='advanced' AND p.dance_role IN(c.dance_role,'both') THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='advanced' AND pr.dance_role IN(c.dance_role,'both'))) competed_advanced,
+ GREATEST(MAX(CASE WHEN p.division='all_star' AND p.dance_role IN(c.dance_role,'both') THEN 1 ELSE 0 END),EXISTS(SELECT 1 FROM bdc_participant_results pr WHERE pr.competitor_id=c.id AND pr.division='all_star' AND pr.dance_role IN(c.dance_role,'both'))) competed_all_star
  FROM bdc_competitors c
  LEFT JOIN bdc_point_transactions p ON p.competitor_id=c.id
  WHERE c.status<>'archived'

@@ -38,4 +38,19 @@ return [
         'staging_health_url' => 'https://example.com/BDC_STAGING/health.php',
         'production_health_url' => 'https://example.com/portal/health.php',
     ],
+    // Staging only. Provision this Production user with SELECT/SHOW VIEW
+    // permissions only. The application contains no Staging-to-Production path.
+    'staging_database_sync' => [
+        'enabled' => false,
+        'schedule' => 'off', // off, daily, weekly
+        'quiet_hour' => 3,
+        'production_readonly_database' => [
+            'host' => 'localhost',
+            'port' => 3306,
+            'name' => 'production_database',
+            'user' => 'production_readonly_user',
+            'password' => 'CHANGE_ME',
+            'charset' => 'utf8mb4',
+        ],
+    ],
 ];

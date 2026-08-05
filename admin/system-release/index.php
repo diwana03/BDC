@@ -8,6 +8,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\DeploymentPipelineService;
 use App\Services\ReleaseManagerService;
+use App\Services\StagingDatabaseSyncService;
 
 if(!ReleaseManagerService::isReleaseManagerAvailable()){
     http_response_code(404);
@@ -73,6 +74,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             }else{
                 $message='Deployment status refreshed. No waiting job was found.';
             }
+        }elseif($action==='save_database_sync_schedule'){
+            StagingDatabaseSyncService::saveSchedule((string)($_POST['schedule']??'off'));
+            $message='Production to Staging sync schedule updated.';
+        }elseif($action==='sync_production_to_staging'){
+            $busy=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
+            if($busy>0)throw new RuntimeException('Database sync is blocked while a deployment is running.');
+            $result=StagingDatabaseSyncService::sync($userId);
+            $message=$result['message'];
         }elseif($action==='health_check'){
             $checks=ReleaseManagerService::health($pdo);
             $message=count(array_filter($checks,fn($c)=>$c['status']))===count($checks)
@@ -163,6 +172,8 @@ if(!$production){
     $production=$pdo->query("SELECT r.version,r.commit_sha,j.completed_at AS deployed_at FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id WHERE j.target_environment='production' AND j.status='success' ORDER BY j.completed_at DESC,j.id DESC LIMIT 1")->fetch()?:null;
 }
 $allHealthy=count(array_filter($checks,fn($c)=>$c['status']))===count($checks);
+$databaseSyncSettings=StagingDatabaseSyncService::settings();
+$databaseSyncStatus=StagingDatabaseSyncService::status();
 
 function statusClass(string $status):string
 {
@@ -232,6 +243,17 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php else:?><div class="h4 mb-2">Not recorded yet</div><p class="text-muted mb-0">The first successful Production deployment will appear here.</p><?php endif;?>
 </div></div></div>
 </div>
+
+<div class="card shadow-sm mb-5"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+<div><h2 class="h4 section-title mb-1">Production Data to Staging</h2><p class="text-muted mb-2">One-way refresh only. Production is a read-only source and Staging is the only target.</p>
+<div class="small"><strong>Last status:</strong> <?=e(ucfirst((string)($databaseSyncStatus['status']??'never')))?><?php if(!empty($databaseSyncStatus['last_success'])):?> · <?=e((string)$databaseSyncStatus['last_success'])?><?php endif;?> · Schedule: <?=e(ucfirst((string)$databaseSyncSettings['schedule']))?></div></div>
+<div class="d-flex flex-wrap gap-2"><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_database_sync_schedule"><select class="form-select" name="schedule"><option value="off" <?=$databaseSyncSettings['schedule']==='off'?'selected':''?>>Off</option><option value="daily" <?=$databaseSyncSettings['schedule']==='daily'?'selected':''?>>Daily</option><option value="weekly" <?=$databaseSyncSettings['schedule']==='weekly'?'selected':''?>>Weekly</option></select><button class="btn btn-outline-primary" <?=$databaseSyncSettings['enabled']?'':'disabled'?>>Save</button></form><form method="post" onsubmit="return confirm('Replace current Staging test data with the latest Production data? A full Staging backup will be created first. This can never write to Production.')">
+<input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="sync_production_to_staging">
+<button class="btn btn-warning" <?=($databaseSyncSettings['enabled']&&$activeJobs===0)?'':'disabled'?>>Live Sync Now</button>
+</form></div></div>
+<div class="alert alert-secondary mt-3 mb-0 py-2 small">Safety lock: this application exposes no source or target selector, refuses to run outside Staging, rejects identical databases, uses separately configured Production read-only credentials, backs up Staging first, and restores Staging automatically if the import fails.</div>
+</div></div>
 
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
 <div><h2 class="section-title h3 mb-1">Available Releases</h2><p class="text-muted mb-0">Deploy to Staging first. After testing, the Production button becomes available.</p></div>
