@@ -143,6 +143,12 @@ final class DeploymentPipelineService
                 $productionBackup=self::backupProduction($config,$sha,$output);
             }
             self::deployTree($config['repository_path'],$sha,$target,$output);
+            self::writeReleaseManifest(
+                $target,
+                self::versionForCommit($config['repository_path'],$sha),
+                $sha,
+                (string)$job['target_environment']
+            );
             self::runProcess(['php',$target.'/bin/migrate.php'],$output);
             $healthUrl=$job['target_environment']==='staging'?$config['staging_health_url']:$config['production_health_url'];
             self::assertHealth($healthUrl,$output);
@@ -270,8 +276,27 @@ final class DeploymentPipelineService
         throw new RuntimeException('Health check failed: '.mb_substr($body,0,200));
     }
 
+    private static function writeReleaseManifest(string $target,string $version,string $sha,string $environment):void
+    {
+        $storage=rtrim($target,'/').'/storage';
+        if(!is_dir($storage)&&!mkdir($storage,0755,true))throw new RuntimeException('Cannot create release manifest directory.');
+        $payload=json_encode([
+            'version'=>$version,
+            'commit_sha'=>$sha,
+            'environment'=>$environment,
+            'deployed_at'=>date(DATE_ATOM),
+        ],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+        if($payload===false||file_put_contents($storage.'/release.json',$payload."\n",LOCK_EX)===false){
+            throw new RuntimeException('Cannot record the installed release version.');
+        }
+        @chmod($storage.'/release.json',0644);
+    }
+
     private static function assertEnabled(array $config):void
     {
+        if(ReleaseManagerService::environment()!=='staging'){
+            throw new RuntimeException('Release Manager is available only from the Staging environment.');
+        }
         if(!$config['enabled'])throw new RuntimeException('Deployment dashboard is not enabled in config/config.php.');
         foreach(['repository_path','staging_path','production_path','backup_path'] as $key){
             if($config[$key]==='')throw new RuntimeException('Missing deployment setting: '.$key);
