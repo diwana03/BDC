@@ -9,7 +9,7 @@ use PDO;
 
 final class ReleaseManagerService
 {
-    public const VERSION='2.3.0-dev3';
+    public const VERSION='2.3.0';
 
     public static function environment():string
     {
@@ -36,7 +36,7 @@ final class ReleaseManagerService
         }
         return [
             'version'=>self::VERSION,
-            'status'=>'development',
+            'status'=>'production',
             'release_date'=>'2026-08-05',
         ];
     }
