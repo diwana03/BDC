@@ -86,10 +86,10 @@ function ensureRegistrationDeskLink(PDO $pdo,int $eventId,string $division,int $
  $insert->execute(['event'=>$eventId,'division'=>$division,'hash'=>$hash,'hint'=>$hint,'user'=>$userId?:null]);
  return ['id'=>(int)$pdo->lastInsertId(),'event_id'=>$eventId,'division'=>$division,'token_hash'=>$hash,'token_hint'=>$hint,'plain_token'=>$token,'is_enabled'=>1];
 }
-function registrationDeskUrl(array $link):string{
+function registrationDeskUrl(array $link,int $roundId):string{
  $token=$link['plain_token']??($_SESSION['registration_desk_tokens'][(int)$link['id']]??'');
  if($token==='')return '';
- return url('registration-desk/?token='.rawurlencode($token));
+ return url('registration-desk/?token='.rawurlencode($token).'&round_id='.$roundId);
 }
 
 function auditScoring(PDO $pdo,int $roundId,int $userId,string $action,array $details=[]):void{
@@ -1171,7 +1171,7 @@ if($round){
  $stmt=$pdo->prepare("SELECT * FROM bdc_registration_desk_links WHERE event_id=:event AND division=:division LIMIT 1");
  $stmt->execute(['event'=>$round['event_id'],'division'=>$round['division']]);
  $registrationDeskLink=$stmt->fetch();
- if($registrationDeskLink)$registrationDeskUrl=registrationDeskUrl($registrationDeskLink);
+ if($registrationDeskLink)$registrationDeskUrl=registrationDeskUrl($registrationDeskLink,$roundId);
 }
 
 if($round){
