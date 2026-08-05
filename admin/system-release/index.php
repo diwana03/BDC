@@ -33,6 +33,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             DeploymentPipelineService::runQueuedJob($pdo,$jobId);
             $message='Release deployed successfully to Staging. It is now ready for your testing.';
         }elseif($action==='deploy_production'){
+            $preflight=ReleaseManagerService::health($pdo);
+            if(count(array_filter($preflight,fn($check)=>(bool)$check['status']))!==count($preflight)){
+                throw new RuntimeException('Production deployment is blocked until every system check is ready.');
+            }
             $releaseId=(int)($_POST['release_id']??0);
             $statusStmt=$pdo->prepare('SELECT status FROM bdc_release_candidates WHERE id=:id');
             $statusStmt->execute(['id'=>$releaseId]);
@@ -202,7 +206,7 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_staging"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-primary" <?=$settings['enabled']?'':'disabled'?>><?=$status==='passed'?'Redeploy to Staging':'Deploy to Staging'?></button></form>
 <?php endif;?>
 <?php if($isLatest&&in_array($status,['passed','approved'],true)):?>
-<form method="post" onsubmit="return confirm('Deploy <?=e($release['version'])?> to the LIVE Production website? A backup and health check will run automatically.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-production" <?=$settings['enabled']?'':'disabled'?>>Deploy to Production</button></form>
+<form method="post" onsubmit="return confirm('Deploy the exact Staging-tested release <?=e($release['version'])?> to LIVE Production? Production files and the database will be backed up first.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="deploy_production"><input type="hidden" name="release_id" value="<?=(int)$release['id']?>"><button class="btn btn-production" <?=($settings['enabled']&&$allHealthy)?'':'disabled'?>>Deploy <?=e($release['version'])?> to Production</button></form>
 <?php elseif(in_array($status,['queued','testing','running'],true)):?><span class="text-muted align-self-center">Deployment in progress…</span>
 <?php elseif($status==='production'):?><span class="text-success fw-bold align-self-center">✓ Live</span><?php endif;?>
 <?php if(!$isLatest&&!in_array($status,['queued','testing','running','production'],true)):?><span class="text-muted small align-self-center">Previous release</span><?php endif;?>
@@ -211,6 +215,14 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php endforeach;?>
 </div>
 <?php endif;?>
+
+<div class="card shadow-sm mb-4"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3"><div><h2 class="h5 mb-1">Production Deployment Plan</h2><p class="text-muted mb-0">Only the exact release tested on Staging can be promoted.</p></div><span class="badge text-bg-<?=$allHealthy?'success':'danger'?> px-3 py-2"><?=$allHealthy?'Preflight ready':'Deployment blocked'?></span></div>
+<div class="row g-3">
+<div class="col-md-6"><div class="border rounded-3 p-3 h-100"><strong>Deploy to Production</strong><ul class="small text-muted mb-0 mt-2"><li>Application code from the tested commit</li><li>Database migrations included in that release</li><li>VERSION.json and the installed release manifest</li><li>Release Manager remains unavailable on Production</li></ul></div></div>
+<div class="col-md-6"><div class="border rounded-3 p-3 h-100"><strong>Preserve and protect</strong><ul class="small text-muted mb-0 mt-2"><li>config/config.php and config/config.local.php</li><li>storage, uploads and public/results data</li><li>Full Production file and database backup first</li><li>Automatic file rollback if the health check fails</li></ul></div></div>
+</div>
+</div></div>
 
 <div class="card shadow-sm mb-4"><div class="card-body p-4">
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h2 class="h5 mb-1">System Check</h2><p class="text-muted mb-0">A quick readiness check in plain language.</p></div><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="health_check"><button class="btn btn-outline-secondary">Check Again</button></form></div>
