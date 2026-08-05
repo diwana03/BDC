@@ -406,15 +406,9 @@ final class DeploymentPipelineService
         $backup=rtrim($config['backup_path'],'/').'/'.date('Ymd-His').'-'.substr($sha,0,12);
         if(!is_dir(dirname($backup))||(!is_dir($backup)&&!mkdir($backup,0700,true)))throw new RuntimeException('Cannot create Production backup.');
         self::runProcess(['rsync','-a','--exclude=storage/backups/',$config['production_path'].'/',$backup.'/files/'],$output);
-        $before=count($output);
-        $bootstrap=$config['production_path'].'/bootstrap.php';
-        $code='require '.var_export($bootstrap,true).';$r=(new App\\Services\\BackupService())->createDatabaseBackup();echo $r["name"].PHP_EOL;';
-        self::runProcess(['php','-r',$code],$output);
-        $databaseName=trim((string)($output[count($output)-1]??''));
-        if(!preg_match('/^BDC_DB_[A-Za-z0-9_.-]+\.sql\.gz$/',$databaseName))throw new RuntimeException('Production database backup did not return a valid file.');
-        $databaseSource=$config['production_path'].'/storage/backups/database/'.$databaseName;
-        if(!is_file($databaseSource)||!copy($databaseSource,$backup.'/'.$databaseName))throw new RuntimeException('Production database backup could not be retained with the release backup.');
-        $output=array_merge(array_slice($output,0,$before),['Production database backed up: '.$backup.'/'.$databaseName]);
+        $runner=dirname(__DIR__,2).'/bin/deployment-backup.php';
+        if(!is_file($runner))throw new RuntimeException('Production database backup runner is missing.');
+        self::runProcess(['php',$runner,$config['production_path'],$backup],$output);
         $output[]='[PRODUCTION_BACKUP] '.$backup;
         $output[]='Production files backed up to '.$backup;
         return $backup;
