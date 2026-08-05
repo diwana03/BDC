@@ -8,6 +8,24 @@ function repository_document_link(array $document, string $portalRoot, string $a
     $storagePath = trim((string) ($document['storage_path'] ?? ''));
     $storedUrl = trim((string) ($document['url'] ?? ''));
 
+    if (str_starts_with($storagePath, 'protected-results://')) {
+        $name = basename(substr($storagePath, 20));
+        if ($name === '' || $name === '.' || $name === '..') {
+            return ['url' => null, 'exists' => false, 'local' => true, 'path' => null];
+        }
+        try {
+            $path = \App\Services\ResultStorageService::resolve($storagePath);
+            return [
+                'url' => $path ? \App\Services\ResultStorageService::publicUrl($name) : null,
+                'exists' => $path !== null,
+                'local' => true,
+                'path' => $path,
+            ];
+        } catch (\Throwable) {
+            return ['url' => null, 'exists' => false, 'local' => true, 'path' => null];
+        }
+    }
+
     if ($storagePath !== '') {
         if (filter_var($storagePath, FILTER_VALIDATE_URL)) {
             return ['url' => $storagePath, 'exists' => true, 'local' => false, 'path' => null];

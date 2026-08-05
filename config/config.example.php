@@ -25,6 +25,11 @@ return [
         'password_min_length' => 10,
         'secure_cookies' => true,
     ],
+    'results' => [
+        // Must be outside both /portal and /BDC_STAGING. Use a different
+        // directory per environment so Staging can never overwrite Production files.
+        'storage_path' => '/home/account/.bdc-results/production',
+    ],
     'backup' => [
         'cron_token' => 'CHANGE_TO_A_LONG_RANDOM_SECRET',
         'scheduled_type' => 'full',

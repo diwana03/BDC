@@ -60,8 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = (string) ($_POST['password'] ?? '');
     $passwordFile = trim((string) ($_POST['password_file'] ?? dirname(__DIR__, 2) . '/.bdc-secrets/database-password'));
     $basePath = '/' . trim((string) ($_POST['base_path'] ?? 'portal'), '/');
+    $environment = str_contains(strtolower($basePath), 'staging') ? 'staging' : 'production';
+    $resultStoragePath = trim((string)($_POST['result_storage_path'] ?? ''));
 
-    if ($host === '' || $name === '' || $user === '' || $password === '') {
+    if ($host === '' || $name === '' || $user === '' || $password === '' || $resultStoragePath === '') {
         $error = 'Complete all database fields.';
     } else {
         try {
@@ -84,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'name' => 'Bachata Dance Council Portal',
                         'url' => $scheme . '://' . $hostName . $basePath,
                         'base_path' => $basePath,
-                        'environment' => 'production',
+                        'environment' => $environment,
                         'debug' => false,
                         'timezone' => 'Asia/Singapore',
                         'session_name' => 'bdc_portal_session',
@@ -96,6 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'user' => $user,
                         'password_file' => $passwordFile,
                         'charset' => 'utf8mb4',
+                    ],
+                    'results' => [
+                        'storage_path' => $resultStoragePath,
                     ],
                     'security' => [
                         'session_timeout_minutes' => 120,
@@ -137,6 +142,7 @@ $defaults = [
     'username' => $_POST['username'] ?? 'zqculgmy_bdcapp',
     'password_file' => $_POST['password_file'] ?? dirname(__DIR__, 2) . '/.bdc-secrets/database-password',
     'base_path' => $_POST['base_path'] ?? 'portal',
+    'result_storage_path' => $_POST['result_storage_path'] ?? '/home2/zqculgmy/.bdc-results/production',
 ];
 ?>
 <!doctype html>
@@ -211,6 +217,12 @@ A configuration file already exists. Saving will replace its database settings.
 <span class="input-group-text">/</span>
 <input class="form-control" name="base_path" value="<?= h((string)$defaults['base_path']) ?>" required>
 </div>
+</div>
+
+<div class="mb-4">
+<label class="form-label">Protected result storage</label>
+<input class="form-control" name="result_storage_path" value="<?= h((string)$defaults['result_storage_path']) ?>" required>
+<div class="form-text">Absolute path outside both portal and BDC_STAGING. Production and Staging must use different folders.</div>
 </div>
 
 <div class="d-flex gap-2 flex-wrap">

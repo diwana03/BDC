@@ -5,6 +5,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 
 use App\Core\Auth;
 use App\Core\Csrf;
+use App\Services\ResultStorageService;
 
 header('Content-Type: application/json');
 
@@ -45,7 +46,7 @@ try{
 
  $session=session_id()?:'no-session';
  $safeSession=preg_replace('/[^A-Za-z0-9_-]/','',$session)?:'session';
- $directory=dirname(__DIR__,2).'/storage/results/.pending-html/'.$safeSession.'/'.$roundId;
+ $directory=ResultStorageService::root().'/.pending-html/'.$safeSession.'/'.$roundId;
 
  if(!is_dir($directory) && !mkdir($directory,0700,true) && !is_dir($directory)){
   throw new RuntimeException('Could not create the temporary HTML archive folder.');

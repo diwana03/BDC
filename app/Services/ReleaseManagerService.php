@@ -102,7 +102,7 @@ final class ReleaseManagerService
 
         foreach([
             'Storage'=>$root.'/storage',
-            'Repository'=>$root.'/public/results',
+            'Repository'=>self::resultStorageHealthPath(),
             'Uploads'=>$root.'/uploads',
         ] as $name=>$path){
             $checks[]=[
@@ -132,5 +132,10 @@ final class ReleaseManagerService
         ];
 
         return $checks;
+    }
+
+    private static function resultStorageHealthPath():string
+    {
+        try{return ResultStorageService::root();}catch(\Throwable){return '(results storage not configured outside application)';}
     }
 }
