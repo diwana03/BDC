@@ -34,6 +34,8 @@ $stmt=$pdo->prepare("
   ROUND(SUM(CASE WHEN pt.division='novice' THEN pt.points ELSE 0 END),2) novice_points,
   ROUND(SUM(CASE WHEN pt.division='intermediate' THEN pt.points ELSE 0 END),2) intermediate_points,
   ROUND(SUM(CASE WHEN pt.division='advanced' THEN pt.points ELSE 0 END),2) advanced_points,
+  MAX(CASE WHEN pt.division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
+  MAX(CASE WHEN pt.division='advanced' THEN 1 ELSE 0 END) competed_advanced,
   COUNT(DISTINCT CASE WHEN pt.division=:selected_division THEN pt.event_id END) selected_events,
   COUNT(DISTINCT CASE
    WHEN pt.division=:selected_division_first
@@ -75,15 +77,6 @@ foreach($stmt->fetchAll() as $row){
  $intermediate=(float)$row['intermediate_points'];
  $advanced=(float)$row['advanced_points'];
 
- $effective=DivisionProgressionService::effectiveDivision(
-  $novice,
-  $intermediate,
-  $advanced,
-  $row['committed_division'],
-  (bool)$row['novice_manual_out'],
-  (bool)$row['intermediate_manual_out']
- );
-
  $points=DivisionProgressionService::selectedPoints(
   $division,
   $novice,
@@ -93,12 +86,24 @@ foreach($stmt->fetchAll() as $row){
 
  if($points<=0.0)continue;
 
- $eligible=$effective===$division;
+ $eligibility=DivisionProgressionService::eligibilityFor(
+  $division,
+  $novice,
+  $intermediate,
+  $advanced,
+  $row['committed_division'],
+  (bool)$row['competed_intermediate'],
+  (bool)$row['competed_advanced']
+ );
+ $manualOut=($division==='novice' && (bool)$row['novice_manual_out'])
+  ||($division==='intermediate' && (bool)$row['intermediate_manual_out']);
+ $eligible=$eligibility['eligible']&&!$manualOut;
  if(!$eligible && !$showOut)continue;
 
- $row['effective_division']=$effective;
  $row['eligible']=$eligible;
- $row['status_label']=DivisionProgressionService::statusLabel($division,$effective);
+ $row['status_label']=$manualOut
+  ?'Moved by BDC ruling'
+  :($eligibility['eligible']?'In Division':ucfirst($eligibility['reason']));
  $row['total_points']=$points;
  $rows[]=$row;
 }
@@ -143,8 +148,12 @@ body{background:#f5f6f8;color:#20242a}
 .points{font-size:1.15rem;font-weight:800;white-space:nowrap}
 .table>:not(caption)>*>*{padding:.85rem .75rem}
 .filter-card{margin-top:-28px}
+.filter-label{font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
+.filter-buttons{display:flex;gap:.5rem;flex-wrap:wrap}
+.filter-buttons .btn{min-width:110px}
 .out-row{background:#fff8e1}
 .rule-note{font-size:.88rem}
+@media(max-width:575.98px){.filter-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-buttons.divisions{grid-template-columns:repeat(3,minmax(0,1fr))}.filter-buttons .btn{min-width:0;padding:.6rem .35rem}.filter-card .card-body{padding:1rem}}
 </style>
 </head>
 <body>
@@ -164,25 +173,26 @@ body{background:#f5f6f8;color:#20242a}
 <main class="container pb-5">
  <section class="card board-card filter-card mb-4">
   <div class="card-body">
-   <form method="get" class="row g-3 align-items-end" id="leaderboard-filters">
-    <div class="col-md-5">
-     <label class="form-label">Division</label>
-     <select class="form-select" name="division">
-      <?php foreach(['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced'] as $value=>$label):?>
-       <option value="<?=$value?>" <?=$division===$value?'selected':''?>><?=$label?></option>
-      <?php endforeach;?>
-     </select>
-    </div>
-    <div class="col-md-5">
-     <label class="form-label">Role</label>
-     <select class="form-select" name="role">
-      <?php foreach(['leader'=>'Leader','follower'=>'Follower'] as $value=>$label):?>
-       <option value="<?=$value?>" <?=$role===$value?'selected':''?>><?=$label?></option>
-      <?php endforeach;?>
-     </select>
-    </div>
-    <div class="col-md-2"><button class="btn btn-dark w-100">Show Rankings</button></div>
+   <form method="get" class="row g-3" id="leaderboard-filters">
     <div class="col-12">
+     <div class="filter-label mb-2">Division</div>
+     <div class="filter-buttons divisions">
+      <?php foreach(['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced'] as $value=>$label):?>
+       <a class="btn <?=$division===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$value?>&amp;role=<?=$role?><?=$showOut?'&amp;show_out=1':''?>"><?=$label?></a>
+      <?php endforeach;?>
+     </div>
+    </div>
+    <div class="col-12">
+     <div class="filter-label mb-2">Role</div>
+     <div class="filter-buttons">
+      <?php foreach(['leader'=>'Leader','follower'=>'Follower'] as $value=>$label):?>
+       <a class="btn <?=$role===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$division?>&amp;role=<?=$value?><?=$showOut?'&amp;show_out=1':''?>"><?=$label?></a>
+      <?php endforeach;?>
+     </div>
+    </div>
+    <div class="col-12">
+     <input type="hidden" name="division" value="<?=e($division)?>">
+     <input type="hidden" name="role" value="<?=e($role)?>">
      <label class="form-check form-switch">
       <input class="form-check-input" type="checkbox" name="show_out" value="1" <?=$showOut?'checked':''?> data-auto-submit>
       <span class="form-check-label">Show Out of Division competitors</span>
