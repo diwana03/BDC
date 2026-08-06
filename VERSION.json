@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev17",
-  "build": 2347,
+  "version": "2.3.3-dev18",
+  "build": 2348,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Production migration checksum compatibility for the immutable pre-dev16 schema upgrade",
     "Production-compatible point-adjustment migration with legacy ID type detection",
     "Release Manager reports migration command exit codes and detailed failure output",
     "Scorer point adjustment requests with event point preview and Super Admin approval",

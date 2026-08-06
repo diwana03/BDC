@@ -8,6 +8,19 @@ use RuntimeException;
 
 final class MigrationRunner
 {
+    /**
+     * Migration 20260803_2200 historically checksummed the shared SchemaUpdater.
+     * dev16 legitimately extended that updater, which changed the dependency hash
+     * for databases that had already applied the migration. Accept only the two
+     * known release checksums; every other mismatch must still fail closed.
+     */
+    private const COMPATIBLE_APPLIED_CHECKSUMS = [
+        '20260803_2200' => [
+            'cfa863294a58e28726f9a778fddac0bfe7dc00a4b5a8005aaba337f632fd7d6e',
+            '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
+        ],
+    ];
+
     public function __construct(private PDO $pdo, private string $directory)
     {
     }
@@ -49,7 +62,9 @@ final class MigrationRunner
             }
             $checksum = hash('sha256', implode(':', $checksumParts));
             if (isset($applied[$version])) {
-                if (!hash_equals((string)$applied[$version], $checksum)) {
+                $storedChecksum = (string) $applied[$version];
+                if (!hash_equals($storedChecksum, $checksum)
+                    && !$this->isCompatibleAppliedChecksum($version, $storedChecksum, $checksum)) {
                     throw new RuntimeException("Applied migration {$version} has been modified.");
                 }
                 continue;
@@ -63,6 +78,16 @@ final class MigrationRunner
             $completed[] = $version;
         }
         return $completed;
+    }
+
+    private function isCompatibleAppliedChecksum(string $version, string $storedChecksum, string $currentChecksum): bool
+    {
+        $known = self::COMPATIBLE_APPLIED_CHECKSUMS[$version] ?? [];
+        if (!in_array($currentChecksum, $known, true)) {
+            return false;
+        }
+
+        return in_array($storedChecksum, $known, true);
     }
 
     private function preparePointAdjustmentTable(): void
