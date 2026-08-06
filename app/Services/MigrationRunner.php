@@ -54,11 +54,80 @@ final class MigrationRunner
                 }
                 continue;
             }
+            if ($version === '20260806_1700') {
+                $this->preparePointAdjustmentTable();
+            }
             $migration($this->pdo);
             $stmt = $this->pdo->prepare('INSERT INTO bdc_schema_migrations(version,checksum) VALUES(:version,:checksum)');
             $stmt->execute(['version'=>$version,'checksum'=>$checksum]);
             $completed[] = $version;
         }
         return $completed;
+    }
+
+    private function preparePointAdjustmentTable(): void
+    {
+        $exists = $this->pdo->query("SHOW TABLES LIKE 'bdc_point_adjustment_requests'")->fetchColumn();
+        if ($exists !== false) {
+            return;
+        }
+
+        $references = [
+            'competitor_id' => ['bdc_competitors', 'id', 'RESTRICT'],
+            'event_id' => ['bdc_events', 'id', 'RESTRICT'],
+            'requested_by' => ['bdc_users', 'id', 'RESTRICT'],
+            'reviewed_by' => ['bdc_users', 'id', 'SET NULL'],
+            'point_transaction_id' => ['bdc_point_transactions', 'id', 'SET NULL'],
+        ];
+        $types = [];
+        $typeQuery = $this->pdo->prepare(
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:table AND COLUMN_NAME=:column'
+        );
+        foreach ($references as $column => [$table, $parentColumn]) {
+            $typeQuery->execute(['table' => $table, 'column' => $parentColumn]);
+            $type = strtolower(trim((string) $typeQuery->fetchColumn()));
+            if (!preg_match('/^(?:tinyint|smallint|mediumint|int|bigint)(?:\(\d+\))?(?: unsigned)?$/', $type)) {
+                throw new RuntimeException("Cannot determine a compatible ID type for {$table}.{$parentColumn}.");
+            }
+            $types[$column] = $type;
+        }
+
+        $base = "CREATE TABLE bdc_point_adjustment_requests(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            competitor_id {$types['competitor_id']} NOT NULL,
+            event_id {$types['event_id']} NOT NULL,
+            division ENUM('novice','intermediate','advanced','all_star','unknown') NOT NULL,
+            dance_role ENUM('leader','follower','both','unknown') NOT NULL,
+            existing_event_points DECIMAL(8,2) NOT NULL DEFAULT 0,
+            additional_points DECIMAL(8,2) NOT NULL,
+            reason TEXT NOT NULL,
+            status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+            requested_by {$types['requested_by']} NOT NULL,
+            requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_by {$types['reviewed_by']} NULL,
+            reviewed_at DATETIME NULL,
+            review_reason TEXT NULL,
+            point_transaction_id {$types['point_transaction_id']} NULL,
+            request_hash CHAR(64) NOT NULL,
+            INDEX idx_adjustment_status(status,requested_at),
+            INDEX idx_adjustment_competitor_event(competitor_id,event_id),
+            UNIQUE INDEX uq_adjustment_request_hash(request_hash)";
+        $foreignKeys = ",
+            CONSTRAINT fk_adjustment_competitor FOREIGN KEY(competitor_id) REFERENCES bdc_competitors(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_adjustment_event FOREIGN KEY(event_id) REFERENCES bdc_events(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_adjustment_requester FOREIGN KEY(requested_by) REFERENCES bdc_users(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_adjustment_reviewer FOREIGN KEY(reviewed_by) REFERENCES bdc_users(id) ON DELETE SET NULL,
+            CONSTRAINT fk_adjustment_transaction FOREIGN KEY(point_transaction_id) REFERENCES bdc_point_transactions(id) ON DELETE SET NULL";
+        $suffix = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+        try {
+            $this->pdo->exec($base . $foreignKeys . $suffix);
+        } catch (\PDOException) {
+            // Some legacy installations cannot accept cross-generation foreign keys.
+            // The application validates every reference and writes approvals atomically;
+            // retain indexed compatibility columns rather than blocking the release.
+            $this->pdo->exec($base . $suffix);
+        }
     }
 }

@@ -479,7 +479,13 @@ final class DeploymentPipelineService
         $escaped=implode(' ',array_map('escapeshellarg',$command));
         exec($escaped.' 2>&1',$lines,$code);
         foreach($lines as $line)$output[]=$line;
-        if($code!==0)throw new RuntimeException('Command failed: '.implode(' ',array_slice($command,0,3)));
+        if($code!==0){
+            $details=trim(implode("\n",array_slice($lines,-8)));
+            throw new RuntimeException(
+                'Command failed (exit '.$code.'): '.implode(' ',array_slice($command,0,3))
+                .($details!==''?"\n".$details:'')
+            );
+        }
     }
 
     private static function deleteTree(string $path):void
