@@ -763,6 +763,13 @@ body{background:#f5f6f8}
 .submit-card{background:#fff;border:2px solid #0d6efd}
 .approval-card{background:#fff;border:2px solid #198754}
 .rollback-card{background:#fff;border:2px solid #dc3545}
+@media(max-width:575.98px){
+ .modal-dialog{margin:.5rem}
+ .modal-content{max-height:calc(100dvh - 1rem)}
+ .modal-body{overflow-y:auto}
+ .modal-footer{flex-wrap:wrap}
+ .modal-footer form,.modal-footer form .btn{width:100%}
+}
 </style>
 </head>
 <body>
@@ -992,7 +999,6 @@ body{background:#f5f6f8}
     <div id="htmlGenerationStatus" class="small mt-2 text-muted">
      Archived Heats, Final and Points results will be created automatically when you approve.
     </div>
-   </div>
    </div>
    <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
