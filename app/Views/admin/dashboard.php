@@ -41,6 +41,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
     <nav>
       <a class="active" href="<?= e(url('admin/')) ?>"><span>▦</span>Dashboard</a>
       <a href="<?= e(url('admin/competitors/')) ?>"><span>♙</span>Competitors</a>
+      <?php if(App\Core\Auth::isSuperAdmin()):?><a href="<?= e(url('admin/competitors/identity-review.php')) ?>"><span>◎</span>Identity Matches<?php if(!empty($stats['identity_matches'])):?><i><?= (int)$stats['identity_matches'] ?></i><?php endif;?></a><?php endif;?>
       <a href="<?= e(url('admin/events/')) ?>"><span>▣</span>Events &amp; Tickets</a>
       <a href="<?= e(url('admin/registrations/')) ?>"><span>☷</span>Registrations</a>
       <a href="<?= e(url('admin/scoring/')) ?>"><span>⌁</span>Scoring Dashboard <em>NEW</em></a>

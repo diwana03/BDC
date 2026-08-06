@@ -16,7 +16,7 @@ $scoringMode=(string)($_GET['mode']??'');
 if(
  $_SERVER['REQUEST_METHOD']==='GET'
  && !isset($_GET['round_id'])
- && !in_array($scoringMode,['manual'],true)
+ && !in_array($scoringMode,['manual','automated'],true)
 ){
  $automatedSelected=$scoringMode==='automated';
  ?>
@@ -58,8 +58,8 @@ if(
     <section class="card mode-card mode-card-future"><div class="card-body p-4 d-flex flex-column">
      <div class="mode-icon mb-4">⚙</div>
      <h2 class="h3">Automated Scoring</h2>
-     <p class="flex-grow-1">Automated scoring will be introduced in a future version.</p>
-     <a class="btn btn-outline-secondary btn-lg" href="?mode=automated">Future Version</a>
+     <p class="flex-grow-1">Create the event and prepare competitors for the Automated Heats workflow.</p>
+     <a class="btn btn-primary btn-lg" href="?mode=automated">Continue to Automated Scoring</a>
     </div></section>
    </div>
   </div>
@@ -496,6 +496,7 @@ try{
    }
   }
   if($action==='create_round'){
+   $createMode=(string)($_POST['scoring_mode']??'manual');if(!in_array($createMode,['manual','automated'],true))$createMode='manual';
    $eventId=(int)($_POST['event_id']??0);
    $newEventName=trim((string)($_POST['new_event_name']??''));
    $newEventDate=trim((string)($_POST['new_event_date']??''));
@@ -516,13 +517,13 @@ try{
     $eventInsert->execute(['name'=>$newEventName,'normalised'=>strtolower($newEventName),'slug'=>$slug,'event_date'=>$newEventDate]);
     $eventId=(int)$pdo->lastInsertId();
    }
-   $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:rt AND status<>'archived' ORDER BY id DESC LIMIT 1");
-   $existing->execute(['e'=>$eventId,'d'=>$division,'rt'=>$roundType]);
+   $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:rt AND scoring_mode=:mode AND status<>'archived' ORDER BY id DESC LIMIT 1");
+   $existing->execute(['e'=>$eventId,'d'=>$division,'rt'=>$roundType,'mode'=>$createMode]);
    $existingId=(int)$existing->fetchColumn();
    if($existingId>0){$roundId=$existingId;$notice=ucfirst($roundType).' round already exists. Existing round opened.';}
    else{
-    $s=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,round_type,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:d,10,10,10.00,4.50,4.30,4.20,:u)");
-    $s->execute(['e'=>$eventId,'rt'=>$roundType,'d'=>$division,'u'=>$userId]);
+    $s=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:mode,:d,10,10,10.00,4.50,4.30,4.20,:u)");
+    $s->execute(['e'=>$eventId,'rt'=>$roundType,'mode'=>$createMode,'d'=>$division,'u'=>$userId]);
     $roundId=(int)$pdo->lastInsertId();
     auditScoring($pdo,$roundId,$userId,'round_created',['round_type'=>$roundType,'new_event'=>$newEventName!=='']);
     $deskLink=ensureRegistrationDeskLink($pdo,$eventId,$division,$userId);
@@ -1218,6 +1219,10 @@ $competitorSuggestions=$pdo->query("SELECT c.id,c.bdc_id,c.exact_name,c.dance_ro
  GROUP BY c.id,c.bdc_id,c.exact_name,c.dance_role,c.current_division,c.status
  ORDER BY c.exact_name LIMIT 1500")->fetchAll();
 $round=$roundId?loadRound($pdo,$roundId):null;
+if($round && ($round['scoring_mode']??'manual')==='automated'){
+ $counts=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:r AND entry_status='active' GROUP BY dance_role");$counts->execute(['r'=>$roundId]);$roleCounts=['leader'=>0,'follower'=>0];foreach($counts->fetchAll() as $x)$roleCounts[$x['dance_role']]=(int)$x['total'];
+ ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Automated Heats | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><a class="btn btn-outline-light btn-sm" href="?">Scoring Modes</a></div></nav><main class="container py-5" style="max-width:1100px"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="text-uppercase text-primary fw-bold small">Automated Scoring, Phase 1</div><h1 class="h2 mb-1">Automated Heats</h1><p class="text-muted mb-0"><?=e($round['event_name'])?> · <?=e(ucfirst($round['division']))?></p></div><span class="badge text-bg-warning">Setup only</span></div><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?><div class="row g-3"><div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Leaders allocated</div><div class="display-5 fw-bold"><?=$roleCounts['leader']?></div></div></div></div><div class="col-md-6"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Followers allocated</div><div class="display-5 fw-bold"><?=$roleCounts['follower']?></div></div></div></div></div><div class="card border-0 shadow-sm mt-4"><div class="card-body p-4"><h2 class="h5">Heats workflow prepared</h2><p class="text-muted">Event creation is complete. Competitor allocation and the automated scoring rules will be added in the next phase. No automated marks or results can be produced from this screen yet.</p><a class="btn btn-dark" href="../registration-desk/">Open Registration Desk</a></div></div></main></body></html><?php exit;
+}
 $registrationDeskLink=null;$registrationDeskUrl='';
 if($round){
  $stmt=$pdo->prepare("SELECT * FROM bdc_registration_desk_links WHERE event_id=:event AND division=:division LIMIT 1");
@@ -1389,6 +1394,7 @@ $csrf=Csrf::token();
 <form method="post" class="row g-3">
 <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
 <input type="hidden" name="action" value="create_round">
+<input type="hidden" name="scoring_mode" value="<?=e($scoringMode==='automated'?'automated':'manual')?>">
 <div class="col-lg-7">
 <label class="form-label">Select Existing Event</label>
 <select class="form-select" name="event_id">

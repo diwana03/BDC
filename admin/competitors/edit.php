@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\SchemaUpdater;
+use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\SchemaUpdater;use App\Services\CompetitorIdentityService;
 Auth::requirePermission('competitors.edit');$pdo=Database::connection();
 $id=(int)($_GET['id']??$_POST['id']??0);$error='';$success='';
 $blank=['id'=>0,'bdc_id'=>'','exact_name'=>'','email'=>'','instagram'=>'','phone'=>'','country'=>'','dance_role'=>'unknown','current_division'=>'unknown','photo_url'=>'','status'=>'active','admin_notes'=>'','show_on_leaderboard'=>1,'novice_manual_out'=>0,'intermediate_manual_out'=>0,'division_override_reason'=>''];
@@ -22,7 +22,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     $data=['n'=>$name,'nn'=>mb_strtolower(trim(preg_replace('/[^\pL\pN]+/u',' ',$name)??$name)),'email'=>trim((string)$_POST['email'])?:null,'ig'=>trim((string)$_POST['instagram'])?:null,'phone'=>trim((string)$_POST['phone'])?:null,'country'=>trim((string)$_POST['country'])?:null,'role'=>(string)$_POST['dance_role'],'division'=>(string)$_POST['current_division'],'photo'=>$photo?:null,'status'=>(string)$_POST['status'],'notes'=>trim((string)$_POST['admin_notes'])?:null,'show'=>isset($_POST['show_on_leaderboard'])?1:0,'novice_out'=>isset($_POST['novice_manual_out'])?1:0,'intermediate_out'=>isset($_POST['intermediate_manual_out'])?1:0,'override_reason'=>trim((string)($_POST['division_override_reason']??''))?:null];
     if($id){$data['id']=$id;$pdo->prepare('UPDATE bdc_competitors SET exact_name=:n,normalised_name=:nn,email=:email,instagram=:ig,phone=:phone,country=:country,dance_role=:role,current_division=:division,photo_url=:photo,status=:status,admin_notes=:notes,show_on_leaderboard=:show,novice_manual_out=:novice_out,intermediate_manual_out=:intermediate_out,division_override_reason=:override_reason WHERE id=:id')->execute($data);}
     else{$pdo->prepare('INSERT INTO bdc_competitors(exact_name,normalised_name,email,instagram,phone,country,dance_role,current_division,photo_url,status,admin_notes,show_on_leaderboard,novice_manual_out,intermediate_manual_out,division_override_reason) VALUES(:n,:nn,:email,:ig,:phone,:country,:role,:division,:photo,:status,:notes,:show,:novice_out,:intermediate_out,:override_reason)')->execute($data);$id=(int)$pdo->lastInsertId();$bid='BDC-'.str_pad((string)$id,6,'0',STR_PAD_LEFT);$pdo->prepare('UPDATE bdc_competitors SET bdc_id=:b WHERE id=:id')->execute(['b'=>$bid,'id'=>$id]);}
-    Auth::audit((int)Auth::user()['id'],$old?'competitor_updated':'competitor_created',['before'=>$old,'after'=>$data],'competitor',$id);$success='Competitor saved.';
+    CompetitorIdentityService::inspect($pdo,$id);
+    Auth::audit((int)Auth::user()['id'],$old?'competitor_updated':'competitor_created',['before'=>$old,'after'=>$data],'competitor',$id);$success='Competitor saved. Shared-person references were checked automatically.';
    }
   }
  }
