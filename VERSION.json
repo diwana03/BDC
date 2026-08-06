@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev10",
-  "build": 2340,
+  "version": "2.3.3-dev11",
+  "build": 2341,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Participant search aggregate Novice and Intermediate point totals",
     "Backward-compatible protected Results Repository storage for preserved environment configurations",
     "Mobile-safe scoring dashboard and approval publishing modal",
     "Result Repository restored to one event row with Heats, Final and Points links",
