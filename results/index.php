@@ -54,7 +54,7 @@ if($segment==='repository'){
  $sql.=' ORDER BY e.event_date DESC,r.id DESC LIMIT 500';
  $stmt=$pdo->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll();
  if($query!==''&&$rows){
-  $competitorIds=array_values(array_unique(array_map(static fn(array $row):(int)$row['competitor_id'],$rows)));
+  $competitorIds=array_values(array_unique(array_map(static fn(array $row):int=>(int)$row['competitor_id'],$rows)));
   $placeholders=implode(',',array_fill(0,count($competitorIds),'?'));
   $summarySql="SELECT c.id,c.exact_name,c.bdc_id,
                      COALESCE(SUM(CASE WHEN p.division='intermediate' THEN p.points ELSE 0 END),0) intermediate_points,
