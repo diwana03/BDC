@@ -9,6 +9,7 @@ use App\Core\Database;
 use App\Services\DeploymentPipelineService;
 use App\Services\ReleaseManagerService;
 use App\Services\StagingDatabaseSyncService;
+use App\Services\StagingResultsRepositorySyncService;
 
 if(!ReleaseManagerService::isReleaseManagerAvailable()){
     http_response_code(404);
@@ -21,6 +22,8 @@ $message='';
 $error='';
 $databaseSyncMessage='';
 $databaseSyncError='';
+$repositorySyncMessage='';
+$repositorySyncError='';
 $action='';
 $userId=(int)(Auth::user()['id']??0);
 $recoveredJobs=DeploymentPipelineService::recoverStaleJobs($pdo);
@@ -70,6 +73,13 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         }elseif($action==='rollback_production'){
             $rolledBack=DeploymentPipelineService::rollbackProduction($pdo,(int)($_POST['deployment_job_id']??0),$userId);
             $message='Production rolled back successfully to '.$rolledBack['version'].' at commit '.substr($rolledBack['commit_sha'],0,12).'.';
+        }elseif($action==='sync_results_repository'){
+            try{
+                $result=StagingResultsRepositorySyncService::sync();
+                $repositorySyncMessage='Results Repository synchronized from Production. '.(int)$result['files'].' files copied to Staging. The previous Staging repository was backed up first.';
+            }catch(Throwable $e){
+                $repositorySyncError=$e->getMessage();
+            }
         }elseif($action==='refresh_status'){
             $started=DeploymentPipelineService::startWorker($pdo);
             if($started>0){
@@ -184,6 +194,7 @@ if(!$production){
 $allHealthy=count(array_filter($checks,fn($c)=>$c['status']))===count($checks);
 $databaseSyncSettings=StagingDatabaseSyncService::settings();
 $databaseSyncStatus=StagingDatabaseSyncService::status();
+$repositorySyncStatus=StagingResultsRepositorySyncService::status();
 
 function statusClass(string $status):string
 {
@@ -266,6 +277,19 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php if($databaseSyncError):?><div class="alert alert-danger mt-3 mb-0 py-2"><strong>Database sync could not start.</strong><br><?=e($databaseSyncError)?></div><?php endif;?>
 <?php if(!$databaseSyncSettings['enabled']):?><div class="alert alert-warning mt-3 mb-0 py-2"><strong>Setup required:</strong> add the protected Staging-only <code>staging_database_sync</code> settings and Production read-only database credentials. Save is available now; Live Sync will explain any missing setting.</div><?php endif;?>
 <div class="alert alert-secondary mt-3 mb-0 py-2 small">Safety lock: this application exposes no source or target selector, refuses to run outside Staging, rejects identical databases, uses separately configured Production read-only credentials, backs up Staging first, and restores Staging automatically if the import fails.</div>
+</div></div>
+
+<div class="card shadow-sm mb-5"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+<div><h2 class="h4 section-title mb-1">Production Results Repository to Staging</h2><p class="text-muted mb-2">Copies published Heats, Final and Points files one way. Production is read only.</p>
+<div class="small"><strong>Last status:</strong> <?=e(ucfirst((string)($repositorySyncStatus['status']??'never')))?><?php if(!empty($repositorySyncStatus['completed_at'])):?> · <?=e((string)$repositorySyncStatus['completed_at'])?><?php endif;?><?php if(isset($repositorySyncStatus['files'])):?> · <?=(int)$repositorySyncStatus['files']?> files<?php endif;?></div></div>
+<form method="post" onsubmit="return confirm('Replace the Staging Results Repository with an exact copy of Production? Production is read only and the current Staging repository will be backed up first.')">
+<input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="sync_results_repository">
+<button type="submit" class="btn btn-warning" <?=$activeJobs===0?'':'disabled'?>>Sync Results Repository</button>
+</form></div>
+<?php if($repositorySyncMessage):?><div class="alert alert-success mt-3 mb-0 py-2"><?=e($repositorySyncMessage)?></div><?php endif;?>
+<?php if($repositorySyncError):?><div class="alert alert-danger mt-3 mb-0 py-2"><strong>Repository sync failed.</strong><br><?=e($repositorySyncError)?></div><?php endif;?>
+<div class="alert alert-secondary mt-3 mb-0 py-2 small">Safety lock: source is always <code>.bdc-results/production</code>, target is always <code>.bdc-results/staging</code>, and Staging is restored automatically if copying or verification fails.</div>
 </div></div>
 
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
