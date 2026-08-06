@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev29",
-  "build": 2359,
+  "version": "2.3.3-dev30",
+  "build": 2360,
   "status": "development",
-  "release_date": "2026-08-06",
+  "release_date": "2026-08-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Admin Dashboard Super Admin Storage Usage link namespace syntax corrected",
     "Scoring Dashboard transport safeguard disables conflicting response compression and forces UTF-8 HTML",
     "Super Admin read-only Storage Usage diagnostics with folder breakdown, largest files and rapid-growth cause ranking",
     "Readable Scoring Dashboard source restored with active-only rounds and protected Past Event Scores access",
