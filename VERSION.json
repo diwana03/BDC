@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev13",
-  "build": 2343,
+  "version": "2.3.3-dev14",
+  "build": 2344,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Simple button-based leaderboard navigation and history-based division eligibility",
     "Correct leaderboard division boundaries and restore points-first column layout",
     "Participant Results PHP 500 regression corrected",
     "Participant search aggregate Novice and Intermediate point totals",
