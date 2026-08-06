@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev32",
-  "build": 2362,
+  "version": "2.3.3-dev33",
+  "build": 2363,
   "status": "development",
   "release_date": "2026-08-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Out-of-division leaderboard note explains points and higher-division promotion rules with consistent Promoted labels",
     "Release Manager automatically retains only the newest three full deployment backups with protected manual deletion on Staging",
     "Scoring Dashboard lets the web server advertise its actual compression so browsers decode the page correctly",
     "Admin Dashboard Super Admin Storage Usage link namespace syntax corrected",

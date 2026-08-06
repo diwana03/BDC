@@ -234,6 +234,12 @@ body{background:#f5f6f8;color:#20242a}
     <span class="badge text-bg-success">Live</span>
    </div>
 
+   <?php if($showOut && $division!=='all'):?>
+   <div class="alert alert-warning rounded-0 border-start-0 border-end-0 border-top-0 mb-0 px-4 py-3">
+    <strong>Out of Division:</strong> A competitor is promoted when they exceed the maximum points for this division or have already competed in a higher division.
+   </div>
+   <?php endif;?>
+
    <div class="px-4 py-3 border-bottom bg-light rule-note">
     <?php if($division==='all'):?>
      Career totals combine approved Leader and Follower points across every division. The role breakdown is shown below each total.

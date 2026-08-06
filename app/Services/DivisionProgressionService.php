@@ -112,19 +112,19 @@ final class DivisionProgressionService
         $hasAllStarHistory=$competedAllStar;
 
         if($division==='novice'){
-            if($hasIntermediateHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Intermediate or above and cannot return to Novice.'];
             if($novicePoints>25.0)return ['eligible'=>false,'reason'=>'this dancer has more than 25 Novice points.'];
+            if($hasIntermediateHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Intermediate or above and cannot return to Novice.'];
             return ['eligible'=>true,'reason'=>'eligible for Novice.'];
         }
         if($division==='intermediate'){
-            if($hasAdvancedHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Advanced or above and cannot return to Intermediate.'];
             if($intermediatePoints>30.0)return ['eligible'=>false,'reason'=>'this dancer has more than 30 Intermediate points.'];
+            if($hasAdvancedHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in Advanced or above and cannot return to Intermediate.'];
             if($novicePoints>=20.0||$hasIntermediateHistory)return ['eligible'=>true,'reason'=>'eligible for Intermediate.'];
             return ['eligible'=>false,'reason'=>'this dancer has fewer than 20 Novice points and no recorded Intermediate competition history.'];
         }
         if($division==='advanced'){
-            if($hasAllStarHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in All Star and cannot return to Advanced.'];
             if($advancedPoints>40.0)return ['eligible'=>false,'reason'=>'this dancer has more than 40 Advanced points.'];
+            if($hasAllStarHistory)return ['eligible'=>false,'reason'=>'this dancer has already competed in All Star and cannot return to Advanced.'];
             if($intermediatePoints>=25.0||$hasAdvancedHistory)return ['eligible'=>true,'reason'=>'eligible for Advanced.'];
             return ['eligible'=>false,'reason'=>'this dancer has fewer than 25 Intermediate points and no recorded Advanced competition history.'];
         }
@@ -144,7 +144,7 @@ final class DivisionProgressionService
 
         if($selected===$effective)return 'In Division';
         if((self::ORDER[$effective]??0)>(self::ORDER[$selected]??0)){
-            return 'Moved to '.self::label($effective);
+            return 'Promoted to '.self::label($effective);
         }
         return 'Not Yet Eligible';
     }
