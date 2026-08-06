@@ -1,5 +1,20 @@
 <?php
 declare(strict_types=1);
+
+// This page can produce a large HTML response. Some shared-hosting stacks apply
+// PHP zlib compression and web-server gzip at the same time, which makes the
+// browser render compressed bytes as text. Keep this response uncompressed and
+// let the browser receive normal UTF-8 HTML.
+if (function_exists('ini_set')) {
+    @ini_set('zlib.output_compression', '0');
+}
+if (function_exists('apache_setenv')) {
+    @apache_setenv('no-gzip', '1');
+}
+header('Content-Type: text/html; charset=UTF-8');
+header('Content-Encoding: identity');
+header('Cache-Control: no-transform, no-store, private');
+
 require dirname(__DIR__,2).'/bootstrap.php';
 
 use App\Core\Auth;
