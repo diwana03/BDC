@@ -34,11 +34,11 @@ final class DivisionProgressionService
         $committed=self::normaliseDivision($committedDivision);
 
         // Mandatory exits.
-        if($advancedPoints>=40.0){
+        if($advancedPoints>40.0){
             $mandatory='all_star';
-        }elseif($intermediatePoints>=30.0){
+        }elseif($intermediatePoints>30.0){
             $mandatory='advanced';
-        }elseif($novicePoints>=25.0){
+        }elseif($novicePoints>25.0){
             $mandatory='intermediate';
         }else{
             $mandatory='novice';

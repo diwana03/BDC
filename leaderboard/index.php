@@ -204,18 +204,18 @@ body{background:#f5f6f8;color:#20242a}
 
    <div class="px-4 py-3 border-bottom bg-light rule-note">
     <?php if($division==='novice'):?>
-     Novice dancers may move to Intermediate from 20 points and must leave Novice at 25 points.
+     Novice dancers may move to Intermediate from 20 points and leave Novice after 25 points.
     <?php elseif($division==='intermediate'):?>
-     Intermediate requires 20 Novice points. Dancers may move to Advanced from 25 Intermediate points and must leave at 30.
+     Intermediate requires 20 Novice points. Dancers may move to Advanced from 25 Intermediate points and leave Intermediate after 30 points.
     <?php else:?>
-     Advanced requires 25 Intermediate points and must be left at 40 Advanced points.
+     Advanced requires 25 Intermediate points and must be left after 40 Advanced points.
     <?php endif;?>
    </div>
 
    <div class="table-responsive">
     <table class="table align-middle mb-0">
      <thead class="table-light">
-      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th>Events</th><th class="text-center">🥇 1st</th><th class="text-center">🥈 2nd</th><th class="text-center">🥉 3rd</th><th>Last Result</th><th class="text-end">Points</th></tr>
+      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th class="text-end"><?=e(leaderboardLabel($division))?> Points</th><th>Events</th><th class="text-center">🥇 1st</th><th class="text-center">🥈 2nd</th><th class="text-center">🥉 3rd</th><th>Last Result</th></tr>
      </thead>
      <tbody>
      <?php foreach($rows as $row):?>
@@ -235,12 +235,12 @@ body{background:#f5f6f8;color:#20242a}
         </div>
        </td>
        <td><?=e((string)($row['country']?:'—'))?></td>
+       <td class="text-end points"><?=number_format((float)$row['total_points'],1)?></td>
        <td><?=(int)$row['selected_events']?></td>
        <td class="text-center fw-semibold"><?=(int)$row['first_place_count']?></td>
        <td class="text-center fw-semibold"><?=(int)$row['second_place_count']?></td>
        <td class="text-center fw-semibold"><?=(int)$row['third_place_count']?></td>
        <td><?=e((string)($row['last_result_date']?:'—'))?></td>
-       <td class="text-end points"><?=number_format((float)$row['total_points'],1)?></td>
       </tr>
      <?php endforeach;?>
      <?php if(!$rows):?><tr><td colspan="9" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
