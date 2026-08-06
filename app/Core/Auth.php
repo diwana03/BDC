@@ -22,7 +22,7 @@ final class Auth
             $pdo->prepare('INSERT INTO bdc_login_attempts(ip_address,email_hash) VALUES(:ip,:email)')->execute(['ip'=>$ip,'email'=>$emailHash]);
             self::audit(null,'login_failed',['email_hash'=>$emailHash]); return false;
         }
-        if (in_array((string)$user['role'],['super_admin','admin'],true) && !self::trustedDevice((int)$user['id'])) {
+        if (in_array((string)$user['role'],['super_admin','admin','master_scorer','scorer'],true) && !self::trustedDevice((int)$user['id'])) {
             $code=(string)random_int(100000,999999);
             $pdo->prepare('DELETE FROM bdc_two_factor_codes WHERE user_id=:u OR expires_at<NOW()')->execute(['u'=>$user['id']]);
             $pdo->prepare('INSERT INTO bdc_two_factor_codes(user_id,code_hash,expires_at) VALUES(:u,:h,DATE_ADD(NOW(),INTERVAL 10 MINUTE))')->execute(['u'=>$user['id'],'h'=>hash('sha256',$code)]);
@@ -69,7 +69,7 @@ final class Auth
 
     public static function requireAdmin(): void
     {
-        if (!self::check() || !in_array((string)($_SESSION['user']['role']??''),['admin','super_admin'],true)) {
+        if (!self::check() || !in_array((string)($_SESSION['user']['role']??''),['admin','super_admin','master_scorer','scorer'],true)) {
             header('Location: '.url('admin/')); exit;
         }
     }
@@ -77,6 +77,11 @@ final class Auth
     public static function isSuperAdmin(): bool
     {
         return self::check() && (string)(self::user()['role'] ?? '') === 'super_admin';
+    }
+
+    public static function canViewPastScores(): bool
+    {
+        return self::check() && in_array((string)(self::user()['role'] ?? ''),['super_admin','admin','master_scorer'],true);
     }
 
     public static function requireSuperAdmin(): void
@@ -93,7 +98,7 @@ final class Auth
         if (!self::check()) return false;
         $user=self::user();
         if (($user['role']??'')==='super_admin') return true;
-        if (($user['role']??'')!=='admin') return false;
+        if (!in_array(($user['role']??''),['admin','master_scorer','scorer'],true)) return false;
         try {
             $stmt=Database::connection()->prepare('SELECT COUNT(*) FROM bdc_user_permissions WHERE user_id=:uid AND permission_key=:p AND allowed=1');
             $stmt->execute(['uid'=>$user['id'],'p'=>$permission]);

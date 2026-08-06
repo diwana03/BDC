@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev23",
-  "build": 2353,
+  "version": "2.3.3-dev24",
+  "build": 2354,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Active-only Scoring Dashboard with a separate Past Event Scores page for Admin, Master Scorer and Super Admin",
+    "Super Admin role management for Scorer and Master Scorer promotion with full audit history",
+    "Up to three active Super Admins with fourth-account and last-Super-Admin safety controls",
     "Automatic shared-person references for reliable dual-role competitor matches with Super Admin review for uncertain matches",
     "Backend competitor photo crop, zoom and reposition workflow preserving the original image",
     "Email two-factor authentication for Admin and Scorer-capable accounts with hashed 30-day trusted-device tokens",

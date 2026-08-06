@@ -60,7 +60,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
       <a href="<?= e(url('admin/result-import/')) ?>"><span>↥</span>Smart Result Import</a>
       <a href="<?= e(url('admin/imports/')) ?>"><span>⇧</span>Legacy &amp; Bulk Import</a>
       <a href="<?= e(url('admin/competitors/merge.php')) ?>"><span>♧</span>Merge Duplicates</a>
-      <a href="<?= e(url('admin/users/')) ?>"><span>♙</span>Admin Users</a>
+      <a href="<?= e(url('admin/users/')) ?>"><span>♙</span>Users &amp; Roles</a>
       <a href="<?= e(url('admin/sql/')) ?>"><span>⌘</span>SQL Console</a>
       <?php endif;?>
     </nav>
