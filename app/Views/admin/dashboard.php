@@ -53,6 +53,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
         <?php if((int)$stats['profile_requests']>0):?><i><?= (int)$stats['profile_requests'] ?></i><?php endif;?>
       </a>
       <a href="<?= e(url('admin/system-maintenance/')) ?>"><span>☁</span>Backup &amp; Recovery</a>
+      <?php if(App\\Core\\Auth::isSuperAdmin()):?><a href="<?= e(url('admin/storage-usage/')) ?>"><span>◫</span>Storage Usage <em>NEW</em></a><?php endif;?>
       <?php if(App\Core\Auth::isSuperAdmin()&&ReleaseManagerService::isReleaseManagerAvailable()):?><a href="<?= e(url('admin/system-release/')) ?>"><span>⚙</span>Release Manager</a><?php endif;?>
 
       <?php if(App\Core\Auth::isSuperAdmin()):?>
