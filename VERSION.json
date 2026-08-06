@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev19",
-  "build": 2349,
+  "version": "2.3.3-dev20",
+  "build": 2350,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "BOSS/BASS 8 March 2025 Correction-based FINAL and POINTS repository selection",
+    "Results Repository tabs and search panel spacing correction",
     "Enhanced Backup Dashboard with separate Full Portal, Database Only and Website Files manual actions",
     "Recovery backup inventory with secure downloads, file metadata and checksums",
     "Production migration checksum compatibility for the immutable pre-dev16 schema upgrade",
