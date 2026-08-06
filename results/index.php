@@ -17,6 +17,52 @@ $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY event_da
 $rows=[];
 $repositoryRows=[];
 $participantSummaries=[];
+
+function normalizedFinalPlacement(?string $placement):?string{
+ $value=strtolower(trim((string)$placement));
+ if($value==='')return null;
+ if(preg_match('/^(\d+)(?:st|nd|rd|th)?$/',$value,$matches)===1)return (string)(int)$matches[1];
+ $words=['first'=>'1','second'=>'2','third'=>'3','fourth'=>'4','fifth'=>'5','sixth'=>'6','seventh'=>'7','eighth'=>'8','ninth'=>'9','tenth'=>'10'];
+ return $words[$value]??null;
+}
+
+function resolveHistoricalPartners(PDO $pdo,array &$rows):void{
+ $eventIds=[];
+ foreach($rows as $row){
+  if(empty($row['partner_name'])&&normalizedFinalPlacement($row['placement']??null)!==null){
+   $eventIds[(int)$row['event_id']]=true;
+  }
+ }
+ if(!$eventIds)return;
+
+ $ids=array_keys($eventIds);
+ $placeholders=implode(',',array_fill(0,count($ids),'?'));
+ $stmt=$pdo->prepare("SELECT r.event_id,r.competitor_id,r.division,r.dance_role,r.placement,c.exact_name
+                      FROM bdc_participant_results r
+                      JOIN bdc_competitors c ON c.id=r.competitor_id AND c.status='active'
+                      WHERE r.event_id IN ($placeholders)
+                        AND r.dance_role IN ('leader','follower')");
+ $stmt->execute($ids);
+ $finalists=[];
+ foreach($stmt->fetchAll() as $finalist){
+  $placement=normalizedFinalPlacement($finalist['placement']??null);
+  if($placement===null)continue;
+  $key=(int)$finalist['event_id'].'|'.$finalist['division'].'|'.$placement.'|'.$finalist['dance_role'];
+  $finalists[$key][(int)$finalist['competitor_id']]=(string)$finalist['exact_name'];
+ }
+
+ foreach($rows as &$row){
+  if(!empty($row['partner_name'])||!in_array($row['dance_role'],['leader','follower'],true))continue;
+  $placement=normalizedFinalPlacement($row['placement']??null);
+  if($placement===null)continue;
+  $oppositeRole=$row['dance_role']==='leader'?'follower':'leader';
+  $key=(int)$row['event_id'].'|'.$row['division'].'|'.$placement.'|'.$oppositeRole;
+  $candidates=$finalists[$key]??[];
+  unset($candidates[(int)$row['competitor_id']]);
+  if(count($candidates)===1)$row['partner_name']=reset($candidates);
+ }
+ unset($row);
+}
 if($segment==='repository'){
  $sql="SELECT d.*,e.name event_name,e.event_date
        FROM bdc_result_documents d
@@ -59,6 +105,7 @@ if($segment==='repository'){
  if($query!==''){$sql.=' AND (c.exact_name LIKE :name_query OR c.bdc_id LIKE :id_query OR e.name LIKE :event_query)';$params['name_query']='%'.$query.'%';$params['id_query']='%'.$query.'%';$params['event_query']='%'.$query.'%';}
  $sql.=' ORDER BY e.event_date DESC,r.id DESC LIMIT 500';
  $stmt=$pdo->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll();
+ resolveHistoricalPartners($pdo,$rows);
  if($query!==''&&$rows){
   $competitorIds=array_values(array_unique(array_map(static fn(array $row):int=>(int)$row['competitor_id'],$rows)));
   $placeholders=implode(',',array_fill(0,count($competitorIds),'?'));
