@@ -32,4 +32,7 @@ $recentEvents=$pdo->query("SELECT id,name,event_date,status FROM bdc_events ORDE
 $recentRegistrations=$pdo->query("SELECT r.id,r.full_name,r.created_at,r.registration_status,e.name AS event_name FROM bdc_event_registrations r JOIN bdc_events e ON e.id=r.event_id ORDER BY r.id DESC LIMIT 5")->fetchAll();
 $stats['registrations']=(int)$pdo->query('SELECT COUNT(*) FROM bdc_event_registrations')->fetchColumn();
 $stats['documents']=(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_documents WHERE status='published'")->fetchColumn();
+$pendingCompetitionApprovals=$pdo->query("SELECT p.final_round_id,p.division,p.submitted_at,e.name event_name,e.event_date FROM bdc_scoring_publications p JOIN bdc_events e ON e.id=p.event_id WHERE p.status='pending_approval' ORDER BY p.submitted_at")->fetchAll();
+$pendingPointAdjustments=[];
+try{$pendingPointAdjustments=$pdo->query("SELECT r.id,r.additional_points,r.requested_at,c.exact_name,e.name event_name,r.division,r.dance_role,u.full_name requester_name FROM bdc_point_adjustment_requests r JOIN bdc_competitors c ON c.id=r.competitor_id JOIN bdc_events e ON e.id=r.event_id JOIN bdc_users u ON u.id=r.requested_by WHERE r.status='pending' ORDER BY r.requested_at")->fetchAll();}catch(Throwable $e){}
 require dirname(__DIR__) . '/app/Views/admin/dashboard.php';

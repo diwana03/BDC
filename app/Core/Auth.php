@@ -70,9 +70,9 @@ final class Auth
             $stmt->execute(['uid'=>$user['id'],'p'=>$permission]);
             if ((int)$stmt->fetchColumn()>0) return true;
             // Safe default for existing admins during upgrade.
-            return in_array($permission,['competitors.view','competitors.edit','transactions.edit','leaderboard.view','registrations.manage'],true);
+            return in_array($permission,['competitors.view','competitors.edit','transactions.edit','points.adjust.request','leaderboard.view','registrations.manage'],true);
         } catch (\Throwable) {
-            return in_array($permission,['competitors.view','competitors.edit','transactions.edit','leaderboard.view','registrations.manage'],true);
+            return in_array($permission,['competitors.view','competitors.edit','transactions.edit','points.adjust.request','leaderboard.view','registrations.manage'],true);
         }
     }
 

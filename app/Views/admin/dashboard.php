@@ -44,6 +44,7 @@ $bdcVersion=ReleaseManagerService::versionInfo();
       <a href="<?= e(url('admin/events/')) ?>"><span>▣</span>Events &amp; Tickets</a>
       <a href="<?= e(url('admin/registrations/')) ?>"><span>☷</span>Registrations</a>
       <a href="<?= e(url('admin/scoring/')) ?>"><span>⌁</span>Scoring Dashboard <em>NEW</em></a>
+      <a href="<?= e(url('admin/point-adjustments/')) ?>"><span>＋</span>Point Adjustments<?php if(!empty($pendingPointAdjustments)):?><i><?=count($pendingPointAdjustments)?></i><?php endif;?></a>
       <?php if(App\Core\Auth::isSuperAdmin()):?><a href="<?= e(url('admin/scoring-tests/')) ?>"><span>⚗</span>Scoring Tests Dashboard <em>TEST</em></a><?php endif;?>
       <a href="<?= e(url('admin/results/')) ?>"><span>♕</span>Result Repository</a>
       <a href="<?= e(url('admin/placements/')) ?>"><span>▤</span>Recalculate Rankings</a>
@@ -71,6 +72,13 @@ $bdcVersion=ReleaseManagerService::versionInfo();
   </aside>
 
   <main class="admin-main-v203">
+
+<?php if(App\Core\Auth::isSuperAdmin()&&!empty($pendingPointAdjustments)):?>
+<div class="card border-danger shadow-sm mb-4" style="animation:bdcPendingPulse 1.5s infinite">
+ <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center"><strong>Action Required: Pending Point Adjustments</strong><span class="badge text-bg-light"><?=count($pendingPointAdjustments)?></span></div>
+ <div class="card-body"><?php foreach($pendingPointAdjustments as $request):?><div class="d-flex justify-content-between align-items-center border-bottom py-2 gap-3"><div><strong><?=e($request['exact_name'])?></strong>, <?=e($request['event_name'])?><br><span class="small text-muted">+<?=e((string)(float)$request['additional_points'])?> <?=e(ucfirst($request['division']))?> points requested by <?=e($request['requester_name'])?></span></div><a class="btn btn-danger btn-sm" href="<?=e(url('admin/point-adjustments/?review='.(int)$request['id']))?>">Review</a></div><?php endforeach;?></div>
+</div><style>@keyframes bdcPendingPulse{50%{box-shadow:0 0 0 .3rem rgba(220,53,69,.22)}}</style>
+<?php endif;?>
 
 <?php if(!empty($pendingCompetitionApprovals)):?>
 <div class="card border-warning shadow-sm mb-4">

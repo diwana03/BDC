@@ -15,6 +15,7 @@ $permissions=[
  'competitors.view'=>'View competitors',
  'competitors.edit'=>'Edit competitor profiles and photos',
  'transactions.edit'=>'Add and edit competition entries',
+ 'points.adjust.request'=>'Request missing event points for approval',
  'registrations.manage'=>'Review registrations and profile updates',
  'results.manage'=>'Manage result repository',
  'imports.manage'=>'Run and roll back imports',
