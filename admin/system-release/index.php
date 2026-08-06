@@ -73,6 +73,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         }elseif($action==='rollback_production'){
             $rolledBack=DeploymentPipelineService::rollbackProduction($pdo,(int)($_POST['deployment_job_id']??0),$userId);
             $message='Production rolled back successfully to '.$rolledBack['version'].' at commit '.substr($rolledBack['commit_sha'],0,12).'.';
+        }elseif($action==='delete_deployment_backup'){
+            $busy=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
+            if($busy>0)throw new RuntimeException('Backups cannot be deleted while a deployment is running.');
+            $backupName=(string)($_POST['backup_name']??'');
+            DeploymentPipelineService::deleteDeploymentBackup($backupName);
+            $message='Deployment backup deleted: '.$backupName.'.';
         }elseif($action==='sync_results_repository'){
             try{
                 $result=StagingResultsRepositorySyncService::sync();
@@ -168,6 +174,7 @@ $releases=$releaseStmt->fetchAll();
 $jobs=$pdo->query('SELECT j.*,r.version,r.subject FROM bdc_deployment_jobs j JOIN bdc_release_candidates r ON r.id=j.release_id ORDER BY j.id DESC LIMIT 15')->fetchAll();
 $activeJobs=(int)$pdo->query("SELECT COUNT(*) FROM bdc_deployment_jobs WHERE status IN ('queued','running')")->fetchColumn();
 $productionRollbackCandidates=DeploymentPipelineService::productionRollbackCandidates($pdo);
+$deploymentBackups=DeploymentPipelineService::deploymentBackups();
 $productionValidatedReleaseIds=[];
 foreach($jobs as $job){
     if((string)$job['target_environment']==='production'
@@ -215,6 +222,15 @@ function friendlyStatus(string $status):string
         'queued'=>'Waiting',
         default=>ucwords(str_replace('_',' ',$status))
     };
+}
+
+function releaseBytes(int $bytes):string
+{
+    $units=['B','KB','MB','GB','TB'];
+    $value=(float)max(0,$bytes);
+    $unit=0;
+    while($value>=1024&&$unit<count($units)-1){$value/=1024;$unit++;}
+    return number_format($value,$unit===0?0:2).' '.$units[$unit];
 }
 ?><!doctype html>
 <html lang="en">
@@ -318,6 +334,15 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <?php endforeach;?>
 </div>
 <?php endif;?>
+
+<div class="card shadow-sm mb-4"><div class="card-body p-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3"><div><h2 class="h5 mb-1">Release Manager Backups</h2><p class="text-muted mb-0">The newest three full Production safety backups are kept automatically. Older backups are deleted after each new backup succeeds.</p></div><span class="badge text-bg-primary px-3 py-2"><?=count($deploymentBackups)?> of 3 retained</span></div>
+<div class="alert alert-warning py-2 small">Deleting a backup is permanent and removes any rollback option that depends on it. Deletion is blocked while a deployment is running.</div>
+<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Backup</th><th>Created</th><th>Size</th><th></th></tr></thead><tbody>
+<?php foreach($deploymentBackups as $backup):?><tr><td><strong class="sha"><?=e($backup['name'])?></strong></td><td><?=e(date('Y-m-d H:i:s',(int)$backup['created_at']))?></td><td><?=e(releaseBytes((int)$backup['size']))?></td><td class="text-end"><form method="post" onsubmit="return confirm('Permanently delete deployment backup <?=e($backup['name'])?>? Any rollback that requires it will no longer be available.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="delete_deployment_backup"><input type="hidden" name="backup_name" value="<?=e($backup['name'])?>"><button class="btn btn-outline-danger btn-sm" <?=$activeJobs===0?'':'disabled'?>>Delete</button></form></td></tr><?php endforeach;?>
+<?php if(!$deploymentBackups):?><tr><td colspan="4" class="text-center text-muted py-4">No Release Manager backups found.</td></tr><?php endif;?>
+</tbody></table></div>
+</div></div>
 
 <div class="card shadow-sm mb-4"><div class="card-body p-4">
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3"><div><h2 class="h5 mb-1">Production Deployment Plan</h2><p class="text-muted mb-0">Only the exact release tested on Staging can be promoted.</p></div><span class="badge text-bg-<?=$allHealthy?'success':'danger'?> px-3 py-2"><?=$allHealthy?'Preflight ready':'Deployment blocked'?></span></div>

@@ -10,6 +10,8 @@ use RuntimeException;
 final class DeploymentPipelineService
 {
     private const SHA_PATTERN='/^[a-f0-9]{40}$/';
+    private const DEPLOYMENT_BACKUP_PATTERN='/^\d{8}-\d{6}-[a-f0-9]{12}$/';
+    private const DEPLOYMENT_BACKUPS_TO_KEEP=3;
 
     public static function settings():array
     {
@@ -362,6 +364,44 @@ final class DeploymentPipelineService
         return $items;
     }
 
+    public static function deploymentBackups():array
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        $root=rtrim($config['backup_path'],'/');
+        if(!is_dir($root))return [];
+
+        $items=[];
+        foreach(glob($root.'/*',GLOB_ONLYDIR)?:[] as $path){
+            $name=basename($path);
+            $resolved=realpath($path);
+            if(!preg_match(self::DEPLOYMENT_BACKUP_PATTERN,$name)||is_link($path)
+                ||$resolved===false||dirname($resolved)!==realpath($root))continue;
+            $items[]=[
+                'name'=>$name,
+                'created_at'=>filemtime($path)?:0,
+                'size'=>self::directorySize($path),
+            ];
+        }
+        usort($items,static fn(array $a,array $b):int=>$b['created_at']<=>$a['created_at']);
+        return $items;
+    }
+
+    public static function deleteDeploymentBackup(string $name):void
+    {
+        $config=self::settings();
+        self::assertEnabled($config);
+        if(!preg_match(self::DEPLOYMENT_BACKUP_PATTERN,$name)||$name!==basename($name)){
+            throw new RuntimeException('Invalid deployment backup name.');
+        }
+        $root=realpath($config['backup_path']);
+        $path=realpath(rtrim($config['backup_path'],'/').'/'.$name);
+        if($root===false||$path===false||dirname($path)!==$root||!is_dir($path)){
+            throw new RuntimeException('Deployment backup not found.');
+        }
+        self::deleteTree($path);
+    }
+
     public static function recoverStaleJobs(PDO $pdo):int
     {
         $pdo->beginTransaction();
@@ -434,7 +474,33 @@ final class DeploymentPipelineService
         self::runProcess(['php',$runner,$config['production_path'],$backup],$output);
         $output[]='[PRODUCTION_BACKUP] '.$backup;
         $output[]='Production files backed up to '.$backup;
+        $deleted=self::pruneDeploymentBackups();
+        $output[]='Deployment backup retention applied: kept the newest '.self::DEPLOYMENT_BACKUPS_TO_KEEP
+            .' and removed '.$deleted.' older backup'.($deleted===1?'':'s').'.';
         return $backup;
+    }
+
+    private static function pruneDeploymentBackups():int
+    {
+        $backups=self::deploymentBackups();
+        $deleted=0;
+        foreach(array_slice($backups,self::DEPLOYMENT_BACKUPS_TO_KEEP) as $backup){
+            self::deleteDeploymentBackup((string)$backup['name']);
+            $deleted++;
+        }
+        return $deleted;
+    }
+
+    private static function directorySize(string $path):int
+    {
+        $size=0;
+        $iterator=new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path,\FilesystemIterator::SKIP_DOTS)
+        );
+        foreach($iterator as $item){
+            if($item->isFile()&&!$item->isLink())$size+=$item->getSize();
+        }
+        return $size;
     }
 
     private static function restoreProductionFiles(array $config,string $backup,array &$output):void
