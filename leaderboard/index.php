@@ -66,6 +66,18 @@ $stmt=$pdo->prepare("
  LEFT JOIN bdc_point_transactions pt
   ON pt.competitor_id=c.id
   $roleJoin
+  AND NOT EXISTS (
+   SELECT 1
+   FROM bdc_point_transactions duplicate_pt
+   JOIN bdc_competitors duplicate_c ON duplicate_c.id=duplicate_pt.competitor_id
+   WHERE COALESCE(duplicate_c.career_group_id,-duplicate_c.id)=COALESCE(c.career_group_id,-c.id)
+    AND duplicate_pt.event_id <=> pt.event_id
+    AND duplicate_pt.division=pt.division
+    AND duplicate_pt.dance_role=pt.dance_role
+    AND COALESCE(LOWER(TRIM(duplicate_pt.placement)),'')=COALESCE(LOWER(TRIM(pt.placement)),'')
+    AND duplicate_pt.points=pt.points
+    AND duplicate_pt.id<pt.id
+  )
  LEFT JOIN bdc_events e ON e.id=pt.event_id
  LEFT JOIN bdc_competitor_career_groups g ON g.id=c.career_group_id
  WHERE c.status='active' AND c.show_on_leaderboard=1
