@@ -1,1 +1,18 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWF4IiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9ImF4LWEiPgogICAgICA8cGF0aCBmaWxsLW9wYWNpdHk9Ii43IiBkPSJNMTA2LjMgMGgxMTMzLjN2ODUwSDEwNi4zeiIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CiAgPGcgY2xpcC1wYXRoPSJ1cmwoI2F4LWEpIiB0cmFuc2Zvcm09Im1hdHJpeCguNTY0NzIgMCAwIC41NjQ4MiAtNjAgLS4xKSI+CiAgICA8cGF0aCBmaWxsPSIjMDA1M2E1IiBkPSJNMCAwaDEzMDB2ODUwSDB6Ii8+CiAgICA8ZyBmaWxsPSIjZmZjZTAwIj4KICAgICAgPHBhdGggZD0iTTQwMCAwaDI1MHY4NTBINDAweiIvPgogICAgICA8cGF0aCBkPSJNMCAzMDBoMTMwMHYyNTBIMHoiLz4KICAgIDwvZz4KICAgIDxnIGZpbGw9IiNkMjEwMzQiPgogICAgICA8cGF0aCBkPSJNNDc1IDBoMTAwdjg1MEg0NzV6Ii8+CiAgICAgIDxwYXRoIGQ9Ik0wIDM3NWgxMzAwdjEwMEgweiIvPgogICAgPC9nPgogIDwvZz4KPC9zdmc+Cg==
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-ax" viewBox="0 0 640 480">
+  <defs>
+    <clipPath id="ax-a">
+      <path fill-opacity=".7" d="M106.3 0h1133.3v850H106.3z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#ax-a)" transform="matrix(.56472 0 0 .56482 -60 -.1)">
+    <path fill="#0053a5" d="M0 0h1300v850H0z"/>
+    <g fill="#ffce00">
+      <path d="M400 0h250v850H400z"/>
+      <path d="M0 300h1300v250H0z"/>
+    </g>
+    <g fill="#d21034">
+      <path d="M475 0h100v850H475z"/>
+      <path d="M0 375h1300v100H0z"/>
+    </g>
+  </g>
+</svg>

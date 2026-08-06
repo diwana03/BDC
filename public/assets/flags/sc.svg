@@ -1,1 +1,7 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLXNjIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGg2NDB2NDgwSDBaIi8+CiAgPHBhdGggZmlsbD0iI2Q5MjIyMyIgZD0iTTAgNDgwVjBoNjQwdjE2MHoiLz4KICA8cGF0aCBmaWxsPSIjZmNkOTU1IiBkPSJNMCA0ODBWMGg0MjYuN3oiLz4KICA8cGF0aCBmaWxsPSIjMDAzZDg4IiBkPSJNMCA0ODBWMGgyMTMuM3oiLz4KICA8cGF0aCBmaWxsPSIjMDA3YTM5IiBkPSJtMCA0ODAgNjQwLTE2MHYxNjB6Ii8+Cjwvc3ZnPgo=
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-sc" viewBox="0 0 640 480">
+  <path fill="#fff" d="M0 0h640v480H0Z"/>
+  <path fill="#d92223" d="M0 480V0h640v160z"/>
+  <path fill="#fcd955" d="M0 480V0h426.7z"/>
+  <path fill="#003d88" d="M0 480V0h213.3z"/>
+  <path fill="#007a39" d="m0 480 640-160v160z"/>
+</svg>

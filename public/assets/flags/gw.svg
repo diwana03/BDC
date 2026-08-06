@@ -1,1 +1,13 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBpZD0iZmxhZy1pY29ucy1ndyIgdmlld0JveD0iMCAwIDY0MCA0ODAiPgogIDxwYXRoIGZpbGw9IiNjZTExMjYiIGQ9Ik0wIDBoMjIwdjQ4MEgweiIvPgogIDxwYXRoIGZpbGw9IiNmY2QxMTYiIGQ9Ik0yMjAgMGg0MjB2MjQwSDIyMHoiLz4KICA8cGF0aCBmaWxsPSIjMDA5ZTQ5IiBkPSJNMjIwIDI0MGg0MjB2MjQwSDIyMHoiLz4KICA8ZyBpZD0iZ3ctYiIgdHJhbnNmb3JtPSJtYXRyaXgoODAgMCAwIDgwIDExMCAyNDApIj4KICAgIDxwYXRoIGlkPSJndy1hIiBmaWxsPSIjMDAwMDAxIiBkPSJNMC0xdjFoLjUiIHRyYW5zZm9ybT0icm90YXRlKDE4IDAgLTEpIi8+CiAgICA8dXNlIHhsaW5rOmhyZWY9IiNndy1hIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB0cmFuc2Zvcm09InNjYWxlKC0xIDEpIi8+CiAgPC9nPgogIDx1c2UgeGxpbms6aHJlZj0iI2d3LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHRyYW5zZm9ybT0icm90YXRlKDcyIDExMCAyNDApIi8+CiAgPHVzZSB4bGluazpocmVmPSIjZ3ctYiIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdHJhbnNmb3JtPSJyb3RhdGUoMTQ0IDExMCAyNDApIi8+CiAgPHVzZSB4bGluazpocmVmPSIjZ3ctYiIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdHJhbnNmb3JtPSJyb3RhdGUoLTE0NCAxMTAgMjQwKSIvPgogIDx1c2UgeGxpbms6aHJlZj0iI2d3LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHRyYW5zZm9ybT0icm90YXRlKC03MiAxMTAgMjQwKSIvPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="flag-icons-gw" viewBox="0 0 640 480">
+  <path fill="#ce1126" d="M0 0h220v480H0z"/>
+  <path fill="#fcd116" d="M220 0h420v240H220z"/>
+  <path fill="#009e49" d="M220 240h420v240H220z"/>
+  <g id="gw-b" transform="matrix(80 0 0 80 110 240)">
+    <path id="gw-a" fill="#000001" d="M0-1v1h.5" transform="rotate(18 0 -1)"/>
+    <use xlink:href="#gw-a" width="100%" height="100%" transform="scale(-1 1)"/>
+  </g>
+  <use xlink:href="#gw-b" width="100%" height="100%" transform="rotate(72 110 240)"/>
+  <use xlink:href="#gw-b" width="100%" height="100%" transform="rotate(144 110 240)"/>
+  <use xlink:href="#gw-b" width="100%" height="100%" transform="rotate(-144 110 240)"/>
+  <use xlink:href="#gw-b" width="100%" height="100%" transform="rotate(-72 110 240)"/>
+</svg>

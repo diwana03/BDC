@@ -1,1 +1,8 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWF6IiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iIzNmOWMzNSIgZD0iTS4xIDBoNjQwdjQ4MEguMXoiLz4KICA8cGF0aCBmaWxsPSIjZWQyOTM5IiBkPSJNLjEgMGg2NDB2MzIwSC4xeiIvPgogIDxwYXRoIGZpbGw9IiMwMGI5ZTQiIGQ9Ik0uMSAwaDY0MHYxNjBILjF6Ii8+CiAgPGNpcmNsZSBjeD0iMzA0IiBjeT0iMjQwIiByPSI3MiIgZmlsbD0iI2ZmZiIvPgogIDxjaXJjbGUgY3g9IjMyMCIgY3k9IjI0MCIgcj0iNjAiIGZpbGw9IiNlZDI5MzkiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJtMzg0IDIwMCA3LjcgMjEuNSAyMC42LTkuOC05LjggMjAuN0w0MjQgMjQwbC0yMS41IDcuNyA5LjggMjAuNi0yMC42LTkuOEwzODQgMjgwbC03LjctMjEuNS0yMC42IDkuOCA5LjgtMjAuNkwzNDQgMjQwbDIxLjUtNy43LTkuOC0yMC42IDIwLjYgOS44eiIvPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-az" viewBox="0 0 640 480">
+  <path fill="#3f9c35" d="M.1 0h640v480H.1z"/>
+  <path fill="#ed2939" d="M.1 0h640v320H.1z"/>
+  <path fill="#00b9e4" d="M.1 0h640v160H.1z"/>
+  <circle cx="304" cy="240" r="72" fill="#fff"/>
+  <circle cx="320" cy="240" r="60" fill="#ed2939"/>
+  <path fill="#fff" d="m384 200 7.7 21.5 20.6-9.8-9.8 20.7L424 240l-21.5 7.7 9.8 20.6-20.6-9.8L384 280l-7.7-21.5-20.6 9.8 9.8-20.6L344 240l21.5-7.7-9.8-20.6 20.6 9.8z"/>
+</svg>

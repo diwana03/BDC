@@ -1,1 +1,14 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWlsIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9ImlsLWEiPgogICAgICA8cGF0aCBmaWxsLW9wYWNpdHk9Ii43IiBkPSJNLTg3LjYgMEg1OTV2NTEySC04Ny42eiIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXBhdGg9InVybCgjaWwtYSkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgyLjEpc2NhbGUoLjk0KSI+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNNjE5LjQgNTEySC0xMTJWMGg3MzEuNHoiLz4KICAgIDxwYXRoIGZpbGw9IiMwMDM4YjgiIGQ9Ik02MTkuNCAxMTUuMkgtMTEyVjQ4aDczMS40em0wIDM1MC41SC0xMTJ2LTY3LjJoNzMxLjR6bS00ODMtMjc1IDExMC4xIDE5MS42TDM1OSAxOTEuNnoiLz4KICAgIDxwYXRoIGZpbGw9IiNmZmYiIGQ9Im0yMjUuOCAzMTcuOCAyMC45IDM1LjUgMjEuNC0zNS4zeiIvPgogICAgPHBhdGggZmlsbD0iIzAwMzhiOCIgZD0iTTEzNiAzMjAuNiAyNDYuMiAxMjlsMTEyLjQgMTkwLjh6Ii8+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJtMjI1LjggMTkxLjYgMjAuOS0zNS41IDIxLjQgMzUuNHpNMTgyIDI3MS4xbC0yMS43IDM2IDQxLS4xLTE5LjMtMzZ6bS0yMS4zLTY2LjUgNDEuMi4zLTE5LjggMzYuM3ptMTUxLjIgNjcgMjAuOSAzNS41LTQxLjctLjV6bTIwLjUtNjctNDEuMi4zIDE5LjggMzYuM3ptLTExNC4zIDBMMTg5LjcgMjU2bDI4LjggNTAuMyA1Mi44IDEuMiAzMi01MS41LTI5LjYtNTJ6Ii8+CiAgPC9nPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-il" viewBox="0 0 640 480">
+  <defs>
+    <clipPath id="il-a">
+      <path fill-opacity=".7" d="M-87.6 0H595v512H-87.6z"/>
+    </clipPath>
+  </defs>
+  <g fill-rule="evenodd" clip-path="url(#il-a)" transform="translate(82.1)scale(.94)">
+    <path fill="#fff" d="M619.4 512H-112V0h731.4z"/>
+    <path fill="#0038b8" d="M619.4 115.2H-112V48h731.4zm0 350.5H-112v-67.2h731.4zm-483-275 110.1 191.6L359 191.6z"/>
+    <path fill="#fff" d="m225.8 317.8 20.9 35.5 21.4-35.3z"/>
+    <path fill="#0038b8" d="M136 320.6 246.2 129l112.4 190.8z"/>
+    <path fill="#fff" d="m225.8 191.6 20.9-35.5 21.4 35.4zM182 271.1l-21.7 36 41-.1-19.3-36zm-21.3-66.5 41.2.3-19.8 36.3zm151.2 67 20.9 35.5-41.7-.5zm20.5-67-41.2.3 19.8 36.3zm-114.3 0L189.7 256l28.8 50.3 52.8 1.2 32-51.5-29.6-52z"/>
+  </g>
+</svg>

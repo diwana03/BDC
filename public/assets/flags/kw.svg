@@ -1,1 +1,13 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWt3IiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9Imt3LWEiPgogICAgICA8cGF0aCBmaWxsLW9wYWNpdHk9Ii43IiBkPSJNMCAwaDY4Mi43djUxMkgweiIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2Utd2lkdGg9IjFwdCIgY2xpcC1wYXRoPSJ1cmwoI2t3LWEpIiB0cmFuc2Zvcm09InNjYWxlKC45Mzc1KSI+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAxNzAuNmgxMDI0djE3MC43SDB6Ii8+CiAgICA8cGF0aCBmaWxsPSIjZjMxODMwIiBkPSJNMCAzNDEuM2gxMDI0VjUxMkgweiIvPgogICAgPHBhdGggZmlsbD0iIzAwZDk0MSIgZD0iTTAgMGgxMDI0djE3MC43SDB6Ii8+CiAgICA8cGF0aCBmaWxsPSIjMDAwMDAxIiBkPSJNMCAwdjUxMmwyNTUuNC0xNzAuNy42LTE3MC44eiIvPgogIDwvZz4KPC9zdmc+Cg==
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-kw" viewBox="0 0 640 480">
+  <defs>
+    <clipPath id="kw-a">
+      <path fill-opacity=".7" d="M0 0h682.7v512H0z"/>
+    </clipPath>
+  </defs>
+  <g fill-rule="evenodd" stroke-width="1pt" clip-path="url(#kw-a)" transform="scale(.9375)">
+    <path fill="#fff" d="M0 170.6h1024v170.7H0z"/>
+    <path fill="#f31830" d="M0 341.3h1024V512H0z"/>
+    <path fill="#00d941" d="M0 0h1024v170.7H0z"/>
+    <path fill="#000001" d="M0 0v512l255.4-170.7.6-170.8z"/>
+  </g>
+</svg>

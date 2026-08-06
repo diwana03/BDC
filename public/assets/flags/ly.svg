@@ -1,1 +1,13 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWx5IiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9Imx5LWEiPgogICAgICA8cGF0aCBkPSJNMTY2LjctMjBoNjY2LjZ2NTAwSDE2Ni43eiIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CiAgPGcgY2xpcC1wYXRoPSJ1cmwoI2x5LWEpIiB0cmFuc2Zvcm09Im1hdHJpeCguOTYgMCAwIC45NiAtMTYwIDE5LjIpIj4KICAgIDxwYXRoIGZpbGw9IiMyMzllNDYiIGQ9Ik0wLTIwaDEwMDB2NTAwSDB6Ii8+CiAgICA8cGF0aCBmaWxsPSIjMDAwMDAxIiBkPSJNMC0yMGgxMDAwdjM3NUgweiIvPgogICAgPHBhdGggZmlsbD0iI2U3MDAxMyIgZD0iTTAtMjBoMTAwMHYxMjVIMHoiLz4KICAgIDxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01NDQuMiAxODUuOGE1NC4zIDU0LjMgMCAxIDAgMCA4OC40IDYyLjUgNjIuNSAwIDEgMSAwLTg4LjRNNTMwLjQgMjMwbDg0LjEtMjcuMy01MiA3MS41di04OC40bDUyIDcxLjV6Ii8+CiAgPC9nPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-ly" viewBox="0 0 640 480">
+  <defs>
+    <clipPath id="ly-a">
+      <path d="M166.7-20h666.6v500H166.7z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#ly-a)" transform="matrix(.96 0 0 .96 -160 19.2)">
+    <path fill="#239e46" d="M0-20h1000v500H0z"/>
+    <path fill="#000001" d="M0-20h1000v375H0z"/>
+    <path fill="#e70013" d="M0-20h1000v125H0z"/>
+    <path fill="#fff" d="M544.2 185.8a54.3 54.3 0 1 0 0 88.4 62.5 62.5 0 1 1 0-88.4M530.4 230l84.1-27.3-52 71.5v-88.4l52 71.5z"/>
+  </g>
+</svg>

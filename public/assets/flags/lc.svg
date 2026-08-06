@@ -1,1 +1,8 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWxjIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgIDxwYXRoIGZpbGw9IiM2NWNmZmYiIGQ9Ik0wIDBoNjQwdjQ4MEgweiIvPgogICAgPHBhdGggZmlsbD0iI2ZmZiIgZD0ibTMxOC45IDQyIDE2Mi43IDM5NS4zLTMyMi42Ljl6Ii8+CiAgICA8cGF0aCBmaWxsPSIjMDAwMDAxIiBkPSJtMzE5IDk2LjUgMTQwLjggMzQwLTI3OSAuOHoiLz4KICAgIDxwYXRoIGZpbGw9IiNmZmNlMDAiIGQ9Im0zMTguOSAyNDAuMSAxNjIuNyAxOTcuNi0zMjIuNi41eiIvPgogIDwvZz4KPC9zdmc+Cg==
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-lc" viewBox="0 0 640 480">
+  <g fill-rule="evenodd">
+    <path fill="#65cfff" d="M0 0h640v480H0z"/>
+    <path fill="#fff" d="m318.9 42 162.7 395.3-322.6.9z"/>
+    <path fill="#000001" d="m319 96.5 140.8 340-279 .8z"/>
+    <path fill="#ffce00" d="m318.9 240.1 162.7 197.6-322.6.5z"/>
+  </g>
+</svg>

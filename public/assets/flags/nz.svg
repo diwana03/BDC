@@ -1,1 +1,36 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBpZD0iZmxhZy1pY29ucy1ueiIgdmlld0JveD0iMCAwIDY0MCA0ODAiPgogIDxkZWZzPgogICAgPGcgaWQ9Im56LWIiPgogICAgICA8ZyBpZD0ibnotYSI+CiAgICAgICAgPHBhdGggZD0iTTAtLjN2LjVsMS0uNXoiLz4KICAgICAgICA8cGF0aCBkPSJNLjIuMyAwLS4xbDEtLjJ6Ii8+CiAgICAgIDwvZz4KICAgICAgPHVzZSB4bGluazpocmVmPSIjbnotYSIgdHJhbnNmb3JtPSJzY2FsZSgtMSAxKSIvPgogICAgICA8dXNlIHhsaW5rOmhyZWY9IiNuei1hIiB0cmFuc2Zvcm09InJvdGF0ZSg3MiAwIDApIi8+CiAgICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWEiIHRyYW5zZm9ybT0icm90YXRlKC03MiAwIDApIi8+CiAgICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWEiIHRyYW5zZm9ybT0ic2NhbGUoLTEgMSlyb3RhdGUoNzIpIi8+CiAgICA8L2c+CiAgPC9kZWZzPgogIDxwYXRoIGZpbGw9IiMwMDI0N2QiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTAgMGg2NDB2NDgwSDB6Ii8+CiAgPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTExMSAzNi4xKXNjYWxlKC42NjgyNSkiPgogICAgPHVzZSB4bGluazpocmVmPSIjbnotYiIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2ZmZiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoOTAwIDEyMClzY2FsZSg0NS40KSIvPgogICAgPHVzZSB4bGluazpocmVmPSIjbnotYiIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjMTQyYiIgdHJhbnNmb3JtPSJtYXRyaXgoMzAgMCAwIDMwIDkwMCAxMjApIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDgyIDUyNS4yIDExNC42KXNjYWxlKC42NjgyNSkiPgogICAgPHVzZSB4bGluazpocmVmPSIjbnotYiIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2ZmZiIgdHJhbnNmb3JtPSJyb3RhdGUoLTgyIDUxOSAtNDU3Ljcpc2NhbGUoNDAuNCkiLz4KICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNjYzE0MmIiIHRyYW5zZm9ybT0icm90YXRlKC04MiA1MTkgLTQ1Ny43KXNjYWxlKDI1KSIvPgogIDwvZz4KICA8ZyB0cmFuc2Zvcm09InJvdGF0ZSg4MiA1MjUuMiAxMTQuNilzY2FsZSguNjY4MjUpIj4KICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmZmYiIHRyYW5zZm9ybT0icm90YXRlKC04MiA2NjguNiAtMzI3Ljcpc2NhbGUoNDUuNCkiLz4KICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNjYzE0MmIiIHRyYW5zZm9ybT0icm90YXRlKC04MiA2NjguNiAtMzI3Ljcpc2NhbGUoMzApIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xMTEgMzYuMSlzY2FsZSguNjY4MjUpIj4KICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmZmYiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDkwMCA0ODApc2NhbGUoNTAuNCkiLz4KICAgIDx1c2UgeGxpbms6aHJlZj0iI256LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNjYzE0MmIiIHRyYW5zZm9ybT0ibWF0cml4KDM1IDAgMCAzNSA5MDAgNDgwKSIvPgogIDwvZz4KICA8cGF0aCBmaWxsPSIjMDEyMTY5IiBkPSJNMCAwaDMyMHYyNDBIMHoiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJtMzcuNSAwIDEyMiA5MC41TDI4MSAwaDM5djMxbC0xMjAgODkuNSAxMjAgODlWMjQwaC00MGwtMTIwLTg5LjVMNDAuNSAyNDBIMHYtMzBsMTE5LjUtODlMMCAzMlYweiIvPgogIDxwYXRoIGZpbGw9IiNjODEwMmUiIGQ9Ik0yMTIgMTQwLjUgMzIwIDIyMHYyMGwtMTM1LjUtOTkuNXptLTkyIDEwIDMgMTcuNS05NiA3Mkgwek0zMjAgMHYxLjVsLTEyNC41IDk0IDEtMjJMMjk1IDB6TTAgMGwxMTkuNSA4OGgtMzBMMCAyMXoiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTIwLjUgMHYyNDBoODBWMHpNMCA4MHY4MGgzMjBWODB6Ii8+CiAgPHBhdGggZmlsbD0iI2M4MTAyZSIgZD0iTTAgOTYuNXY0OGgzMjB2LTQ4ek0xMzYuNSAwdjI0MGg0OFYweiIvPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="flag-icons-nz" viewBox="0 0 640 480">
+  <defs>
+    <g id="nz-b">
+      <g id="nz-a">
+        <path d="M0-.3v.5l1-.5z"/>
+        <path d="M.2.3 0-.1l1-.2z"/>
+      </g>
+      <use xlink:href="#nz-a" transform="scale(-1 1)"/>
+      <use xlink:href="#nz-a" transform="rotate(72 0 0)"/>
+      <use xlink:href="#nz-a" transform="rotate(-72 0 0)"/>
+      <use xlink:href="#nz-a" transform="scale(-1 1)rotate(72)"/>
+    </g>
+  </defs>
+  <path fill="#00247d" fill-rule="evenodd" d="M0 0h640v480H0z"/>
+  <g transform="translate(-111 36.1)scale(.66825)">
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#fff" transform="translate(900 120)scale(45.4)"/>
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#cc142b" transform="matrix(30 0 0 30 900 120)"/>
+  </g>
+  <g transform="rotate(82 525.2 114.6)scale(.66825)">
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#fff" transform="rotate(-82 519 -457.7)scale(40.4)"/>
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#cc142b" transform="rotate(-82 519 -457.7)scale(25)"/>
+  </g>
+  <g transform="rotate(82 525.2 114.6)scale(.66825)">
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#fff" transform="rotate(-82 668.6 -327.7)scale(45.4)"/>
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#cc142b" transform="rotate(-82 668.6 -327.7)scale(30)"/>
+  </g>
+  <g transform="translate(-111 36.1)scale(.66825)">
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#fff" transform="translate(900 480)scale(50.4)"/>
+    <use xlink:href="#nz-b" width="100%" height="100%" fill="#cc142b" transform="matrix(35 0 0 35 900 480)"/>
+  </g>
+  <path fill="#012169" d="M0 0h320v240H0z"/>
+  <path fill="#fff" d="m37.5 0 122 90.5L281 0h39v31l-120 89.5 120 89V240h-40l-120-89.5L40.5 240H0v-30l119.5-89L0 32V0z"/>
+  <path fill="#c8102e" d="M212 140.5 320 220v20l-135.5-99.5zm-92 10 3 17.5-96 72H0zM320 0v1.5l-124.5 94 1-22L295 0zM0 0l119.5 88h-30L0 21z"/>
+  <path fill="#fff" d="M120.5 0v240h80V0zM0 80v80h320V80z"/>
+  <path fill="#c8102e" d="M0 96.5v48h320v-48zM136.5 0v240h48V0z"/>
+</svg>

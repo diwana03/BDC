@@ -1,1 +1,16 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBpZD0iZmxhZy1pY29ucy1zdCIgdmlld0JveD0iMCAwIDY0MCA0ODAiPgogIDxwYXRoIGZpbGw9IiMxMmFkMmIiIGQ9Ik0wIDBoNjQwdjQ4MEgweiIvPgogIDxwYXRoIGZpbGw9IiNmZmNlMDAiIGQ9Ik0wIDEzNy4xaDY0MFYzNDNIMHoiLz4KICA8cGF0aCBmaWxsPSIjZDIxMDM0IiBkPSJNMCAwdjQ4MGwyNDAtMjQwIi8+CiAgPGcgaWQ9InN0LWMiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDM1MS42IDI0MClzY2FsZSguMzQyODYpIj4KICAgIDxnIGlkPSJzdC1iIj4KICAgICAgPHBhdGggaWQ9InN0LWEiIGZpbGw9IiMwMDAwMDEiIGQ9Ik0wLTIwMFYwaDEwMCIgdHJhbnNmb3JtPSJyb3RhdGUoMTggMCAtMjAwKSIvPgogICAgICA8dXNlIHhsaW5rOmhyZWY9IiNzdC1hIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB0cmFuc2Zvcm09InNjYWxlKC0xIDEpIi8+CiAgICA8L2c+CiAgICA8dXNlIHhsaW5rOmhyZWY9IiNzdC1iIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB0cmFuc2Zvcm09InJvdGF0ZSg3MikiLz4KICAgIDx1c2UgeGxpbms6aHJlZj0iI3N0LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHRyYW5zZm9ybT0icm90YXRlKDE0NCkiLz4KICAgIDx1c2UgeGxpbms6aHJlZj0iI3N0LWIiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHRyYW5zZm9ybT0icm90YXRlKC0xNDQpIi8+CiAgICA8dXNlIHhsaW5rOmhyZWY9IiNzdC1iIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB0cmFuc2Zvcm09InJvdGF0ZSgtNzIpIi8+CiAgPC9nPgogIDx1c2UgeGxpbms6aHJlZj0iI3N0LWMiIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHg9IjcwMCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTUyMy4yKSIvPgo8L3N2Zz4K
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="flag-icons-st" viewBox="0 0 640 480">
+  <path fill="#12ad2b" d="M0 0h640v480H0z"/>
+  <path fill="#ffce00" d="M0 137.1h640V343H0z"/>
+  <path fill="#d21034" d="M0 0v480l240-240"/>
+  <g id="st-c" transform="translate(351.6 240)scale(.34286)">
+    <g id="st-b">
+      <path id="st-a" fill="#000001" d="M0-200V0h100" transform="rotate(18 0 -200)"/>
+      <use xlink:href="#st-a" width="100%" height="100%" transform="scale(-1 1)"/>
+    </g>
+    <use xlink:href="#st-b" width="100%" height="100%" transform="rotate(72)"/>
+    <use xlink:href="#st-b" width="100%" height="100%" transform="rotate(144)"/>
+    <use xlink:href="#st-b" width="100%" height="100%" transform="rotate(-144)"/>
+    <use xlink:href="#st-b" width="100%" height="100%" transform="rotate(-72)"/>
+  </g>
+  <use xlink:href="#st-c" width="100%" height="100%" x="700" transform="translate(-523.2)"/>
+</svg>

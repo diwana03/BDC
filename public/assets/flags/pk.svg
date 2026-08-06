@@ -1,1 +1,15 @@
-PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLXBrIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9InBrLWEiPgogICAgICA8cGF0aCBmaWxsLW9wYWNpdHk9Ii43IiBkPSJNLTUyLjMgMGg2ODIuNnY1MTJILTUyLjN6Ii8+CiAgICA8L2NsaXBQYXRoPgogIDwvZGVmcz4KICA8ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZS13aWR0aD0iMXB0IiBjbGlwLXBhdGg9InVybCgjcGstYSkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ5KXNjYWxlKC45Mzc1KSI+CiAgICA8cGF0aCBmaWxsPSIjMGM1OTBiIiBkPSJNLTk1IDBoNzY4djUxMkgtOTV6Ii8+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNLTk1IDBIOTcuNXY1MTJILTk1eiIvPgogICAgPGcgZmlsbD0iI2ZmZiI+CiAgICAgIDxwYXRoIGQ9Im00MDMuNyAyMjUuNC0zMS4yLTYuNi0xNi40IDI3LjMtMy40LTMxLjYtMzEtNy4yIDI5LTEzLTIuNy0zMS43IDIxLjQgMjMuNiAyOS4zLTEyLjQtMTUuOSAyNy42IDIxIDI0eiIvPgogICAgICA8cGF0aCBkPSJNNDE1LjQgMzA2YTEyMSAxMjEgMCAwIDEtMTYxLjMgNTkuNCAxMjIgMTIyIDAgMCAxLTU5LjUtMTYyLjFBMTE5IDExOSAwIDAgMSAyNjYgMTM5YTE1NiAxNTYgMCAwIDAtMTEuOCAxMC45QTExMi4zIDExMi4zIDAgMCAwIDQxNS41IDMwNnoiLz4KICAgIDwvZz4KICA8L2c+Cjwvc3ZnPgo=
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-pk" viewBox="0 0 640 480">
+  <defs>
+    <clipPath id="pk-a">
+      <path fill-opacity=".7" d="M-52.3 0h682.6v512H-52.3z"/>
+    </clipPath>
+  </defs>
+  <g fill-rule="evenodd" stroke-width="1pt" clip-path="url(#pk-a)" transform="translate(49)scale(.9375)">
+    <path fill="#0c590b" d="M-95 0h768v512H-95z"/>
+    <path fill="#fff" d="M-95 0H97.5v512H-95z"/>
+    <g fill="#fff">
+      <path d="m403.7 225.4-31.2-6.6-16.4 27.3-3.4-31.6-31-7.2 29-13-2.7-31.7 21.4 23.6 29.3-12.4-15.9 27.6 21 24z"/>
+      <path d="M415.4 306a121 121 0 0 1-161.3 59.4 122 122 0 0 1-59.5-162.1A119 119 0 0 1 266 139a156 156 0 0 0-11.8 10.9A112.3 112.3 0 0 0 415.5 306z"/>
+    </g>
+  </g>
+</svg>
