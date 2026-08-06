@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__).'/bootstrap.php';
+require dirname(__DIR__).'/app/Support/result_repository_links.php';
 
 use App\Core\Database;
 
@@ -14,6 +15,7 @@ $eventId=max(0,(int)($_GET['event']??0));
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY event_date DESC,id DESC")->fetchAll();
 
 $rows=[];
+$repositoryRows=[];
 if($segment==='repository'){
  $sql="SELECT d.*,e.name event_name,e.event_date
        FROM bdc_result_documents d
@@ -24,6 +26,21 @@ if($segment==='repository'){
  if($query!==''){$sql.=' AND (d.title LIKE :document_query OR e.name LIKE :event_query)';$params['document_query']='%'.$query.'%';$params['event_query']='%'.$query.'%';}
  $sql.=' ORDER BY COALESCE(e.event_date,DATE(d.created_at)) DESC,d.id DESC';
  $stmt=$pdo->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll();
+ foreach($rows as $row){
+  $category=(string)($row['document_category']??'');
+  if(!in_array($category,['heats','finals','points'],true))continue;
+  $groupKey=!empty($row['event_id'])?'event:'.(int)$row['event_id']:'document:'.(int)$row['id'];
+  if(!isset($repositoryRows[$groupKey])){
+   $repositoryRows[$groupKey]=[
+    'event_name'=>(string)($row['event_name']?:$row['title']),
+    'event_date'=>(string)($row['event_date']??''),
+    'documents'=>[],
+   ];
+  }
+  if(!isset($repositoryRows[$groupKey]['documents'][$category])){
+   $repositoryRows[$groupKey]['documents'][$category]=$row;
+  }
+ }
 }else{
  $sql="SELECT r.*,c.exact_name,c.bdc_id,e.name event_name,e.event_date
        FROM bdc_participant_results r
@@ -37,13 +54,9 @@ if($segment==='repository'){
  $stmt=$pdo->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll();
 }
 
-function repositoryUrl(array $row):string{
- $storage=trim((string)($row['storage_path']??''));
- if($storage!=='')return url('/result-file.php?file='.rawurlencode(basename($storage)));
- $target=trim((string)($row['url']??''));
- if($target==='')return '#';
- if(preg_match('#^https?://#i',$target))return $target;
- return url('/'.ltrim($target,'/'));
+function repositoryUrl(array $row):?string{
+ $link=repository_document_link($row,dirname(__DIR__),rtrim(url('/'),'/'));
+ return !empty($link['exists'])?(string)$link['url']:null;
 }
 ?><!doctype html>
 <html lang="en">
@@ -63,9 +76,12 @@ function repositoryUrl(array $row):string{
   <a class="nav-link <?=$segment==='repository'?'active':''?>" href="<?=e(url('/results/?segment=repository'))?>">Result Repository</a>
  </nav>
  <section class="card results-card filter-card mb-4"><div class="card-body"><form method="get" class="row g-3 align-items-end"><input type="hidden" name="segment" value="<?=e($segment)?>"><div class="col-md-6"><label class="form-label">Search</label><input class="form-control" name="q" value="<?=e($query)?>" placeholder="<?= $segment==='repository'?'Document or event name':'Competitor name, BDC ID or event' ?>"></div><div class="col-md-4"><label class="form-label">Event</label><select class="form-select" name="event"><option value="0">All events</option><?php foreach($events as $event):?><option value="<?=(int)$event['id']?>" <?=$eventId===(int)$event['id']?'selected':''?>><?=e($event['name'])?><?=!empty($event['event_date'])?' · '.e($event['event_date']):''?></option><?php endforeach;?></select></div><div class="col-md-2"><button class="btn btn-dark w-100">Search</button></div></form></div></section>
- <section class="card results-card"><div class="card-header bg-white d-flex justify-content-between align-items-center"><strong><?=count($rows)?> result<?=count($rows)===1?'':'s'?></strong><?php if($query!==''||$eventId>0):?><a href="<?=e(url('/results/?segment='.$segment))?>">Clear filters</a><?php endif;?></div>
+ <section class="card results-card"><div class="card-header bg-white d-flex justify-content-between align-items-center"><strong><?=count($segment==='repository'?$repositoryRows:$rows)?> result<?=count($segment==='repository'?$repositoryRows:$rows)===1?'':'s'?></strong><?php if($query!==''||$eventId>0):?><a href="<?=e(url('/results/?segment='.$segment))?>">Clear filters</a><?php endif;?></div>
  <?php if($segment==='repository'):?>
-  <div class="list-group list-group-flush"><?php foreach($rows as $row):?><a class="list-group-item list-group-item-action p-4 d-flex gap-3 align-items-start" href="<?=e(repositoryUrl($row))?>" target="_blank" rel="noopener"><span class="document-icon">📄</span><span class="flex-grow-1"><strong class="d-block"><?=e($row['title'])?></strong><span class="text-muted small"><?=e($row['event_name']?:'BDC Official Result')?><?=!empty($row['event_date'])?' · '.e($row['event_date']):''?> · <?=e(strtoupper((string)$row['file_type']))?></span></span><span aria-hidden="true">↗</span></a><?php endforeach;?><?php if(!$rows):?><div class="text-center text-muted py-5">No published result documents found.</div><?php endif;?></div>
+  <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Event</th><th>Heats</th><th>Final</th><th>Points</th></tr></thead><tbody>
+  <?php foreach($repositoryRows as $repositoryRow):?><tr><td><strong><?=e($repositoryRow['event_name'])?></strong><?php if($repositoryRow['event_date']!==''):?><div class="small text-muted"><?=e($repositoryRow['event_date'])?></div><?php endif;?></td>
+  <?php foreach(['heats'=>'Heats','finals'=>'Final','points'=>'Points'] as $category=>$label):$document=$repositoryRow['documents'][$category]??null;$documentUrl=$document?repositoryUrl($document):null;?><td><?php if($documentUrl):?><a class="btn btn-sm btn-outline-dark" href="<?=e($documentUrl)?>" target="_blank" rel="noopener">View <?=$label?></a><?php else:?><span class="text-muted">—</span><?php endif;?></td><?php endforeach;?></tr><?php endforeach;?>
+  <?php if(!$repositoryRows):?><tr><td colspan="4" class="text-center text-muted py-5">No published result documents found.</td></tr><?php endif;?></tbody></table></div>
  <?php else:?>
   <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Date</th><th>Competitor</th><th>Event</th><th>Division</th><th>Role</th><th>Placement</th><th>Partner</th><th class="text-end">Points</th></tr></thead><tbody><?php foreach($rows as $row):?><tr><td><?=e($row['event_date']?:'—')?></td><td><a class="fw-semibold text-dark" href="<?=e(url('/competitor/?id='.(int)$row['competitor_id']))?>"><?=e($row['exact_name'])?></a><div class="small text-muted"><?=e($row['bdc_id'])?></div></td><td><?=e($row['event_name'])?></td><td><?=e(ucwords(str_replace('_',' ',(string)$row['division'])))?></td><td><?=e(ucfirst((string)$row['dance_role']))?></td><td><?=e($row['placement']?:'—')?></td><td><?=e($row['partner_name']?:'—')?></td><td class="text-end fw-semibold"><?=e((string)(float)$row['points_awarded'])?></td></tr><?php endforeach;?><?php if(!$rows):?><tr><td colspan="8" class="text-center text-muted py-5">No participant results found.</td></tr><?php endif;?></tbody></table></div>
  <?php endif;?>

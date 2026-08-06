@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev7",
-  "build": 2337,
+  "version": "2.3.3-dev8",
+  "build": 2338,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Result Repository restored to one event row with Heats, Final and Points links",
+    "Repository document links resolved through protected and legacy storage handling",
     "Restored public Participant Results and Result Repository controller",
     "Protected repository links for result files stored outside the public portal",
     "Bluehost-compatible script-based Production database backup before deployment",
