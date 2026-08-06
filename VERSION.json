@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev9",
-  "build": 2339,
+  "version": "2.3.3-dev10",
+  "build": 2340,
   "status": "development",
   "release_date": "2026-08-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Backward-compatible protected Results Repository storage for preserved environment configurations",
     "Mobile-safe scoring dashboard and approval publishing modal",
     "Result Repository restored to one event row with Heats, Final and Points links",
     "Repository document links resolved through protected and legacy storage handling",
