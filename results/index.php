@@ -38,7 +38,13 @@ if($segment==='repository'){
     'documents'=>[],
    ];
   }
-  if(!isset($repositoryRows[$groupKey]['documents'][$category])){
+  $isBossMarchCorrectionSlot=(string)($row['event_date']??'')==='2025-03-08'
+   && preg_match('/\\b(?:BOSS|BASS)\\b/i',(string)(($row['event_name']??'').' '.($row['title']??'')))===1
+   && in_array($category,['finals','points'],true);
+  // The BOSS/BASS 8 March correction was uploaded before the currently linked duplicate.
+  // Rows are newest first, so replacing while iterating deliberately selects the alternate
+  // (oldest) Correction-based FINAL and POINTS documents for this one event only.
+  if(!isset($repositoryRows[$groupKey]['documents'][$category])||$isBossMarchCorrectionSlot){
    $repositoryRows[$groupKey]['documents'][$category]=$row;
   }
  }
@@ -80,7 +86,7 @@ function repositoryUrl(array $row):?string{
 <title><?= $segment==='repository'?'Result Repository':'Participant Results' ?> | BDC</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="<?=e(url('/public/assets/css/app.css'))?>" rel="stylesheet">
-<style>body{background:#f5f6f8}.results-card{border:0;border-radius:16px;box-shadow:0 8px 28px rgba(15,23,42,.08)}.hero{background:linear-gradient(135deg,#111827,#27272a);color:#fff}.filter-card{margin-top:-28px}.document-icon{font-size:1.5rem}.points-summary{border-left:4px solid #111827}.points-total{font-size:1.35rem;font-weight:700}.points-label{font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}@media(max-width:575.98px){.points-total{font-size:1.15rem}}</style>
+<style>body{background:#f5f6f8}.results-card{border:0;border-radius:16px;box-shadow:0 8px 28px rgba(15,23,42,.08)}.hero{background:linear-gradient(135deg,#111827,#27272a);color:#fff}.filter-card{margin-top:0}.document-icon{font-size:1.5rem}.points-summary{border-left:4px solid #111827}.points-total{font-size:1.35rem;font-weight:700}.points-label{font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}@media(max-width:575.98px){.points-total{font-size:1.15rem}}</style>
 </head>
 <body>
 <section class="hero py-5"><div class="container d-flex justify-content-between align-items-start gap-3 flex-wrap"><div><div class="text-uppercase small opacity-75">Bachata Dance Council</div><h1 class="display-6 fw-bold mb-2"><?= $segment==='repository'?'Result Repository':'Participant Results' ?></h1><p class="mb-0 opacity-75"><?= $segment==='repository'?'Official BDC competition documents.':'Search individual BDC competition history.' ?></p></div><a class="btn btn-outline-light" href="<?=e(url('/'))?>">BDC Home</a></div></section>
