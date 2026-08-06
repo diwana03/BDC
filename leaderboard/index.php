@@ -106,7 +106,7 @@ foreach($stmt->fetchAll() as $row){
 
  if($points<=0.0)continue;
 
- $eligibility=$division==='all'?['eligible'=>true,'reason'=>'']:DivisionProgressionService::eligibilityFor(
+ $eligibility=$division==='all'?['eligible'=>true,'reason'=>'','promoted_to'=>null]:DivisionProgressionService::eligibilityFor(
   $division,
   $novice,
   $intermediate,
@@ -121,8 +121,11 @@ foreach($stmt->fetchAll() as $row){
  if(!$eligible && !$showOut)continue;
 
  $row['eligible']=$eligible;
- $row['status_label']=$manualOut
-  ?'Moved by BDC ruling'
+ $promotedTo=$manualOut
+  ?match($division){'novice'=>'intermediate','intermediate'=>'advanced',default=>null}
+  :$eligibility['promoted_to'];
+ $row['status_label']=$promotedTo!==null
+  ?'Promoted to '.DivisionProgressionService::label($promotedTo)
   :($eligibility['eligible']?'In Division':ucfirst($eligibility['reason']));
  $row['total_points']=$points;
  $rows[]=$row;
