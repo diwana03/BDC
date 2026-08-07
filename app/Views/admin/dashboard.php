@@ -2,6 +2,7 @@
 use App\Services\ReleaseManagerService;
 $bdcEnvironment=ReleaseManagerService::environment();
 $bdcVersion=ReleaseManagerService::versionInfo();
+$bdcEnvironmentClass=$bdcEnvironment==='staging'?'admin-env-staging':'admin-env-production';
 ?>
 <!doctype html>
 <html lang="en">
@@ -10,9 +11,10 @@ $bdcVersion=ReleaseManagerService::versionInfo();
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard | BDC Admin</title>
 <link rel="stylesheet" href="<?= e(url('public/assets/css/app.css?v=203')) ?>">
+<link rel="stylesheet" href="<?= e(url('public/assets/css/bdc-brand-theme.css?v=1')) ?>">
 </head>
-<body class="admin-v203">
-<div style="padding:8px 12px;text-align:center;font-weight:800;letter-spacing:.08em;background:<?=$bdcEnvironment==='staging'?'#f59e0b':'#15803d'?>;color:<?=$bdcEnvironment==='staging'?'#111':'#fff'?>;">
+<body class="admin-v203 <?=e($bdcEnvironmentClass)?>">
+<div class="admin-environment-banner" style="padding:8px 12px;text-align:center;font-weight:800;letter-spacing:.08em;">
  <?=e(ReleaseManagerService::environmentLabel())?> · VERSION <?=e((string)($bdcVersion['version']??ReleaseManagerService::VERSION))?>
 </div>
 <div class="admin-layout-v203">
