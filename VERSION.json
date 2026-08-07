@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev36",
-  "build": 2366,
+  "version": "2.3.3-dev37",
+  "build": 2367,
   "status": "development",
   "release_date": "2026-08-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Public Portal restores the original navy and gold action colors while retaining the BDC red, black and white branded shell",
     "BDC red, black and white public Portal branding with Home navigation and environment-aware Production/Staging Admin themes",
     "Operational Automatic Scoring module with numeric judge validation, averages, callback selection, tie escalation, Relative Placement Finals and review-before-publish controls",
     "Out-of-division leaderboard renders the same promoted-division badge for point, history and manual rulings",
