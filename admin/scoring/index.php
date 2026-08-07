@@ -40,4 +40,7 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
     exit;
 }
 
+ob_start(static function(string $html):string{
+    return str_replace('<option value="all_star">All Star</option>','',$html);
+});
 require __DIR__.'/core.php';
