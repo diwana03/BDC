@@ -6,6 +6,7 @@
 <title>Bachata Dance Council Portal</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="<?= e(url('/public/assets/css/app.css')) ?>?v=0.9.0" rel="stylesheet">
+<link href="<?= e(url('/public/assets/css/bdc-brand-theme.css')) ?>?v=1" rel="stylesheet">
 </head>
 <body class="portal-home portal-home-compact">
 <nav class="navbar navbar-expand-lg navbar-dark portal-navbar sticky-top">
@@ -16,7 +17,8 @@
       </span>
       <span>Bachata Dance Council Portal</span>
     </a>
-    <div class="ms-auto">
+    <div class="ms-auto portal-top-actions">
+      <a class="btn btn-outline-light btn-sm px-3 portal-home-link" href="https://bachatadancecouncil.com/">⌂ Home</a>
       <?php if ($user): ?>
         <a class="btn btn-outline-light btn-sm px-3" href="<?= e(url('/admin/')) ?>">Dashboard</a>
       <?php else: ?>
