@@ -1,30 +1,30 @@
 /* BDC brand theme: public portal + environment-aware admin dashboard */
-:root{--bdc-red:#c8102e;--bdc-red-dark:#8f0b22;--bdc-red-deep:#5e0718;--bdc-black:#171717;--bdc-grey:#f5f5f5;--bdc-line:#dedede;--bdc-muted:#69707c}
+:root{--bdc-red:#c8102e;--bdc-red-dark:#8f0b22;--bdc-red-deep:#5e0718;--bdc-black:#171717;--bdc-navy:#172131;--bdc-navy-light:#202d42;--bdc-gold:#d7a936;--bdc-gold-light:#e4bb55;--bdc-grey:#f5f5f5;--bdc-line:#dedede;--bdc-muted:#69707c}
 
-/* Public portal */
+/* Public portal: BDC shell with original navy/gold actions */
 .portal-home{background:#f6f6f7;color:#1d1d1f}
 .portal-navbar{background:linear-gradient(100deg,#171717 0%,#2a1117 72%,#5e0718 100%);border-bottom:4px solid var(--bdc-red);box-shadow:0 3px 18px rgba(0,0,0,.18)}
 .portal-navbar .navbar-brand{color:#fff!important}
 .portal-brand-logo-wrap{border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .portal-top-actions{display:flex;align-items:center;gap:.6rem}
 .portal-home-link{border-color:rgba(255,255,255,.72)!important;color:#fff!important;font-weight:700}
-.portal-home-link:hover,.portal-home-link:focus{background:#fff!important;border-color:#fff!important;color:var(--bdc-red)!important}
+.portal-home-link:hover,.portal-home-link:focus{background:#fff!important;border-color:#fff!important;color:var(--bdc-navy)!important}
 .portal-hero{background:linear-gradient(135deg,#111 0%,#252525 72%,#4b0815 100%);border-bottom:8px solid var(--bdc-red);color:#fff}
 .portal-hero h1{color:#fff}
 .portal-hero p{color:#ececec}
 .portal-tabs{border-color:#ddd;box-shadow:0 .75rem 2rem rgba(0,0,0,.08)}
-.portal-tab{color:#2d2d2f}
-.portal-tab:hover{background:#fff4f5;color:var(--bdc-red)}
-.portal-tab-active,.portal-tab-active:hover{background:var(--bdc-red);color:#fff}
-.portal-welcome-label,.latest-event-date{color:var(--bdc-red)}
-.portal-welcome-panel h2{color:#171717}
+.portal-tab{color:#253044}
+.portal-tab:hover{background:#f5f1e7;color:#131a25}
+.portal-tab-active,.portal-tab-active:hover{background:var(--bdc-navy);color:#fff}
+.portal-welcome-label,.latest-event-date{color:#a77a13}
+.portal-welcome-panel h2{color:var(--bdc-navy)}
 .portal-welcome-panel{border-color:#e1e1e1;box-shadow:0 .5rem 1.5rem rgba(0,0,0,.05)}
-.btn-gold{background:var(--bdc-red);border-color:var(--bdc-red);color:#fff}
-.btn-gold:hover,.btn-gold:focus{background:var(--bdc-red-dark);border-color:var(--bdc-red-dark);color:#fff}
+.btn-gold{background:var(--bdc-gold);border-color:var(--bdc-gold);color:var(--bdc-navy)}
+.btn-gold:hover,.btn-gold:focus{background:var(--bdc-gold-light);border-color:var(--bdc-gold-light);color:#101722}
 .latest-event-card{border-color:#e2e2e2;box-shadow:0 .55rem 1.5rem rgba(0,0,0,.06)}
-.latest-event-card .btn-dark{background:#171717;border-color:#171717}
-.latest-event-card .btn-dark:hover{background:var(--bdc-red);border-color:var(--bdc-red)}
-.career-leaders-card .badge.text-bg-dark{background:var(--bdc-red)!important}
+.latest-event-card .btn-dark{background:var(--bdc-navy);border-color:var(--bdc-navy)}
+.latest-event-card .btn-dark:hover{background:var(--bdc-navy-light);border-color:var(--bdc-navy-light)}
+.career-leaders-card .badge.text-bg-dark{background:var(--bdc-navy)!important}
 .portal-footer{background:#171717;border-top:5px solid var(--bdc-red);color:rgba(255,255,255,.75)}
 
 /* Shared admin base */
