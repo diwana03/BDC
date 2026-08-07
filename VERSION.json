@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev40",
-  "build": 2370,
+  "version": "2.3.3-dev41",
+  "build": 2371,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Release Manager requires real worker-backed Staging deployment proof before a candidate can become Tested on Staging or unlock Production",
     "Environment-isolated Result Repository resolution keeps Production on Production storage and Staging on Staging storage while restoring legacy historical document links by filename",
     "Release Manager exact-Staging guard requires a successful Staging deployment job for the same candidate and exact commit SHA before Tested on Staging or Production approval can be recorded",
     "Special-category scoring for Bachata Rising, Bachata Open and Bachata Invitational with fixed points mapped to role-specific Novice, Intermediate or Advanced BDC progression buckets and unchanged BDC ID assignment",
