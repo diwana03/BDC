@@ -5,6 +5,21 @@ $mode=(string)($_GET['mode']??'');
 $roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
 
 if($mode==='special'){
+    if($_SERVER['REQUEST_METHOD']==='POST' && (string)($_POST['action']??'')==='create_special_round'){
+        $_POST['scoring_mode']='manual';
+    }
+    if($roundId===0){
+        ob_start();
+        require __DIR__.'/special.php';
+        $specialHtml=(string)ob_get_clean();
+        $specialHtml=str_replace(
+            '<div class="col-md-4"><label class="form-label">Scoring Mode</label><select class="form-select" name="scoring_mode"><option value="manual">Manual Scoring</option><option value="automated">Automatic Scoring</option></select></div>',
+            '<div class="col-md-4"><label class="form-label">Scoring Mode</label><input type="hidden" name="scoring_mode" value="manual"><div class="form-control bg-light">Manual Scoring</div><div class="form-text">Special-category automatic scoring can be added in a later release.</div></div>',
+            $specialHtml
+        );
+        echo $specialHtml;
+        exit;
+    }
     require __DIR__.'/special.php';
     exit;
 }
