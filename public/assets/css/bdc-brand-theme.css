@@ -1,0 +1,57 @@
+/* BDC brand theme: public portal + environment-aware admin dashboard */
+:root{--bdc-red:#c8102e;--bdc-red-dark:#8f0b22;--bdc-red-deep:#5e0718;--bdc-black:#171717;--bdc-grey:#f5f5f5;--bdc-line:#dedede;--bdc-muted:#69707c}
+
+/* Public portal */
+.portal-home{background:#f6f6f7;color:#1d1d1f}
+.portal-navbar{background:linear-gradient(100deg,#171717 0%,#2a1117 72%,#5e0718 100%);border-bottom:4px solid var(--bdc-red);box-shadow:0 3px 18px rgba(0,0,0,.18)}
+.portal-navbar .navbar-brand{color:#fff!important}
+.portal-brand-logo-wrap{border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.portal-top-actions{display:flex;align-items:center;gap:.6rem}
+.portal-home-link{border-color:rgba(255,255,255,.72)!important;color:#fff!important;font-weight:700}
+.portal-home-link:hover,.portal-home-link:focus{background:#fff!important;border-color:#fff!important;color:var(--bdc-red)!important}
+.portal-hero{background:linear-gradient(135deg,#111 0%,#252525 72%,#4b0815 100%);border-bottom:8px solid var(--bdc-red);color:#fff}
+.portal-hero h1{color:#fff}
+.portal-hero p{color:#ececec}
+.portal-tabs{border-color:#ddd;box-shadow:0 .75rem 2rem rgba(0,0,0,.08)}
+.portal-tab{color:#2d2d2f}
+.portal-tab:hover{background:#fff4f5;color:var(--bdc-red)}
+.portal-tab-active,.portal-tab-active:hover{background:var(--bdc-red);color:#fff}
+.portal-welcome-label,.latest-event-date{color:var(--bdc-red)}
+.portal-welcome-panel h2{color:#171717}
+.portal-welcome-panel{border-color:#e1e1e1;box-shadow:0 .5rem 1.5rem rgba(0,0,0,.05)}
+.btn-gold{background:var(--bdc-red);border-color:var(--bdc-red);color:#fff}
+.btn-gold:hover,.btn-gold:focus{background:var(--bdc-red-dark);border-color:var(--bdc-red-dark);color:#fff}
+.latest-event-card{border-color:#e2e2e2;box-shadow:0 .55rem 1.5rem rgba(0,0,0,.06)}
+.latest-event-card .btn-dark{background:#171717;border-color:#171717}
+.latest-event-card .btn-dark:hover{background:var(--bdc-red);border-color:var(--bdc-red)}
+.career-leaders-card .badge.text-bg-dark{background:var(--bdc-red)!important}
+.portal-footer{background:#171717;border-top:5px solid var(--bdc-red);color:rgba(255,255,255,.75)}
+
+/* Shared admin base */
+.admin-v203{--admin-accent:#c8102e;--admin-accent-dark:#8f0b22;--admin-accent-soft:#fff2f4;--admin-shell:#4f0715;--admin-shell-deep:#30030c;--admin-banner:#171717;--admin-banner-text:#fff}
+.admin-v203 .admin-topbar-v203{background:linear-gradient(100deg,var(--admin-shell-deep),var(--admin-shell));box-shadow:0 4px 18px rgba(0,0,0,.2)}
+.admin-v203 .admin-sidebar-v203{background:linear-gradient(180deg,var(--admin-shell) 0%,var(--admin-shell-deep) 100%);border-right:0;color:#fff}
+.admin-v203 .admin-sidebar-v203 nav a{color:rgba(255,255,255,.82)}
+.admin-v203 .admin-sidebar-v203 nav a>span{color:rgba(255,255,255,.72)}
+.admin-v203 .admin-sidebar-v203 nav a:hover{background:rgba(255,255,255,.09);color:#fff}
+.admin-v203 .admin-sidebar-v203 nav a.active{background:#fff;color:var(--admin-accent);border-left:4px solid var(--admin-accent)}
+.admin-v203 .admin-sidebar-v203 nav a.active>span{color:var(--admin-accent)}
+.admin-v203 .admin-sidebar-label-v203{color:rgba(255,255,255,.55)}
+.admin-v203 .admin-sidebar-v203 nav a em{background:var(--admin-accent)}
+.admin-v203 .admin-system-card-v203{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff}
+.admin-v203 .admin-system-card-v203 small{color:rgba(255,255,255,.6)}
+.admin-v203 .admin-topbar-home-v203:hover,.admin-v203 .admin-topbar-logout-v203:hover{color:var(--admin-accent)}
+.admin-v203 .metric-orange{border-color:#efc9cf}.admin-v203 .metric-orange .metric-icon-v203{background:var(--admin-accent-soft);color:var(--admin-accent)}
+.admin-v203 .admin-card-head-v203 a{color:var(--admin-accent)}
+
+/* Production: unmistakable BDC red/black */
+.admin-v203.admin-env-production{--admin-accent:#c8102e;--admin-accent-dark:#8f0b22;--admin-accent-soft:#fff2f4;--admin-shell:#5a0716;--admin-shell-deep:#2d030b;--admin-banner:#171717;--admin-banner-text:#fff}
+.admin-v203.admin-env-production .admin-environment-banner{background:#171717!important;color:#fff!important;border-bottom:5px solid #c8102e}
+
+/* Staging: amber/gold so it cannot be confused with production */
+.admin-v203.admin-env-staging{--admin-accent:#d79000;--admin-accent-dark:#9d6700;--admin-accent-soft:#fff8e6;--admin-shell:#6a4700;--admin-shell-deep:#3f2a00;--admin-banner:#f59e0b;--admin-banner-text:#171717}
+.admin-v203.admin-env-staging .admin-environment-banner{background:#f59e0b!important;color:#171717!important;border-bottom:5px solid #7a4e00}
+.admin-v203.admin-env-staging .admin-topbar-v203{background:linear-gradient(100deg,#3f2a00,#765000)}
+.admin-v203.admin-env-staging .admin-sidebar-v203{background:linear-gradient(180deg,#6a4700 0%,#3f2a00 100%)}
+
+@media(max-width:575.98px){.portal-top-actions{gap:.35rem}.portal-top-actions .btn{padding-left:.65rem!important;padding-right:.65rem!important}.portal-brand span:last-child{max-width:175px;white-space:normal;line-height:1.1}}
