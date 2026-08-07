@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev38",
-  "build": 2368,
+  "version": "2.3.3-dev39",
+  "build": 2369,
   "status": "development",
-  "release_date": "2026-08-07",
+  "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Release Manager exact-Staging guard requires a successful Staging deployment job for the same candidate and exact commit SHA before Tested on Staging or Production approval can be recorded",
     "Special-category scoring for Bachata Rising, Bachata Open and Bachata Invitational with fixed points mapped to role-specific Novice, Intermediate or Advanced BDC progression buckets and unchanged BDC ID assignment",
     "Public Portal restores the original navy and gold action colors while retaining the BDC red, black and white branded shell",
     "BDC red, black and white public Portal branding with Home navigation and environment-aware Production/Staging Admin themes",
