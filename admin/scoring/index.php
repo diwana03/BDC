@@ -88,7 +88,7 @@ ob_start(static function(string $html)use($mode,$roundId):string{
             .'<div class="card-body p-3"><iframe title="Automatic Scoring Setup" src="automatic-setup.php?round_id='.$roundId.'" style="width:100%;height:720px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
         $judgePanel='<div class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel">'
             .'<div class="card-header bg-dark text-white d-flex justify-content-between align-items-center"><strong>Judge Browser Scoring</strong><span class="badge text-bg-light">AFTER CONFIRMATION</span></div>'
-            .'<div class="card-body p-3"><iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:610px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
+            .'<div class="card-body p-3"><iframe title="Automatic Judge Browser Control" src="judge-control-v2.php?round_id='.$roundId.'" style="width:100%;height:610px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
         $needle='<div class="card shadow-sm mb-4 border-primary" id="registration-desk-sync">';
         $html=str_replace($needle,$setup.$needle.$judgePanel,$html);
         $html=str_replace('</body>',"<script>document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.card').forEach(card=>{const h=card.querySelector('h2,h3');if(!h)return;const t=h.textContent.trim();if(t.startsWith('1. Judge Panel')||t.startsWith('2. Judge Scores'))card.style.display='none';});});</script></body>",$html);
