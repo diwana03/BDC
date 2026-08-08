@@ -55,18 +55,19 @@ function url(string $path = ''): string
 
 /*
  * Scoring Tests v2 sandbox route.
- * The dashboard menu keeps its existing URL, but the normal GET entry now opens
- * the production-parity sandbox. `?legacy=1` remains available temporarily for
- * side-by-side validation of the previous isolated test dashboard.
+ *
+ * Every normal request to the historical Scoring Tests entry point now opens
+ * the production-parity sandbox. This includes stale POSTs from an already-open
+ * legacy page, preventing old duplicated competitor-copy/scoring code from
+ * running accidentally. The previous dashboard remains available only through
+ * the explicit ?legacy=1 escape hatch while validation is completed.
  */
-$bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
 if (
-    $bdcBootstrapMethod === 'GET'
-    && empty($_GET['legacy'])
+    empty($_GET['legacy'])
     && preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
 ) {
-    header('Location: ' . url('admin/scoring-tests/sandbox.php'));
+    header('Location: ' . url('admin/scoring-tests/sandbox.php'), true, 303);
     exit;
 }
 
