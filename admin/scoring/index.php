@@ -76,10 +76,7 @@ ob_start(static function(string $html)use($mode,$roundId):string{
         $html
     );
 
-    /*
-     * Saved Rounds is shared by Manual and Automatic scoring. Make the stored
-     * scoring mode visible and preserve it when a round is reopened.
-     */
+    /* Saved Rounds shows and preserves the stored scoring mode. */
     if(str_contains($html,'<h2 class="h5">Saved Rounds</h2>')){
         $html=str_replace('Manual Scoring Engine · Event Round Workflow','BDC Scoring Engine · Event Round Workflow',$html);
         $html=str_replace('<th>Round</th><th>Status</th>','<th>Round</th><th>Scoring Mode</th><th>Status</th>',$html);
@@ -88,9 +85,7 @@ ob_start(static function(string $html)use($mode,$roundId):string{
             $pdo=App\Core\Database::connection();
             $modeRows=$pdo->query("SELECT id,scoring_mode FROM bdc_scoring_rounds")->fetchAll();
             $modeByRound=[];
-            foreach($modeRows as $modeRow){
-                $modeByRound[(int)$modeRow['id']]=(string)($modeRow['scoring_mode']??'manual');
-            }
+            foreach($modeRows as $modeRow)$modeByRound[(int)$modeRow['id']]=(string)($modeRow['scoring_mode']??'manual');
 
             $html=preg_replace_callback('/<tr>(.*?)<\/tr>/s',static function(array $match)use($modeByRound):string{
                 $row=$match[1];
@@ -102,7 +97,6 @@ ob_start(static function(string $html)use($mode,$roundId):string{
                 $badge=$isAutomatic?'text-bg-primary':'text-bg-dark';
                 $rowClass=$isAutomatic?'scoring-row-automatic':'scoring-row-manual';
                 $targetMode=$isAutomatic?'automated':'manual';
-
                 $row=preg_replace('/href="\?round_id='.$id.'"/','href="?mode='.$targetMode.'&round_id='.$id.'"',$row,1);
                 $modeCell='<td><span class="badge '.$badge.'">'.$label.'</span></td>';
                 $row=preg_replace('/^((?:.*?<\/td>){3})/s','$1'.$modeCell,$row,1);
@@ -112,7 +106,7 @@ ob_start(static function(string $html)use($mode,$roundId):string{
             $modeStyles='<style>.scoring-row-automatic>td{background:#eef5ff!important}.scoring-row-manual>td{background:#f7f7f8!important}.scoring-row-automatic:hover>td{background:#e3efff!important}.scoring-row-manual:hover>td{background:#eeeeef!important}</style>';
             $html=str_replace('</head>',$modeStyles.'</head>',$html);
         }catch(Throwable){
-            /* Display enhancement only; never block the scoring dashboard. */
+            /* UI enhancement only; never block scoring. */
         }
     }
 
@@ -122,21 +116,23 @@ ob_start(static function(string $html)use($mode,$roundId):string{
     }
 
     if($mode==='automated' && $roundId>0){
-        /*
-         * Automatic scoring intentionally keeps the existing core workflow.
-         * Registration Desk, competitors, bibs, judge setup and calculations are
-         * unchanged. We add only unlimited judge-row UI plus browser-link/live
-         * scoring controls.
-         */
-        $html=str_replace('Automatic Relative Placement Final','Automatic Scoring Engine · Same Registration Workflow',$html);
+        $html=str_replace('Automatic Relative Placement Final','Automatic Scoring Engine · Same Heats Workflow',$html);
         $html=str_replace(
             '<button class="btn btn-outline-primary">Save Judge Panel</button>',
             '<button type="button" class="btn btn-outline-secondary me-2" id="automaticAddJudge">+ Add Judge</button><button class="btn btn-outline-primary">Save Judge Panel</button>',
             $html
         );
 
+        /* Same Registration Desk entry point used by the Heats workflow. */
+        $registrationPanel='<section class="card shadow-sm mb-4 border-primary" id="automatic-registration-desk-panel"><div class="card-body p-3">'
+            .'<iframe title="Registration Desk" src="registration-desk-panel.php?round_id='.$roundId.'" style="width:100%;height:245px;border:0;border-radius:10px;background:#fff"></iframe>'
+            .'</div></section>';
+        $judgeNeedle='<section class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">1. Judge Panel</h2>';
+        if(str_contains($html,$judgeNeedle))$html=str_replace($judgeNeedle,$registrationPanel.$judgeNeedle,$html);
+
+        /* Browser links/live feed replace admin-entered Judge Scores in Automatic. */
         $browserPanel='<section class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel"><div class="card-body">'
-            .'<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Browser Links &amp; Live Scoring</h2><p class="text-muted small mb-0">Save the normal Judge Panel above. Secure links are then created for those same judges. Competitors and bibs continue to come from the normal Registration Desk.</p></div><span class="badge text-bg-dark">LIVE</span></div>'
+            .'<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Live Scoring</h2><p class="text-muted small mb-0">Judges score from their secure browser links. Use Copy, WhatsApp, Email or Open to send each link. Progress updates live and submitted scores lock automatically.</p></div><span class="badge text-bg-dark">LIVE</span></div>'
             .'<iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:690px;border:0;border-radius:10px;background:#fff"></iframe></div></section>';
         $html=str_replace('</main>',$browserPanel.'</main>',$html);
 
@@ -144,30 +140,38 @@ ob_start(static function(string $html)use($mode,$roundId):string{
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   const heading=[...document.querySelectorAll('h2')].find(h=>h.textContent.trim().startsWith('1. Judge Panel'));
-  if(!heading)return;
-  const section=heading.closest('section');
-  const tbody=section?section.querySelector('tbody'):null;
-  if(!tbody)return;
+  if(heading){
+    const section=heading.closest('section');
+    const tbody=section?section.querySelector('tbody'):null;
+    if(tbody){
+      const existing=[...tbody.querySelectorAll('tr')];
+      let lastPopulated=-1;
+      existing.forEach((row,index)=>{const input=row.querySelector('input[name^="judge_name"]');if(input&&input.value.trim()!=='')lastPopulated=index;});
+      const keep=Math.max(3,lastPopulated+1);
+      existing.forEach((row,index)=>{if(index>=keep&&row.querySelector('input[name^="judge_name"]')?.value.trim()==='')row.remove();});
 
-  /* Keep only three empty starter rows; preserve every populated saved row. */
-  const existing=[...tbody.querySelectorAll('tr')];
-  let lastPopulated=-1;
-  existing.forEach((row,index)=>{const input=row.querySelector('input[name^="judge_name"]');if(input&&input.value.trim()!=='')lastPopulated=index;});
-  const keep=Math.max(3,lastPopulated+1);
-  existing.forEach((row,index)=>{if(index>=keep&&row.querySelector('input[name^="judge_name"]')?.value.trim()==='')row.remove();});
+      const add=document.getElementById('automaticAddJudge');
+      if(add)add.addEventListener('click',function(){
+        const rows=[...tbody.querySelectorAll('tr')];
+        const index=rows.length;
+        const tr=document.createElement('tr');
+        tr.innerHTML='<td><input class="form-control" name="judge_name['+index+']" value="" placeholder="Judge name"></td>'+
+          '<td><select class="form-select" name="judge_scope['+index+']"><option value="all">All</option><option value="leader">Leader only</option><option value="follower">Follower only</option></select></td>'+
+          '<td><input class="form-check-input" type="radio" name="chief_index" value="'+index+'"></td>';
+        tbody.appendChild(tr);
+        tr.querySelector('input[name^="judge_name"]')?.focus();
+      });
+    }
+  }
 
-  const add=document.getElementById('automaticAddJudge');
-  if(!add)return;
-  add.addEventListener('click',function(){
-    const rows=[...tbody.querySelectorAll('tr')];
-    const index=rows.length;
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td><input class="form-control" name="judge_name['+index+']" value="" placeholder="Judge name"></td>'+
-      '<td><select class="form-select" name="judge_scope['+index+']"><option value="all">All</option><option value="leader">Leader only</option><option value="follower">Follower only</option></select></td>'+
-      '<td><input class="form-check-input" type="radio" name="chief_index" value="'+index+'"></td>';
-    tbody.appendChild(tr);
-    tr.querySelector('input[name^="judge_name"]')?.focus();
-  });
+  /* Automatic uses the same setup as Heats, but judges enter scores themselves. */
+  const scoreHeading=[...document.querySelectorAll('h2')].find(h=>h.textContent.trim().startsWith('2. Judge Scores'));
+  const scoreSection=scoreHeading?scoreHeading.closest('section'):null;
+  const livePanel=document.getElementById('automatic-judge-browser-panel');
+  if(scoreSection&&livePanel){
+    scoreSection.parentNode.insertBefore(livePanel,scoreSection);
+    scoreSection.remove();
+  }
 });
 </script>
 JS;
