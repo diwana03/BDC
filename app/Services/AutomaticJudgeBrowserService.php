@@ -9,10 +9,21 @@ use RuntimeException;
 
 final class AutomaticJudgeBrowserService
 {
+    public static function isSetupConfirmed(PDO $pdo,int $roundId):bool
+    {
+        try{
+            $stmt=$pdo->prepare('SELECT confirmed_at FROM bdc_scoring_round_setup WHERE round_id=:round LIMIT 1');
+            $stmt->execute(['round'=>$roundId]);
+            return (bool)$stmt->fetchColumn();
+        }catch(\Throwable){
+            return false;
+        }
+    }
+
     public static function syncRound(PDO $pdo,int $roundId):array
     {
         $round=self::round($pdo,$roundId);
-        if(($round['scoring_mode']??'manual')!=='automated')return [];
+        if(($round['scoring_mode']??'manual')!=='automated'||!self::isSetupConfirmed($pdo,$roundId))return [];
         $judges=$pdo->prepare('SELECT id,judge_name,judge_order,is_chief,scoring_scope FROM bdc_scoring_judges WHERE round_id=:round ORDER BY judge_order');
         $judges->execute(['round'=>$roundId]);
         $items=[];
@@ -29,6 +40,7 @@ final class AutomaticJudgeBrowserService
 
     public static function regenerate(PDO $pdo,int $roundId,int $judgeId):string
     {
+        if(!self::isSetupConfirmed($pdo,$roundId))throw new RuntimeException('Confirm judges and competitors before generating judge links.');
         $stmt=$pdo->prepare('SELECT id FROM bdc_scoring_judges WHERE id=:judge AND round_id=:round');
         $stmt->execute(['judge'=>$judgeId,'round'=>$roundId]);
         if(!(int)$stmt->fetchColumn())throw new RuntimeException('Judge not found for this round.');
@@ -53,7 +65,9 @@ final class AutomaticJudgeBrowserService
             JOIN bdc_events e ON e.id=r.event_id
             WHERE s.token_hash=:hash LIMIT 1");
         $stmt->execute(['hash'=>hash('sha256',$token)]);
-        return $stmt->fetch()?:null;
+        $row=$stmt->fetch()?:null;
+        if($row&&!self::isSetupConfirmed($pdo,(int)$row['round_id']))return null;
+        return $row;
     }
 
     public static function markOpened(PDO $pdo,int $sessionId):void
@@ -89,6 +103,7 @@ final class AutomaticJudgeBrowserService
 
     public static function progress(PDO $pdo,int $roundId):array
     {
+        if(!self::isSetupConfirmed($pdo,$roundId))return [];
         $round=self::round($pdo,$roundId);
         $final=($round['round_type']??'')==='final';
         $stmt=$pdo->prepare("SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,
@@ -133,6 +148,7 @@ final class AutomaticJudgeBrowserService
 
     public static function allSubmitted(PDO $pdo,int $roundId):bool
     {
+        if(!self::isSetupConfirmed($pdo,$roundId))return false;
         $stmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_judges j
             LEFT JOIN bdc_scoring_judge_sessions s ON s.judge_id=j.id
             WHERE j.round_id=:round AND COALESCE(s.status,'not_started')<>'submitted'");
