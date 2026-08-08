@@ -41,6 +41,19 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         $link=['id'=>(int)$pdo->lastInsertId(),'plain_token'=>$token];
         $_SESSION['registration_desk_tokens'][(int)$link['id']]=$token;
     }
+
+    if(
+        $_SERVER['REQUEST_METHOD']==='POST'
+        && (string)($_POST['action']??'')==='regenerate_registration_desk_link'
+        && (int)($_POST['round_id']??0)===$roundId
+    ){
+        $token=bin2hex(random_bytes(24));
+        $pdo->prepare('UPDATE bdc_registration_desk_links SET token_hash=:hash,token_hint=:hint,is_enabled=1 WHERE id=:id')
+            ->execute(['hash'=>hash('sha256',$token),'hint'=>substr($token,0,8),'id'=>(int)$link['id']]);
+        $_SESSION['registration_desk_tokens'][(int)$link['id']]=$token;
+        $link['plain_token']=$token;
+    }
+
     $token=(string)($link['plain_token']??($_SESSION['registration_desk_tokens'][(int)$link['id']]??''));
     $deskUrl='';
     if($token!==''){
@@ -95,8 +108,11 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $html.='</div>';
 
     $html.='<div class="card shadow-sm mb-4"><div class="card-body"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h2 class="h6 mb-1">Registration Desk Link <span class="badge text-bg-secondary">Optional</span></h2><div class="small text-muted">Use only when another person/device will handle check-in. You can add every competitor directly above without opening this link.</div></div>';
-    if($deskUrl!=='')$html.='<div class="d-flex gap-2"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(\''.$e($deskUrl).'\')">Copy Link</button><a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener" href="'.$e($deskUrl).'">Open Registration Desk</a></div>';
-    else $html.='<span class="small text-muted">Existing secure desk token is hidden in this admin session.</span>';
+    if($deskUrl!==''){
+        $html.='<div class="d-flex gap-2"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(\''.$e($deskUrl).'\')">Copy Link</button><a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener" href="'.$e($deskUrl).'">Open Registration Desk</a></div>';
+    }else{
+        $html.='<form method="post" class="d-flex align-items-center gap-2"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="regenerate_registration_desk_link"><input type="hidden" name="round_id" value="'.$roundId.'"><span class="small text-muted">Secure desk link needs to be reissued for this admin session.</span><button class="btn btn-warning btn-sm" onclick="return confirm(\'Regenerate the Registration Desk link? The previous desk link will stop working.\')">Regenerate Registration Link</button></form>';
+    }
     $html.='</div></div></div></div>';
     return $html;
 }
