@@ -5,153 +5,212 @@ require dirname(__DIR__).'/bootstrap.php';
 
 use App\Core\Database;
 use App\Services\DivisionProgressionService;
-use App\Services\SchemaUpdater;
+use App\Services\SpecialCategoryService;
 
 $pdo=Database::connection();
-
 
 $division=(string)($_GET['division']??'novice');
 $role=(string)($_GET['role']??'leader');
 $showOut=!empty($_GET['show_out']);
 
-$allowedDivisions=['all','novice','intermediate','advanced'];
+$specialDivisions=[
+ 'bachata_rising'=>'Bachata Rising',
+ 'bachata_open'=>'Bachata Open',
+ 'bachata_invitational'=>'Bachata Invitational',
+];
+$allowedDivisions=array_merge(['all','novice','intermediate','advanced'],array_keys($specialDivisions));
 $allowedRoles=['leader','follower'];
 
 if(!in_array($division,$allowedDivisions,true))$division='novice';
 if(!in_array($role,$allowedRoles,true))$role='leader';
-
-$roleJoin=$division==='all'?"AND pt.dance_role IN ('leader','follower')":'AND pt.dance_role=:role';
-$selectedEventsCondition=$division==='all'?'1=1':'pt.division=:selected_division_events';
-$selectedFirstCondition=$division==='all'?'1=1':'pt.division=:selected_division_first';
-$selectedSecondCondition=$division==='all'?'1=1':'pt.division=:selected_division_second';
-$selectedThirdCondition=$division==='all'?'1=1':'pt.division=:selected_division_third';
-$selectedDateCondition=$division==='all'?'1=1':'pt.division=:selected_division_date';
-
-$stmt=$pdo->prepare("
- SELECT
-  MIN(c.id) competitor_id,
-  GROUP_CONCAT(DISTINCT c.bdc_id ORDER BY c.bdc_id SEPARATOR ' / ') bdc_id,
-  COALESCE(g.display_name,MAX(c.exact_name)) competitor_name,
-  MAX(c.country) country,
-  MAX(c.photo_url) photo_url,
-  MAX(c.current_division) committed_division,
-  MAX(c.novice_manual_out) novice_manual_out,
-  MAX(c.intermediate_manual_out) intermediate_manual_out,
-  MAX(c.division_override_reason) division_override_reason,
-  ROUND(SUM(CASE WHEN pt.division='novice' THEN pt.points ELSE 0 END),2) novice_points,
-  ROUND(SUM(CASE WHEN pt.division='intermediate' THEN pt.points ELSE 0 END),2) intermediate_points,
-  ROUND(SUM(CASE WHEN pt.division='advanced' THEN pt.points ELSE 0 END),2) advanced_points,
-  ROUND(SUM(CASE WHEN pt.dance_role='leader' THEN pt.points ELSE 0 END),2) leader_points,
-  ROUND(SUM(CASE WHEN pt.dance_role='follower' THEN pt.points ELSE 0 END),2) follower_points,
-  MAX(CASE WHEN pt.division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
-  MAX(CASE WHEN pt.division='advanced' THEN 1 ELSE 0 END) competed_advanced,
-  COUNT(DISTINCT CASE WHEN $selectedEventsCondition THEN pt.event_id END) selected_events,
-  COUNT(DISTINCT CASE
-   WHEN $selectedFirstCondition
-    AND LOWER(TRIM(pt.placement)) IN('1','1st','first')
-   THEN pt.event_id END
-  ) first_place_count,
-  COUNT(DISTINCT CASE
-   WHEN $selectedSecondCondition
-    AND LOWER(TRIM(pt.placement)) IN('2','2nd','second')
-   THEN pt.event_id END
-  ) second_place_count,
-  COUNT(DISTINCT CASE
-   WHEN $selectedThirdCondition
-    AND LOWER(TRIM(pt.placement)) IN('3','3rd','third')
-   THEN pt.event_id END
-  ) third_place_count,
-  MAX(CASE WHEN $selectedDateCondition THEN COALESCE(e.event_date,DATE(pt.created_at)) END) last_result_date
- FROM bdc_competitors c
- LEFT JOIN bdc_point_transactions pt
-  ON pt.competitor_id=c.id
-  $roleJoin
-  AND NOT EXISTS (
-   SELECT 1
-   FROM bdc_point_transactions duplicate_pt
-   JOIN bdc_competitors duplicate_c ON duplicate_c.id=duplicate_pt.competitor_id
-   WHERE COALESCE(duplicate_c.career_group_id,-duplicate_c.id)=COALESCE(c.career_group_id,-c.id)
-    AND duplicate_pt.event_id <=> pt.event_id
-    AND duplicate_pt.division=pt.division
-    AND duplicate_pt.dance_role=pt.dance_role
-    AND COALESCE(LOWER(TRIM(duplicate_pt.placement)),'')=COALESCE(LOWER(TRIM(pt.placement)),'')
-    AND duplicate_pt.points=pt.points
-    AND duplicate_pt.id<pt.id
-  )
- LEFT JOIN bdc_events e ON e.id=pt.event_id
- LEFT JOIN bdc_competitor_career_groups g ON g.id=c.career_group_id
- WHERE c.status='active' AND c.show_on_leaderboard=1
- GROUP BY COALESCE(c.career_group_id,-c.id),g.display_name
-");
-$params=[];
-if($division!=='all'){
- $params['selected_division_events']=$division;
- $params['selected_division_first']=$division;
- $params['selected_division_second']=$division;
- $params['selected_division_third']=$division;
- $params['selected_division_date']=$division;
- $params['role']=$role;
-}
-$stmt->execute($params);
+$isSpecial=SpecialCategoryService::isSpecial($division);
+if($isSpecial)$showOut=false;
 
 $rows=[];
-foreach($stmt->fetchAll() as $row){
- $novice=(float)$row['novice_points'];
- $intermediate=(float)$row['intermediate_points'];
- $advanced=(float)$row['advanced_points'];
 
- $points=$division==='all'
-  ?(float)$row['leader_points']+(float)$row['follower_points']
-  :DivisionProgressionService::selectedPoints($division,$novice,$intermediate,$advanced);
+if($isSpecial){
+ $stmt=$pdo->prepare("
+  SELECT
+   COALESCE(c.career_group_id,-c.id) career_key,
+   c.id competitor_id,
+   c.bdc_id,
+   COALESCE(g.display_name,c.exact_name) competitor_name,
+   c.country,
+   c.photo_url,
+   c.division_override_reason,
+   sr.event_id,
+   e.event_date,
+   fr.final_rank
+  FROM bdc_scoring_rounds sr
+  JOIN bdc_scoring_final_results fr ON fr.round_id=sr.id
+  JOIN bdc_scoring_final_pairs fp ON fp.id=fr.pair_id AND fp.round_id=sr.id
+  JOIN bdc_scoring_entries se
+   ON se.id=CASE WHEN :entry_role='leader' THEN fp.leader_entry_id ELSE fp.follower_entry_id END
+  JOIN bdc_competitors c ON c.id=se.competitor_id
+  LEFT JOIN bdc_competitor_career_groups g ON g.id=c.career_group_id
+  JOIN bdc_events e ON e.id=sr.event_id
+  WHERE sr.division=:division
+   AND sr.round_type='final'
+   AND se.dance_role=:dance_role
+   AND c.status='active'
+   AND c.show_on_leaderboard=1
+   AND EXISTS(
+    SELECT 1
+    FROM bdc_scoring_publications publication
+    WHERE publication.final_round_id=sr.id
+     AND publication.status='published'
+   )
+  ORDER BY e.event_date,fr.final_rank
+ ");
+ $stmt->execute(['entry_role'=>$role,'division'=>$division,'dance_role'=>$role]);
 
- if($points<=0.0)continue;
+ $aggregate=[];
+ foreach($stmt->fetchAll() as $result){
+  $rank=(int)$result['final_rank'];
+  $points=SpecialCategoryService::fixedPoints($division,$rank);
+  if($points<=0.0)continue;
+  $key=(string)$result['career_key'];
+  if(!isset($aggregate[$key])){
+   $aggregate[$key]=[
+    'competitor_id'=>(int)$result['competitor_id'],
+    'bdc_ids'=>[],
+    'competitor_name'=>(string)$result['competitor_name'],
+    'country'=>(string)($result['country']??''),
+    'photo_url'=>(string)($result['photo_url']??''),
+    'division_override_reason'=>(string)($result['division_override_reason']??''),
+    'total_points'=>0.0,
+    'selected_events'=>0,
+    'event_ids'=>[],
+    'first_place_count'=>0,
+    'second_place_count'=>0,
+    'third_place_count'=>0,
+    'last_result_date'=>'',
+    'eligible'=>true,
+    'status_label'=>'Special Category',
+   ];
+  }
+  if(!empty($result['bdc_id']))$aggregate[$key]['bdc_ids'][(string)$result['bdc_id']]=true;
+  $aggregate[$key]['total_points']+=(float)$points;
+  $eventId=(int)$result['event_id'];
+  if(!isset($aggregate[$key]['event_ids'][$eventId])){
+   $aggregate[$key]['event_ids'][$eventId]=true;
+   $aggregate[$key]['selected_events']++;
+  }
+  if($rank===1)$aggregate[$key]['first_place_count']++;
+  if($rank===2)$aggregate[$key]['second_place_count']++;
+  if($rank===3)$aggregate[$key]['third_place_count']++;
+  $date=(string)($result['event_date']??'');
+  if($date>$aggregate[$key]['last_result_date'])$aggregate[$key]['last_result_date']=$date;
+ }
+ foreach($aggregate as $row){
+  $row['bdc_id']=implode(' / ',array_keys($row['bdc_ids']));
+  unset($row['bdc_ids'],$row['event_ids']);
+  $rows[]=$row;
+ }
+}else{
+ $roleJoin=$division==='all'?"AND pt.dance_role IN ('leader','follower')":'AND pt.dance_role=:role';
+ $selectedEventsCondition=$division==='all'?'1=1':'pt.division=:selected_division_events';
+ $selectedFirstCondition=$division==='all'?'1=1':'pt.division=:selected_division_first';
+ $selectedSecondCondition=$division==='all'?'1=1':'pt.division=:selected_division_second';
+ $selectedThirdCondition=$division==='all'?'1=1':'pt.division=:selected_division_third';
+ $selectedDateCondition=$division==='all'?'1=1':'pt.division=:selected_division_date';
 
- $eligibility=$division==='all'?['eligible'=>true,'reason'=>'','promoted_to'=>null]:DivisionProgressionService::eligibilityFor(
-  $division,
-  $novice,
-  $intermediate,
-  $advanced,
-  $row['committed_division'],
-  (bool)$row['competed_intermediate'],
-  (bool)$row['competed_advanced']
- );
- $manualOut=($division==='novice' && (bool)$row['novice_manual_out'])
-  ||($division==='intermediate' && (bool)$row['intermediate_manual_out']);
- $eligible=$eligibility['eligible']&&!$manualOut;
- if(!$eligible && !$showOut)continue;
+ $stmt=$pdo->prepare("
+  SELECT
+   MIN(c.id) competitor_id,
+   GROUP_CONCAT(DISTINCT c.bdc_id ORDER BY c.bdc_id SEPARATOR ' / ') bdc_id,
+   COALESCE(g.display_name,MAX(c.exact_name)) competitor_name,
+   MAX(c.country) country,
+   MAX(c.photo_url) photo_url,
+   MAX(c.current_division) committed_division,
+   MAX(c.novice_manual_out) novice_manual_out,
+   MAX(c.intermediate_manual_out) intermediate_manual_out,
+   MAX(c.division_override_reason) division_override_reason,
+   ROUND(SUM(CASE WHEN pt.division='novice' THEN pt.points ELSE 0 END),2) novice_points,
+   ROUND(SUM(CASE WHEN pt.division='intermediate' THEN pt.points ELSE 0 END),2) intermediate_points,
+   ROUND(SUM(CASE WHEN pt.division='advanced' THEN pt.points ELSE 0 END),2) advanced_points,
+   ROUND(SUM(CASE WHEN pt.dance_role='leader' THEN pt.points ELSE 0 END),2) leader_points,
+   ROUND(SUM(CASE WHEN pt.dance_role='follower' THEN pt.points ELSE 0 END),2) follower_points,
+   MAX(CASE WHEN pt.division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
+   MAX(CASE WHEN pt.division='advanced' THEN 1 ELSE 0 END) competed_advanced,
+   COUNT(DISTINCT CASE WHEN $selectedEventsCondition THEN pt.event_id END) selected_events,
+   COUNT(DISTINCT CASE WHEN $selectedFirstCondition AND LOWER(TRIM(pt.placement)) IN('1','1st','first') THEN pt.event_id END) first_place_count,
+   COUNT(DISTINCT CASE WHEN $selectedSecondCondition AND LOWER(TRIM(pt.placement)) IN('2','2nd','second') THEN pt.event_id END) second_place_count,
+   COUNT(DISTINCT CASE WHEN $selectedThirdCondition AND LOWER(TRIM(pt.placement)) IN('3','3rd','third') THEN pt.event_id END) third_place_count,
+   MAX(CASE WHEN $selectedDateCondition THEN COALESCE(e.event_date,DATE(pt.created_at)) END) last_result_date
+  FROM bdc_competitors c
+  LEFT JOIN bdc_point_transactions pt
+   ON pt.competitor_id=c.id
+   $roleJoin
+   AND NOT EXISTS (
+    SELECT 1
+    FROM bdc_point_transactions duplicate_pt
+    JOIN bdc_competitors duplicate_c ON duplicate_c.id=duplicate_pt.competitor_id
+    WHERE COALESCE(duplicate_c.career_group_id,-duplicate_c.id)=COALESCE(c.career_group_id,-c.id)
+     AND duplicate_pt.event_id <=> pt.event_id
+     AND duplicate_pt.division=pt.division
+     AND duplicate_pt.dance_role=pt.dance_role
+     AND COALESCE(LOWER(TRIM(duplicate_pt.placement)),'')=COALESCE(LOWER(TRIM(pt.placement)),'')
+     AND duplicate_pt.points=pt.points
+     AND duplicate_pt.id<pt.id
+   )
+  LEFT JOIN bdc_events e ON e.id=pt.event_id
+  LEFT JOIN bdc_competitor_career_groups g ON g.id=c.career_group_id
+  WHERE c.status='active' AND c.show_on_leaderboard=1
+  GROUP BY COALESCE(c.career_group_id,-c.id),g.display_name
+ ");
+ $params=[];
+ if($division!=='all'){
+  $params['selected_division_events']=$division;
+  $params['selected_division_first']=$division;
+  $params['selected_division_second']=$division;
+  $params['selected_division_third']=$division;
+  $params['selected_division_date']=$division;
+  $params['role']=$role;
+ }
+ $stmt->execute($params);
 
- $row['eligible']=$eligible;
- $promotedTo=$manualOut
-  ?match($division){'novice'=>'intermediate','intermediate'=>'advanced',default=>null}
-  :$eligibility['promoted_to'];
- $row['status_label']=$promotedTo!==null
-  ?'Promoted to '.DivisionProgressionService::label($promotedTo)
-  :($eligibility['eligible']?'In Division':ucfirst($eligibility['reason']));
- $row['total_points']=$points;
- $rows[]=$row;
+ foreach($stmt->fetchAll() as $row){
+  $novice=(float)$row['novice_points'];
+  $intermediate=(float)$row['intermediate_points'];
+  $advanced=(float)$row['advanced_points'];
+
+  $points=$division==='all'
+   ?(float)$row['leader_points']+(float)$row['follower_points']
+   :DivisionProgressionService::selectedPoints($division,$novice,$intermediate,$advanced);
+  if($points<=0.0)continue;
+
+  $eligibility=$division==='all'?['eligible'=>true,'reason'=>'','promoted_to'=>null]:DivisionProgressionService::eligibilityFor(
+   $division,$novice,$intermediate,$advanced,$row['committed_division'],(bool)$row['competed_intermediate'],(bool)$row['competed_advanced']
+  );
+  $manualOut=($division==='novice' && (bool)$row['novice_manual_out'])||($division==='intermediate' && (bool)$row['intermediate_manual_out']);
+  $eligible=$eligibility['eligible']&&!$manualOut;
+  if(!$eligible && !$showOut)continue;
+
+  $row['eligible']=$eligible;
+  $promotedTo=$manualOut?match($division){'novice'=>'intermediate','intermediate'=>'advanced',default=>null}:$eligibility['promoted_to'];
+  $row['status_label']=$promotedTo!==null?'Promoted to '.DivisionProgressionService::label($promotedTo):($eligibility['eligible']?'In Division':ucfirst($eligibility['reason']));
+  $row['total_points']=$points;
+  $rows[]=$row;
+ }
 }
 
 usort($rows,function(array $a,array $b):int{
  $points=(float)$b['total_points']<=>(float)$a['total_points'];
  if($points!==0)return $points;
-
  $date=strcmp((string)$b['last_result_date'],(string)$a['last_result_date']);
  if($date!==0)return $date;
-
  $events=(int)$b['selected_events']<=>(int)$a['selected_events'];
  if($events!==0)return $events;
-
  return strcmp((string)$a['bdc_id'],(string)$b['bdc_id']);
 });
 
-// The leaderboard uses sequential rank after deterministic tie-breaking.
-foreach($rows as $index=>&$row){
- $row['rank']=$index+1;
-}
+foreach($rows as $index=>&$row)$row['rank']=$index+1;
 unset($row);
 
 function leaderboardLabel(string $value):string{
  if($value==='all')return 'All Divisions';
+ if(SpecialCategoryService::isSpecial($value))return SpecialCategoryService::label($value);
  return DivisionProgressionService::label($value);
 }
 ?>
@@ -207,15 +266,23 @@ body{background:#f5f6f8;color:#20242a}
       <?php endforeach;?>
      </div>
     </div>
+    <div class="col-12">
+     <div class="filter-label mb-2">Special Category</div>
+     <div class="filter-buttons divisions">
+      <?php foreach($specialDivisions as $value=>$label):?>
+       <a class="btn <?=$division===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$value?>&amp;role=<?=$role?>"><?=$label?></a>
+      <?php endforeach;?>
+     </div>
+    </div>
     <?php if($division!=='all'):?><div class="col-12">
      <div class="filter-label mb-2">Role</div>
      <div class="filter-buttons">
       <?php foreach(['leader'=>'Leader','follower'=>'Follower'] as $value=>$label):?>
-       <a class="btn <?=$role===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$division?>&amp;role=<?=$value?><?=$showOut?'&amp;show_out=1':''?>"><?=$label?></a>
+       <a class="btn <?=$role===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$division?>&amp;role=<?=$value?><?=(!$isSpecial&&$showOut)?'&amp;show_out=1':''?>"><?=$label?></a>
       <?php endforeach;?>
      </div>
     </div><?php endif;?>
-    <?php if($division!=='all'):?><div class="col-12">
+    <?php if($division!=='all'&&!$isSpecial):?><div class="col-12">
      <input type="hidden" name="division" value="<?=e($division)?>">
      <input type="hidden" name="role" value="<?=e($role)?>">
      <label class="form-check form-switch">
@@ -237,7 +304,7 @@ body{background:#f5f6f8;color:#20242a}
     <span class="badge text-bg-success">Live</span>
    </div>
 
-   <?php if($showOut && $division!=='all'):?>
+   <?php if($showOut && $division!=='all'&&!$isSpecial):?>
    <div class="alert alert-warning rounded-0 border-start-0 border-end-0 border-top-0 mb-0 px-4 py-3">
     <strong>Out of Division:</strong> A competitor is promoted when they exceed the maximum points for this division or have already competed in a higher division.
    </div>
@@ -250,8 +317,12 @@ body{background:#f5f6f8;color:#20242a}
      Novice dancers may move to Intermediate from 20 points and leave Novice after 25 points.
     <?php elseif($division==='intermediate'):?>
      Intermediate requires 20 Novice points. Dancers may move to Advanced from 25 Intermediate points and leave Intermediate after 30 points.
-    <?php else:?>
+    <?php elseif($division==='advanced'):?>
      Advanced requires 25 Intermediate points and must be left after 40 Advanced points.
+    <?php elseif($division==='bachata_rising'||$division==='bachata_open'):?>
+     Special-category ranking uses published Final placements only. Fixed points are 5, 4, 3, 2 and 1 for 1st through 5th. These rankings do not change BDC division eligibility.
+    <?php else:?>
+     Bachata Invitational ranking uses published Final placements only. Fixed points are 3, 2 and 1 for 1st through 3rd. These rankings do not change BDC division eligibility.
     <?php endif;?>
    </div>
 
@@ -270,9 +341,7 @@ body{background:#f5f6f8;color:#20242a}
          <div>
           <strong><?=e($row['competitor_name'])?></strong>
           <?php if($row['bdc_id']):?><div class="small text-muted">BDC <?=e($row['bdc_id'])?></div><?php endif;?>
-          <?php if(empty($row['eligible'])):?>
-           <div class="mt-1"><span class="badge text-bg-warning"><?=e($row['status_label'])?></span></div>
-          <?php endif;?>
+          <?php if(empty($row['eligible'])):?><div class="mt-1"><span class="badge text-bg-warning"><?=e($row['status_label'])?></span></div><?php endif;?>
           <?php if(!empty($row['division_override_reason'])):?><div class="small text-muted"><?=e($row['division_override_reason'])?></div><?php endif;?>
          </div>
         </div>
@@ -286,7 +355,7 @@ body{background:#f5f6f8;color:#20242a}
        <td><?=e((string)($row['last_result_date']?:'—'))?></td>
       </tr>
      <?php endforeach;?>
-     <?php if(!$rows):?><tr><td colspan="9" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
+     <?php if(!$rows):?><tr><td colspan="9" class="text-center py-5 text-muted">No published ranking points are available for this category and role.</td></tr><?php endif;?>
      </tbody>
     </table>
    </div>
@@ -294,11 +363,7 @@ body{background:#f5f6f8;color:#20242a}
  </section>
 </main>
 <script>
-document.querySelectorAll('[data-auto-submit]').forEach(function (control) {
- control.addEventListener('change', function () {
-  document.getElementById('leaderboard-filters').submit();
- });
-});
+document.querySelectorAll('[data-auto-submit]').forEach(function(control){control.addEventListener('change',function(){document.getElementById('leaderboard-filters').submit();});});
 </script>
 </body>
 </html>
