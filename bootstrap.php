@@ -71,7 +71,8 @@ $bdcAdminHtmlCandidate = $bdcRequestMethod === 'GET'
 
 if ($bdcAdminHtmlCandidate) {
     $bdcAdminDashboardUrl = url('admin/');
-    ob_start(static function (string $html) use ($bdcAdminDashboardUrl): string {
+    $bdcAutomaticParityUrl = url('admin/scoring-tests/automatic-parity.php');
+    ob_start(static function (string $html) use ($bdcAdminDashboardUrl, $bdcAutomaticParityUrl): string {
         if ($html === '' || stripos($html, '</body>') === false) {
             return $html;
         }
@@ -92,6 +93,7 @@ if ($bdcAdminHtmlCandidate) {
         }
 
         $dashboardJson = json_encode($bdcAdminDashboardUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        $parityJson = json_encode($bdcAutomaticParityUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         $navigation = <<<'HTML'
 <style id="bdc-universal-admin-nav-style">
 .bdc-universal-admin-nav{display:flex;align-items:center;gap:.45rem;margin-left:auto}
@@ -99,6 +101,8 @@ if ($bdcAdminHtmlCandidate) {
 .bdc-universal-admin-nav .bdc-admin-nav-btn:hover{background:rgba(255,255,255,.12)}
 .bdc-universal-admin-nav .bdc-admin-nav-dashboard{background:#fff;color:#20242a!important;border-color:#fff}
 .bdc-universal-admin-nav .bdc-admin-nav-dashboard:hover{background:#f0f1f3}
+.bdc-universal-admin-nav .bdc-admin-nav-test{background:#ffc107;color:#111!important;border-color:#ffc107}
+.bdc-universal-admin-nav .bdc-admin-nav-test:hover{background:#ffca2c}
 .bdc-universal-admin-nav-floating{position:fixed;top:14px;right:18px;z-index:30000;padding:.42rem;background:#20242a;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.24)}
 .admin-topbar-actions-v203 .bdc-universal-admin-nav{margin-right:.35rem}
 @media(max-width:760px){.bdc-universal-admin-nav .bdc-admin-nav-btn{padding:.34rem .55rem;font-size:.78rem}.bdc-universal-admin-nav-floating{top:8px;right:8px}}
@@ -108,13 +112,17 @@ if ($bdcAdminHtmlCandidate) {
   if(window.__bdcUniversalAdminNavLoaded)return;
   window.__bdcUniversalAdminNavLoaded=true;
   var dashboard=__BDC_DASHBOARD_URL__;
+  var parity=__BDC_PARITY_URL__;
   var cleanPath=window.location.pathname.replace(/\/+$/,'');
   var cleanDashboard=(new URL(dashboard,window.location.origin)).pathname.replace(/\/+$/,'');
+  var parityPath=(new URL(parity,window.location.origin)).pathname.replace(/\/+$/,'');
   var onDashboard=cleanPath===cleanDashboard;
+  var onScoringTests=/\/admin\/scoring-tests(?:\/index\.php)?$/.test(cleanPath);
+  var onParity=cleanPath===parityPath;
 
   function button(label,kind){
     var el=document.createElement(kind==='back'?'button':'a');
-    el.className='bdc-admin-nav-btn '+(kind==='dashboard'?'bdc-admin-nav-dashboard':'');
+    el.className='bdc-admin-nav-btn '+(kind==='dashboard'?'bdc-admin-nav-dashboard':(kind==='test'?'bdc-admin-nav-test':''));
     if(kind==='back'){
       el.type='button';
       el.textContent='← Back';
@@ -122,6 +130,9 @@ if ($bdcAdminHtmlCandidate) {
         if(window.history.length>1)window.history.back();
         else window.location.href=dashboard;
       });
+    }else if(kind==='test'){
+      el.href=parity;
+      el.textContent='⚙ Automatic Parity Test';
     }else{
       el.href=dashboard;
       el.textContent='⌂ Dashboard';
@@ -133,6 +144,7 @@ if ($bdcAdminHtmlCandidate) {
   controls.className='bdc-universal-admin-nav';
   controls.setAttribute('data-bdc-admin-navigation','1');
   controls.appendChild(button('Back','back'));
+  if((onScoringTests||onParity) && !onParity)controls.appendChild(button('Automatic Parity Test','test'));
   if(!onDashboard)controls.appendChild(button('Dashboard','dashboard'));
 
   var modern=document.querySelector('.admin-topbar-actions-v203');
@@ -158,7 +170,11 @@ if ($bdcAdminHtmlCandidate) {
 })();
 </script>
 HTML;
-        $navigation = str_replace('__BDC_DASHBOARD_URL__', (string)$dashboardJson, $navigation);
+        $navigation = str_replace(
+            ['__BDC_DASHBOARD_URL__','__BDC_PARITY_URL__'],
+            [(string)$dashboardJson,(string)$parityJson],
+            $navigation
+        );
         return preg_replace('/<\/body>/i', $navigation . '</body>', $html, 1) ?? $html;
     });
 }
