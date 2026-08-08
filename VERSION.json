@@ -1,20 +1,22 @@
 {
-  "version": "2.3.3-dev67",
-  "build": 2397,
+  "version": "2.3.3-dev68",
+  "build": 2398,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds shared ScoringRulesService for BDC participant tier thresholds and YES/A1/A2/A3 Heats weights",
-    "Adds Automatic Scoring Production Parity testing inside the Scoring Tests module",
-    "Automatic parity tests normal participant tiering from the larger Leader/Follower role count",
-    "Automatic parity tests Bachata Rising, Bachata Open and Bachata Invitational through the production SpecialCategoryService fixed-point schedules",
-    "Automatic parity verifies the production Automatic Judge Browser service contract",
-    "Final parity test calls the production RelativePlacementCalculator directly",
-    "Existing Scoring Tests dashboard receives a direct Automatic Parity Test navigation control",
-    "Legacy random test helpers remain available but are no longer treated as the authoritative source of BDC scoring formulas",
-    "Registration Desk recovery and universal admin navigation from dev66 remain available",
+    "Scoring Tests Dashboard now opens a fast production-parity sandbox by default",
+    "Test workflow visibly supports Manual and Automatic scoring modes",
+    "Test sandbox reads real BDC competitors, BDC IDs, current divisions, history and points without copying mutable production profile columns",
+    "TestScoringGuardService blocks Test mode writes to official points, participant results, competitor progression, publications and production scoring tables",
+    "All sandbox scoring writes are restricted to bdc_test_* tables",
+    "Normal Heats tiering and YES/A1/A2/A3 weights use shared ScoringRulesService",
+    "Bachata Rising, Bachata Open and Bachata Invitational fixed points use production SpecialCategoryService",
+    "Automatic test mode simulates independent judge-browser submissions and submitted status using isolated test data",
+    "Final tests call the production RelativePlacementCalculator directly",
+    "Finish Test & Clear All Test Data removes the complete sandbox workflow while preserving official BDC data",
+    "Legacy Test Dashboard remains temporarily accessible with ?legacy=1 for validation",
     "Release Manager workflow is unchanged"
   ]
 }
