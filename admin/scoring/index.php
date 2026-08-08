@@ -4,22 +4,14 @@ declare(strict_types=1);
 $mode=(string)($_GET['mode']??'');
 $roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
 
-/*
- * Special categories are categories, not a third scoring mode.
- * Keep old bookmarked links working by sending them into Manual Scoring.
- */
+/* Special categories are categories, not a third scoring mode. */
 if($mode==='special'){
     $target='?mode=manual'.($roundId>0?'&round_id='.$roundId:'');
     header('Location: '.$target);
     exit;
 }
 
-/*
- * core.php intentionally remains the single Manual/Automatic scoring engine.
- * It historically validates only standard BDC divisions when creating a round,
- * so special-category creation is intercepted here and creates the same round
- * record before redirecting straight back into core.php.
- */
+/* Special-category creation still creates the same core scoring round. */
 if(
     $_SERVER['REQUEST_METHOD']==='POST'
     && (string)($_POST['action']??'')==='create_round'
@@ -50,7 +42,7 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
       <div class="text-center mb-5"><h1 class="display-6 fw-bold">Select Scoring Mode</h1><p class="text-muted mb-0">Choose Manual or Automatic scoring, then select the competition category.</p></div>
       <div class="row g-4 justify-content-center">
         <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">✎</div><h2 class="h3">Manual Scoring</h2><p class="flex-grow-1">Manual scoring for Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational.</p><a class="btn btn-dark btn-lg" href="?mode=manual">Continue</a></div></section></div>
-        <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">⚙</div><h2 class="h3">Automatic Scoring</h2><p class="flex-grow-1">Automatic scoring for the same competition categories. Special categories use the same scoring workflow with fixed points at publication.</p><a class="btn btn-primary btn-lg" href="?mode=automated">Continue</a></div></section></div>
+        <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">⚙</div><h2 class="h3">Automatic Scoring</h2><p class="flex-grow-1">Automatic scoring for the same competition categories. Judges score securely from their own browser and progress is visible live on the organiser dashboard.</p><a class="btn btn-primary btn-lg" href="?mode=automated">Continue</a></div></section></div>
       </div>
     </main>
     </body>
@@ -59,13 +51,8 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
     exit;
 }
 
-/*
- * Presentation adapter only. No scoring calculations are changed here.
- * Add the special categories to the existing Division dropdown and make an
- * existing special round use its fixed-point publication/registration backend.
- */
-ob_start(static function(string $html):string{
-    /* Detect the opened round BEFORE adding the special choices to the form. */
+ob_start(static function(string $html)use($mode,$roundId):string{
+    /* Detect the opened round before adding the special choices to the creation form. */
     $openedSpecialRound=stripos($html,'bachata_rising')!==false
         ||stripos($html,'bachata_open')!==false
         ||stripos($html,'bachata_invitational')!==false;
@@ -86,6 +73,17 @@ ob_start(static function(string $html):string{
     if($openedSpecialRound){
         $html=str_replace('publish.php?round_id=','special-publish.php?round_id=',$html);
         $html=str_replace('registration-desk/?token=','registration-desk/special.php?token=',$html);
+    }
+
+    if($mode==='automated' && $roundId>0){
+        $html=str_replace('Automatic Relative Placement Final','Automatic Scoring Engine · Judge Browser Workflow',$html);
+        $panel='<div class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel">'
+            .'<div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">'
+            .'<strong>Automatic Judge Browser Scoring</strong><span class="badge text-bg-light">LIVE</span></div>'
+            .'<div class="card-body p-3"><p class="text-muted small mb-3">Each judge receives a secure browser link. Draft scores save live. Submit locks the judge scorecard.</p>'
+            .'<iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:610px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
+        $needle='<div class="card shadow-sm mb-4 border-primary" id="registration-desk-sync">';
+        $html=str_replace($needle,$panel.$needle,$html);
     }
 
     return $html;
