@@ -1,19 +1,17 @@
 {
-  "version": "2.3.3-dev58",
-  "build": 2388,
+  "version": "2.3.3-dev59",
+  "build": 2389,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Heats mirrors Manual Heats setup with the same category/tier settings, judge setup, inline Leader/Follower competitor entry and bib management",
-    "Registration Desk remains optional for both modes and uses the shared Heats desk UI",
-    "Bachata Rising, Bachata Open and Bachata Invitational bypass normal progression-entry validation while retaining existing BDC IDs",
-    "Special-category points stay fixed: Rising/Open 5-4-3-2-1 and Invitational 3-2-1 regardless of participant tier",
-    "Automatic browser judges use the same YES, A1, A2 and A3 marks and locked BDC weights as Manual Heats",
-    "Judge links are generated from the normal saved judge panel and active Leader/Follower entries without a separate setup-confirmation workflow",
-    "Judge sharing retains Copy, WhatsApp, Email and Open with live progress, Submit and Lock, and audited Super Admin unlock",
-    "Final browser judging continues to use Relative Placement ranking",
+    "Automatic Heats renders the same Manual-style setup instead of the legacy separate Automatic layout",
+    "Category or tier settings, judge setup, inline Leader and Follower competitor entry, bib management and the optional Registration Desk remain shared between Manual and Automatic",
+    "Only the scoring section differs: Automatic shows Judge Live Scoring and secure judge browser links instead of manual admin score entry",
+    "Automatic browser judges use YES, A1, A2 and A3 with the existing locked BDC weights",
+    "Special-category points remain fixed: Rising/Open 5-4-3-2-1 and Invitational 3-2-1 regardless of participant tier",
+    "Special categories continue to bypass normal progression-entry validation while retaining BDC IDs",
     "Release Manager workflow is unchanged"
   ]
 }
