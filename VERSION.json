@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev48",
-  "build": 2378,
+  "version": "2.3.3-dev49",
+  "build": 2379,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Release Manager prevents legacy reconciliation from interfering with an active Staging worker job, eliminating false Needs Retry then Success pairs in Recent Activity",
     "Manual and Automatic scoring Division dropdowns reliably show Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
     "Automatic Scoring V1 adds secure per-judge browser scoring links for Heats, Semi-Finals and Finals",
     "Judge numeric Heats/Semi-Final scores autosave live from the browser while Final judges submit Relative Placement ranks",
     "Automatic organiser dashboard embeds a live judge control panel showing not started, scoring and submitted progress per judge",
     "Judge Submit locks the scorecard; Super Admin can unlock only with a recorded reason",
-    "Special categories remain integrated directly into Manual and Automatic scoring and keep their fixed point publication logic",
-    "Existing Registration Desk, BDC ID assignment, scoring calculations, Relative Placement engine and Release Manager chain remain unchanged"
+    "Existing Registration Desk, BDC ID assignment, scoring calculations, Relative Placement engine, point logic and Production promotion chain remain unchanged"
   ]
 }
