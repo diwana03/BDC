@@ -35,7 +35,9 @@ $token=(string)($link['plain_token']??($_SESSION['registration_desk_tokens'][(in
 $deskUrl='';
 if($token!==''){
     $appUrl=rtrim((string)Config::get('app.url',''),'/');
-    $path=url('registration-desk/?token='.rawurlencode($token).'&round_id='.$roundId);
+    $specialCategory=in_array((string)$round['division'],['bachata_rising','bachata_open','bachata_invitational'],true);
+    $deskPath=$specialCategory?'registration-desk/special.php':'registration-desk/';
+    $path=url($deskPath.'?token='.rawurlencode($token).'&round_id='.$roundId);
     $parts=parse_url($appUrl);
     if(is_array($parts)&&isset($parts['scheme'],$parts['host'])){
         $origin=$parts['scheme'].'://'.$parts['host'].(isset($parts['port'])?':'.(int)$parts['port']:'');
