@@ -76,6 +76,46 @@ ob_start(static function(string $html)use($mode,$roundId):string{
         $html
     );
 
+    /*
+     * Saved Rounds is shared by Manual and Automatic scoring. Make the stored
+     * scoring mode visible and preserve it when a round is reopened.
+     */
+    if(str_contains($html,'<h2 class="h5">Saved Rounds</h2>')){
+        $html=str_replace('Manual Scoring Engine · Event Round Workflow','BDC Scoring Engine · Event Round Workflow',$html);
+        $html=str_replace('<th>Round</th><th>Status</th>','<th>Round</th><th>Scoring Mode</th><th>Status</th>',$html);
+
+        try{
+            $pdo=App\Core\Database::connection();
+            $modeRows=$pdo->query("SELECT id,scoring_mode FROM bdc_scoring_rounds")->fetchAll();
+            $modeByRound=[];
+            foreach($modeRows as $modeRow){
+                $modeByRound[(int)$modeRow['id']]=(string)($modeRow['scoring_mode']??'manual');
+            }
+
+            $html=preg_replace_callback('/<tr>(.*?)<\/tr>/s',static function(array $match)use($modeByRound):string{
+                $row=$match[1];
+                if(!preg_match('/href="\?round_id=(\d+)"/',$row,$idMatch))return $match[0];
+                $id=(int)$idMatch[1];
+                $storedMode=$modeByRound[$id]??'manual';
+                $isAutomatic=$storedMode==='automated';
+                $label=$isAutomatic?'AUTOMATIC':'MANUAL';
+                $badge=$isAutomatic?'text-bg-primary':'text-bg-dark';
+                $rowClass=$isAutomatic?'scoring-row-automatic':'scoring-row-manual';
+                $targetMode=$isAutomatic?'automated':'manual';
+
+                $row=preg_replace('/href="\?round_id='.$id.'"/','href="?mode='.$targetMode.'&round_id='.$id.'"',$row,1);
+                $modeCell='<td><span class="badge '.$badge.'">'.$label.'</span></td>';
+                $row=preg_replace('/^((?:.*?<\/td>){3})/s','$1'.$modeCell,$row,1);
+                return '<tr class="'.$rowClass.'">'.$row.'</tr>';
+            },$html)??$html;
+
+            $modeStyles='<style>.scoring-row-automatic>td{background:#eef5ff!important}.scoring-row-manual>td{background:#f7f7f8!important}.scoring-row-automatic:hover>td{background:#e3efff!important}.scoring-row-manual:hover>td{background:#eeeeef!important}</style>';
+            $html=str_replace('</head>',$modeStyles.'</head>',$html);
+        }catch(Throwable){
+            /* Display enhancement only; never block the scoring dashboard. */
+        }
+    }
+
     if($openedSpecialRound){
         $html=str_replace('publish.php?round_id=','special-publish.php?round_id=',$html);
         $html=str_replace('registration-desk/?token=','registration-desk/special.php?token=',$html);
