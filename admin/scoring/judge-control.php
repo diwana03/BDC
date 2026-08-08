@@ -9,52 +9,115 @@ use App\Core\Database;
 use App\Services\AutomaticJudgeBrowserService;
 
 Auth::requireAdmin();
-$pdo=Database::connection();$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);$userId=(int)(Auth::user()['id']??0);
-$roundStmt=$pdo->prepare("SELECT r.*,e.name event_name FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:round LIMIT 1");$roundStmt->execute(['round'=>$roundId]);$round=$roundStmt->fetch();
-if(!$round||($round['scoring_mode']??'')!=='automated'){http_response_code(404);exit('Automatic scoring round not found.');}
+$pdo=Database::connection();
+$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
+$userId=(int)(Auth::user()['id']??0);
+
+function ensureAutomaticJudgeSessionStorage(PDO $pdo):void
+{
+    $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_judge_sessions (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        round_id BIGINT UNSIGNED NOT NULL,
+        judge_id BIGINT UNSIGNED NOT NULL,
+        token_hash CHAR(64) NOT NULL,
+        token_hint VARCHAR(16) NULL,
+        status VARCHAR(24) NOT NULL DEFAULT 'not_started',
+        opened_at DATETIME NULL,
+        last_saved_at DATETIME NULL,
+        submitted_at DATETIME NULL,
+        unlocked_at DATETIME NULL,
+        unlocked_by BIGINT UNSIGNED NULL,
+        unlock_reason VARCHAR(500) NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_bdc_judge_session_judge (judge_id),
+        UNIQUE KEY uq_bdc_judge_session_token (token_hash),
+        KEY idx_bdc_judge_session_round (round_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+try{
+    ensureAutomaticJudgeSessionStorage($pdo);
+    $roundStmt=$pdo->prepare("SELECT r.*,e.name event_name FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:round LIMIT 1");
+    $roundStmt->execute(['round'=>$roundId]);
+    $round=$roundStmt->fetch();
+    if(!$round||($round['scoring_mode']??'')!=='automated'){
+        http_response_code(404);
+        exit('Automatic scoring round not found.');
+    }
+}catch(Throwable $e){
+    http_response_code(200);
+    ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:Arial,sans-serif;background:#fff;color:#172033}.alert{padding:14px;border:1px solid #f0b7b7;background:#fff1f1;border-radius:10px;color:#8d1111}</style></head><body><div class="alert"><strong>Judge Live Scoring is not ready.</strong><br><?=e($e->getMessage())?></div></body></html><?php
+    exit;
+}
 
 if(isset($_GET['status'])){
-    header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
-    echo json_encode(['judges'=>AutomaticJudgeBrowserService::progress($pdo,$roundId),'all_submitted'=>AutomaticJudgeBrowserService::allSubmitted($pdo,$roundId)],JSON_UNESCAPED_SLASHES);exit;
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    try{
+        echo json_encode([
+            'judges'=>AutomaticJudgeBrowserService::progress($pdo,$roundId),
+            'all_submitted'=>AutomaticJudgeBrowserService::allSubmitted($pdo,$roundId)
+        ],JSON_UNESCAPED_SLASHES);
+    }catch(Throwable $e){
+        echo json_encode(['judges'=>[],'all_submitted'=>false,'error'=>$e->getMessage()],JSON_UNESCAPED_SLASHES);
+    }
+    exit;
 }
+
 $message='';$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
     try{
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
-        $action=(string)($_POST['action']??'');$judgeId=(int)($_POST['judge_id']??0);
+        $action=(string)($_POST['action']??'');
+        $judgeId=(int)($_POST['judge_id']??0);
         if($action==='regenerate'){
-            $token=AutomaticJudgeBrowserService::regenerate($pdo,$roundId,$judgeId);$_SESSION['automatic_judge_tokens'][$judgeId]=$token;$message='Judge link regenerated.';
+            $token=AutomaticJudgeBrowserService::regenerate($pdo,$roundId,$judgeId);
+            $_SESSION['automatic_judge_tokens'][$judgeId]=$token;
+            $message='Judge link regenerated.';
         }elseif($action==='unlock'){
             if(!Auth::isSuperAdmin())throw new RuntimeException('Only Super Admin can unlock submitted judge scores.');
-            $reason=trim((string)($_POST['reason']??''));AutomaticJudgeBrowserService::unlock($pdo,$roundId,$judgeId,$userId,$reason);$message='Judge scores unlocked. The judge can edit and submit again.';
-            $audit=$pdo->prepare('INSERT INTO bdc_scoring_audit(round_id,user_id,action,details_json) VALUES(:round,:user,:action,:details)');$audit->execute(['round'=>$roundId,'user'=>$userId?:null,'action'=>'automatic_judge_scores_unlocked','details'=>json_encode(['judge_id'=>$judgeId,'reason'=>$reason],JSON_UNESCAPED_UNICODE)]);
+            $reason=trim((string)($_POST['reason']??''));
+            AutomaticJudgeBrowserService::unlock($pdo,$roundId,$judgeId,$userId,$reason);
+            $message='Judge scores unlocked. The judge can edit and submit again.';
+            $audit=$pdo->prepare('INSERT INTO bdc_scoring_audit(round_id,user_id,action,details_json) VALUES(:round,:user,:action,:details)');
+            $audit->execute(['round'=>$roundId,'user'=>$userId?:null,'action'=>'automatic_judge_scores_unlocked','details'=>json_encode(['judge_id'=>$judgeId,'reason'=>$reason],JSON_UNESCAPED_UNICODE)]);
         }
     }catch(Throwable $e){$error=$e->getMessage();}
 }
-$judges=AutomaticJudgeBrowserService::syncRound($pdo,$roundId);
-foreach($judges as &$judge){
-    if($judge['plain_token']!=='')$_SESSION['automatic_judge_tokens'][(int)$judge['id']]=$judge['plain_token'];
-    $judge['token']=$_SESSION['automatic_judge_tokens'][(int)$judge['id']]??'';
-    $judge['url']=$judge['token']!==''?AutomaticJudgeBrowserService::publicUrl($judge['token']):'';
-    if($judge['url']!==''){
-        $roundLabel=ucfirst((string)$round['round_type']);
-        $categoryLabel=ucwords(str_replace('_',' ',(string)$round['division']));
-        $shareText="Hi ".$judge['judge_name'].",\n\nHere is your secure BDC judging link for ".$round['event_name']." — ".$categoryLabel." — ".$roundLabel.".\n\n".$judge['url']."\n\nPlease complete your scoring and press Submit when finished. After submission your scores are locked.";
-        $judge['whatsapp']='https://wa.me/?text='.rawurlencode($shareText);
-        $judge['email']='mailto:?subject='.rawurlencode('BDC Judge Scoring Link — '.$round['event_name']).'&body='.rawurlencode($shareText);
-    }else{
-        $judge['whatsapp']='';$judge['email']='';
+
+try{
+    $judges=AutomaticJudgeBrowserService::syncRound($pdo,$roundId);
+    foreach($judges as &$judge){
+        if($judge['plain_token']!=='')$_SESSION['automatic_judge_tokens'][(int)$judge['id']]=$judge['plain_token'];
+        $judge['token']=$_SESSION['automatic_judge_tokens'][(int)$judge['id']]??'';
+        $judge['url']=$judge['token']!==''?AutomaticJudgeBrowserService::publicUrl($judge['token']):'';
+        if($judge['url']!==''){
+            $roundLabel=ucfirst((string)$round['round_type']);
+            $categoryLabel=ucwords(str_replace('_',' ',(string)$round['division']));
+            $shareText="Hi ".$judge['judge_name'].",\n\nHere is your secure BDC judging link for ".$round['event_name']." — ".$categoryLabel." — ".$roundLabel.".\n\n".$judge['url']."\n\nPlease complete your scoring and press Submit when finished. After submission your scores are locked.";
+            $judge['whatsapp']='https://wa.me/?text='.rawurlencode($shareText);
+            $judge['email']='mailto:?subject='.rawurlencode('BDC Judge Scoring Link — '.$round['event_name']).'&body='.rawurlencode($shareText);
+        }else{
+            $judge['whatsapp']='';$judge['email']='';
+        }
     }
-}unset($judge);
-$progress=AutomaticJudgeBrowserService::progress($pdo,$roundId);$byId=[];foreach($progress as $row)$byId[(int)$row['judge_id']]=$row;
-$csrf=Csrf::token();$category=ucwords(str_replace('_',' ',(string)$round['division']));
+    unset($judge);
+    $progress=AutomaticJudgeBrowserService::progress($pdo,$roundId);
+}catch(Throwable $e){
+    $judges=[];$progress=[];$error=$e->getMessage();
+}
+
+$byId=[];foreach($progress as $row)$byId[(int)$row['judge_id']]=$row;
+$csrf=Csrf::token();
+$category=ucwords(str_replace('_',' ',(string)$round['division']));
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#fff;color:#172033}.wrap{padding:0}.head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.head h2{font-size:18px;margin:0}.small{font-size:12px;color:#667085}.grid{display:grid;gap:10px}.judge{border:1px solid #dfe3e8;border-radius:12px;padding:13px}.row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.name{font-weight:800}.chief{font-size:11px;background:#ffe49a;padding:3px 7px;border-radius:999px}.status{font-size:12px;font-weight:800;padding:4px 8px;border-radius:999px;background:#eef1f5}.status.submitted{background:#dff4e6;color:#176b36}.status.scoring{background:#fff0c7;color:#815d00}.bar{height:8px;background:#edf0f4;border-radius:999px;overflow:hidden;margin:10px 0 6px}.bar i{display:block;height:100%;background:#1774ff}.meta{font-size:12px;color:#667085}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.btn{border:1px solid #bfc6d0;background:#fff;border-radius:8px;padding:7px 9px;font-weight:700;font-size:12px;cursor:pointer;text-decoration:none;color:#172033}.btn.primary{background:#1774ff;color:#fff;border-color:#1774ff}.btn.whatsapp{background:#e9f8ee;border-color:#8ed4a2;color:#126b2d}.btn.email{background:#eef4ff;border-color:#9bbcf8;color:#174ea6}.btn.danger{border-color:#d33;color:#b11212}.alert{padding:9px 11px;border-radius:8px;margin-bottom:10px;font-size:13px}.ok{background:#e4f6ea;color:#176b36}.bad{background:#ffe7e7;color:#8d1111}.all{background:#e8f6ed;border:1px solid #add9bb;padding:12px;border-radius:10px;font-weight:800;margin-top:12px}.url{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}.url input{flex:1;min-width:260px;padding:7px;border:1px solid #ccd2da;border-radius:7px;font-size:11px}.unlock{margin-top:8px;display:flex;gap:5px}.unlock input{flex:1;padding:7px;border:1px solid #ccd2da;border-radius:7px;font-size:12px}@media(max-width:640px){.url input{min-width:100%;width:100%}}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#fff;color:#172033}.wrap{padding:0}.head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.head h2{font-size:18px;margin:0}.small{font-size:12px;color:#667085}.grid{display:grid;gap:10px}.judge{border:1px solid #dfe3e8;border-radius:12px;padding:13px}.row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.name{font-weight:800}.chief{font-size:11px;background:#ffe49a;padding:3px 7px;border-radius:999px}.status{font-size:12px;font-weight:800;padding:4px 8px;border-radius:999px;background:#eef1f5}.status.submitted{background:#dff4e6;color:#176b36}.status.scoring{background:#fff0c7;color:#815d00}.bar{height:8px;background:#edf0f4;border-radius:999px;overflow:hidden;margin:10px 0 6px}.bar i{display:block;height:100%;background:#1774ff}.meta{font-size:12px;color:#667085}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.btn{border:1px solid #bfc6d0;background:#fff;border-radius:8px;padding:7px 9px;font-weight:700;font-size:12px;cursor:pointer;text-decoration:none;color:#172033}.btn.primary{background:#1774ff;color:#fff;border-color:#1774ff}.btn.whatsapp{background:#e9f8ee;border-color:#8ed4a2;color:#126b2d}.btn.email{background:#eef4ff;border-color:#9bbcf8;color:#174ea6}.btn.danger{border-color:#d33;color:#b11212}.alert{padding:9px 11px;border-radius:8px;margin-bottom:10px;font-size:13px}.ok{background:#e4f6ea;color:#176b36}.bad{background:#ffe7e7;color:#8d1111}.waiting{background:#f4f6f9;color:#667085;border:1px solid #dfe3e8}.all{background:#e8f6ed;border:1px solid #add9bb;padding:12px;border-radius:10px;font-weight:800;margin-top:12px}.url{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}.url input{flex:1;min-width:260px;padding:7px;border:1px solid #ccd2da;border-radius:7px;font-size:11px}.unlock{margin-top:8px;display:flex;gap:5px}.unlock input{flex:1;padding:7px;border:1px solid #ccd2da;border-radius:7px;font-size:12px}@media(max-width:640px){.url input{min-width:100%;width:100%}}
 </style></head><body><div class="wrap"><div class="head"><div><h2>Judge Browser Scoring</h2><div class="small"><?=e($category)?> · <?=e(strtoupper((string)$round['round_type']))?> · Live progress</div></div><div class="small" id="lastRefresh">Live</div></div>
 <?php if($message):?><div class="alert ok"><?=e($message)?></div><?php endif;?><?php if($error):?><div class="alert bad"><?=e($error)?></div><?php endif;?>
-<?php if(!$judges):?><div class="alert bad">Add and save at least three judges in the normal Judge Panel. Their secure browser links will appear here automatically.</div><?php else:?><div class="grid"><?php foreach($judges as $judge):$p=$byId[(int)$judge['id']]??[];$status=(string)($p['session_status']??'not_started');?><div class="judge" data-judge="<?=(int)$judge['id']?>"><div class="row"><div><span class="name">J<?=(int)$judge['judge_order']?> · <?=e($judge['judge_name'])?></span><?php if((int)$judge['is_chief']===1):?> <span class="chief">★ CHIEF</span><?php endif;?><div class="meta"><?=e(ucfirst((string)$judge['scoring_scope']))?> panel</div></div><span class="status <?=e($status)?>" data-status><?=e(ucwords(str_replace('_',' ',$status)))?></span></div><div class="bar"><i data-bar style="width:<?=(int)($p['percent']??0)?>%"></i></div><div class="meta" data-progress><?= (int)($p['done']??0) ?> / <?= (int)($p['total']??0) ?> scored · <?= (int)($p['percent']??0) ?>%</div>
-<?php if($judge['url']!==''):?><div class="url"><input id="judgeUrl<?=(int)$judge['id']?>" readonly value="<?=e($judge['url'])?>"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('judgeUrl<?=(int)$judge['id']?>').value)">Copy Link</button><a class="btn whatsapp" href="<?=e($judge['whatsapp'])?>" target="_blank" rel="noopener">WhatsApp</a><a class="btn email" href="<?=e($judge['email'])?>">Email</a><a class="btn primary" href="<?=e($judge['url'])?>" target="_blank" rel="noopener">Open</a></div><?php else:?><div class="meta" style="margin-top:8px">Secure token is hidden after the original admin session. Regenerate the link to share it again.</div><?php endif;?><div class="actions"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=(int)$judge['id']?>"><input type="hidden" name="action" value="regenerate"><button class="btn" type="submit">Regenerate Link</button></form></div><?php if(Auth::isSuperAdmin()&&$status==='submitted'):?><form method="post" class="unlock" onsubmit="return confirm('Unlock this judge submission? The reason will be recorded in the audit log.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=(int)$judge['id']?>"><input type="hidden" name="action" value="unlock"><input name="reason" maxlength="500" required placeholder="Reason for unlock"><button class="btn danger" type="submit">Unlock</button></form><?php endif;?></div><?php endforeach;?></div><div class="all" id="allSubmitted" style="display:<?=AutomaticJudgeBrowserService::allSubmitted($pdo,$roundId)?'block':'none'?>">✓ ALL JUDGES SUBMITTED AND LOCKED — results can now be calculated.</div><?php endif;?></div>
+<?php if(!$judges):?><div class="alert waiting">Add and save at least 3 judges, then add active Leaders and Followers. Secure judge links will appear here automatically.</div><?php else:?><div class="grid"><?php foreach($judges as $judge):$p=$byId[(int)$judge['id']]??[];$status=(string)($p['session_status']??'not_started');?><div class="judge" data-judge="<?=(int)$judge['id']?>"><div class="row"><div><span class="name">J<?=(int)$judge['judge_order']?> · <?=e($judge['judge_name'])?></span><?php if((int)$judge['is_chief']===1):?> <span class="chief">★ CHIEF</span><?php endif;?><div class="meta"><?=e(ucfirst((string)$judge['scoring_scope']))?> panel</div></div><span class="status <?=e($status)?>" data-status><?=e(ucwords(str_replace('_',' ',$status)))?></span></div><div class="bar"><i data-bar style="width:<?=(int)($p['percent']??0)?>%"></i></div><div class="meta" data-progress><?=(int)($p['done']??0)?> / <?=(int)($p['total']??0)?> scored · <?=(int)($p['percent']??0)?>%</div>
+<?php if($judge['url']!==''):?><div class="url"><input id="judgeUrl<?=(int)$judge['id']?>" readonly value="<?=e($judge['url'])?>"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('judgeUrl<?=(int)$judge['id']?>').value)">Copy Link</button><a class="btn whatsapp" href="<?=e($judge['whatsapp'])?>" target="_blank" rel="noopener">WhatsApp</a><a class="btn email" href="<?=e($judge['email'])?>">Email</a><a class="btn primary" href="<?=e($judge['url'])?>" target="_blank" rel="noopener">Open</a></div><?php else:?><div class="meta" style="margin-top:8px">Regenerate the link to share it again.</div><?php endif;?><div class="actions"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=(int)$judge['id']?>"><input type="hidden" name="action" value="regenerate"><button class="btn" type="submit">Regenerate Link</button></form></div><?php if(Auth::isSuperAdmin()&&$status==='submitted'):?><form method="post" class="unlock" onsubmit="return confirm('Unlock this judge submission? The reason will be recorded in the audit log.')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=(int)$judge['id']?>"><input type="hidden" name="action" value="unlock"><input name="reason" maxlength="500" required placeholder="Reason for unlock"><button class="btn danger" type="submit">Unlock</button></form><?php endif;?></div><?php endforeach;?></div><div class="all" id="allSubmitted" style="display:<?=AutomaticJudgeBrowserService::allSubmitted($pdo,$roundId)?'block':'none'?>">✓ ALL JUDGES SUBMITTED AND LOCKED — results can now be calculated.</div><?php endif;?></div>
 <script>
-function poll(){fetch('?round_id=<?=$roundId?>&status=1',{cache:'no-store'}).then(r=>r.json()).then(data=>{data.judges.forEach(j=>{const el=document.querySelector('[data-judge="'+j.judge_id+'"]');if(!el)return;const s=el.querySelector('[data-status]');s.textContent=j.session_status.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());s.className='status '+j.session_status;el.querySelector('[data-bar]').style.width=j.percent+'%';el.querySelector('[data-progress]').textContent=j.done+' / '+j.total+' scored · '+j.percent+'%';});const all=document.getElementById('allSubmitted');if(all)all.style.display=data.all_submitted?'block':'none';document.getElementById('lastRefresh').textContent='Updated '+new Date().toLocaleTimeString();}).catch(()=>{}).finally(()=>setTimeout(poll,2500));}setTimeout(poll,1200);
+function poll(){fetch('?round_id=<?=$roundId?>&status=1',{cache:'no-store'}).then(r=>r.json()).then(data=>{(data.judges||[]).forEach(j=>{const el=document.querySelector('[data-judge="'+j.judge_id+'"]');if(!el)return;const s=el.querySelector('[data-status]');s.textContent=j.session_status.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());s.className='status '+j.session_status;el.querySelector('[data-bar]').style.width=j.percent+'%';el.querySelector('[data-progress]').textContent=j.done+' / '+j.total+' scored · '+j.percent+'%';});const all=document.getElementById('allSubmitted');if(all)all.style.display=data.all_submitted?'block':'none';document.getElementById('lastRefresh').textContent='Updated '+new Date().toLocaleTimeString();}).catch(()=>{}).finally(()=>setTimeout(poll,2500));}setTimeout(poll,1200);
 </script></body></html>
