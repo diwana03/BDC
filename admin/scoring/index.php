@@ -42,7 +42,7 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
       <div class="text-center mb-5"><h1 class="display-6 fw-bold">Select Scoring Mode</h1><p class="text-muted mb-0">Choose Manual or Automatic scoring, then select the competition category.</p></div>
       <div class="row g-4 justify-content-center">
         <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">✎</div><h2 class="h3">Manual Scoring</h2><p class="flex-grow-1">Manual scoring for Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational.</p><a class="btn btn-dark btn-lg" href="?mode=manual">Continue</a></div></section></div>
-        <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">⚙</div><h2 class="h3">Automatic Scoring</h2><p class="flex-grow-1">Uses the same registration and judge setup as Manual Scoring. The only difference is that judges receive secure browser scoring links and their progress is visible live.</p><a class="btn btn-primary btn-lg" href="?mode=automated">Continue</a></div></section></div>
+        <div class="col-md-6"><section class="card mode-card"><div class="card-body p-4 d-flex flex-column"><div class="mode-icon mb-4">⚙</div><h2 class="h3">Automatic Scoring</h2><p class="flex-grow-1">Uses the same registration, tier and judge setup as Manual Scoring. Judges receive secure browser scoring links and their progress is visible live.</p><a class="btn btn-primary btn-lg" href="?mode=automated">Continue</a></div></section></div>
       </div>
     </main>
     </body>
@@ -51,7 +51,14 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
     exit;
 }
 
-ob_start(static function(string $html)use($mode,$roundId):string{
+$automaticSetupHtml='';
+if($mode==='automated' && $roundId>0){
+    require_once dirname(__DIR__,2).'/bootstrap.php';
+    require_once __DIR__.'/automatic-common-setup.php';
+    try{$automaticSetupHtml=bdcRenderAutomaticCommonSetup($roundId);}catch(Throwable){$automaticSetupHtml='';}
+}
+
+ob_start(static function(string $html)use($mode,$roundId,$automaticSetupHtml):string{
     $openedSpecialRound=$roundId>0 && (
         stripos($html,'BACHATA_RISING')!==false
         || stripos($html,'BACHATA_OPEN')!==false
@@ -112,66 +119,37 @@ ob_start(static function(string $html)use($mode,$roundId):string{
 
     if($openedSpecialRound){
         $html=str_replace('publish.php?round_id=','special-publish.php?round_id=',$html);
-        $html=str_replace('registration-desk/?token=','registration-desk/special.php?token=',$html);
+        /* Registration Desk intentionally stays the shared Manual/Heats desk. */
     }
 
     if($mode==='automated' && $roundId>0){
         $html=str_replace('Automatic Relative Placement Final','Automatic Scoring Engine · Same Heats Workflow',$html);
-        $html=str_replace(
-            '<button class="btn btn-outline-primary">Save Judge Panel</button>',
-            '<button type="button" class="btn btn-outline-secondary me-2" id="automaticAddJudge">+ Add Judge</button><button class="btn btn-outline-primary">Save Judge Panel</button>',
-            $html
-        );
 
-        /* Same Registration Desk entry point used by the Heats workflow. */
-        $registrationPanel='<section class="card shadow-sm mb-4 border-primary" id="automatic-registration-desk-panel"><div class="card-body p-3">'
-            .'<iframe title="Registration Desk" src="registration-desk-panel.php?round_id='.$roundId.'" style="width:100%;height:245px;border:0;border-radius:10px;background:#fff"></iframe>'
-            .'</div></section>';
-        $judgeNeedle='<section class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">1. Judge Panel</h2>';
-        if(str_contains($html,$judgeNeedle))$html=str_replace($judgeNeedle,$registrationPanel.$judgeNeedle,$html);
-
-        /* Browser links/live feed replace admin-entered Judge Scores in Automatic. */
         $browserPanel='<section class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel"><div class="card-body">'
-            .'<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Live Scoring</h2><p class="text-muted small mb-0">Judges score from their secure browser links. Use Copy, WhatsApp, Email or Open to send each link. Progress updates live and submitted scores lock automatically.</p></div><span class="badge text-bg-dark">LIVE</span></div>'
+            .'<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Live Scoring</h2><p class="text-muted small mb-0">Same competitors, bibs, judges and scoring rules as Manual Heats. Judges enter YES / A1 / A2 / A3 from their secure browser link. Use Copy, WhatsApp, Email or Open to send each link.</p></div><span class="badge text-bg-dark">LIVE</span></div>'
             .'<iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:690px;border:0;border-radius:10px;background:#fff"></iframe></div></section>';
-        $html=str_replace('</main>',$browserPanel.'</main>',$html);
+
+        /* Legacy Automatic Heats page: replace its separate setup with the shared Manual-style setup. */
+        if($automaticSetupHtml!=='' && str_contains($html,'<h2 class="h5">1. Judge Panel</h2>')){
+            $pattern='/<section class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">1\. Judge Panel<\/h2>.*?<\/section>\s*<section class="card shadow-sm mb-4"><div class="card-body"><div class="d-flex.*?<h2 class="h5 mb-1">2\. Judge Scores<\/h2>.*?<\/section>/s';
+            $replacement=$automaticSetupHtml.$browserPanel;
+            $html=preg_replace($pattern,static fn()=>$replacement,$html,1)??$html;
+        }else{
+            /* Common Manual-style page / Final: remove manual score entry and insert live feed. */
+            $html=str_replace(
+                '<button class="btn btn-outline-primary">Save Judge Panel</button>',
+                '<button type="button" class="btn btn-outline-secondary me-2" id="automaticAddJudge">+ Add Judge</button><button class="btn btn-outline-primary">Save Judge Panel</button>',
+                $html
+            );
+            $html=str_replace('</main>',$browserPanel.'</main>',$html);
+        }
 
         $script=<<<'JS'
 <script>
 document.addEventListener('DOMContentLoaded',function(){
-  const heading=[...document.querySelectorAll('h2')].find(h=>h.textContent.trim().startsWith('1. Judge Panel'));
-  if(heading){
-    const section=heading.closest('section');
-    const tbody=section?section.querySelector('tbody'):null;
-    if(tbody){
-      const existing=[...tbody.querySelectorAll('tr')];
-      let lastPopulated=-1;
-      existing.forEach((row,index)=>{const input=row.querySelector('input[name^="judge_name"]');if(input&&input.value.trim()!=='')lastPopulated=index;});
-      const keep=Math.max(3,lastPopulated+1);
-      existing.forEach((row,index)=>{if(index>=keep&&row.querySelector('input[name^="judge_name"]')?.value.trim()==='')row.remove();});
-
-      const add=document.getElementById('automaticAddJudge');
-      if(add)add.addEventListener('click',function(){
-        const rows=[...tbody.querySelectorAll('tr')];
-        const index=rows.length;
-        const tr=document.createElement('tr');
-        tr.innerHTML='<td><input class="form-control" name="judge_name['+index+']" value="" placeholder="Judge name"></td>'+
-          '<td><select class="form-select" name="judge_scope['+index+']"><option value="all">All</option><option value="leader">Leader only</option><option value="follower">Follower only</option></select></td>'+
-          '<td><input class="form-check-input" type="radio" name="chief_index" value="'+index+'"></td>';
-        tbody.appendChild(tr);
-        tr.querySelector('input[name^="judge_name"]')?.focus();
-      });
-    }
-  }
-
-  /* Automatic uses the same setup as Heats, but judges enter scores themselves. */
-  const scoreHeading=[...document.querySelectorAll('h2')].find(h=>h.textContent.trim().startsWith('2. Judge Scores'));
-  const scoreSection=scoreHeading?scoreHeading.closest('section'):null;
-  const livePanel=document.getElementById('automatic-judge-browser-panel');
-  if(scoreSection&&livePanel){
-    scoreSection.parentNode.insertBefore(livePanel,scoreSection);
-    scoreSection.remove();
-  }
+  const scoreHeading=[...document.querySelectorAll('h2')].find(h=>h.textContent.trim().startsWith('Manual ')&&h.textContent.includes(' Score Entry'));
+  const scoreSection=scoreHeading?scoreHeading.closest('.card'):null;
+  if(scoreSection)scoreSection.remove();
 });
 </script>
 JS;
