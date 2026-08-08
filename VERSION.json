@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev44",
-  "build": 2374,
+  "version": "2.3.3-dev45",
+  "build": 2375,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Release Manager drops the obsolete worker-only database trigger that was forcing the currently running Staging version back to Available and blocking Production promotion",
     "Release Manager recognizes the version actually running on Staging and exposes the Production path instead of offering the same version for Staging again",
     "Special-category scoring round view avoids duplicate bootstrap loading when embedding the standard manual scoring core, preventing the round-view HTTP 500 regression",
     "Environment-isolated Result Repository resolution keeps Production on Production storage and Staging on Staging storage while restoring legacy historical document links by filename",
