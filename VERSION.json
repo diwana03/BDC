@@ -1,17 +1,19 @@
 {
-  "version": "2.3.3-dev57",
-  "build": 2387,
+  "version": "2.3.3-dev58",
+  "build": 2388,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic special-category rounds route to the existing special-category Registration Desk instead of the normal division progression validator",
-    "Bachata Rising, Bachata Open and Bachata Invitational competitor search no longer shows invalid-division eligibility errors",
-    "Existing BDC IDs and competitor records continue to be used for special-category registration",
-    "New provisional special-category competitors remain Novice in BDC progression and follow existing special-category point-bucket rules",
-    "Special-category labels display without underscored database values",
-    "Automatic Heats keeps the same Registration Desk and judge setup workflow as Manual Heats while Judge Live Scoring replaces manual score entry",
-    "Manual scoring, scoring calculations, Relative Placement, points logic and Release Manager workflow remain unchanged"
+    "Automatic Heats mirrors Manual Heats setup with the same category/tier settings, judge setup, inline Leader/Follower competitor entry and bib management",
+    "Registration Desk remains optional for both modes and uses the shared Heats desk UI",
+    "Bachata Rising, Bachata Open and Bachata Invitational bypass normal progression-entry validation while retaining existing BDC IDs",
+    "Special-category points stay fixed: Rising/Open 5-4-3-2-1 and Invitational 3-2-1 regardless of participant tier",
+    "Automatic browser judges use the same YES, A1, A2 and A3 marks and locked BDC weights as Manual Heats",
+    "Judge links are generated from the normal saved judge panel and active Leader/Follower entries without a separate setup-confirmation workflow",
+    "Judge sharing retains Copy, WhatsApp, Email and Open with live progress, Submit and Lock, and audited Super Admin unlock",
+    "Final browser judging continues to use Relative Placement ranking",
+    "Release Manager workflow is unchanged"
   ]
 }
