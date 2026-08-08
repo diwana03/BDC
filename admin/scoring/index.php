@@ -52,17 +52,28 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
 }
 
 ob_start(static function(string $html)use($mode,$roundId):string{
-    /* Detect the opened round before adding the special choices to the creation form. */
-    $openedSpecialRound=stripos($html,'bachata_rising')!==false
-        ||stripos($html,'bachata_open')!==false
-        ||stripos($html,'bachata_invitational')!==false;
-
-    $html=str_replace(
-        '<option value="advanced">Advanced</option>\n<option value="all_star">All Star</option>',
-        '<option value="advanced">Advanced</option>\n<option value="bachata_rising">Bachata Rising</option>\n<option value="bachata_open">Bachata Open</option>\n<option value="bachata_invitational">Bachata Invitational</option>',
-        $html
+    /* Detect an opened special round from the rendered round heading/content. */
+    $openedSpecialRound=$roundId>0 && (
+        stripos($html,'BACHATA_RISING')!==false
+        || stripos($html,'BACHATA_OPEN')!==false
+        || stripos($html,'BACHATA_INVITATIONAL')!==false
+        || stripos($html,'Bachata_rising')!==false
+        || stripos($html,'Bachata_open')!==false
+        || stripos($html,'Bachata_invitational')!==false
     );
-    $html=str_replace('<option value="all_star">All Star</option>','',$html);
+
+    /*
+     * core.php currently prints All Star as the fourth option. Replace that
+     * exact option directly instead of depending on whitespace/newline layout.
+     */
+    $specialOptions='<option value="bachata_rising">Bachata Rising</option>'
+        .'<option value="bachata_open">Bachata Open</option>'
+        .'<option value="bachata_invitational">Bachata Invitational</option>';
+    if(str_contains($html,'<option value="all_star">All Star</option>')){
+        $html=str_replace('<option value="all_star">All Star</option>',$specialOptions,$html);
+    }elseif(!str_contains($html,'<option value="bachata_rising">')){
+        $html=str_replace('<option value="advanced">Advanced</option>','<option value="advanced">Advanced</option>'.$specialOptions,$html);
+    }
 
     $html=str_replace(
         ['Bachata_rising','Bachata_open','Bachata_invitational','BACHATA_RISING','BACHATA_OPEN','BACHATA_INVITATIONAL'],
