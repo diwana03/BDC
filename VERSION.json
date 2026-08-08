@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev62",
-  "build": 2392,
+  "version": "2.3.3-dev63",
+  "build": 2393,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Registration Desk card is shown at the top of the setup screen",
-    "Judge Live Scoring header is simplified with no redundant explanatory copy",
-    "Judge Live Scoring no longer returns HTTP 500 when judge-session storage is missing or not yet initialized",
-    "Judge-session storage is verified before live progress and links are used",
-    "Live panel shows a waiting state until at least three judges plus active Leaders and Followers are ready",
-    "Automatic Heats/Semifinals retain the Manual-style setup and Automatic Finals retain Relative Placement",
-    "Manual scoring, tier calculations, special-category points, BDC IDs and Release Manager workflow remain unchanged"
+    "Leaderboard adds Bachata Rising, Bachata Open and Bachata Invitational special-category filters",
+    "Special-category leaderboard rankings are calculated from published Final results rather than normal BDC progression point buckets",
+    "Bachata Rising and Bachata Open leaderboard points are fixed at 5-4-3-2-1 for 1st through 5th",
+    "Bachata Invitational leaderboard points are fixed at 3-2-1 for 1st through 3rd",
+    "Leader and Follower special-category rankings remain separate",
+    "Novice, Intermediate and Advanced progression leaderboard logic remains unchanged",
+    "Release Manager workflow is unchanged"
   ]
 }
