@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev59",
-  "build": 2389,
+  "version": "2.3.3-dev60",
+  "build": 2390,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Heats renders the same Manual-style setup instead of the legacy separate Automatic layout",
-    "Category or tier settings, judge setup, inline Leader and Follower competitor entry, bib management and the optional Registration Desk remain shared between Manual and Automatic",
-    "Only the scoring section differs: Automatic shows Judge Live Scoring and secure judge browser links instead of manual admin score entry",
-    "Automatic browser judges use YES, A1, A2 and A3 with the existing locked BDC weights",
-    "Special-category points remain fixed: Rising/Open 5-4-3-2-1 and Invitational 3-2-1 regardless of participant tier",
-    "Special categories continue to bypass normal progression-entry validation while retaining BDC IDs",
+    "Fixes the HTTP 500 on Automatic scoring round URLs caused by duplicate application bootstrap in dev59",
+    "Automatic shared Heats UI is rendered only after the core scoring application has initialized",
+    "Automatic UI enhancement failures fall back to the core scoring page instead of returning a fatal error",
+    "Automatic Heats retains the same Manual-style category/tier settings, judge setup, inline Leader/Follower entry, bib management and optional Registration Desk",
+    "Automatic scoring retains Judge Live Scoring with YES, A1, A2 and A3 browser judging",
+    "Special-category fixed points and BDC eligibility handling remain unchanged",
     "Release Manager workflow is unchanged"
   ]
 }
