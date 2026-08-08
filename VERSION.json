@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev55",
-  "build": 2385,
+  "version": "2.3.3-dev56",
+  "build": 2386,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Saved Rounds shows a dedicated Scoring Mode column with blue AUTOMATIC and dark MANUAL badges plus subtle row colour coding",
-    "Saved-round Open links preserve the stored scoring mode so Automatic rounds reopen as Automatic and Manual rounds reopen as Manual",
-    "The shared scoring dashboard heading is neutral: BDC Scoring Engine · Event Round Workflow",
-    "Automatic Scoring uses the same Registration Desk, competitor, bib and judge setup workflow as the existing scoring engine",
-    "Automatic-specific behavior remains secure judge browser links, WhatsApp/email sharing and live judge scoring/progress",
-    "Judge Submit and Lock, live progress and Super Admin audited unlock remain available",
-    "Registration Desk, scoring calculation, Relative Placement, point logic and Release Manager deployment chain remain unchanged"
+    "Automatic Heats exposes the same Registration Desk entry point used by the normal Heats workflow with Copy Link, Open Desk and live registration status",
+    "Competitors and bibs remain managed by the existing Registration Desk with no separate Automatic registration flow",
+    "Automatic Judge Scores admin-entry UI is replaced by Judge Live Scoring with secure judge browser links and live progress",
+    "Judge link sharing includes Copy, WhatsApp, Email and Open plus Submit & Lock and Super Admin audited unlock",
+    "Automatic Judge Panel starts with 3 judges and supports unlimited additional judges",
+    "Saved Rounds retains Manual/Automatic mode colour coding and mode-preserving Open links",
+    "Manual scoring, scoring calculations, Relative Placement, points logic and Release Manager workflow remain unchanged"
   ]
 }
