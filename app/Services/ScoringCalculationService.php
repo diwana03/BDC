@@ -19,7 +19,7 @@ final class ScoringCalculationService
     public const PRODUCTION='production';
     public const TEST='test';
 
-    /** @return array{version:int,pending_tie:bool,rows:int} */
+    /** @return array{version:int,pending_tie:bool,rows:int,tier:?int,callback_count:int} */
     public static function calculateHeats(PDO $pdo,int $roundId,string $scope,?int $userId=null):array
     {
         $tables=self::tables($scope);
@@ -39,14 +39,36 @@ final class ScoringCalculationService
         $entryStmt->execute(['r'=>$roundId]);
         $entries=$entryStmt->fetchAll();
 
-        $markStmt=$pdo->prepare("SELECT entry_id,judge_id,weighted_score FROM {$tables['marks']} WHERE round_id=:r");
+        $roleCounts=['leader'=>0,'follower'=>0];
+        foreach($entries as $entry){
+            $role=(string)($entry['dance_role']??'');
+            if(isset($roleCounts[$role]))$roleCounts[$role]++;
+        }
+
+        $tier=null;
+        $callbackCount=(int)$round['callback_count'];
+        $division=(string)($round['division']??'');
+        $manualOverride=(int)($round['tier_manual_override']??0)===1;
+        if(!SpecialCategoryService::isSpecial($division) && !$manualOverride){
+            $tierInfo=ScoringRulesService::tierFromRoleCounts($roleCounts['leader'],$roleCounts['follower']);
+            $tier=(int)$tierInfo['tier'];
+            $callbackCount=(int)$tierInfo['yes_count'];
+            $pdo->prepare("UPDATE {$tables['rounds']} SET yes_count=:yes,callback_count=:callbacks WHERE id=:r")
+                ->execute(['yes'=>$callbackCount,'callbacks'=>$callbackCount,'r'=>$roundId]);
+        }
+
+        $markStmt=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank,weighted_score FROM {$tables['marks']} WHERE round_id=:r");
         $markStmt->execute(['r'=>$roundId]);
         $marks=[];
         foreach($markStmt->fetchAll() as $mark){
-            $marks[(int)$mark['entry_id']][(int)$mark['judge_id']]=(float)$mark['weighted_score'];
+            $type=strtolower((string)($mark['mark_type']??''));
+            $weight=in_array($type,['yes','alt'],true)
+                ? ScoringRulesService::markWeight($type,$mark['alt_rank']===null?null:(int)$mark['alt_rank'])
+                : (float)$mark['weighted_score'];
+            $marks[(int)$mark['entry_id']][(int)$mark['judge_id']]=$weight;
         }
 
-        $calculated=HeatsScoringEngine::calculate($judges,$entries,$marks,(int)$round['callback_count']);
+        $calculated=HeatsScoringEngine::calculate($judges,$entries,$marks,$callbackCount);
         $version=(int)$round['generated_version']+1;
         $pendingTie=false;$rowCount=0;
 
@@ -79,10 +101,14 @@ final class ScoringCalculationService
                 'u'=>$userId?:null,
                 'details'=>json_encode([
                     'engine'=>HeatsScoringEngine::class,
+                    'rules'=>ScoringRulesService::class,
                     'version'=>$version,
                     'pending_tie'=>$pendingTie,
                     'row_count'=>$rowCount,
                     'scope'=>$scope,
+                    'tier'=>$tier,
+                    'callback_count'=>$callbackCount,
+                    'special_category'=>SpecialCategoryService::isSpecial($division),
                 ],JSON_UNESCAPED_UNICODE),
             ]);
             $pdo->commit();
@@ -91,7 +117,7 @@ final class ScoringCalculationService
             throw $e;
         }
 
-        return ['version'=>$version,'pending_tie'=>$pendingTie,'rows'=>$rowCount];
+        return ['version'=>$version,'pending_tie'=>$pendingTie,'rows'=>$rowCount,'tier'=>$tier,'callback_count'=>$callbackCount];
     }
 
     /** @return array{rounds:string,judges:string,entries:string,marks:string,results:string,audit:string} */
