@@ -53,9 +53,48 @@ function url(string $path = ''): string
     return $base . '/' . ltrim($path, '/');
 }
 
-/* Scoring Tests always starts with the same Manual / Automatic choice used by Production. */
 $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
+
+/*
+ * Shared BDC Heats engine gate.
+ *
+ * Both Production Scoring and Scoring Tests historically had their own local
+ * computeResults() implementation. Generate Results is intercepted here after
+ * authentication/CSRF bootstrap and sent to ScoringCalculationService, which
+ * calls the single HeatsScoringEngine. The old controller functions remain only
+ * as rollback compatibility and are bypassed during normal use.
+ */
+if (
+    $bdcBootstrapMethod === 'POST'
+    && (string)($_POST['action'] ?? '') === 'generate_results'
+    && preg_match('#/admin/(?:scoring|scoring-tests)(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
+) {
+    \App\Core\Auth::requireAdmin();
+    if (!\App\Core\Csrf::verify($_POST['_csrf'] ?? null)) {
+        http_response_code(419);
+        exit('Invalid security token.');
+    }
+    $roundId=(int)($_POST['round_id'] ?? 0);
+    if($roundId<1){http_response_code(400);exit('Invalid scoring round.');}
+    $isTest=str_contains($bdcBootstrapPath,'/scoring-tests');
+    $scope=$isTest
+        ? \App\Services\ScoringCalculationService::TEST
+        : \App\Services\ScoringCalculationService::PRODUCTION;
+    \App\Services\ScoringCalculationService::calculateHeats(
+        \App\Core\Database::connection(),
+        $roundId,
+        $scope,
+        (int)(\App\Core\Auth::user()['id'] ?? 0)
+    );
+    $target=$isTest
+        ? url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&shared_engine=1')
+        : url('admin/scoring/?round_id='.$roundId.'&shared_engine=1');
+    header('Location: '.$target,true,303);
+    exit;
+}
+
+/* Scoring Tests always starts with the same Manual / Automatic choice used by Production. */
 if (
     $bdcBootstrapMethod === 'GET'
     && empty($_GET['legacy'])
