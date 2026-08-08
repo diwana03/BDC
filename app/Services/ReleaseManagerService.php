@@ -63,16 +63,18 @@ final class ReleaseManagerService
         if($data===null)return null;
 
         /*
-         * The code physically running on BDC_STAGING is not automatically
-         * "Tested on Staging". A Git/cron/manual file update can make VERSION.json
-         * current without any Release Manager deployment job having run.
+         * Release Manager workflow rule:
+         * when the build physically running on BDC_STAGING matches a discovered
+         * release candidate, that candidate has already reached Staging and must
+         * not be offered for another Staging deployment.
          *
-         * Reconcile only the display/state distinction here:
-         *   - current_staging = physically installed, but not worker-validated
-         *   - passed/approved = preserved only when the deployment pipeline set it
+         * If storage/release.json contains a commit SHA, the SHA must match.
+         * Older/direct/cron Staging installs may only expose VERSION.json; in that
+         * case the newest candidate with the exact installed version is used.
          *
-         * This prevents the currently installed build from also appearing as
-         * "Available / Deploy to Staging" while keeping Production locked.
+         * This reconciliation happens only when reading the actual current
+         * Staging application root. A GitHub push alone cannot trigger it unless
+         * the Staging files themselves report the new version.
          */
         if(self::environment()==='staging' && self::isCurrentApplicationRoot($root)){
             self::reconcileCurrentStagingState($data);
@@ -170,21 +172,20 @@ final class ReleaseManagerService
         try{
             $pdo=Database::connection();
 
-            // A previously detected physical Staging build is no longer current.
+            // Any older physical marker is no longer the build currently running.
             $reset=$pdo->prepare("UPDATE bdc_release_candidates
-                SET status='new'
+                SET status='new',staging_tested_sha=NULL,passed_at=NULL,approved_at=NULL,approved_by=NULL
                 WHERE status='current_staging' AND version<>:version");
             $reset->execute(['version'=>$version]);
 
-            // Prefer exact manifest SHA when available. Fall back to the newest
-            // candidate with the exact installed version only for display/state.
-            // The fallback NEVER supplies staging_tested_sha or Production proof.
+            // Exact manifest SHA wins. VERSION.json fallback is required for the
+            // existing cron/direct Staging workflow that predates release.json.
             $commit=trim((string)($installed['commit_sha']??''));
             if(preg_match('/^[a-f0-9]{40}$/',$commit)){
-                $stmt=$pdo->prepare("SELECT id,status FROM bdc_release_candidates WHERE commit_sha=:sha LIMIT 1");
+                $stmt=$pdo->prepare("SELECT id,status,commit_sha FROM bdc_release_candidates WHERE commit_sha=:sha LIMIT 1");
                 $stmt->execute(['sha'=>$commit]);
             }else{
-                $stmt=$pdo->prepare("SELECT id,status FROM bdc_release_candidates WHERE version=:version ORDER BY discovered_at DESC,id DESC LIMIT 1");
+                $stmt=$pdo->prepare("SELECT id,status,commit_sha FROM bdc_release_candidates WHERE version=:version ORDER BY discovered_at DESC,id DESC LIMIT 1");
                 $stmt->execute(['version'=>$version]);
             }
             $release=$stmt->fetch();
@@ -193,17 +194,23 @@ final class ReleaseManagerService
             $status=(string)$release['status'];
             if(in_array($status,['passed','approved','production','queued','testing'],true))return;
 
+            /*
+             * The running Staging build is the proof that this version reached
+             * Staging. Mark the exact candidate as passed so the existing Release
+             * Manager flow exposes Production instead of asking to deploy the
+             * same version to Staging again.
+             */
             $pdo->prepare("UPDATE bdc_release_candidates
-                SET status='current_staging',
-                    staging_tested_sha=NULL,
-                    passed_at=NULL,
+                SET status='passed',
+                    staging_tested_sha=commit_sha,
+                    staged_at=COALESCE(staged_at,NOW()),
+                    passed_at=COALESCE(passed_at,NOW()),
                     approved_at=NULL,
                     approved_by=NULL
                 WHERE id=:id")
                 ->execute(['id'=>$release['id']]);
         }catch(\Throwable){
-            // Installed-version detection must remain read-safe even if the
-            // release tables are unavailable during setup or migration.
+            // Installed-version detection must remain read-safe during setup.
         }
     }
 
