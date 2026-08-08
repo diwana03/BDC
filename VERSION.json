@@ -1,17 +1,18 @@
 {
-  "version": "2.3.3-dev53",
-  "build": 2383,
+  "version": "2.3.3-dev54",
+  "build": 2384,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Scoring setup now mounts on the actual Heats Judge Panel and exposes + Add Judge, autosave, Save Draft and competitor confirmation workflow",
-    "Legacy Automatic Judge Panel and Judge Scores admin-entry sections are hidden after the new setup workflow mounts",
-    "Judge links remain unavailable until Judges & Competitors are confirmed",
+    "Automatic Scoring uses the same Registration Desk, competitor, bib and judge setup workflow as the existing scoring engine",
+    "Automatic-specific behavior is limited to secure judge browser links and live judge scoring/progress",
+    "Automatic Judge Panel supports unlimited judges with + Add Judge while preserving saved judges",
+    "Judge links provide Copy Link, WhatsApp, Email and Open actions with prefilled event and round details",
+    "Judge Submit and Lock, live progress and Super Admin audited unlock remain available",
     "Current Staging Release displays the build number beside the version in Release Manager",
-    "Automatic Scoring setup migration uses the exact scoring-round ID type with a legacy-safe foreign-key fallback",
     "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
-    "Release Manager deployment and Production promotion logic remain unchanged"
+    "Registration Desk, scoring calculation, Relative Placement, point logic and Release Manager deployment chain remain unchanged"
   ]
 }
