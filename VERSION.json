@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev56",
-  "build": 2386,
+  "version": "2.3.3-dev57",
+  "build": 2387,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Heats exposes the same Registration Desk entry point used by the normal Heats workflow with Copy Link, Open Desk and live registration status",
-    "Competitors and bibs remain managed by the existing Registration Desk with no separate Automatic registration flow",
-    "Automatic Judge Scores admin-entry UI is replaced by Judge Live Scoring with secure judge browser links and live progress",
-    "Judge link sharing includes Copy, WhatsApp, Email and Open plus Submit & Lock and Super Admin audited unlock",
-    "Automatic Judge Panel starts with 3 judges and supports unlimited additional judges",
-    "Saved Rounds retains Manual/Automatic mode colour coding and mode-preserving Open links",
+    "Automatic special-category rounds route to the existing special-category Registration Desk instead of the normal division progression validator",
+    "Bachata Rising, Bachata Open and Bachata Invitational competitor search no longer shows invalid-division eligibility errors",
+    "Existing BDC IDs and competitor records continue to be used for special-category registration",
+    "New provisional special-category competitors remain Novice in BDC progression and follow existing special-category point-bucket rules",
+    "Special-category labels display without underscored database values",
+    "Automatic Heats keeps the same Registration Desk and judge setup workflow as Manual Heats while Judge Live Scoring replaces manual score entry",
     "Manual scoring, scoring calculations, Relative Placement, points logic and Release Manager workflow remain unchanged"
   ]
 }
