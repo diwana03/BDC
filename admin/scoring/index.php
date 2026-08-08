@@ -52,7 +52,6 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
 }
 
 ob_start(static function(string $html)use($mode,$roundId):string{
-    /* Detect an opened special round from the rendered round heading/content. */
     $openedSpecialRound=$roundId>0 && (
         stripos($html,'BACHATA_RISING')!==false
         || stripos($html,'BACHATA_OPEN')!==false
@@ -62,10 +61,6 @@ ob_start(static function(string $html)use($mode,$roundId):string{
         || stripos($html,'Bachata_invitational')!==false
     );
 
-    /*
-     * core.php currently prints All Star as the fourth option. Replace that
-     * exact option directly instead of depending on whitespace/newline layout.
-     */
     $specialOptions='<option value="bachata_rising">Bachata Rising</option>'
         .'<option value="bachata_open">Bachata Open</option>'
         .'<option value="bachata_invitational">Bachata Invitational</option>';
@@ -88,13 +83,15 @@ ob_start(static function(string $html)use($mode,$roundId):string{
 
     if($mode==='automated' && $roundId>0){
         $html=str_replace('Automatic Relative Placement Final','Automatic Scoring Engine · Judge Browser Workflow',$html);
-        $panel='<div class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel">'
-            .'<div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">'
-            .'<strong>Automatic Judge Browser Scoring</strong><span class="badge text-bg-light">LIVE</span></div>'
-            .'<div class="card-body p-3"><p class="text-muted small mb-3">Each judge receives a secure browser link. Draft scores save live. Submit locks the judge scorecard.</p>'
-            .'<iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:610px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
+        $setup='<div class="card shadow-sm mb-4 border-primary" id="automatic-setup-panel">'
+            .'<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><strong>Automatic Scoring Setup</strong><span class="badge text-bg-light">DRAFT + AUTOSAVE</span></div>'
+            .'<div class="card-body p-3"><iframe title="Automatic Scoring Setup" src="automatic-setup.php?round_id='.$roundId.'" style="width:100%;height:720px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
+        $judgePanel='<div class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel">'
+            .'<div class="card-header bg-dark text-white d-flex justify-content-between align-items-center"><strong>Judge Browser Scoring</strong><span class="badge text-bg-light">AFTER CONFIRMATION</span></div>'
+            .'<div class="card-body p-3"><iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:610px;border:0;border-radius:10px;background:#fff"></iframe></div></div>';
         $needle='<div class="card shadow-sm mb-4 border-primary" id="registration-desk-sync">';
-        $html=str_replace($needle,$panel.$needle,$html);
+        $html=str_replace($needle,$setup.$needle.$judgePanel,$html);
+        $html=str_replace('</body>',"<script>document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.card').forEach(card=>{const h=card.querySelector('h2,h3');if(!h)return;const t=h.textContent.trim();if(t.startsWith('1. Judge Panel')||t.startsWith('2. Judge Scores'))card.style.display='none';});});</script></body>",$html);
     }
 
     return $html;
