@@ -1,22 +1,14 @@
 {
-  "version": "2.3.3-dev68",
-  "build": 2398,
+  "version": "2.3.3-dev69",
+  "build": 2399,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Scoring Tests Dashboard now opens a fast production-parity sandbox by default",
-    "Test workflow visibly supports Manual and Automatic scoring modes",
-    "Test sandbox reads real BDC competitors, BDC IDs, current divisions, history and points without copying mutable production profile columns",
-    "TestScoringGuardService blocks Test mode writes to official points, participant results, competitor progression, publications and production scoring tables",
-    "All sandbox scoring writes are restricted to bdc_test_* tables",
-    "Normal Heats tiering and YES/A1/A2/A3 weights use shared ScoringRulesService",
-    "Bachata Rising, Bachata Open and Bachata Invitational fixed points use production SpecialCategoryService",
-    "Automatic test mode simulates independent judge-browser submissions and submitted status using isolated test data",
-    "Final tests call the production RelativePlacementCalculator directly",
-    "Finish Test & Clear All Test Data removes the complete sandbox workflow while preserving official BDC data",
-    "Legacy Test Dashboard remains temporarily accessible with ?legacy=1 for validation",
-    "Release Manager workflow is unchanged"
+    "Hotfixes the Scoring Tests HTTP 500 introduced in dev68",
+    "Restores the existing Scoring Tests Dashboard as the safe fallback while sandbox consolidation continues",
+    "Retains shared ScoringRulesService, Automatic parity checks and TestScoringGuardService",
+    "No production scoring, points, progression, publication or Release Manager logic changed"
   ]
 }
