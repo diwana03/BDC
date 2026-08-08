@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev52",
-  "build": 2382,
+  "version": "2.3.3-dev53",
+  "build": 2383,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Current Staging Release now displays the build number beside the version in Release Manager",
-    "Release Manager workflow is restored to the known-good dev51 state with no deployment or promotion logic changes",
-    "Automatic Scoring setup migration derives the exact bdc_scoring_rounds ID type and falls back safely when a legacy database cannot accept the foreign key",
-    "Automatic Scoring setup autosaves judge drafts, preserves Save Draft, supports unlimited judges and reviews Registration Desk competitors together with judges",
-    "Judge browser links are generated only after Confirm Judges & Competitors validates and locks the setup",
-    "Automatic Judge Browser scoring retains live progress, autosave, Submit and Lock, and Super Admin audited unlock",
-    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational"
+    "Automatic Scoring setup now mounts on the actual Heats Judge Panel and exposes + Add Judge, autosave, Save Draft and competitor confirmation workflow",
+    "Legacy Automatic Judge Panel and Judge Scores admin-entry sections are hidden after the new setup workflow mounts",
+    "Judge links remain unavailable until Judges & Competitors are confirmed",
+    "Current Staging Release displays the build number beside the version in Release Manager",
+    "Automatic Scoring setup migration uses the exact scoring-round ID type with a legacy-safe foreign-key fallback",
+    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
+    "Release Manager deployment and Production promotion logic remain unchanged"
   ]
 }
