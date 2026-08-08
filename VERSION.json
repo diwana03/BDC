@@ -1,15 +1,17 @@
 {
-  "version": "2.3.3-dev45",
-  "build": 2375,
+  "version": "2.3.3-dev46",
+  "build": 2376,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Bachata Rising, Bachata Open and Bachata Invitational are integrated directly into the existing Manual and Automatic scoring Division dropdowns instead of using a separate Special Category scoring mode",
+    "Special categories use the same scoring workflow as standard divisions and switch only the publication point logic to fixed special-category points",
+    "Bachata Rising and Bachata Open award fixed 5, 4, 3, 2, 1 points while Bachata Invitational awards fixed 3, 2, 1 points, mapped to each competitor's role-specific Novice, Intermediate or Advanced BDC progression bucket",
+    "Existing BDC ID assignment and competitor identity matching remain unchanged for special categories",
     "Release Manager drops the obsolete worker-only database trigger that was forcing the currently running Staging version back to Available and blocking Production promotion",
     "Release Manager recognizes the version actually running on Staging and exposes the Production path instead of offering the same version for Staging again",
-    "Special-category scoring round view avoids duplicate bootstrap loading when embedding the standard manual scoring core, preventing the round-view HTTP 500 regression",
-    "Environment-isolated Result Repository resolution keeps Production on Production storage and Staging on Staging storage while restoring legacy historical document links by filename",
-    "Special-category scoring for Bachata Rising, Bachata Open and Bachata Invitational with fixed points mapped to role-specific Novice, Intermediate or Advanced BDC progression buckets and unchanged BDC ID assignment"
+    "Environment-isolated Result Repository resolution keeps Production on Production storage and Staging on Staging storage while restoring legacy historical document links by filename"
   ]
 }
