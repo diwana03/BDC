@@ -1,18 +1,17 @@
 {
-  "version": "2.3.3-dev54",
-  "build": 2384,
+  "version": "2.3.3-dev55",
+  "build": 2385,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Saved Rounds shows a dedicated Scoring Mode column with blue AUTOMATIC and dark MANUAL badges plus subtle row colour coding",
+    "Saved-round Open links preserve the stored scoring mode so Automatic rounds reopen as Automatic and Manual rounds reopen as Manual",
+    "The shared scoring dashboard heading is neutral: BDC Scoring Engine · Event Round Workflow",
     "Automatic Scoring uses the same Registration Desk, competitor, bib and judge setup workflow as the existing scoring engine",
-    "Automatic-specific behavior is limited to secure judge browser links and live judge scoring/progress",
-    "Automatic Judge Panel supports unlimited judges with + Add Judge while preserving saved judges",
-    "Judge links provide Copy Link, WhatsApp, Email and Open actions with prefilled event and round details",
+    "Automatic-specific behavior remains secure judge browser links, WhatsApp/email sharing and live judge scoring/progress",
     "Judge Submit and Lock, live progress and Super Admin audited unlock remain available",
-    "Current Staging Release displays the build number beside the version in Release Manager",
-    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
     "Registration Desk, scoring calculation, Relative Placement, point logic and Release Manager deployment chain remain unchanged"
   ]
 }
