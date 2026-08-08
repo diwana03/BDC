@@ -30,26 +30,15 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
     exit;
 }
 
-$automaticSetupHtml='';
-$automaticRoundHeading='';
-if($mode==='automated' && $roundId>0){
-    require_once dirname(__DIR__,2).'/bootstrap.php';
-    require_once __DIR__.'/automatic-common-setup.php';
-    try{
-        $automaticSetupHtml=bdcRenderAutomaticCommonSetup($roundId);
-        $pdo=App\Core\Database::connection();
-        $stmt=$pdo->prepare("SELECT r.division,r.round_type,r.status,e.name event_name FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:round LIMIT 1");
-        $stmt->execute(['round'=>$roundId]);
-        if($meta=$stmt->fetch()){
-            $category=App\Services\SpecialCategoryService::isSpecial((string)$meta['division'])
-                ?App\Services\SpecialCategoryService::label((string)$meta['division'])
-                :ucfirst((string)$meta['division']);
-            $automaticRoundHeading='<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="text-uppercase text-primary fw-bold small">Automatic Scoring</div><h1 class="h2 mb-1">'.htmlspecialchars((string)$meta['event_name'],ENT_QUOTES,'UTF-8').'</h1><p class="text-muted mb-0">'.htmlspecialchars($category,ENT_QUOTES,'UTF-8').' · '.htmlspecialchars(ucfirst((string)$meta['round_type']),ENT_QUOTES,'UTF-8').'</p></div><span class="badge text-bg-primary">'.htmlspecialchars(ucwords(str_replace('_',' ',(string)$meta['status'])),ENT_QUOTES,'UTF-8').'</span></div>';
-        }
-    }catch(Throwable){$automaticSetupHtml='';$automaticRoundHeading='';}
-}
+/*
+ * IMPORTANT: core.php owns bootstrap/auth/database initialisation.
+ * Do not bootstrap here before core.php is required; doing so loads the same
+ * application classes twice on Automatic round URLs and causes a PHP fatal.
+ * The shared Automatic setup is rendered from the already-initialised core
+ * response in the output callback below.
+ */
 
-ob_start(static function(string $html)use($mode,$roundId,$automaticSetupHtml,$automaticRoundHeading):string{
+ob_start(static function(string $html)use($mode,$roundId):string{
     $specialOptions='<option value="bachata_rising">Bachata Rising</option><option value="bachata_open">Bachata Open</option><option value="bachata_invitational">Bachata Invitational</option>';
     if(str_contains($html,'<option value="all_star">All Star</option>'))$html=str_replace('<option value="all_star">All Star</option>',$specialOptions,$html);
     elseif(!str_contains($html,'<option value="bachata_rising">'))$html=str_replace('<option value="advanced">Advanced</option>','<option value="advanced">Advanced</option>'.$specialOptions,$html);
@@ -74,16 +63,23 @@ ob_start(static function(string $html)use($mode,$roundId,$automaticSetupHtml,$au
     }
 
     if($mode==='automated' && $roundId>0){
-        $browserPanel='<section class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel"><div class="card-body"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Live Scoring</h2><p class="text-muted small mb-0">Judges score the same Heats competitors using YES / A1 / A2 / A3 from secure browser links. Share by Copy, WhatsApp, Email or Open.</p></div><span class="badge text-bg-dark">LIVE</span></div><iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:690px;border:0;border-radius:10px;background:#fff"></iframe></div></section>';
+        try{
+            require_once __DIR__.'/automatic-common-setup.php';
+            $automaticSetupHtml=bdcRenderAutomaticCommonSetup($roundId);
+            $pdo=App\Core\Database::connection();
+            $stmt=$pdo->prepare("SELECT r.division,r.round_type,r.status,e.name event_name FROM bdc_scoring_rounds r JOIN bdc_events e ON e.id=r.event_id WHERE r.id=:round LIMIT 1");
+            $stmt->execute(['round'=>$roundId]);
+            $meta=$stmt->fetch()?:[];
+            $category=App\Services\SpecialCategoryService::isSpecial((string)($meta['division']??''))?App\Services\SpecialCategoryService::label((string)$meta['division']):ucfirst((string)($meta['division']??''));
+            $automaticRoundHeading='<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="text-uppercase text-primary fw-bold small">Automatic Scoring</div><h1 class="h2 mb-1">'.htmlspecialchars((string)($meta['event_name']??''),ENT_QUOTES,'UTF-8').'</h1><p class="text-muted mb-0">'.htmlspecialchars($category,ENT_QUOTES,'UTF-8').' · '.htmlspecialchars(ucfirst((string)($meta['round_type']??'')),ENT_QUOTES,'UTF-8').'</p></div><span class="badge text-bg-primary">'.htmlspecialchars(ucwords(str_replace('_',' ',(string)($meta['status']??''))),ENT_QUOTES,'UTF-8').'</span></div>';
+            $browserPanel='<section class="card shadow-sm mb-4 border-dark" id="automatic-judge-browser-panel"><div class="card-body"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2"><div><h2 class="h5 mb-1">Judge Live Scoring</h2><p class="text-muted small mb-0">Judges score the same Heats competitors using YES / A1 / A2 / A3 from secure browser links. Share by Copy, WhatsApp, Email or Open.</p></div><span class="badge text-bg-dark">LIVE</span></div><iframe title="Automatic Judge Browser Control" src="judge-control.php?round_id='.$roundId.'" style="width:100%;height:690px;border:0;border-radius:10px;background:#fff"></iframe></div></section>';
 
-        /* The legacy Automatic renderer exits early. Replace its entire main area in one operation. */
-        if($automaticSetupHtml!=='' && preg_match('#<main class="container-fluid py-4" style="max-width:1600px">.*?</main>#s',$html)){
-            $newMain='<main class="container-fluid py-4" style="max-width:1600px">'.$automaticRoundHeading.$automaticSetupHtml.$browserPanel.'</main>';
-            $html=preg_replace('#<main class="container-fluid py-4" style="max-width:1600px">.*?</main>#s',static fn()=>$newMain,$html,1)??$html;
-        }else{
-            /* Shared Manual renderer path: keep every setup block and replace only Manual Score Entry. */
-            $scorePattern='#<form method="post" id="heatsScoreForm".*?</form>#s';
-            $html=preg_replace($scorePattern,static fn()=>$browserPanel,$html,1)??$html;
+            if($automaticSetupHtml!=='' && preg_match('#<main class="container-fluid py-4" style="max-width:1600px">.*?</main>#s',$html)){
+                $newMain='<main class="container-fluid py-4" style="max-width:1600px">'.$automaticRoundHeading.$automaticSetupHtml.$browserPanel.'</main>';
+                $html=preg_replace('#<main class="container-fluid py-4" style="max-width:1600px">.*?</main>#s',static fn()=>$newMain,$html,1)??$html;
+            }
+        }catch(Throwable $e){
+            /* Keep the core page visible if the Automatic UI enhancement fails. */
         }
 
         $script=<<<'JS'
