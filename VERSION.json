@@ -1,16 +1,17 @@
 {
-  "version": "2.3.3-dev51",
-  "build": 2381,
+  "version": "2.3.3-dev52",
+  "build": 2382,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Current Staging Release now displays the build number beside the version in Release Manager",
+    "Release Manager workflow is restored to the known-good dev51 state with no deployment or promotion logic changes",
     "Automatic Scoring setup migration derives the exact bdc_scoring_rounds ID type and falls back safely when a legacy database cannot accept the foreign key",
     "Automatic Scoring setup autosaves judge drafts, preserves Save Draft, supports unlimited judges and reviews Registration Desk competitors together with judges",
     "Judge browser links are generated only after Confirm Judges & Competitors validates and locks the setup",
     "Automatic Judge Browser scoring retains live progress, autosave, Submit and Lock, and Super Admin audited unlock",
-    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
-    "Existing scoring calculations, Relative Placement, point logic, BDC ID assignment and Release Manager chain remain unchanged"
+    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational"
   ]
 }
