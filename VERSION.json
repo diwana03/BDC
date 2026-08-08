@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev49",
-  "build": 2379,
+  "version": "2.3.3-dev50",
+  "build": 2380,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Release Manager prevents legacy reconciliation from interfering with an active Staging worker job, eliminating false Needs Retry then Success pairs in Recent Activity",
-    "Manual and Automatic scoring Division dropdowns reliably show Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
-    "Automatic Scoring V1 adds secure per-judge browser scoring links for Heats, Semi-Finals and Finals",
-    "Judge numeric Heats/Semi-Final scores autosave live from the browser while Final judges submit Relative Placement ranks",
-    "Automatic organiser dashboard embeds a live judge control panel showing not started, scoring and submitted progress per judge",
-    "Judge Submit locks the scorecard; Super Admin can unlock only with a recorded reason",
-    "Existing Registration Desk, BDC ID assignment, scoring calculations, Relative Placement engine, point logic and Production promotion chain remain unchanged"
+    "Automatic Scoring setup now autosaves judge drafts, preserves explicit Save Draft, starts with three judges and supports unlimited additional judges",
+    "Automatic setup shows Registration Desk competitors and bibs beside the judge panel so both can be reviewed together",
+    "Judge browser links are generated only after Confirm Judges & Competitors validates the judge panel and competitor list",
+    "Confirmed automatic setup is locked before judge scoring begins",
+    "Automatic Judge Browser scoring retains live progress, autosave, Submit and Lock, and Super Admin audited unlock",
+    "Manual and Automatic scoring retain Novice, Intermediate, Advanced, Bachata Rising, Bachata Open and Bachata Invitational",
+    "Existing scoring calculations, Relative Placement, point logic, BDC ID assignment and Release Manager chain remain unchanged"
   ]
 }
