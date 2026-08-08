@@ -1,16 +1,20 @@
 {
-  "version": "2.3.3-dev66",
-  "build": 2396,
+  "version": "2.3.3-dev67",
+  "build": 2397,
   "status": "development",
-  "release_date": "2026-08-08",
+  "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Automatic Registration Desk link can be safely regenerated when the original plain secure token is no longer available in the admin session",
-    "Regenerating the Registration Desk link invalidates the previous secure desk URL and immediately restores Copy Link and Open Registration Desk controls",
-    "Registration Desk link recovery preserves competitors, bibs, judges, scoring data and round status",
-    "Universal Back and Dashboard admin navigation from dev65 remains available",
-    "Hall of Fame and special-category handling from dev64 remain unchanged",
-    "Scoring calculations, points, database structure and Release Manager workflow are unchanged"
+    "Adds shared ScoringRulesService for BDC participant tier thresholds and YES/A1/A2/A3 Heats weights",
+    "Adds Automatic Scoring Production Parity testing inside the Scoring Tests module",
+    "Automatic parity tests normal participant tiering from the larger Leader/Follower role count",
+    "Automatic parity tests Bachata Rising, Bachata Open and Bachata Invitational through the production SpecialCategoryService fixed-point schedules",
+    "Automatic parity verifies the production Automatic Judge Browser service contract",
+    "Final parity test calls the production RelativePlacementCalculator directly",
+    "Existing Scoring Tests dashboard receives a direct Automatic Parity Test navigation control",
+    "Legacy random test helpers remain available but are no longer treated as the authoritative source of BDC scoring formulas",
+    "Registration Desk recovery and universal admin navigation from dev66 remain available",
+    "Release Manager workflow is unchanged"
   ]
 }
