@@ -53,21 +53,15 @@ function url(string $path = ''): string
     return $base . '/' . ltrim($path, '/');
 }
 
-/*
- * Scoring Tests v2 sandbox route.
- *
- * Every normal request to the historical Scoring Tests entry point now opens
- * the production-parity sandbox. This includes stale POSTs from an already-open
- * legacy page, preventing old duplicated competitor-copy/scoring code from
- * running accidentally. The previous dashboard remains available only through
- * the explicit ?legacy=1 escape hatch while validation is completed.
- */
+/* Scoring Tests always starts with the same Manual / Automatic choice used by Production. */
+$bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
 if (
-    empty($_GET['legacy'])
+    $bdcBootstrapMethod === 'GET'
+    && empty($_GET['legacy'])
     && preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
 ) {
-    header('Location: ' . url('admin/scoring-tests/sandbox.php'), true, 303);
+    header('Location: ' . url('admin/scoring-tests/select-mode.php'), true, 303);
     exit;
 }
 
