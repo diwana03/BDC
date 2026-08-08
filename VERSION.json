@@ -1,17 +1,16 @@
 {
-  "version": "2.3.3-dev65",
-  "build": 2395,
+  "version": "2.3.3-dev66",
+  "build": 2396,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Universal Back navigation is available across BDC Admin HTML screens",
-    "Admin sub-screens now include a Dashboard control that returns to the main BDC Admin dashboard",
-    "Existing public BDC Home navigation remains separate from Admin Dashboard navigation",
-    "Navigation integrates with modern and legacy admin top bars and falls back to a top-right control where needed",
-    "JSON, AJAX, judge iframe, download, export and other non-HTML endpoints are excluded from the navigation injection",
+    "Automatic Registration Desk link can be safely regenerated when the original plain secure token is no longer available in the admin session",
+    "Regenerating the Registration Desk link invalidates the previous secure desk URL and immediately restores Copy Link and Open Registration Desk controls",
+    "Registration Desk link recovery preserves competitors, bibs, judges, scoring data and round status",
+    "Universal Back and Dashboard admin navigation from dev65 remains available",
     "Hall of Fame and special-category handling from dev64 remain unchanged",
-    "Scoring, registration, leaderboard, points, database and Release Manager logic are unchanged"
+    "Scoring calculations, points, database structure and Release Manager workflow are unchanged"
   ]
 }
