@@ -1,19 +1,17 @@
 {
-  "version": "2.3.3-dev64",
-  "build": 2394,
+  "version": "2.3.3-dev65",
+  "build": 2395,
   "status": "development",
   "release_date": "2026-08-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Special-category leaderboard filters from dev63 are removed; the progression leaderboard remains Novice, Intermediate and Advanced",
-    "Special-category points continue to flow only into the competitor's applicable BDC progression division",
-    "Shared HallOfFameService now powers Hall of Fame data",
-    "Hall of Fame cards are grouped by event and category and display the official category label",
-    "Public read-only Hall of Fame JSON API is available at /api/hall-of-fame/",
-    "WordPress-ready Hall of Fame embed is available at /hall-of-fame/embed/",
-    "Homepage embed defaults to Bachata Rising, Bachata Open and Bachata Invitational results",
-    "WordPress Custom HTML integration example is included under integrations/wordpress/",
-    "Release Manager workflow is unchanged"
+    "Universal Back navigation is available across BDC Admin HTML screens",
+    "Admin sub-screens now include a Dashboard control that returns to the main BDC Admin dashboard",
+    "Existing public BDC Home navigation remains separate from Admin Dashboard navigation",
+    "Navigation integrates with modern and legacy admin top bars and falls back to a top-right control where needed",
+    "JSON, AJAX, judge iframe, download, export and other non-HTML endpoints are excluded from the navigation injection",
+    "Hall of Fame and special-category handling from dev64 remain unchanged",
+    "Scoring, registration, leaderboard, points, database and Release Manager logic are unchanged"
   ]
 }
