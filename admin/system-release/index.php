@@ -120,6 +120,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 
 $settings=DeploymentPipelineService::settings();
 $current=ReleaseManagerService::installedVersion(dirname(__DIR__,2))??ReleaseManagerService::versionInfo();
+$currentVersionInfo=ReleaseManagerService::versionInfo();
+$currentBuild=$current['build']??$currentVersionInfo['build']??null;
 $latestSourceSha='';
 try{$latestSourceSha=DeploymentPipelineService::latestSourceSha();}catch(Throwable){}
 
@@ -240,7 +242,7 @@ function releaseBytes(int $bytes):string
 <title>Release Manager | BDC</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;border-radius:18px}.release-card{transition:.18s ease}.release-card:hover{transform:translateY(-2px)}.version{font-size:2rem;font-weight:800}.sha{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.section-title{font-weight:800}.soft-success{background:#eaf8ef;color:#176b36}.soft-primary{background:#eaf1ff;color:#174ea6}.btn{border-radius:10px;font-weight:700}.btn-production{background:#111827;color:#fff}.btn-production:hover{background:#000;color:#fff}.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;border-radius:18px}.release-card{transition:.18s ease}.release-card:hover{transform:translateY(-2px)}.version{font-size:2rem;font-weight:800}.build-number{display:inline-block;margin-left:.55rem;font-size:.9rem;font-weight:800;color:#667085;vertical-align:middle}.sha{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.section-title{font-weight:800}.soft-success{background:#eaf8ef;color:#176b36}.soft-primary{background:#eaf1ff;color:#174ea6}.btn{border-radius:10px;font-weight:700}.btn-production{background:#111827;color:#fff}.btn-production:hover{background:#000;color:#fff}.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 </style>
 </head>
 <body>
@@ -259,7 +261,7 @@ body{background:#f4f6f9;color:#172033}.navbar{background:#111827}.card{border:0;
 <div class="row g-4 mb-5">
 <div class="col-lg-7"><div class="card shadow-sm h-100"><div class="card-body p-4">
 <div class="text-uppercase small fw-bold text-muted mb-2">Current Staging Release</div>
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e((string)($current['version']??'Unknown'))?></div><span class="badge rounded-pill soft-primary px-3 py-2">Staging</span></div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2"><div class="version"><?=e((string)($current['version']??'Unknown'))?><?php if($currentBuild!==null&&$currentBuild!==''):?><span class="build-number">Build <?=e((string)$currentBuild)?></span><?php endif;?></div><span class="badge rounded-pill soft-primary px-3 py-2">Staging</span></div>
 <p class="text-muted mb-0">This is the version currently running on this Staging dashboard.</p>
 <?php if(!empty($current['commit_sha'])):?><div class="small text-muted mt-2">Commit <span class="sha"><?=e(substr((string)$current['commit_sha'],0,12))?></span></div><?php endif;?>
 </div></div></div>
