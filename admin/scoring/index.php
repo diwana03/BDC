@@ -65,6 +65,11 @@ if($_SERVER['REQUEST_METHOD']==='GET' && $mode==='' && $roundId===0){
  * existing special round use its fixed-point publication/registration backend.
  */
 ob_start(static function(string $html):string{
+    /* Detect the opened round BEFORE adding the special choices to the form. */
+    $openedSpecialRound=stripos($html,'bachata_rising')!==false
+        ||stripos($html,'bachata_open')!==false
+        ||stripos($html,'bachata_invitational')!==false;
+
     $html=str_replace(
         '<option value="advanced">Advanced</option>\n<option value="all_star">All Star</option>',
         '<option value="advanced">Advanced</option>\n<option value="bachata_rising">Bachata Rising</option>\n<option value="bachata_open">Bachata Open</option>\n<option value="bachata_invitational">Bachata Invitational</option>',
@@ -72,17 +77,13 @@ ob_start(static function(string $html):string{
     );
     $html=str_replace('<option value="all_star">All Star</option>','',$html);
 
-    $isSpecial=stripos($html,'bachata_rising')!==false
-        ||stripos($html,'bachata_open')!==false
-        ||stripos($html,'bachata_invitational')!==false;
-
     $html=str_replace(
         ['Bachata_rising','Bachata_open','Bachata_invitational','BACHATA_RISING','BACHATA_OPEN','BACHATA_INVITATIONAL'],
         ['Bachata Rising','Bachata Open','Bachata Invitational','BACHATA RISING','BACHATA OPEN','BACHATA INVITATIONAL'],
         $html
     );
 
-    if($isSpecial){
+    if($openedSpecialRound){
         $html=str_replace('publish.php?round_id=','special-publish.php?round_id=',$html);
         $html=str_replace('registration-desk/?token=','registration-desk/special.php?token=',$html);
     }
