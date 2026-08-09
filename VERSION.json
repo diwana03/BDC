@@ -1,19 +1,17 @@
 {
-  "version": "2.3.3-dev96",
-  "build": 2426,
+  "version": "2.3.3-dev97",
+  "build": 2427,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Replaces Live Screen event-card listing with a compact cascading dropdown workflow",
-    "Projection operator now selects Event, then Category/Division, then the applicable Heats, Semifinal or Final round",
-    "Only projection options applicable to the selected round appear below the selectors",
-    "Heats exposes Judges, Competitors, Scoring Status and Callback Reveal",
-    "Semifinal exposes Judges, Competitors, Scoring Status and Finalists Reveal",
-    "Final exposes Judges, Finalists/Couples, Scoring Status, Final Ranking and Winner Reveal",
-    "Screen & Layout Settings opens for the exact selected round",
-    "Mirrors the same cascading selector workflow into Scoring Tests",
+    "Adds shared CountryFlagService for projector display metadata",
+    "Competitor, callback and finalist projection tiles now show country flag plus country name when country is available",
+    "Supports common BDC country names and ISO two-letter country codes",
+    "Unknown country names gracefully show country text without blocking projection",
+    "Country and flag remain optional display-only metadata and never affect registration or scoring",
+    "Real projector uses the shared flag helper; Test projector remains compatible with optional country data when present",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
