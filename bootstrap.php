@@ -64,6 +64,9 @@ if ($bdcTestMode !== '') {
     $_SESSION['bdc_test_scoring_mode'] = $bdcTestMode;
 }
 
+/* Global new-competitor creation for Manual, Automatic and Test scoring. */
+\App\Services\GlobalScoringRegistrationHook::handle($bdcBootstrapMethod,$bdcBootstrapPath,$bdcTestMode);
+
 /*
  * Safe Scoring Tests competitor generator.
  * Display-only fields such as photos are never part of scoring identity.
