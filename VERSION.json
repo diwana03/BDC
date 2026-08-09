@@ -1,22 +1,17 @@
 {
-  "version": "2.3.3-dev90",
-  "build": 2420,
+  "version": "2.3.3-dev91",
+  "build": 2421,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Live Screen Projector as the third main Scoring Dashboard option beside Manual and Automatic Scoring",
-    "Adds live competition selection page for projection control",
-    "Adds round-aware Heats, Semifinal and Final projection control pages",
-    "Heats controls include Judges, Competitors, Scoring Status and Callback Reveal",
-    "Semifinal controls include Judges, Competitors, Scoring Status and Finalists Reveal",
-    "Final controls include Judges, Finalists, Scoring Status, Final Ranking and Winner Reveal",
-    "Winner projection supports individual 5th, 4th, 3rd, 2nd and 1st reveals plus Show All Top 5",
-    "Adds audience-safe 9:16 projection views and keeps temporary admin scoring tables off the public presentation",
-    "Scoring sheets gain direct navigation to the current round Projection Control",
-    "Existing shared secure competitor Stage Display remains the competitor projection foundation",
-    "No scoring calculation or official BDC points logic changed",
+    "Adds Live Screen button directly to Automatic Heats and Semifinal scoring navigation",
+    "Keeps Live Screen navigation available on Manual and Final scoring through the shared scoring dashboard wrapper",
+    "Standardizes current-round navigation as Live Screen, Back and Dashboard",
+    "Live Screen opens Projection Control for the exact current round rather than returning to the projector event list",
+    "Adds reusable scoring live-screen navigation helper for remaining scoring surfaces",
+    "No scoring calculation, competitor registration, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
 }
