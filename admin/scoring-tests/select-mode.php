@@ -6,7 +6,7 @@ Auth::requireAdmin();
 $mode=(string)($_GET['mode']??'');
 if(in_array($mode,['manual','automated'],true)){
     $_SESSION['bdc_test_scoring_mode']=$mode;
-    header('Location: '.url('admin/scoring-tests/workspace.php?test_mode='.$mode),true,303);
+    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode),true,303);
     exit;
 }
 ?>
