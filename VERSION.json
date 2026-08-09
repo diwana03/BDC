@@ -1,17 +1,19 @@
 {
-  "version": "2.3.3-dev79",
-  "build": 2409,
+  "version": "2.3.3-dev80",
+  "build": 2410,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores the established Scoring Tests Dashboard as the UI for both Manual and Automatic test modes",
-    "Automatic mode no longer replaces the existing Test Dashboard with a separate redesigned dashboard",
-    "Manual and Automatic mode selection both enter the familiar existing event-round workflow",
-    "The secure test judge-session backend from dev78 is retained for incremental Automatic enhancements inside the existing workflow",
-    "Existing test-data cleanup services remain available without changing the core scoring calculation engine",
-    "Manual and Automatic calculations continue through the shared BDC scoring engine",
+    "Keeps the established Scoring Tests Dashboard design for both Manual and Automatic test modes",
+    "Automatic Test replaces only the existing Manual Heats Score Entry block with Judge Live Scoring in the same screen position",
+    "Adds secure per-judge test URLs with Copy, Open and Regenerate actions plus live Not Started, Scoring and Submitted status",
+    "Shows live judge scoring progress and keeps submitted judge sessions locked through the existing test judge browser workflow",
+    "Adds inline delete controls for individual test judges, Delete All Judges, Delete All Competitors and Clear Entire Test Round",
+    "Existing competitor Remove controls remain in place for individual competitor removal",
+    "Manual Test keeps the current manual score-entry table unchanged",
+    "Manual and Automatic test calculations continue through the same shared BDC scoring engine",
     "No Staging or Production deployment performed"
   ]
 }
