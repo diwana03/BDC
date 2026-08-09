@@ -6,12 +6,12 @@ namespace App\Services;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
-use RuntimeException;
 use Throwable;
 
 /**
  * Global new-competitor registration hook for Manual, Automatic and Test scoring.
  * Existing-competitor registration remains in each established controller.
+ * Bib assignment is optional at registration time and may be completed at the event.
  */
 final class GlobalScoringRegistrationHook
 {
@@ -34,11 +34,12 @@ final class GlobalScoringRegistrationHook
 
         $roundId=(int)($_POST['round_id']??0);
         $role=(string)($_POST['dance_role']??'');
-        $bib=(int)($_POST['bib_number']??0);
+        $rawBib=trim((string)($_POST['bib_number']??''));
+        $bib=$rawBib===''?null:(int)$rawBib;
         $name=trim((string)($_POST['competitor_search']??''));
-        if($roundId<1||!in_array($role,['leader','follower'],true)||$bib<1||$name===''){
+        if($roundId<1||!in_array($role,['leader','follower'],true)||($bib!==null&&$bib<1)||$name===''){
             http_response_code(400);
-            exit('Choose role, bib and competitor name.');
+            exit('Choose role and competitor name. Bib may be left blank and assigned later.');
         }
 
         $pdo=Database::connection();
@@ -54,12 +55,15 @@ final class GlobalScoringRegistrationHook
             exit('Scoring round not found.');
         }
 
-        $bibStmt=$pdo->prepare("SELECT display_name FROM {$entryTable} WHERE round_id=:round AND dance_role=:role AND bib_number=:bib AND entry_status='active' LIMIT 1");
-        $bibStmt->execute(['round'=>$roundId,'role'=>$role,'bib'=>$bib]);
-        $taken=$bibStmt->fetchColumn();
-        if($taken!==false){
-            http_response_code(409);
-            exit('Bib '.$bib.' is already assigned to '.$taken.' on the '.ucfirst($role).' side.');
+        // Blank bibs are intentionally allowed. Uniqueness is checked only after a real bib is assigned.
+        if($bib!==null){
+            $bibStmt=$pdo->prepare("SELECT display_name FROM {$entryTable} WHERE round_id=:round AND dance_role=:role AND bib_number=:bib AND entry_status='active' LIMIT 1");
+            $bibStmt->execute(['round'=>$roundId,'role'=>$role,'bib'=>$bib]);
+            $taken=$bibStmt->fetchColumn();
+            if($taken!==false){
+                http_response_code(409);
+                exit('Bib '.$bib.' is already assigned to '.$taken.' on the '.ucfirst($role).' side.');
+            }
         }
 
         // Special-category participation does not define the dancer's career division.
@@ -91,6 +95,7 @@ final class GlobalScoringRegistrationHook
                     'bdc_id'=>(string)$competitor['bdc_id'],
                     'role'=>$role,
                     'bib'=>$bib,
+                    'bib_status'=>$bib===null?'unassigned':'assigned',
                     'official_identity_created'=>(bool)($competitor['created']??false),
                     'source'=>$isTest?'scoring_test':($isAutomatic?'automatic_scoring':'manual_scoring'),
                 ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
