@@ -1,17 +1,18 @@
 {
-  "version": "2.3.3-dev98",
-  "build": 2428,
+  "version": "2.3.3-dev99",
+  "build": 2429,
   "status": "development",
-  "release_date": "2026-08-09",
+  "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Removes technical screen format and resolution information from audience projection output",
-    "Audience header now contains only Event Name, Division and Round",
-    "Reduces projection title size and spacing to prevent COMPETITORS and other headings from clipping on screen",
-    "Keeps aspect ratio, density and resolution configuration exclusively in Projection Control",
-    "Applies the same audience-display cleanup to both Real and Test projection renderers",
-    "Actual applied aspect ratio and adaptive layout behavior remain unchanged",
+    "Adds reusable BDC Judge Directory master table with permanent Judge IDs",
+    "Judge identity supports full name, country, country code, photo URL, Instagram, email, status and notes",
+    "Adds judge directory management screen and reusable judge search endpoint",
+    "Adds judge_id reference support to both Real and Test scoring judge assignments",
+    "Existing name-only judge assignments are backfilled into the shared Judge Directory without changing their round assignment",
+    "Judge projection now queries master judge identity and displays photo, flag/country, scope and Chief Judge status",
+    "Judge identity is shared while Test and Real scoring assignments remain isolated",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
