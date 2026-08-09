@@ -11,9 +11,11 @@ $_GET['test_mode']=$testMode;
 require __DIR__.'/index.php';
 ?>
 <script>
-window.BDC_SCORING_TEST_MODE=window.BDC_SCORING_TEST_MODE||{};
-window.BDC_SCORING_TEST_MODE.mode=<?=json_encode($testMode)?>;
-window.BDC_SCORING_TEST_MODE.automaticEndpoint=<?=json_encode(url('admin/scoring-tests/automatic-inline.php'))?>;
-window.BDC_SCORING_TEST_MODE.actionEndpoint=<?=json_encode(url('admin/scoring-tests/automatic-inline.php'))?>;
+window.BDC_SCORING_TEST_MODE={
+ mode:<?=json_encode($testMode)?>,
+ automaticEndpoint:<?=json_encode(url('admin/scoring-tests/automatic-inline.php'))?>,
+ actionEndpoint:<?=json_encode(url('admin/scoring-tests/automatic-inline.php'))?>,
+ dataEndpoint:<?=json_encode(url('admin/scoring-tests/mode-data.php'))?>
+};
 </script>
 <script src="<?=e(url('public/js/scoring-tests-mode-v2412.js'))?>"></script>
