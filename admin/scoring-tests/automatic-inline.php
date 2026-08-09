@@ -13,7 +13,7 @@ TestAutomaticJudgeService::ensureSchema($pdo);
 $mode=(string)($_POST['test_mode']??$_GET['test_mode']??$_SESSION['bdc_test_scoring_mode']??'automated');
 if(!in_array($mode,['manual','automated'],true))$mode='automated';
 $_SESSION['bdc_test_scoring_mode']=$mode;
-$redirect=url('admin/scoring-tests/workspace.php?test_mode='.$mode.'&round_id='.$roundId);
+$redirect=url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode.'&round_id='.$roundId);
 if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
  if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}
  $action=(string)($_POST['action']??'');
