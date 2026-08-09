@@ -1,19 +1,19 @@
 {
-  "version": "2.3.3-dev85",
-  "build": 2415,
+  "version": "2.3.3-dev86",
+  "build": 2416,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Introduces one global new-competitor registration path for Manual Scoring, Automatic Scoring and Scoring Tests",
-    "New competitors now receive an official BDC ID from the canonical bdc_competitors sequence before being added to a scoring round",
-    "Scoring Tests mirror the official competitor identity into isolated test data while keeping test scores, results and points isolated",
-    "Existing competitors continue to reuse their existing BDC ID and established eligibility workflow",
-    "New competitor identity creation is centralized in CompetitorIdentityService instead of separate MAX-ID logic in each scoring controller",
-    "BDC ID allocation retries unique-key collisions to reduce concurrent registration conflicts",
-    "Photo and other display metadata remain outside competitor scoring/registration identity requirements",
-    "No scoring calculation, tiering or BDC points logic changed in this release",
-    "Designed as global code suitable for the same develop release to be deployed to Production after validation"
+    "Allows new competitors to be registered with an unassigned blank bib number",
+    "Applies optional bib registration to Scoring Tests, real Manual Scoring and real Automatic Scoring through the shared registration hook",
+    "New competitors still receive a real official BDC ID immediately even when no bib has been distributed",
+    "Bib uniqueness is enforced only when a real bib number is assigned",
+    "Blank bib is stored as NULL rather than zero to avoid confusing Registration Desk and scoring staff",
+    "Existing database schema already supports nullable scoring-entry bib numbers, so no database migration is required",
+    "Bib can be assigned or changed later through the established bib update workflow",
+    "No scoring calculation, tiering, special-category points or official BDC points logic changed",
+    "No Staging or Production deployment performed"
   ]
 }
