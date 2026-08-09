@@ -1,17 +1,16 @@
 {
-  "version": "2.3.3-dev75",
-  "build": 2405,
+  "version": "2.3.3-dev76",
+  "build": 2406,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Bypasses the legacy SELECT * competitor-copy path in Scoring Tests",
-    "Generate Competitors now uses TestCompetitorGeneratorService before the legacy dashboard controller executes",
-    "Copies only stable BDC identity and scoring fields required by test scoring",
-    "Competitor photo fields including original_photo_url are not read or written by test generation",
-    "Normal BDC tier selection continues through the shared ScoringRulesService",
-    "No official points, progression, publications or production scoring data is modified",
+    "Removes display metadata dependencies from Scoring Tests competitor generation",
+    "Test scoring identity now uses only competitor id, BDC id, exact name and dance role",
+    "Photo fields including photo_url and original_photo_url are display-only and are not queried or written by the test scoring generator",
+    "Missing competitor photos cannot block adding competitors or scoring",
+    "Existing shared BDC scoring rules and tier calculation remain unchanged",
     "No Staging or Production deployment performed"
   ]
 }
