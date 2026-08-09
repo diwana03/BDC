@@ -14,7 +14,6 @@ $mode=(string)($_GET['test_mode']??$_SESSION['bdc_test_scoring_mode']??'manual')
 if(!in_array($mode,['manual','automated'],true))$mode='manual';
 $_SESSION['bdc_test_scoring_mode']=$mode;
 
-/* Preserve the single shared BDC calculation path while this wrapper renders the established dashboard. */
 if(($_SERVER['REQUEST_METHOD']??'GET')==='POST' && (string)($_POST['action']??'')==='generate_results'){
     if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}
     $roundId=(int)($_POST['round_id']??0);
@@ -41,15 +40,19 @@ $roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
 $endpoint=url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId);
 $actionEndpoint=url('admin/scoring-tests/automatic-inline.php');
 $csrf=Csrf::token();
+$modeJson=json_encode($mode,JSON_UNESCAPED_SLASHES);
+$endpointJson=json_encode($endpoint,JSON_UNESCAPED_SLASHES);
+$actionJson=json_encode($actionEndpoint,JSON_UNESCAPED_SLASHES);
+$csrfJson=json_encode($csrf,JSON_UNESCAPED_SLASHES);
 
 $enhancement=<<<HTML
 <script id="bdc-test-mode-enhancement">
 (function(){
-  const mode=${json_encode($mode)};
-  const roundId=${roundId};
-  const endpoint=${json_encode($endpoint,JSON_UNESCAPED_SLASHES)};
-  const actionEndpoint=${json_encode($actionEndpoint,JSON_UNESCAPED_SLASHES)};
-  const csrf=${json_encode($csrf)};
+  const mode=$modeJson;
+  const roundId=$roundId;
+  const endpoint=$endpointJson;
+  const actionEndpoint=$actionJson;
+  const csrf=$csrfJson;
 
   function postButton(label,action,className,confirmText,extra){
     const form=document.createElement('form');
