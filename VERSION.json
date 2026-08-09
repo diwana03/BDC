@@ -1,15 +1,16 @@
 {
-  "version": "2.3.3-dev73",
-  "build": 2403,
+  "version": "2.3.3-dev74",
+  "build": 2404,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Makes original_photo_url explicitly optional in bdc_test_competitors",
-    "Adds the column when missing and keeps it nullable when present",
-    "Prevents missing competitor photos from blocking Scoring Tests competitor generation",
-    "Scoring Tests Manual/Automatic selector and shared scoring engine from dev71 remain unchanged",
+    "Fixes Scoring Tests competitor generation in application code instead of relying on schema migration",
+    "Copies only competitor columns that actually exist in disposable test storage",
+    "Competitor photos including original_photo_url are fully optional and never block test generation",
+    "Manual and Automatic Test mode selection now opens the schema-safe test runner",
+    "Existing test scoring UI and shared BDC scoring engine remain unchanged",
     "No official competitor, points, progression, publication or production scoring data is modified",
     "No Staging or Production deployment performed"
   ]
