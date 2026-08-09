@@ -1,18 +1,18 @@
 {
-  "version": "2.3.3-dev93",
-  "build": 2423,
+  "version": "2.3.3-dev94",
+  "build": 2424,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds shared adaptive ProjectionLayoutService for Test and Real Live Screen workflows",
-    "Supports 16:9, 9:16, 4:3, 16:10, 21:9, 32:9, 1:1 and Custom screen formats",
-    "Custom format accepts actual LED width and height such as 3840 x 1080",
-    "Adds Maximum Density, Auto and Large Cards layout choices with Maximum Density as default",
-    "Maximum Density prioritizes minimum page count while adapting row and column geometry to screen aspect ratio",
-    "Mirrors screen-format and density controls into both Real and Test Projection Control",
-    "Projection URLs carry the selected format, density and custom resolution settings",
+    "Adds Apply Screen Settings to Real and Test Projection Control",
+    "Persists screen format, density and custom LED resolution per scoring round and data mode",
+    "Adds Reset to 16:9 Default with Maximum Density",
+    "Custom width and height are enabled only when Custom Resolution is selected",
+    "Applied settings are reused automatically by all projection buttons for the current round",
+    "Shows applied layout summary including format, density, calculated columns, rows and page count",
+    "Test and Real projector settings are isolated while using the same shared ProjectionSettingsService",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
