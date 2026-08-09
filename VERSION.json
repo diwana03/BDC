@@ -1,19 +1,22 @@
 {
-  "version": "2.3.3-dev81",
-  "build": 2411,
+  "version": "2.3.3-dev82",
+  "build": 2412,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Integrates Bachata Rising, Bachata Open and Bachata Invitational into the existing Scoring Tests Dashboard for both Manual and Automatic modes",
-    "Uses the shared SpecialCategoryService schedules instead of duplicating special-category point values in the Test Dashboard",
-    "Bachata Rising and Bachata Open use fixed points 5,4,3,2,1 for places 1-5; Bachata Invitational uses 3,2,1 for places 1-3",
-    "Special categories bypass participant-count point tiers while retaining the normal shared scoring calculation workflow",
-    "Special-category Heats allow the YES/callback count to be configured directly without changing the fixed points schedule",
-    "Random test competitor generation no longer recalculates Tier 1/2/3 when the round is a special category",
-    "Extends the shared special-category schema support to bdc_test_scoring_rounds and bdc_test_scoring_publications",
-    "Keeps the dev80 existing-dashboard Manual versus Automatic UI behaviour unchanged",
+    "Fixes the HTTP 500 that occurred when opening either Manual or Automatic Scoring Tests in dev80 and dev81",
+    "Removes the failing dashboard.php output-buffer rewrite from the active mode-opening path",
+    "Uses a non-buffered workspace that renders the established Scoring Tests index.php normally and then attaches mode enhancements",
+    "Manual Test keeps the existing Manual Heats Score Entry interface",
+    "Automatic Test replaces only the existing score-entry block with Judge Live Scoring using secure per-judge browser URLs",
+    "Automatic judge actions now return to the non-buffered workspace instead of the broken dashboard.php path",
+    "Preserves delete-one/delete-all judge controls, Delete All Competitors and Clear Entire Test Round",
+    "Preserves the safe competitor generator so display/photo metadata cannot block scoring tests",
+    "Preserves the shared BDC Heats calculation engine for Generate Results",
+    "Preserves SpecialCategoryService-driven Bachata Rising, Bachata Open and Bachata Invitational UI rules and fixed schedules",
+    "Special categories continue to bypass participant-count point tiers while allowing Heats callback count configuration",
     "No Staging or Production deployment performed"
   ]
 }
