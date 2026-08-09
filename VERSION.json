@@ -1,21 +1,18 @@
 {
-  "version": "2.3.3-dev83",
-  "build": 2413,
+  "version": "2.3.3-dev84",
+  "build": 2414,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Removes dashboard.php and workspace.php from the active Scoring Tests mode-opening path",
-    "Manual and Automatic mode selection now opens the established admin/scoring-tests/index.php directly",
-    "Preserves Manual mode as the existing Manual Heats Score Entry workflow",
-    "Automatic mode enhances that same existing dashboard and replaces only the scoring-entry block with Judge Live Scoring",
-    "Keeps secure per-judge browser URLs, live judge progress, regenerate/delete actions and submitted locking",
-    "Keeps safe competitor generation independent from photo/display metadata",
-    "Keeps Generate Results routed through the shared BDC scoring engine",
-    "Keeps Bachata Rising, Bachata Open and Bachata Invitational driven by SpecialCategoryService",
-    "Special categories bypass participant-count point tiers while retaining configurable Heats callback counts",
-    "Automatic judge actions now return directly to the established Scoring Tests dashboard",
+    "Keeps Manual Scoring Tests on the established dashboard",
+    "Routes Automatic Scoring Tests through a stable same-screen host that renders the established dashboard unchanged",
+    "Automatic mode force-replaces Manual Heats Score Entry with Judge Live Scoring after every dashboard load",
+    "Automatic mode can no longer remain visually on the Manual score-entry table",
+    "Preserves existing event, round, tier, judge, leader and follower layout",
+    "Preserves secure judge URLs, live progress, regenerate/delete actions and submitted locking",
+    "Preserves shared BDC scoring calculation logic and existing Special Category support",
     "No Staging or Production deployment performed"
   ]
 }
