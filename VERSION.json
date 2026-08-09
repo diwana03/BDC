@@ -1,17 +1,20 @@
 {
-  "version": "2.3.3-dev91",
-  "build": 2421,
+  "version": "2.3.3-dev92",
+  "build": 2422,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Live Screen button directly to Automatic Heats and Semifinal scoring navigation",
-    "Keeps Live Screen navigation available on Manual and Final scoring through the shared scoring dashboard wrapper",
-    "Standardizes current-round navigation as Live Screen, Back and Dashboard",
-    "Live Screen opens Projection Control for the exact current round rather than returning to the projector event list",
-    "Adds reusable scoring live-screen navigation helper for remaining scoring surfaces",
-    "No scoring calculation, competitor registration, results or official BDC points logic changed",
+    "Mirrors the real Scoring Dashboard three-option structure into Scoring Tests: Manual, Automatic and Live Screen Projector",
+    "Adds Test Live Screen Projector active-round dashboard",
+    "Adds Test Heats, Semifinal and Final Projection Control using isolated Test scoring tables",
+    "Adds Test 9:16 Judges, Scoring, Callback, Finalist, Final Ranking and Top 5 Winner projection views",
+    "Adds Live Screen direct navigation to Automatic Test rounds",
+    "Introduces shared ScoringRoundNavigation service so Test and Real round navigation can converge on one component",
+    "Test projector is visibly marked TEST MODE and cannot publish official BDC results or points",
+    "Establishes development rule in code structure: scoring UI features should have shared Test and Real integration rather than Real-only patches",
+    "No official scoring calculations, results or BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
 }
