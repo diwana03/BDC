@@ -1,20 +1,21 @@
 {
-  "version": "2.3.3-dev88",
-  "build": 2418,
+  "version": "2.3.3-dev89",
+  "build": 2419,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Redesigns Registration Desk to match the simple Leaders and Followers split-screen scoring workflow",
-    "Provides Add Existing and Create Name & Add actions directly from the same compact competitor row",
-    "New dancers receive an official BDC ID through CompetitorIdentityService",
-    "Bib remains optional during registration and is editable inline after physical bib distribution",
-    "Shows BDC ID, Check In, Ready, Status and Remove controls directly in each role panel",
-    "Highlights competitors with missing bibs and ready competitors for faster event-day operation",
-    "Keeps live search and live desk refresh while reducing registration-screen complexity",
-    "Special-category eligibility continues through the shared SpecialCategoryService",
-    "No scoring calculation or official points logic changed",
+    "Registration Desk now presents separate Leader Registration and Follower Registration controls on desktop and mobile",
+    "Removes role selection from the event-day registration workflow while preserving the shared registration backend",
+    "Adds shared StageDisplayService for both real scoring rounds and isolated Scoring Test rounds",
+    "Adds secure read-only 9:16 Stage / LED Display links",
+    "Stage Display supports individual competitor carousel, autoplay, previous/next controls and an initial grid mode",
+    "Stage Display reads competitor photo, name, country, bib and role while keeping photo/country optional display metadata",
+    "Test Stage Display is visibly marked TEST MODE and reads isolated test competition entries",
+    "Real Stage Display reads real scoring entries; the presentation engine itself is shared between both modes",
+    "Generating a Stage Display URL does not alter competitors, scores, results or official points",
+    "No scoring calculation or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
 }
