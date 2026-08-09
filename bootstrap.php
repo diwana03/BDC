@@ -57,6 +57,36 @@ $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
 
 /*
+ * Safe Scoring Tests competitor generator.
+ *
+ * The legacy Test Dashboard copied SELECT * from bdc_competitors into the test
+ * competitor table. Any new optional profile field (for example photo URLs)
+ * could therefore break scoring tests. Intercept the action here and copy only
+ * stable identity/scoring fields through TestCompetitorGeneratorService.
+ */
+if (
+    $bdcBootstrapMethod === 'POST'
+    && (string)($_POST['action'] ?? '') === 'generate_test_competitors'
+    && preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
+) {
+    \App\Core\Auth::requireAdmin();
+    if (!\App\Core\Csrf::verify($_POST['_csrf'] ?? null)) {
+        http_response_code(419);
+        exit('Invalid security token.');
+    }
+    $roundId=(int)($_POST['round_id'] ?? 0);
+    \App\Services\TestCompetitorGeneratorService::generate(
+        \App\Core\Database::connection(),
+        $roundId,
+        (int)($_POST['leader_count'] ?? 10),
+        (int)($_POST['follower_count'] ?? 10),
+        (int)(\App\Core\Auth::user()['id'] ?? 0)
+    );
+    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&competitors_generated=1'),true,303);
+    exit;
+}
+
+/*
  * Shared BDC Heats engine gate.
  *
  * Both Production Scoring and Scoring Tests historically had their own local
