@@ -68,11 +68,6 @@ jobs:
 
           path.write_text(s)
 
-          sel = Path('admin/scoring-tests/select-mode.php')
-          t = sel.read_text()
-          t = t.replace("header('Location: '.url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode),true,303);", "header('Location: '.url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode),true,303);")
-          sel.write_text(t)
-
           auto = Path('admin/scoring-tests/automatic-inline.php')
           a = auto.read_text()
           a = a.replace("$redirect=url('admin/scoring-tests/workspace.php?test_mode='.$mode.'&round_id='.$roundId);", "$redirect=url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode.'&round_id='.$roundId);")
