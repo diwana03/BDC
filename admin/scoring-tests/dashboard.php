@@ -130,6 +130,7 @@ $html=str_replace('Scoring Tests Dashboard</h1>','Scoring Tests Dashboard'.$badg
 
 $roundId=(int)($roundId??0);
 $currentDivision=(string)($round['division']??'');
+$currentYes=(int)($round['yes_count']??10);
 $endpoint=url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId.'&test_mode='.$mode);
 $actionEndpoint=url('admin/scoring-tests/automatic-inline.php');
 $csrf=Csrf::token();
@@ -164,6 +165,7 @@ $enhancement=<<<HTML
   const csrf=$csrfJson;
   const judgeList=$judgeListJson;
   const currentDivision=$currentDivisionJson;
+  const currentYes=$currentYes;
   const specialCategories=$specialCategoriesJson;
   const specialSchedules=$specialSchedulesJson;
 
@@ -197,14 +199,12 @@ $enhancement=<<<HTML
   });
 
   if(currentDivision&&specialCategories[currentDivision]){
-    document.querySelectorAll('select[name="division"]').forEach(select=>{if(select.closest('form')?.querySelector('input[name="round_id"][value="'+roundId+'"]'))select.value=currentDivision;});
     const tier=document.getElementById('competitionTier');
     if(tier){
       const settingsForm=tier.closest('form');
       const holder=tier.closest('.col-12')||tier.parentElement;
       if(holder)holder.style.display='none';
       if(settingsForm&&!settingsForm.querySelector('[data-special-settings]')){
-        const currentYes=${(int)($round['yes_count']??10)};
         const block=document.createElement('div');block.className='col-12';block.dataset.specialSettings='1';
         block.innerHTML='<div class="alert alert-info mb-3"><strong>'+specialCategories[currentDivision]+' fixed points:</strong> '+scheduleText(currentDivision)+'<br><span class="small">Participant-count point tiers are disabled. Heats scoring and callbacks still use the normal scoring engine.</span></div><label class="form-label">YES / Callbacks per role</label><input class="form-control" type="number" min="1" max="100" name="special_yes_count" value="'+currentYes+'"><div class="form-text">This controls the Heats callback count only. It does not change the fixed points schedule.</div>';
         settingsForm.querySelector('.row')?.appendChild(block);
