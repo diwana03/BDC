@@ -8,9 +8,14 @@ use App\Core\Auth;
 Auth::requireAdmin();
 
 $mode=(string)($_GET['mode']??'');
-if(in_array($mode,['manual','automated'],true)){
-    $_SESSION['bdc_test_scoring_mode']=$mode;
-    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&test_mode='.$mode),true,303);
+if($mode==='manual'){
+    $_SESSION['bdc_test_scoring_mode']='manual';
+    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&test_mode=manual'),true,303);
+    exit;
+}
+if($mode==='automated'){
+    $_SESSION['bdc_test_scoring_mode']='automated';
+    header('Location: '.url('admin/scoring-tests/automatic.php'),true,303);
     exit;
 }
 ?>
@@ -49,7 +54,7 @@ if(in_array($mode,['manual','automated'],true)){
    <section class="card mode-card"><div class="card-body p-4 d-flex flex-column">
     <div class="mode-icon mb-4">⚙</div>
     <h2 class="h3">Automatic Scoring</h2>
-    <p class="text-muted flex-grow-1">Test judge-browser score entry while calculations continue through the same BDC scoring engine.</p>
+    <p class="text-muted flex-grow-1">Generate secure judge browser URLs, score from each judge link, monitor progress live and lock submissions. Calculations still use the shared BDC scoring engine.</p>
     <a class="btn btn-primary btn-lg" href="?mode=automated">Continue to Automatic Test</a>
    </div></section>
   </div>
