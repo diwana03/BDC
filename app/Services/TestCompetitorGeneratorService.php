@@ -15,9 +15,10 @@ final class TestCompetitorGeneratorService
         $leaderCount=max(0,min(500,$leaderCount));
         $followerCount=max(0,min(500,$followerCount));
 
-        $roundStmt=$pdo->prepare('SELECT id FROM bdc_test_scoring_rounds WHERE id=:r LIMIT 1');
+        $roundStmt=$pdo->prepare('SELECT id,division,yes_count,callback_count FROM bdc_test_scoring_rounds WHERE id=:r LIMIT 1');
         $roundStmt->execute(['r'=>$roundId]);
-        if(!$roundStmt->fetchColumn())throw new RuntimeException('Test scoring round not found.');
+        $round=$roundStmt->fetch(PDO::FETCH_ASSOC);
+        if(!$round)throw new RuntimeException('Test scoring round not found.');
 
         /*
          * Scoring identity only. Display metadata such as photo_url and
@@ -62,9 +63,14 @@ final class TestCompetitorGeneratorService
             $countStmt->execute(['r'=>$roundId]);
             $roleCounts=['leader'=>0,'follower'=>0];
             foreach($countStmt->fetchAll(PDO::FETCH_ASSOC) as $row)$roleCounts[(string)$row['dance_role']]=(int)$row['total'];
-            $tier=ScoringRulesService::tierFromRoleCounts($roleCounts['leader'],$roleCounts['follower']);
-            $pdo->prepare("UPDATE bdc_test_scoring_rounds SET yes_count=:yes,callback_count=:cb,tier_manual_override=0 WHERE id=:r")
-                ->execute(['yes'=>$tier['yes_count'],'cb'=>$tier['yes_count'],'r'=>$roundId]);
+
+            $isSpecial=SpecialCategoryService::isSpecial((string)$round['division']);
+            $tier=null;
+            if(!$isSpecial){
+                $tier=ScoringRulesService::tierFromRoleCounts($roleCounts['leader'],$roleCounts['follower']);
+                $pdo->prepare("UPDATE bdc_test_scoring_rounds SET yes_count=:yes,callback_count=:cb,tier_manual_override=0 WHERE id=:r")
+                    ->execute(['yes'=>$tier['yes_count'],'cb'=>$tier['yes_count'],'r'=>$roundId]);
+            }
 
             $audit=$pdo->prepare("INSERT INTO bdc_test_scoring_audit(round_id,user_id,action,details_json) VALUES(:r,:u,'random_test_competitors_generated_scoring_identity_only',:d)");
             $audit->execute([
@@ -73,12 +79,20 @@ final class TestCompetitorGeneratorService
                 'd'=>json_encode([
                     'requested'=>['leaders'=>$leaderCount,'followers'=>$followerCount],
                     'active_counts'=>$roleCounts,
-                    'tier'=>$tier['tier'],
+                    'tier'=>$tier['tier']??null,
+                    'special_category'=>$isSpecial?(string)$round['division']:null,
+                    'participant_tier_applied'=>!$isSpecial,
                     'display_metadata_used'=>false,
                 ],JSON_UNESCAPED_UNICODE),
             ]);
             $pdo->commit();
-            return ['leaders'=>$roleCounts['leader'],'followers'=>$roleCounts['follower'],'tier'=>$tier['tier'],'largest'=>$tier['largest']];
+            return [
+                'leaders'=>$roleCounts['leader'],
+                'followers'=>$roleCounts['follower'],
+                'tier'=>$tier['tier']??null,
+                'largest'=>$tier['largest']??max($roleCounts['leader'],$roleCounts['follower']),
+                'special_category'=>$isSpecial?(string)$round['division']:null,
+            ];
         }catch(Throwable $e){
             if($pdo->inTransaction())$pdo->rollBack();
             throw $e;
