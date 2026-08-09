@@ -34,7 +34,7 @@ if($mode==='automated'){
  </style>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></nav>
+<nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-outline-warning btn-sm" href="manage.php">Manage Test Data</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav>
 <main class="container mode-shell py-5">
  <div class="text-center mb-5">
   <div class="text-danger fw-bold text-uppercase small mb-2">Scoring Tests</div>
@@ -46,7 +46,7 @@ if($mode==='automated'){
    <section class="card mode-card"><div class="card-body p-4 d-flex flex-column">
     <div class="mode-icon mb-4">✎</div>
     <h2 class="h3">Manual Scoring</h2>
-    <p class="text-muted flex-grow-1">Test the admin-entered scoring workflow using disposable test scoring data.</p>
+    <p class="text-muted flex-grow-1">Test the admin-entered scoring workflow using disposable test scoring data. Use Manage Test Data to delete individual judges or competitors, delete all, or clear a round.</p>
     <a class="btn btn-dark btn-lg" href="?mode=manual">Continue to Manual Test</a>
    </div></section>
   </div>
