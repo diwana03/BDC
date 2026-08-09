@@ -1,19 +1,17 @@
 {
-  "version": "2.3.3-dev78",
-  "build": 2408,
+  "version": "2.3.3-dev79",
+  "build": 2409,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds dedicated Automatic Scoring Test dashboard with secure per-judge browser URLs",
-    "Judges can save draft scores and Submit & Lock from their own test browser link",
-    "Automatic Test dashboard shows judge progress and submission status and can regenerate secure links",
-    "Automatic random scoring now simulates judge-session submissions instead of Manual admin score entry",
-    "Adds delete-one and delete-all controls for test judges and competitors plus Clear Entire Test Round",
-    "Adds Manage Test Data screen so Manual Test rounds can also delete judges and competitors individually or in bulk",
-    "Automatic and Manual Test calculations continue through the shared BDC scoring engine; only input workflow differs",
-    "All new judge sessions and marks remain isolated in bdc_test_* storage and cannot publish official BDC points",
+    "Restores the established Scoring Tests Dashboard as the UI for both Manual and Automatic test modes",
+    "Automatic mode no longer replaces the existing Test Dashboard with a separate redesigned dashboard",
+    "Manual and Automatic mode selection both enter the familiar existing event-round workflow",
+    "The secure test judge-session backend from dev78 is retained for incremental Automatic enhancements inside the existing workflow",
+    "Existing test-data cleanup services remain available without changing the core scoring calculation engine",
+    "Manual and Automatic calculations continue through the shared BDC scoring engine",
     "No Staging or Production deployment performed"
   ]
 }
