@@ -1461,7 +1461,7 @@ $csrf=Csrf::token();
     <a class="btn btn-primary" href="<?=e($registrationDeskUrl)?>" target="_blank">Open Desk</a>
    </div>
   <?php else:?>
-   <div class="alert alert-warning mb-3">The secure token is not visible in this session. Regenerate the desk link to create a new shareable URL.</div>
+   <div class="alert alert-warning mb-3">The secure token is not visible in this session. Generate a new shareable URL below.<form method="post" action="registration-link.php" class="mt-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-primary btn-sm">Generate New Registration Desk Link</button></form><div class="small mt-2">Existing competitors, bibs, check-ins and ready status are preserved.</div></div>
   <?php endif;?>
   <div class="row g-3" id="deskSyncStats">
    <div class="col-md-3"><div class="border rounded p-3"><strong>Leaders</strong><div class="fs-4" data-stat="leaders">—</div></div></div>
