@@ -52,11 +52,6 @@ final class SpecialCategoryService
         };
     }
 
-    /**
-     * Special categories do not use normal division-entry tier eligibility.
-     * Event organisers remain responsible for the published Rising/Open rules
-     * and for confirming Invitational dancers are actually invited.
-     */
     public static function entryEligibility(string $category):array
     {
         $category=strtolower(trim($category));
@@ -68,11 +63,6 @@ final class SpecialCategoryService
         };
     }
 
-    /**
-     * Resolve the BDC career bucket that receives special-category points.
-     * The result is role-specific and deliberately capped at Advanced because
-     * the active scoring engine currently supports Novice, Intermediate and Advanced.
-     */
     public static function pointDivision(PDO $pdo,int $competitorId,string $danceRole):string
     {
         if(!in_array($danceRole,['leader','follower'],true))$danceRole='unknown';
@@ -124,10 +114,6 @@ final class SpecialCategoryService
         return 'novice';
     }
 
-    /**
-     * The special category values are stored only on scoring/publication/result
-     * records. Point transactions remain in the standard BDC progression enums.
-     */
     public static function ensureSchema(PDO $pdo):void
     {
         $special="'novice','intermediate','advanced','all_star','bachata_rising','bachata_open','bachata_invitational'";
@@ -139,6 +125,8 @@ final class SpecialCategoryService
             "ALTER TABLE bdc_registration_desk_activity MODIFY division ENUM($special) NOT NULL",
             "ALTER TABLE bdc_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
             "ALTER TABLE bdc_participant_results MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
+            "ALTER TABLE bdc_test_scoring_rounds MODIFY division ENUM($special) NOT NULL",
+            "ALTER TABLE bdc_test_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
         ] as $sql){
             try{$pdo->exec($sql);}catch(\Throwable $e){}
         }
