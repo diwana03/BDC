@@ -1,18 +1,20 @@
 {
-  "version": "2.3.3-dev87",
-  "build": 2417,
+  "version": "2.3.3-dev88",
+  "build": 2418,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Registration Desk can add genuinely new dancers through the shared official BDC ID service",
-    "Registration Desk bib is optional at initial registration and can be assigned later",
-    "Adds Generate New Registration Desk Link action when the secure token is unavailable",
-    "Regenerating the Registration Desk link changes only the access token and preserves competitors, bibs, check-ins and ready status",
-    "Registration live sync counts NULL or blank bibs as Missing Bibs",
-    "Automatic judge YES and clear/NO controls have larger touch targets and safer visual spacing",
-    "No scoring calculation or points logic changed",
+    "Redesigns Registration Desk to match the simple Leaders and Followers split-screen scoring workflow",
+    "Provides Add Existing and Create Name & Add actions directly from the same compact competitor row",
+    "New dancers receive an official BDC ID through CompetitorIdentityService",
+    "Bib remains optional during registration and is editable inline after physical bib distribution",
+    "Shows BDC ID, Check In, Ready, Status and Remove controls directly in each role panel",
+    "Highlights competitors with missing bibs and ready competitors for faster event-day operation",
+    "Keeps live search and live desk refresh while reducing registration-screen complexity",
+    "Special-category eligibility continues through the shared SpecialCategoryService",
+    "No scoring calculation or official points logic changed",
     "No Staging or Production deployment performed"
   ]
 }
