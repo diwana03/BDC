@@ -12,8 +12,9 @@ $pdo=Database::connection();
 $roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
 if($roundId<1){http_response_code(400);exit('Open a test round first.');}
 TestAutomaticJudgeService::ensureSchema($pdo);
-
-$redirect=url('admin/scoring-tests/index.php?legacy=1&test_mode=automated&round_id='.$roundId);
+$mode=(string)($_POST['test_mode']??$_GET['test_mode']??$_SESSION['bdc_test_scoring_mode']??'automated');
+if(!in_array($mode,['manual','automated'],true))$mode='automated';
+$redirect=url('admin/scoring-tests/dashboard.php?legacy=1&test_mode='.$mode.'&round_id='.$roundId);
 
 if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
     if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}
@@ -85,11 +86,11 @@ $csrf=Csrf::token();
   <div><strong>Judge Live Scoring</strong><div class="small text-muted">Automatic Test · Judges score from their own secure browser URL.</div></div>
   <div class="d-flex gap-2">
    <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>" onsubmit="return confirm('Delete all test judges and their marks?')">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="action" value="delete_all_judges">
+    <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="test_mode" value="automated"><input type="hidden" name="action" value="delete_all_judges">
     <button class="btn btn-sm btn-outline-danger">Delete All Judges</button>
    </form>
    <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>" onsubmit="return confirm('Clear judges, competitors, marks and results for this TEST round?')">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="action" value="clear_round">
+    <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="test_mode" value="automated"><input type="hidden" name="action" value="clear_round">
     <button class="btn btn-sm btn-danger">Clear Entire Test Round</button>
    </form>
   </div>
@@ -111,8 +112,8 @@ $csrf=Csrf::token();
       <?php else:?><span class="text-muted small">Existing token hidden. Regenerate to reveal a new URL.</span><?php endif;?>
      </td>
      <td><div class="d-flex gap-1 flex-wrap">
-      <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=$jid?>"><input type="hidden" name="action" value="regenerate_link"><button class="btn btn-sm btn-outline-primary">Regenerate</button></form>
-      <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>" onsubmit="return confirm('Delete this judge and their test marks?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="judge_id" value="<?=$jid?>"><input type="hidden" name="action" value="delete_judge"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+      <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="test_mode" value="automated"><input type="hidden" name="judge_id" value="<?=$jid?>"><input type="hidden" name="action" value="regenerate_link"><button class="btn btn-sm btn-outline-primary">Regenerate</button></form>
+      <form method="post" action="<?=e(url('admin/scoring-tests/automatic-inline.php'))?>" onsubmit="return confirm('Delete this judge and their test marks?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="test_mode" value="automated"><input type="hidden" name="judge_id" value="<?=$jid?>"><input type="hidden" name="action" value="delete_judge"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
      </div></td>
     </tr>
    <?php endforeach;?>
@@ -124,10 +125,10 @@ $csrf=Csrf::token();
 </div>
 <script>
 (function(){
- const endpoint=<?=json_encode(url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId),JSON_UNESCAPED_SLASHES)?>;
+ const endpoint=<?=json_encode(url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId.'&test_mode=automated'),JSON_UNESCAPED_SLASHES)?>;
  window.__bdcAutomaticPanelEndpoint=endpoint;
  setTimeout(function refresh(){
-   fetch(endpoint,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.text()).then(html=>{
+   fetch(endpoint,{headers:{'X-Requested-With':'XMLHttpRequest'},cache:'no-store'}).then(r=>r.text()).then(html=>{
      const current=document.getElementById('automaticJudgeLivePanel');
      if(!current)return;
      const box=document.createElement('div');box.innerHTML=html;
