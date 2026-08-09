@@ -19,8 +19,14 @@ final class TestCompetitorGeneratorService
         $roundStmt->execute(['r'=>$roundId]);
         if(!$roundStmt->fetchColumn())throw new RuntimeException('Test scoring round not found.');
 
-        $select=$pdo->prepare("SELECT id,bdc_id,exact_name,normalised_name,dance_role,current_division,country,status,is_historical FROM bdc_competitors WHERE status='active' AND dance_role=:role ORDER BY RAND() LIMIT :limit_count");
-        $copy=$pdo->prepare("INSERT INTO bdc_test_competitors(id,bdc_id,exact_name,normalised_name,dance_role,current_division,country,status,is_historical) VALUES(:id,:bdc_id,:exact_name,:normalised_name,:dance_role,:current_division,:country,:status,:is_historical) ON DUPLICATE KEY UPDATE bdc_id=VALUES(bdc_id),exact_name=VALUES(exact_name),normalised_name=VALUES(normalised_name),dance_role=VALUES(dance_role),current_division=VALUES(current_division),country=VALUES(country),status=VALUES(status),is_historical=VALUES(is_historical)");
+        /*
+         * Scoring identity only. Display metadata such as photo_url and
+         * original_photo_url must never be required to add or score a competitor.
+         * UI renderers may resolve photos separately and show blank/placeholder
+         * when no photo exists.
+         */
+        $select=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role FROM bdc_competitors WHERE status='active' AND dance_role=:role ORDER BY RAND() LIMIT :limit_count");
+        $copy=$pdo->prepare("INSERT INTO bdc_test_competitors(id,bdc_id,exact_name,dance_role) VALUES(:id,:bdc_id,:exact_name,:dance_role) ON DUPLICATE KEY UPDATE bdc_id=VALUES(bdc_id),exact_name=VALUES(exact_name),dance_role=VALUES(dance_role)");
         $entry=$pdo->prepare("INSERT INTO bdc_test_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name,entry_status) VALUES(:round,:competitor,:role,:bib,:name,'active') ON DUPLICATE KEY UPDATE bib_number=VALUES(bib_number),display_name=VALUES(display_name),entry_status='active'");
 
         $pdo->beginTransaction();
@@ -40,12 +46,7 @@ final class TestCompetitorGeneratorService
                         'id'=>(int)$row['id'],
                         'bdc_id'=>$row['bdc_id'],
                         'exact_name'=>$row['exact_name'],
-                        'normalised_name'=>$row['normalised_name'],
                         'dance_role'=>$row['dance_role'],
-                        'current_division'=>$row['current_division'],
-                        'country'=>$row['country'],
-                        'status'=>$row['status'],
-                        'is_historical'=>(int)$row['is_historical'],
                     ]);
                     $entry->execute([
                         'round'=>$roundId,
@@ -65,7 +66,7 @@ final class TestCompetitorGeneratorService
             $pdo->prepare("UPDATE bdc_test_scoring_rounds SET yes_count=:yes,callback_count=:cb,tier_manual_override=0 WHERE id=:r")
                 ->execute(['yes'=>$tier['yes_count'],'cb'=>$tier['yes_count'],'r'=>$roundId]);
 
-            $audit=$pdo->prepare("INSERT INTO bdc_test_scoring_audit(round_id,user_id,action,details_json) VALUES(:r,:u,'random_test_competitors_generated_safe',:d)");
+            $audit=$pdo->prepare("INSERT INTO bdc_test_scoring_audit(round_id,user_id,action,details_json) VALUES(:r,:u,'random_test_competitors_generated_scoring_identity_only',:d)");
             $audit->execute([
                 'r'=>$roundId,
                 'u'=>$userId?:null,
@@ -73,7 +74,7 @@ final class TestCompetitorGeneratorService
                     'requested'=>['leaders'=>$leaderCount,'followers'=>$followerCount],
                     'active_counts'=>$roleCounts,
                     'tier'=>$tier['tier'],
-                    'photo_fields_copied'=>false,
+                    'display_metadata_used'=>false,
                 ],JSON_UNESCAPED_UNICODE),
             ]);
             $pdo->commit();
