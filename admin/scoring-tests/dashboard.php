@@ -36,7 +36,7 @@ $html=str_replace('Manual Scoring Engine Â· Event Round Workflow',$modeLabel.' Â
 $badge='<span style="display:inline-block;margin-left:10px;padding:4px 9px;border-radius:6px;background:'.($mode==='automated'?'#0d6efd':'#212529').';color:#fff;font-size:12px;font-weight:800;vertical-align:middle">'.($mode==='automated'?'AUTOMATIC TEST':'MANUAL TEST').'</span>';
 $html=str_replace('Scoring Tests Dashboard</h1>','Scoring Tests Dashboard'.$badge.'</h1>',$html);
 
-$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
+$roundId=(int)($roundId??0);
 $endpoint=url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId.'&test_mode='.$mode);
 $actionEndpoint=url('admin/scoring-tests/automatic-inline.php');
 $csrf=Csrf::token();
