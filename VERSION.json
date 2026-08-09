@@ -1,16 +1,19 @@
 {
-  "version": "2.3.3-dev77",
-  "build": 2407,
+  "version": "2.3.3-dev78",
+  "build": 2408,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Scoring Tests mode opening by removing the unstable run.php wrapper from the active path",
-    "Manual Test and Automatic Test now set the selected mode and open the established Test Dashboard controller directly",
-    "Both Test modes continue to use the shared BDC scoring calculation engine",
-    "Automatic versus Manual remains an input workflow choice rather than a separate scoring formula",
-    "run.php is retained only as a compatibility redirect and performs no scoring or database workflow",
+    "Adds dedicated Automatic Scoring Test dashboard with secure per-judge browser URLs",
+    "Judges can save draft scores and Submit & Lock from their own test browser link",
+    "Automatic Test dashboard shows judge progress and submission status and can regenerate secure links",
+    "Automatic random scoring now simulates judge-session submissions instead of Manual admin score entry",
+    "Adds delete-one and delete-all controls for test judges and competitors plus Clear Entire Test Round",
+    "Adds Manage Test Data screen so Manual Test rounds can also delete judges and competitors individually or in bulk",
+    "Automatic and Manual Test calculations continue through the shared BDC scoring engine; only input workflow differs",
+    "All new judge sessions and marks remain isolated in bdc_test_* storage and cannot publish official BDC points",
     "No Staging or Production deployment performed"
   ]
 }
