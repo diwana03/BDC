@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev97",
-  "build": 2427,
+  "version": "2.3.3-dev98",
+  "build": 2428,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds shared CountryFlagService for projector display metadata",
-    "Competitor, callback and finalist projection tiles now show country flag plus country name when country is available",
-    "Supports common BDC country names and ISO two-letter country codes",
-    "Unknown country names gracefully show country text without blocking projection",
-    "Country and flag remain optional display-only metadata and never affect registration or scoring",
-    "Real projector uses the shared flag helper; Test projector remains compatible with optional country data when present",
+    "Removes technical screen format and resolution information from audience projection output",
+    "Audience header now contains only Event Name, Division and Round",
+    "Reduces projection title size and spacing to prevent COMPETITORS and other headings from clipping on screen",
+    "Keeps aspect ratio, density and resolution configuration exclusively in Projection Control",
+    "Applies the same audience-display cleanup to both Real and Test projection renderers",
+    "Actual applied aspect ratio and adaptive layout behavior remain unchanged",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
