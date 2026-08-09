@@ -1,18 +1,19 @@
 {
-  "version": "2.3.3-dev94",
-  "build": 2424,
+  "version": "2.3.3-dev95",
+  "build": 2425,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Apply Screen Settings to Real and Test Projection Control",
-    "Persists screen format, density and custom LED resolution per scoring round and data mode",
-    "Adds Reset to 16:9 Default with Maximum Density",
-    "Custom width and height are enabled only when Custom Resolution is selected",
-    "Applied settings are reused automatically by all projection buttons for the current round",
-    "Shows applied layout summary including format, density, calculated columns, rows and page count",
-    "Test and Real projector settings are isolated while using the same shared ProjectionSettingsService",
+    "Fixes projection renderer so applied screen format changes the actual canvas instead of remaining hard-coded to 9:16",
+    "Real and Test projection canvases now scale to 16:9, 9:16, 4:3, 16:10, 21:9, 32:9, 1:1 or Custom aspect ratios",
+    "Adaptive grid uses ProjectionLayoutService columns and screen ratio in the rendered output",
+    "Adds competitor grid projection to the general projection renderer",
+    "Makes Real Live Screen Projector event-centric: select Event first, then Category and Round",
+    "Makes Test Live Screen Projector follow the same Event then Category then Round hierarchy",
+    "Event selection includes non-archived competition rounds so an operator deliberately controls which event is projected",
+    "Projection context remains locked to the selected event round for Judges, Competitors, Scoring, Callbacks, Finalists and Winners",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
