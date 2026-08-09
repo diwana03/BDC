@@ -1,20 +1,19 @@
 {
-  "version": "2.3.3-dev92",
-  "build": 2422,
+  "version": "2.3.3-dev93",
+  "build": 2423,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Mirrors the real Scoring Dashboard three-option structure into Scoring Tests: Manual, Automatic and Live Screen Projector",
-    "Adds Test Live Screen Projector active-round dashboard",
-    "Adds Test Heats, Semifinal and Final Projection Control using isolated Test scoring tables",
-    "Adds Test 9:16 Judges, Scoring, Callback, Finalist, Final Ranking and Top 5 Winner projection views",
-    "Adds Live Screen direct navigation to Automatic Test rounds",
-    "Introduces shared ScoringRoundNavigation service so Test and Real round navigation can converge on one component",
-    "Test projector is visibly marked TEST MODE and cannot publish official BDC results or points",
-    "Establishes development rule in code structure: scoring UI features should have shared Test and Real integration rather than Real-only patches",
-    "No official scoring calculations, results or BDC points logic changed",
+    "Adds shared adaptive ProjectionLayoutService for Test and Real Live Screen workflows",
+    "Supports 16:9, 9:16, 4:3, 16:10, 21:9, 32:9, 1:1 and Custom screen formats",
+    "Custom format accepts actual LED width and height such as 3840 x 1080",
+    "Adds Maximum Density, Auto and Large Cards layout choices with Maximum Density as default",
+    "Maximum Density prioritizes minimum page count while adapting row and column geometry to screen aspect ratio",
+    "Mirrors screen-format and density controls into both Real and Test Projection Control",
+    "Projection URLs carry the selected format, density and custom resolution settings",
+    "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
 }
