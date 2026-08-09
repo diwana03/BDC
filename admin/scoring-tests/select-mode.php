@@ -10,7 +10,7 @@ Auth::requireAdmin();
 $mode=(string)($_GET['mode']??'');
 if(in_array($mode,['manual','automated'],true)){
     $_SESSION['bdc_test_scoring_mode']=$mode;
-    header('Location: index.php?legacy=1');
+    header('Location: run.php');
     exit;
 }
 ?>
