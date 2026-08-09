@@ -1,18 +1,19 @@
 {
-  "version": "2.3.3-dev84",
-  "build": 2414,
+  "version": "2.3.3-dev85",
+  "build": 2415,
   "status": "development",
   "release_date": "2026-08-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Keeps Manual Scoring Tests on the established dashboard",
-    "Routes Automatic Scoring Tests through a stable same-screen host that renders the established dashboard unchanged",
-    "Automatic mode force-replaces Manual Heats Score Entry with Judge Live Scoring after every dashboard load",
-    "Automatic mode can no longer remain visually on the Manual score-entry table",
-    "Preserves existing event, round, tier, judge, leader and follower layout",
-    "Preserves secure judge URLs, live progress, regenerate/delete actions and submitted locking",
-    "Preserves shared BDC scoring calculation logic and existing Special Category support",
-    "No Staging or Production deployment performed"
+    "Introduces one global new-competitor registration path for Manual Scoring, Automatic Scoring and Scoring Tests",
+    "New competitors now receive an official BDC ID from the canonical bdc_competitors sequence before being added to a scoring round",
+    "Scoring Tests mirror the official competitor identity into isolated test data while keeping test scores, results and points isolated",
+    "Existing competitors continue to reuse their existing BDC ID and established eligibility workflow",
+    "New competitor identity creation is centralized in CompetitorIdentityService instead of separate MAX-ID logic in each scoring controller",
+    "BDC ID allocation retries unique-key collisions to reduce concurrent registration conflicts",
+    "Photo and other display metadata remain outside competitor scoring/registration identity requirements",
+    "No scoring calculation, tiering or BDC points logic changed in this release",
+    "Designed as global code suitable for the same develop release to be deployed to Production after validation"
   ]
 }
