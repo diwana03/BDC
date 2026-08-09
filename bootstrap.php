@@ -55,19 +55,23 @@ function url(string $path = ''): string
 
 $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
+$bdcIsScoringTestIndex = preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1;
+$bdcTestMode = (string)($_GET['test_mode'] ?? $_POST['test_mode'] ?? $_SESSION['bdc_test_scoring_mode'] ?? '');
+if (!in_array($bdcTestMode, ['manual','automated'], true)) {
+    $bdcTestMode = '';
+}
+if ($bdcTestMode !== '') {
+    $_SESSION['bdc_test_scoring_mode'] = $bdcTestMode;
+}
 
 /*
  * Safe Scoring Tests competitor generator.
- *
- * The legacy Test Dashboard copied SELECT * from bdc_competitors into the test
- * competitor table. Any new optional profile field (for example photo URLs)
- * could therefore break scoring tests. Intercept the action here and copy only
- * stable identity/scoring fields through TestCompetitorGeneratorService.
+ * Display-only fields such as photos are never part of scoring identity.
  */
 if (
     $bdcBootstrapMethod === 'POST'
     && (string)($_POST['action'] ?? '') === 'generate_test_competitors'
-    && preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
+    && $bdcIsScoringTestIndex
 ) {
     \App\Core\Auth::requireAdmin();
     if (!\App\Core\Csrf::verify($_POST['_csrf'] ?? null)) {
@@ -82,18 +86,86 @@ if (
         (int)($_POST['follower_count'] ?? 10),
         (int)(\App\Core\Auth::user()['id'] ?? 0)
     );
-    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&competitors_generated=1'),true,303);
+    $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
+    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&competitors_generated=1'.$modeQuery),true,303);
     exit;
+}
+
+/* Special-category round creation stays on the established Test Dashboard. */
+if (
+    $bdcBootstrapMethod === 'POST'
+    && (string)($_POST['action'] ?? '') === 'create_round'
+    && $bdcIsScoringTestIndex
+    && \App\Services\SpecialCategoryService::isSpecial((string)($_POST['division'] ?? ''))
+) {
+    \App\Core\Auth::requireAdmin();
+    if (!\App\Core\Csrf::verify($_POST['_csrf'] ?? null)) {
+        http_response_code(419);
+        exit('Invalid security token.');
+    }
+    $pdo=\App\Core\Database::connection();
+    \App\Services\SpecialCategoryService::ensureSchema($pdo);
+    $userId=(int)(\App\Core\Auth::user()['id'] ?? 0);
+    $eventId=(int)($_POST['event_id'] ?? 0);
+    $name=trim((string)($_POST['new_event_name'] ?? ''));
+    $date=trim((string)($_POST['new_event_date'] ?? ''));
+    $division=(string)$_POST['division'];
+    $roundType=(string)($_POST['round_type'] ?? 'heats');
+    if(!in_array($roundType,['heats','final'],true)){http_response_code(400);exit('Invalid round type.');}
+    if($eventId>0 && $name!==''){http_response_code(400);exit('Select an existing event or create a new event, not both.');}
+    if($eventId<1){
+        if($name===''){http_response_code(400);exit('Select an existing event or enter a new event name.');}
+        if($date!=='' && !preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)){http_response_code(400);exit('Enter the event date as YYYY-MM-DD.');}
+        $base=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$name),'-')) ?: 'event';
+        $slug=$base;$n=2;$check=$pdo->prepare('SELECT COUNT(*) FROM bdc_test_events WHERE slug=:s');
+        while(true){$check->execute(['s'=>$slug]);if(!(int)$check->fetchColumn())break;$slug=$base.'-'.$n++;}
+        $pdo->prepare("INSERT INTO bdc_test_events(name,normalised_name,slug,event_date,status) VALUES(:n,:nn,:s,NULLIF(:d,''),'draft')")
+            ->execute(['n'=>$name,'nn'=>strtolower($name),'s'=>$slug,'d'=>$date]);
+        $eventId=(int)$pdo->lastInsertId();
+    }
+    $s=$pdo->prepare("SELECT id FROM bdc_test_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND status<>'archived' ORDER BY id DESC LIMIT 1");
+    $s->execute(['e'=>$eventId,'d'=>$division,'t'=>$roundType]);
+    $roundId=(int)$s->fetchColumn();
+    if($roundId<1){
+        $pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:t,:d,10,10,10.00,4.50,4.30,4.20,:u)")
+            ->execute(['e'=>$eventId,'t'=>$roundType,'d'=>$division,'u'=>$userId?:null]);
+        $roundId=(int)$pdo->lastInsertId();
+    }
+    $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
+    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&special_created=1'.$modeQuery),true,303);
+    exit;
+}
+
+/* Special categories bypass participant-count point tiers; this controls callbacks only. */
+if (
+    $bdcBootstrapMethod === 'POST'
+    && (string)($_POST['action'] ?? '') === 'settings'
+    && $bdcIsScoringTestIndex
+) {
+    $roundId=(int)($_POST['round_id'] ?? 0);
+    if($roundId>0){
+        $pdo=\App\Core\Database::connection();
+        $s=$pdo->prepare('SELECT division FROM bdc_test_scoring_rounds WHERE id=:r');
+        $s->execute(['r'=>$roundId]);
+        $division=(string)$s->fetchColumn();
+        if(\App\Services\SpecialCategoryService::isSpecial($division)){
+            \App\Core\Auth::requireAdmin();
+            if (!\App\Core\Csrf::verify($_POST['_csrf'] ?? null)) {
+                http_response_code(419);
+                exit('Invalid security token.');
+            }
+            $yes=max(1,min(100,(int)($_POST['special_yes_count'] ?? 10)));
+            $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:y,callback_count=:y,tier_manual_override=1 WHERE id=:r')
+                ->execute(['y'=>$yes,'r'=>$roundId]);
+            $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
+            header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&special_settings=1'.$modeQuery),true,303);
+            exit;
+        }
+    }
 }
 
 /*
  * Shared BDC Heats engine gate.
- *
- * Both Production Scoring and Scoring Tests historically had their own local
- * computeResults() implementation. Generate Results is intercepted here after
- * authentication/CSRF bootstrap and sent to ScoringCalculationService, which
- * calls the single HeatsScoringEngine. The old controller functions remain only
- * as rollback compatibility and are bypassed during normal use.
  */
 if (
     $bdcBootstrapMethod === 'POST'
@@ -117,32 +189,26 @@ if (
         $scope,
         (int)(\App\Core\Auth::user()['id'] ?? 0)
     );
+    $modeQuery=$isTest && $bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
     $target=$isTest
-        ? url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&shared_engine=1')
+        ? url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&shared_engine=1'.$modeQuery)
         : url('admin/scoring/?round_id='.$roundId.'&shared_engine=1');
     header('Location: '.$target,true,303);
     exit;
 }
 
-/* Scoring Tests always starts with the same Manual / Automatic choice used by Production. */
+/* Scoring Tests without an explicit mode still starts at mode selection. */
 if (
     $bdcBootstrapMethod === 'GET'
     && empty($_GET['legacy'])
-    && preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1
+    && $bdcIsScoringTestIndex
 ) {
     header('Location: ' . url('admin/scoring-tests/select-mode.php'), true, 303);
     exit;
 }
 
 /*
- * Admin navigation safety layer.
- *
- * Admin pages historically use several different layouts. To make navigation
- * consistent without rewriting every screen, GET HTML pages receive a tiny
- * client-side enhancement that adds Back and Dashboard controls to the existing
- * top bar. JSON/AJAX, judging iframes, downloads and other non-page endpoints are
- * deliberately excluded. The callback performs no database work and leaves
- * non-HTML output untouched.
+ * Admin navigation safety layer plus direct Scoring Tests mode enhancement.
  */
 $bdcRequestMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcRequestPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
@@ -153,7 +219,18 @@ $bdcAdminHtmlCandidate = $bdcRequestMethod === 'GET'
 if ($bdcAdminHtmlCandidate) {
     $bdcAdminDashboardUrl = url('admin/');
     $bdcAutomaticParityUrl = url('admin/scoring-tests/automatic-parity.php');
-    ob_start(static function (string $html) use ($bdcAdminDashboardUrl, $bdcAutomaticParityUrl): string {
+    $bdcScoringTestEnhancement='';
+    if($bdcIsScoringTestIndex && $bdcTestMode!==''){
+        $cfg=json_encode([
+            'mode'=>$bdcTestMode,
+            'automaticEndpoint'=>url('admin/scoring-tests/automatic-inline.php'),
+            'actionEndpoint'=>url('admin/scoring-tests/automatic-inline.php'),
+            'dataEndpoint'=>url('admin/scoring-tests/mode-data.php'),
+        ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+        $scriptSrc=e(url('public/js/scoring-tests-mode-v2412.js'));
+        $bdcScoringTestEnhancement='<script>window.BDC_SCORING_TEST_MODE='.$cfg.';</script><script src="'.$scriptSrc.'"></script>';
+    }
+    ob_start(static function (string $html) use ($bdcAdminDashboardUrl, $bdcAutomaticParityUrl, $bdcScoringTestEnhancement): string {
         if ($html === '' || stripos($html, '</body>') === false) {
             return $html;
         }
@@ -256,7 +333,7 @@ HTML;
             [(string)$dashboardJson,(string)$parityJson],
             $navigation
         );
-        return preg_replace('/<\/body>/i', $navigation . '</body>', $html, 1) ?? $html;
+        return preg_replace('/<\/body>/i', $navigation . $bdcScoringTestEnhancement . '</body>', $html, 1) ?? $html;
     });
 }
 
