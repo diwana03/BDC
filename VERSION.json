@@ -1,16 +1,19 @@
 {
-  "version": "2.3.3-dev101",
-  "build": 2431,
+  "version": "2.3.3-dev102",
+  "build": 2432,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Live Screen round discovery so completed or archived rounds remain selectable for projection",
-    "Final-only historical events now expose their actual Final round instead of showing an empty Round dropdown",
-    "Projector continues to show only rounds that really exist in the scoring database and does not invent Heats or Semifinal stages",
-    "Applies the same round-discovery fix to Real and Test Live Screen selectors",
-    "Remote Live Display controller now uses the same complete existing-round list",
+    "Consolidates Projector Live Feed Link, screen resolution/layout settings and remote feed controls into one Live Screen Control page",
+    "Adds clearly visible one-link projector workflow with Copy Link, Open Preview and Generate/Regenerate controls",
+    "Same projector link can be remotely switched among Holding, Judges, Competitors, Scoring, Callbacks, Finalists, Final Ranking and Winner Podium",
+    "Keeps screen format, density, custom resolution, auto paging and page delay controls on the same operator screen",
+    "Winner Reveal now renders as a real Top 5 podium with 1st highest center, 2nd/3rd adjacent and 4th/5th outer positions",
+    "Winner podium progressively retains already revealed placements for 5th through 1st reveal flow",
+    "Winner podium queries competitor photos and country flags; missing or broken photos leave clean empty space and never block results",
+    "Participant projection renderer now honors page parameter for multi-page remote rotation",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
