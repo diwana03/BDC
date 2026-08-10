@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev109",
-  "build": 2439,
+  "version": "2.3.3-dev110",
+  "build": 2440,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Unifies Holding and all other projector states behind the same live-display/feed.php iframe path",
-    "Removes the special direct Holding Screen renderer from live-display/index.php so every state change follows the same refresh mechanism",
-    "Live Display index now keeps one persistent iframe and reloads it with a changing state fingerprint when the server-confirmed projector state changes",
-    "live-display/feed.php now renders Holding Screen directly instead of returning HTTP 204",
-    "Remote projector still polls state every 700ms and supports automatic participant page rotation",
-    "Winner Podium, Final Ranking, Judges, Competitors, Scoring, Callbacks and Finalists remain session-driven through the same feed endpoint",
+    "Winner Podium photo count now follows the number of actual winners in each ranked result",
+    "Single-person winner displays one photo slot, two-person couple displays two photo slots, and larger supported winner groups display one slot per person",
+    "Missing or broken winner photos preserve their allocated position with a neutral blank circular placeholder",
+    "Podium photo rows remain centered and stable instead of collapsing when a competitor photo is unavailable",
+    "Podium name and country areas use consistent reserved height for better alignment across Top 5 positions",
+    "Applies the same behavior to staged Winner Podium and completed Final Ranking because both use the shared live-display renderer",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
