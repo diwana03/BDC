@@ -1,16 +1,18 @@
 {
-  "version": "2.3.3-dev105",
-  "build": 2435,
+  "version": "2.3.3-dev106",
+  "build": 2436,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Live Display rendering for all remote feed types using the active display session",
-    "Moves Winner Podium before Final Ranking in Final controls",
-    "Adds staged Winner Podium reveal controls for 5th, 4th, 3rd, 2nd, 1st and Full Podium",
-    "Persists podium reveal state so the same projector screen updates progressively",
-    "Keeps Final Ranking and Winner Podium protected by Results Reveal Safety",
+    "Replaces the fragile admin projection iframe chain with a dedicated read-only live-display/feed.php endpoint",
+    "Projector PC now renders the current event, round, feed type, page and podium reveal directly from the secure Live Display session",
+    "Holding, Judges, Competitors, Scoring, Callbacks, Finalists, Winner Podium and Final Ranking now use the same single projector URL workflow",
+    "Remote state polling remains at 750ms and reloads the dedicated feed whenever state_version changes",
+    "State endpoint now returns session state only and no longer constructs admin projection URLs",
+    "Winner podium reveal state remains session-driven for 5th, 4th, 3rd, 2nd, 1st and Full Podium",
+    "Results Reveal Safety remains enforced server-side before protected feeds can render",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
