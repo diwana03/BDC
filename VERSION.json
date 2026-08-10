@@ -1,17 +1,18 @@
 {
-  "version": "2.3.3-dev111",
-  "build": 2441,
+  "version": "2.3.3-dev112",
+  "build": 2442,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Moves Live Screen Back and Dashboard navigation into the top header so it no longer overlaps Projector Live Feed controls",
-    "Adds responsive top navigation for desktop and mobile Live Screen control",
-    "Adds a dedicated Winner Podium ready screen so the public display can remain unrevealed before the first placement announcement",
-    "Adds session support for an unrevealed Winner Podium state before staged 5, 4, 3, 2, 1 reveal",
-    "Preserves winner photo-slot count and blank-photo placeholder behavior from dev110",
-    "Registration Desk Leader/Follower split remains the next UI patch because its existing backend must be preserved rather than replaced unsafely",
+    "Adds a new split Registration Desk interface with dedicated Leader and Follower registration panels",
+    "Removes the operator-facing Role dropdown from the new Registration Desk workflow",
+    "Leader and Follower panels each provide independent BDC search, optional bib, Add Existing and Create Name & Add actions",
+    "Desktop shows Leader and Follower registration side by side; mobile stacks Leader then Follower",
+    "Reuses the existing registration backend for eligibility, official BDC ID creation, duplicate and bib validation, check-in, ready status, removal and live synchronization",
+    "Routes the Registration Desk directory root to the new split-role interface while retaining index.php as the existing JSON/API backend",
+    "Keeps bib assignment optional and editable after registration",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
