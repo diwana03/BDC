@@ -1,21 +1,16 @@
 {
-  "version": "2.3.3-dev100",
-  "build": 2430,
+  "version": "2.3.3-dev101",
+  "build": 2431,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds one persistent Live Display URL per event for a separate projector PC",
-    "Projector PC can open the display link once and receive remote feed changes without changing URLs",
-    "Adds authenticated remote controller for Holding, Judges, Competitors, Scoring, Callbacks, Finalists, Final Ranking and Winners",
-    "Remote display polls for controller state changes and swaps the displayed feed automatically",
-    "Round selection is database-driven, so events only show rounds that actually exist and never invent a Heats or Semifinal stage",
-    "Adds automatic multi-page rotation for Competitors, Callbacks and Finalists",
-    "Auto paging defaults to 30 seconds and supports 10, 15, 30, 45 or 60 second delays",
-    "Adds page number and Auto Page On/Off controls",
-    "Live Display link is read-only and cannot change scoring or competition data",
-    "Live Display architecture supports both Real and isolated Test event sessions",
+    "Fixes Live Screen round discovery so completed or archived rounds remain selectable for projection",
+    "Final-only historical events now expose their actual Final round instead of showing an empty Round dropdown",
+    "Projector continues to show only rounds that really exist in the scoring database and does not invent Heats or Semifinal stages",
+    "Applies the same round-discovery fix to Real and Test Live Screen selectors",
+    "Remote Live Display controller now uses the same complete existing-round list",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
