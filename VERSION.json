@@ -1,17 +1,16 @@
 {
-  "version": "2.3.3-dev113",
-  "build": 2443,
+  "version": "2.3.3-dev114",
+  "build": 2444,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Live Screen Projector controls on mobile by avoiding the embedded control iframe on phone-sized screens",
-    "Mobile Event, Category and Round selection now exposes a large touch-safe Open Projector Controls action for the selected round",
-    "Mobile projector controls open directly in control.php so feed, results safety, podium reveal, screen settings and link controls receive normal touch events",
-    "Desktop retains the existing same-page embedded Live Screen control workflow",
-    "Improves mobile navigation, round buttons, spacing and viewport handling for iPhone and Android",
-    "Keeps projector session, scoring, results and official BDC points logic unchanged",
+    "Fixes the mobile Live Screen control URL so it preserves the configured BDC application base path such as /BDC_STAGING/",
+    "Replaces the fragile relative control.php mobile link with the application url() helper generated admin/live-screen/control.php route",
+    "Prevents mobile Open Projector Controls from resolving against an incorrect browser path and opening an unrelated blank or black page",
+    "Uses the same absolute application-aware control route for desktop embedded controls",
+    "Keeps projector session, remote feed, scoring, results and official BDC points logic unchanged",
     "No Staging or Production deployment performed"
   ]
 }
