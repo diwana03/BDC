@@ -1,18 +1,17 @@
 {
-  "version": "2.3.3-dev107",
-  "build": 2437,
+  "version": "2.3.3-dev108",
+  "build": 2438,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Removes the remaining dependency from live-display/feed.php to admin/live-screen/projection.php",
-    "Live Display feed now renders directly from the secure display session and scoring database without admin projection authentication",
-    "Direct feed supports Judges, Competitors, Scoring, Callbacks, Finalists, Winner Podium and Final Ranking for Real and Test data modes",
-    "Projector refresh now keys off a full state fingerprint including screen type, round, page, reveal position and lock state instead of relying only on state_version",
-    "Polling interval adjusted to 700ms for responsive remote screen changes",
-    "Winner Podium continues to support progressive 5th, 4th, 3rd, 2nd, 1st and Full Podium reveal state",
-    "Results Reveal Safety remains enforced before protected result feeds render",
+    "Fixes remote projector controller JavaScript by replacing browser-dependent implicit element globals with explicit DOM references",
+    "Remote feed commands now explicitly post CSRF, event, round, page, auto-page, delay and screen type to live-action.php",
+    "Adds robust HTTP/JSON error handling so failed projector commands are shown instead of silently leaving the display on Holding",
+    "Adds temporary LIVE STATE diagnostic showing current server screen type, round and state version after every accepted command",
+    "Feed buttons now visibly reflect the server-confirmed active state including Holding Screen",
+    "Keeps Winner Podium reveal, Results Reveal Safety and single projector-link architecture unchanged",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
