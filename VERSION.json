@@ -1,19 +1,17 @@
 {
-  "version": "2.3.3-dev112",
-  "build": 2442,
+  "version": "2.3.3-dev113",
+  "build": 2443,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a new split Registration Desk interface with dedicated Leader and Follower registration panels",
-    "Removes the operator-facing Role dropdown from the new Registration Desk workflow",
-    "Leader and Follower panels each provide independent BDC search, optional bib, Add Existing and Create Name & Add actions",
-    "Desktop shows Leader and Follower registration side by side; mobile stacks Leader then Follower",
-    "Reuses the existing registration backend for eligibility, official BDC ID creation, duplicate and bib validation, check-in, ready status, removal and live synchronization",
-    "Routes the Registration Desk directory root to the new split-role interface while retaining index.php as the existing JSON/API backend",
-    "Keeps bib assignment optional and editable after registration",
-    "No scoring calculation, results or official BDC points logic changed",
+    "Fixes Live Screen Projector controls on mobile by avoiding the embedded control iframe on phone-sized screens",
+    "Mobile Event, Category and Round selection now exposes a large touch-safe Open Projector Controls action for the selected round",
+    "Mobile projector controls open directly in control.php so feed, results safety, podium reveal, screen settings and link controls receive normal touch events",
+    "Desktop retains the existing same-page embedded Live Screen control workflow",
+    "Improves mobile navigation, round buttons, spacing and viewport handling for iPhone and Android",
+    "Keeps projector session, scoring, results and official BDC points logic unchanged",
     "No Staging or Production deployment performed"
   ]
 }
