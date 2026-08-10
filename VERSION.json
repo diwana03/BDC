@@ -1,17 +1,17 @@
 {
-  "version": "2.3.3-dev110",
-  "build": 2440,
+  "version": "2.3.3-dev111",
+  "build": 2441,
   "status": "development",
   "release_date": "2026-08-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Winner Podium photo count now follows the number of actual winners in each ranked result",
-    "Single-person winner displays one photo slot, two-person couple displays two photo slots, and larger supported winner groups display one slot per person",
-    "Missing or broken winner photos preserve their allocated position with a neutral blank circular placeholder",
-    "Podium photo rows remain centered and stable instead of collapsing when a competitor photo is unavailable",
-    "Podium name and country areas use consistent reserved height for better alignment across Top 5 positions",
-    "Applies the same behavior to staged Winner Podium and completed Final Ranking because both use the shared live-display renderer",
+    "Moves Live Screen Back and Dashboard navigation into the top header so it no longer overlaps Projector Live Feed controls",
+    "Adds responsive top navigation for desktop and mobile Live Screen control",
+    "Adds a dedicated Winner Podium ready screen so the public display can remain unrevealed before the first placement announcement",
+    "Adds session support for an unrevealed Winner Podium state before staged 5, 4, 3, 2, 1 reveal",
+    "Preserves winner photo-slot count and blank-photo placeholder behavior from dev110",
+    "Registration Desk Leader/Follower split remains the next UI patch because its existing backend must be preserved rather than replaced unsafely",
     "No scoring calculation, results or official BDC points logic changed",
     "No Staging or Production deployment performed"
   ]
