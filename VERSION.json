@@ -1,18 +1,18 @@
 {
-  "version": "2.3.3-dev120",
-  "build": 2450,
+  "version": "2.3.3-dev121",
+  "build": 2451,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores Archive Event on the Scoring Dashboard Saved Rounds table",
-    "Archive Event hides all scoring rounds for the selected event from the active dashboard while preserving the event, competitors, scores and result history",
-    "Adds a dedicated scoring archive registry instead of changing the main event status or deleting scoring data",
-    "Archive Event requires authenticated admin access, CSRF validation and confirmation before applying",
-    "Archived events remain preserved in the database and can still support historical result access",
-    "Keeps Open and Delete All Test Scoring actions unchanged",
-    "Includes the dev119 legacy migration-version capacity fix",
+    "Moves Archive Event management to the main Admin Dashboard where event lifecycle controls belong",
+    "Adds an Archive Event quick action and dashboard event table showing active events, dates, statuses and scoring-round counts",
+    "Dashboard archive actions preserve the event, registrations, competitors, scoring data, results and points while removing the event from active scoring/projector workflows",
+    "Archive requests return directly to the Admin Dashboard after completion",
+    "Uses the existing bdc_scoring_archived_events registry introduced in dev120 and does not change bdc_events.status",
+    "Keeps authenticated admin access, CSRF validation and confirmation protection",
+    "Includes the dev119 migration-version capacity fix",
     "No Staging or Production deployment performed"
   ]
 }
