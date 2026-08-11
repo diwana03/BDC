@@ -1,25 +1,20 @@
 {
-  "version": "2.3.3-dev127",
-  "build": 2457,
+  "version": "2.3.3-dev128",
+  "build": 2458,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Completes Phase 3 of the multi-discipline BDC scoring rollout for Bachata and Salsa while keeping one shared BDC ID",
-    "Restores the original proven scoring core exactly after the interrupted Phase 3 attempt; admin/scoring/core.php matches known-good blob ea9a05219846458a5be26453a01af386c89c0068",
-    "Adds Dance Style selection when creating scoring rounds with Bachata as default and Salsa limited to Novice, Intermediate and Advanced",
-    "Persists dance_style on new scoring rounds and preserves the same discipline when callbacks advance to Semifinal or Final",
-    "Keeps Bachata Rising, Bachata Open and Bachata Invitational restricted to Bachata only",
-    "Separates Registration Desk links by Event, Dance Style and Division so Salsa and Bachata can run independently in the same event",
-    "Makes Registration Desk competitor search and eligibility discipline aware; Salsa role, division, points and competition history no longer read Bachata data",
-    "Creates or reuses a Salsa discipline profile under the competitor's existing BDC ID when appropriate",
-    "Makes direct Salsa scoring-entry validation use Salsa-only points and progression history",
-    "Separates test scoring deletion by dance style so deleting Salsa Novice cannot remove Bachata Novice scoring from the same event",
-    "Adds an isolated Salsa publication workflow using the existing Super Admin approval model and the same BDC tier and point allocation rules as Bachata",
-    "Writes approved Salsa point transactions and participant results explicitly with dance_style=salsa so Bachata and Salsa points cannot mix",
-    "Publishes separate Salsa Heats, Final and Points repository files with Salsa-specific filenames to avoid overwriting Bachata documents",
-    "Keeps the established Bachata scoring calculation engine and Relative Placement calculator unchanged",
-    "No manual Staging or Production deployment performed; automatic deployment status must be verified separately"
+    "Adds Completed Events as a dedicated Admin Dashboard workflow separate from active scoring and long-term Archived Events",
+    "Completed events automatically disappear from the normal Scoring Dashboard saved-round list and from Select Existing Event",
+    "Published and Completed events cannot be reused to create a new scoring workflow, enforced both in the UI and server-side",
+    "Completed Events provides Open Scoring to reopen the exact existing scoring workflow for amendments without creating a duplicate event or round",
+    "Reopening a completed event unlocks the existing scoring workflow and returns the scorer to the existing scoring round for correction and resubmission",
+    "Completed Events remain separate from Archived Events; archiving is intended only when normal amendment access is no longer required",
+    "Admin Dashboard now shows a Completed Events navigation item and count",
+    "Archive Event list is restricted to completed events only",
+    "Published or completed scoring workflows cannot be destructively deleted from the normal Scoring Dashboard",
+    "Existing Bachata/Salsa discipline separation and one shared BDC ID architecture remain unchanged"
   ]
 }
