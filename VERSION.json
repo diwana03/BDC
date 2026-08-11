@@ -1,16 +1,18 @@
 {
-  "version": "2.3.3-dev132",
-  "build": 2462,
+  "version": "2.3.3-dev133",
+  "build": 2463,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Competitor Portal Current Division options so they change with the selected dance style",
-    "Bachata profile now offers Novice, Intermediate, Advanced, Bachata Rising, Bachata Open, Bachata Invitational, Semi Pro, Pro and Bachata All Star",
-    "Salsa profile remains limited to Novice, Intermediate and Advanced",
-    "The Salsa division limitation note is displayed only when Salsa is selected",
-    "Adds server-side discipline validation so a Salsa request cannot submit a Bachata-only division by manipulating the form",
-    "Keeps one shared BDC ID while storing competition profile requests against the selected Bachata or Salsa discipline"
+    "Makes the Admin Edit Competitor screen discipline aware with separate Bachata and Salsa tabs",
+    "Bachata Current Division now includes Novice, Intermediate, Advanced, Bachata Rising, Bachata Open, Bachata Invitational, Semi Pro, Pro and Bachata All Star",
+    "Salsa Current Division remains limited to Novice, Intermediate and Advanced",
+    "Role and Current Division now read from and save to bdc_competitor_discipline_profiles for the selected dance style",
+    "Bachata legacy role/current_division fields are kept synchronized for backward compatibility",
+    "Manual Novice/Intermediate eligibility overrides remain explicitly Bachata-only so they cannot accidentally affect Salsa",
+    "Competition history now displays the dance style for each point transaction",
+    "One BDC ID remains shared across Bachata and Salsa profiles"
   ]
 }
