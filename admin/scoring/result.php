@@ -9,7 +9,7 @@ use App\Services\HtmlSnapshotToken;
 use App\Services\PdfExportToken;
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $roundId=(int)($_GET['round_id']??0);
 $isRepositorySnapshot=HtmlSnapshotToken::verify($pdo,'heats',$roundId,$_GET);
@@ -50,7 +50,8 @@ $markStmt->execute(['r'=>$roundId]);
 $marks=[];
 foreach($markStmt->fetchAll() as $mark)$marks[(int)$mark['entry_id']][(int)$mark['judge_id']]=$mark;
 
-function markLabel(?array $mark):string{
+function markLabel(?array $mark,bool $automatic=false):string{
+ if($automatic)return $mark===null?'':number_format((float)$mark['weighted_score'],2);
  if(!$mark||$mark['mark_type']==='blank')return '';
  if($mark['mark_type']==='yes')return '1';
  if($mark['mark_type']==='alt')return 'A'.(int)$mark['alt_rank'];
@@ -65,6 +66,7 @@ function resultLabel(array $entry):string{
  return '';
 }
 $logo=url('public/assets/img/bdc-logo-header.png');
+$isAutomatic=($round['scoring_mode']??'manual')==='automated';
 $witnesses=array_values(array_filter([
  trim((string)($round['witness_1']??'')),
  trim((string)($round['witness_2']??'')),
@@ -147,7 +149,7 @@ th.result,td.result{width:16mm;font-weight:700}
      <th class="bib">Bib</th>
      <th class="name">Competitor</th>
      <?php if(!$summaryOnly):foreach($judges as $judge):?><th>J<?= (int)$judge['judge_order'] ?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;endif;?>
-     <th class="total">Total</th>
+     <th class="total"><?=$isAutomatic?'Average':'Total'?></th>
      <th class="result">Result</th>
     </tr></thead>
     <tbody>
@@ -155,7 +157,7 @@ th.result,td.result{width:16mm;font-weight:700}
      <tr class="<?=e((string)($entry['result_status']??''))?>">
       <td class="bib"><?= (int)$entry['bib_number'] ?></td>
       <td class="name"><?=e($entry['display_name'])?></td>
-      <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;endif;?>
+      <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;endif;?>
       <td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td>
       <td class="result"><?=e(resultLabel($entry))?></td>
      </tr>

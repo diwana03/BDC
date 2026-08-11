@@ -9,7 +9,7 @@ use App\Services\HtmlSnapshotToken;
 use App\Services\PdfExportToken;
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $roundId=(int)($_GET['round_id']??0);
 $isRepositorySnapshot=HtmlSnapshotToken::verify($pdo,'heats',$roundId,$_GET);

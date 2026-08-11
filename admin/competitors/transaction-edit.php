@@ -4,7 +4,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth; use App\Core\Csrf; use App\Core\Database; use App\Services\SchemaUpdater;
 Auth::requireAdmin();
 if (!Auth::can('transactions.edit') && !Auth::can('competitors.edit')) { http_response_code(403); exit('You do not have permission to edit competition entries.'); }
-$pdo=Database::connection(); SchemaUpdater::run($pdo);
+$pdo=Database::connection();
 $id=(int)($_GET['id']??$_POST['id']??0);
 $competitorId=(int)($_GET['competitor_id']??$_POST['competitor_id']??0);
 $error='';

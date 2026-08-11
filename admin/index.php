@@ -7,19 +7,25 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
+use App\Services\CompetitorIdentityService;
 
 $error = '';
 if (isset($_GET['logout'])) { Auth::logout(); header('Location: ./'); exit; }
 if (!Auth::check()) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!Csrf::verify($_POST['_csrf'] ?? null)) $error = 'Invalid security token. Refresh the page and try again.';
+        elseif (Auth::pendingTwoFactor()) {
+            if (!Auth::verifyTwoFactor(trim((string)($_POST['verification_code']??'')),!empty($_POST['remember_device']))) $error='Invalid or expired verification code.';
+            else { header('Location: ./'); exit; }
+        }
         elseif (!Auth::attempt((string)($_POST['email'] ?? ''),(string)($_POST['password'] ?? ''))) $error = 'Invalid email or password.';
-        else { header('Location: ./'); exit; }
+        elseif (!Auth::pendingTwoFactor()) { header('Location: ./'); exit; }
     }
     $csrfToken = Csrf::token(); require dirname(__DIR__) . '/app/Views/auth/login.php'; exit;
 }
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+if(empty($_SESSION['identity_scan_dev23'])){CompetitorIdentityService::scanHistorical($pdo);$_SESSION['identity_scan_dev23']=1;}
+
 $stats = [
  'competitors'=>(int)$pdo->query('SELECT COUNT(*) FROM bdc_competitors')->fetchColumn(),
  'events'=>(int)$pdo->query('SELECT COUNT(*) FROM bdc_events')->fetchColumn(),
@@ -27,9 +33,13 @@ $stats = [
  'claims'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_claims WHERE status='pending'")->fetchColumn(),
  'profile_requests'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_profile_requests WHERE status IN ('pending','under_review','more_info')")->fetchColumn(),
 ];
+$stats['identity_matches']=(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitor_link_suggestions WHERE status='pending'")->fetchColumn();
 $recentImports=$pdo->query('SELECT id,file_name,import_type,status,total_rows,imported_rows,error_rows,created_at FROM bdc_import_batches ORDER BY id DESC LIMIT 5')->fetchAll();
 $recentEvents=$pdo->query("SELECT id,name,event_date,status FROM bdc_events ORDER BY COALESCE(event_date,'1900-01-01') DESC,id DESC LIMIT 5")->fetchAll();
 $recentRegistrations=$pdo->query("SELECT r.id,r.full_name,r.created_at,r.registration_status,e.name AS event_name FROM bdc_event_registrations r JOIN bdc_events e ON e.id=r.event_id ORDER BY r.id DESC LIMIT 5")->fetchAll();
 $stats['registrations']=(int)$pdo->query('SELECT COUNT(*) FROM bdc_event_registrations')->fetchColumn();
 $stats['documents']=(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_documents WHERE status='published'")->fetchColumn();
+$pendingCompetitionApprovals=$pdo->query("SELECT p.final_round_id,p.division,p.submitted_at,e.name event_name,e.event_date FROM bdc_scoring_publications p JOIN bdc_events e ON e.id=p.event_id WHERE p.status='pending_approval' ORDER BY p.submitted_at")->fetchAll();
+$pendingPointAdjustments=[];
+try{$pendingPointAdjustments=$pdo->query("SELECT r.id,r.additional_points,r.requested_at,c.exact_name,e.name event_name,r.division,r.dance_role,u.full_name requester_name FROM bdc_point_adjustment_requests r JOIN bdc_competitors c ON c.id=r.competitor_id JOIN bdc_events e ON e.id=r.event_id JOIN bdc_users u ON u.id=r.requested_by WHERE r.status='pending' ORDER BY r.requested_at")->fetchAll();}catch(Throwable $e){}
 require dirname(__DIR__) . '/app/Views/admin/dashboard.php';

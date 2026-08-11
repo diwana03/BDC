@@ -4,36 +4,40 @@ declare(strict_types=1);
 namespace App\Core;
 
 use PDO;
+use RuntimeException;
 
 final class Database
 {
-    private static ?PDO $pdo = null;
+    private static ?PDO $connection = null;
 
     public static function connection(): PDO
     {
-        if (self::$pdo instanceof PDO) {
-            return self::$pdo;
+        if (self::$connection instanceof PDO) {
+            return self::$connection;
         }
 
-        $dsn = sprintf(
-            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-            Config::get('database.host'),
-            Config::get('database.port', 3306),
-            Config::get('database.name'),
-            Config::get('database.charset', 'utf8mb4')
+        $host = (string) Config::get('database.host', 'localhost');
+        $port = (int) Config::get('database.port', 3306);
+        $name = (string) Config::get('database.name', '');
+        $user = (string) Config::get('database.user', '');
+        $password = Secret::required(
+            'BDC_DB_PASSWORD',
+            (string) Config::get('database.password_file', '')
         );
+        $charset = (string) Config::get('database.charset', 'utf8mb4');
 
-        self::$pdo = new PDO(
-            $dsn,
-            (string) Config::get('database.user'),
-            (string) Config::get('database.password'),
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]
-        );
+        if ($name === '' || $user === '') {
+            throw new RuntimeException('Database configuration is incomplete.');
+        }
 
-        return self::$pdo;
+        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $host, $port, $name, $charset);
+
+        self::$connection = new PDO($dsn, $user, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+
+        return self::$connection;
     }
 }

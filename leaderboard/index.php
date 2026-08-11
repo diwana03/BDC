@@ -8,17 +8,24 @@ use App\Services\DivisionProgressionService;
 use App\Services\SchemaUpdater;
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $division=(string)($_GET['division']??'novice');
 $role=(string)($_GET['role']??'leader');
 $showOut=!empty($_GET['show_out']);
 
-$allowedDivisions=['novice','intermediate','advanced'];
+$allowedDivisions=['all','novice','intermediate','advanced'];
 $allowedRoles=['leader','follower'];
 
 if(!in_array($division,$allowedDivisions,true))$division='novice';
 if(!in_array($role,$allowedRoles,true))$role='leader';
+
+$roleJoin=$division==='all'?"AND pt.dance_role IN ('leader','follower')":'AND pt.dance_role=:role';
+$selectedEventsCondition=$division==='all'?'1=1':'pt.division=:selected_division_events';
+$selectedFirstCondition=$division==='all'?'1=1':'pt.division=:selected_division_first';
+$selectedSecondCondition=$division==='all'?'1=1':'pt.division=:selected_division_second';
+$selectedThirdCondition=$division==='all'?'1=1':'pt.division=:selected_division_third';
+$selectedDateCondition=$division==='all'?'1=1':'pt.division=:selected_division_date';
 
 $stmt=$pdo->prepare("
  SELECT
@@ -34,22 +41,58 @@ $stmt=$pdo->prepare("
   ROUND(SUM(CASE WHEN pt.division='novice' THEN pt.points ELSE 0 END),2) novice_points,
   ROUND(SUM(CASE WHEN pt.division='intermediate' THEN pt.points ELSE 0 END),2) intermediate_points,
   ROUND(SUM(CASE WHEN pt.division='advanced' THEN pt.points ELSE 0 END),2) advanced_points,
-  COUNT(DISTINCT CASE WHEN pt.division=:selected_division THEN pt.event_id END) selected_events,
-  MAX(CASE WHEN pt.division=:selected_division_date THEN COALESCE(e.event_date,DATE(pt.created_at)) END) last_result_date
+  ROUND(SUM(CASE WHEN pt.dance_role='leader' THEN pt.points ELSE 0 END),2) leader_points,
+  ROUND(SUM(CASE WHEN pt.dance_role='follower' THEN pt.points ELSE 0 END),2) follower_points,
+  MAX(CASE WHEN pt.division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
+  MAX(CASE WHEN pt.division='advanced' THEN 1 ELSE 0 END) competed_advanced,
+  COUNT(DISTINCT CASE WHEN $selectedEventsCondition THEN pt.event_id END) selected_events,
+  COUNT(DISTINCT CASE
+   WHEN $selectedFirstCondition
+    AND LOWER(TRIM(pt.placement)) IN('1','1st','first')
+   THEN pt.event_id END
+  ) first_place_count,
+  COUNT(DISTINCT CASE
+   WHEN $selectedSecondCondition
+    AND LOWER(TRIM(pt.placement)) IN('2','2nd','second')
+   THEN pt.event_id END
+  ) second_place_count,
+  COUNT(DISTINCT CASE
+   WHEN $selectedThirdCondition
+    AND LOWER(TRIM(pt.placement)) IN('3','3rd','third')
+   THEN pt.event_id END
+  ) third_place_count,
+  MAX(CASE WHEN $selectedDateCondition THEN COALESCE(e.event_date,DATE(pt.created_at)) END) last_result_date
  FROM bdc_competitors c
  LEFT JOIN bdc_point_transactions pt
   ON pt.competitor_id=c.id
-  AND pt.dance_role=:role
+  $roleJoin
+  AND NOT EXISTS (
+   SELECT 1
+   FROM bdc_point_transactions duplicate_pt
+   JOIN bdc_competitors duplicate_c ON duplicate_c.id=duplicate_pt.competitor_id
+   WHERE COALESCE(duplicate_c.career_group_id,-duplicate_c.id)=COALESCE(c.career_group_id,-c.id)
+    AND duplicate_pt.event_id <=> pt.event_id
+    AND duplicate_pt.division=pt.division
+    AND duplicate_pt.dance_role=pt.dance_role
+    AND COALESCE(LOWER(TRIM(duplicate_pt.placement)),'')=COALESCE(LOWER(TRIM(pt.placement)),'')
+    AND duplicate_pt.points=pt.points
+    AND duplicate_pt.id<pt.id
+  )
  LEFT JOIN bdc_events e ON e.id=pt.event_id
  LEFT JOIN bdc_competitor_career_groups g ON g.id=c.career_group_id
  WHERE c.status='active' AND c.show_on_leaderboard=1
  GROUP BY COALESCE(c.career_group_id,-c.id),g.display_name
 ");
-$stmt->execute([
- 'selected_division'=>$division,
- 'selected_division_date'=>$division,
- 'role'=>$role,
-]);
+$params=[];
+if($division!=='all'){
+ $params['selected_division_events']=$division;
+ $params['selected_division_first']=$division;
+ $params['selected_division_second']=$division;
+ $params['selected_division_third']=$division;
+ $params['selected_division_date']=$division;
+ $params['role']=$role;
+}
+$stmt->execute($params);
 
 $rows=[];
 foreach($stmt->fetchAll() as $row){
@@ -57,30 +100,33 @@ foreach($stmt->fetchAll() as $row){
  $intermediate=(float)$row['intermediate_points'];
  $advanced=(float)$row['advanced_points'];
 
- $effective=DivisionProgressionService::effectiveDivision(
+ $points=$division==='all'
+  ?(float)$row['leader_points']+(float)$row['follower_points']
+  :DivisionProgressionService::selectedPoints($division,$novice,$intermediate,$advanced);
+
+ if($points<=0.0)continue;
+
+ $eligibility=$division==='all'?['eligible'=>true,'reason'=>'','promoted_to'=>null]:DivisionProgressionService::eligibilityFor(
+  $division,
   $novice,
   $intermediate,
   $advanced,
   $row['committed_division'],
-  (bool)$row['novice_manual_out'],
-  (bool)$row['intermediate_manual_out']
+  (bool)$row['competed_intermediate'],
+  (bool)$row['competed_advanced']
  );
-
- $points=DivisionProgressionService::selectedPoints(
-  $division,
-  $novice,
-  $intermediate,
-  $advanced
- );
-
- if($points<=0.0)continue;
-
- $eligible=$effective===$division;
+ $manualOut=($division==='novice' && (bool)$row['novice_manual_out'])
+  ||($division==='intermediate' && (bool)$row['intermediate_manual_out']);
+ $eligible=$eligibility['eligible']&&!$manualOut;
  if(!$eligible && !$showOut)continue;
 
- $row['effective_division']=$effective;
  $row['eligible']=$eligible;
- $row['status_label']=DivisionProgressionService::statusLabel($division,$effective);
+ $promotedTo=$manualOut
+  ?match($division){'novice'=>'intermediate','intermediate'=>'advanced',default=>null}
+  :$eligibility['promoted_to'];
+ $row['status_label']=$promotedTo!==null
+  ?'Promoted to '.DivisionProgressionService::label($promotedTo)
+  :($eligibility['eligible']?'In Division':ucfirst($eligibility['reason']));
  $row['total_points']=$points;
  $rows[]=$row;
 }
@@ -105,6 +151,7 @@ foreach($rows as $index=>&$row){
 unset($row);
 
 function leaderboardLabel(string $value):string{
+ if($value==='all')return 'All Divisions';
  return DivisionProgressionService::label($value);
 }
 ?>
@@ -123,10 +170,15 @@ body{background:#f5f6f8;color:#20242a}
 .rank-1{background:#ffd76a}.rank-2{background:#dce2e8}.rank-3{background:#e5b27d}
 .avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#eceff3}
 .points{font-size:1.15rem;font-weight:800;white-space:nowrap}
+.points-breakdown{font-size:.75rem;font-weight:600;color:#6b7280;white-space:nowrap}
 .table>:not(caption)>*>*{padding:.85rem .75rem}
 .filter-card{margin-top:-28px}
+.filter-label{font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280}
+.filter-buttons{display:flex;gap:.5rem;flex-wrap:wrap}
+.filter-buttons .btn{min-width:110px}
 .out-row{background:#fff8e1}
 .rule-note{font-size:.88rem}
+@media(max-width:575.98px){.filter-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-buttons.divisions{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-buttons .btn{min-width:0;padding:.6rem .35rem}.filter-card .card-body{padding:1rem}}
 </style>
 </head>
 <body>
@@ -146,30 +198,31 @@ body{background:#f5f6f8;color:#20242a}
 <main class="container pb-5">
  <section class="card board-card filter-card mb-4">
   <div class="card-body">
-   <form method="get" class="row g-3 align-items-end">
-    <div class="col-md-5">
-     <label class="form-label">Division</label>
-     <select class="form-select" name="division">
-      <?php foreach(['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced'] as $value=>$label):?>
-       <option value="<?=$value?>" <?=$division===$value?'selected':''?>><?=$label?></option>
-      <?php endforeach;?>
-     </select>
-    </div>
-    <div class="col-md-5">
-     <label class="form-label">Role</label>
-     <select class="form-select" name="role">
-      <?php foreach(['leader'=>'Leader','follower'=>'Follower'] as $value=>$label):?>
-       <option value="<?=$value?>" <?=$role===$value?'selected':''?>><?=$label?></option>
-      <?php endforeach;?>
-     </select>
-    </div>
-    <div class="col-md-2"><button class="btn btn-dark w-100">Show Rankings</button></div>
+   <form method="get" class="row g-3" id="leaderboard-filters">
     <div class="col-12">
+     <div class="filter-label mb-2">Division</div>
+     <div class="filter-buttons divisions">
+      <?php foreach(['all'=>'All Divisions','novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced'] as $value=>$label):?>
+       <a class="btn <?=$division===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$value?>&amp;role=<?=$role?><?=$showOut?'&amp;show_out=1':''?>"><?=$label?></a>
+      <?php endforeach;?>
+     </div>
+    </div>
+    <?php if($division!=='all'):?><div class="col-12">
+     <div class="filter-label mb-2">Role</div>
+     <div class="filter-buttons">
+      <?php foreach(['leader'=>'Leader','follower'=>'Follower'] as $value=>$label):?>
+       <a class="btn <?=$role===$value?'btn-dark':'btn-outline-dark'?>" href="?division=<?=$division?>&amp;role=<?=$value?><?=$showOut?'&amp;show_out=1':''?>"><?=$label?></a>
+      <?php endforeach;?>
+     </div>
+    </div><?php endif;?>
+    <?php if($division!=='all'):?><div class="col-12">
+     <input type="hidden" name="division" value="<?=e($division)?>">
+     <input type="hidden" name="role" value="<?=e($role)?>">
      <label class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" name="show_out" value="1" <?=$showOut?'checked':''?>>
+      <input class="form-check-input" type="checkbox" name="show_out" value="1" <?=$showOut?'checked':''?> data-auto-submit>
       <span class="form-check-label">Show Out of Division competitors</span>
      </label>
-    </div>
+    </div><?php endif;?>
    </form>
   </div>
  </section>
@@ -178,26 +231,34 @@ body{background:#f5f6f8;color:#20242a}
   <div class="card-body p-0">
    <div class="d-flex justify-content-between align-items-center p-4 border-bottom gap-3 flex-wrap">
     <div>
-     <h2 class="h4 mb-1"><?=e(leaderboardLabel($division))?> · <?=e(ucfirst($role))?></h2>
+     <h2 class="h4 mb-1"><?=e(leaderboardLabel($division))?><?=$division==='all'?'':' · '.e(ucfirst($role))?></h2>
      <div class="text-muted"><?=count($rows)?> ranked competitor<?=count($rows)===1?'':'s'?></div>
     </div>
     <span class="badge text-bg-success">Live</span>
    </div>
 
+   <?php if($showOut && $division!=='all'):?>
+   <div class="alert alert-warning rounded-0 border-start-0 border-end-0 border-top-0 mb-0 px-4 py-3">
+    <strong>Out of Division:</strong> A competitor is promoted when they exceed the maximum points for this division or have already competed in a higher division.
+   </div>
+   <?php endif;?>
+
    <div class="px-4 py-3 border-bottom bg-light rule-note">
-    <?php if($division==='novice'):?>
-     Novice dancers may move to Intermediate from 20 points and must leave Novice at 25 points.
+    <?php if($division==='all'):?>
+     Career totals combine approved Leader and Follower points across every division. The role breakdown is shown below each total.
+    <?php elseif($division==='novice'):?>
+     Novice dancers may move to Intermediate from 20 points and leave Novice after 25 points.
     <?php elseif($division==='intermediate'):?>
-     Intermediate requires 20 Novice points. Dancers may move to Advanced from 25 Intermediate points and must leave at 30.
+     Intermediate requires 20 Novice points. Dancers may move to Advanced from 25 Intermediate points and leave Intermediate after 30 points.
     <?php else:?>
-     Advanced requires 25 Intermediate points and must be left at 40 Advanced points.
+     Advanced requires 25 Intermediate points and must be left after 40 Advanced points.
     <?php endif;?>
    </div>
 
    <div class="table-responsive">
     <table class="table align-middle mb-0">
      <thead class="table-light">
-      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th>Events</th><th>Last Result</th><th class="text-end">Points</th></tr>
+      <tr><th style="width:90px">Rank</th><th>Competitor</th><th>Country</th><th class="text-end"><?=e(leaderboardLabel($division))?> Points</th><th>Events</th><th class="text-center">🥇 1st</th><th class="text-center">🥈 2nd</th><th class="text-center">🥉 3rd</th><th>Last Result</th></tr>
      </thead>
      <tbody>
      <?php foreach($rows as $row):?>
@@ -217,17 +278,27 @@ body{background:#f5f6f8;color:#20242a}
         </div>
        </td>
        <td><?=e((string)($row['country']?:'—'))?></td>
+       <td class="text-end points"><?=number_format((float)$row['total_points'],1)?><?php if($division==='all'):?><div class="points-breakdown">L <?=number_format((float)$row['leader_points'],1)?> + F <?=number_format((float)$row['follower_points'],1)?></div><?php endif;?></td>
        <td><?=(int)$row['selected_events']?></td>
+       <td class="text-center fw-semibold"><?=(int)$row['first_place_count']?></td>
+       <td class="text-center fw-semibold"><?=(int)$row['second_place_count']?></td>
+       <td class="text-center fw-semibold"><?=(int)$row['third_place_count']?></td>
        <td><?=e((string)($row['last_result_date']?:'—'))?></td>
-       <td class="text-end points"><?=number_format((float)$row['total_points'],1)?></td>
       </tr>
      <?php endforeach;?>
-     <?php if(!$rows):?><tr><td colspan="6" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
+     <?php if(!$rows):?><tr><td colspan="9" class="text-center py-5 text-muted">No eligible approved points are available for this division and role.</td></tr><?php endif;?>
      </tbody>
     </table>
    </div>
   </div>
  </section>
 </main>
+<script>
+document.querySelectorAll('[data-auto-submit]').forEach(function (control) {
+ control.addEventListener('change', function () {
+  document.getElementById('leaderboard-filters').submit();
+ });
+});
+</script>
 </body>
 </html>

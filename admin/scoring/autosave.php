@@ -10,7 +10,7 @@ try {
  Auth::requireAdmin();
  if($_SERVER['REQUEST_METHOD']!=='POST')throw new RuntimeException('POST required.');
  if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
- $pdo=Database::connection();SchemaUpdater::run($pdo);
+ $pdo=Database::connection();
  $roundId=(int)($_POST['round_id']??0);$entryId=(int)($_POST['entry_id']??0);$judgeId=(int)($_POST['judge_id']??0);$raw=strtoupper(trim((string)($_POST['value']??'')));
  if($roundId<1||$entryId<1||$judgeId<1)throw new RuntimeException('Invalid scoring cell.');
  $entryStmt=$pdo->prepare("SELECT dance_role FROM bdc_scoring_entries WHERE id=:entry AND round_id=:round AND entry_status='active'");$entryStmt->execute(['entry'=>$entryId,'round'=>$roundId]);$role=(string)$entryStmt->fetchColumn();

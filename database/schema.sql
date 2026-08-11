@@ -79,6 +79,33 @@ CREATE TABLE IF NOT EXISTS bdc_point_transactions (
     UNIQUE INDEX uq_points_source_hash (source_row_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS bdc_point_adjustment_requests (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    competitor_id BIGINT UNSIGNED NOT NULL,
+    event_id BIGINT UNSIGNED NOT NULL,
+    division ENUM('novice','intermediate','advanced','all_star','unknown') NOT NULL,
+    dance_role ENUM('leader','follower','both','unknown') NOT NULL,
+    existing_event_points DECIMAL(8,2) NOT NULL DEFAULT 0,
+    additional_points DECIMAL(8,2) NOT NULL,
+    reason TEXT NOT NULL,
+    status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+    requested_by BIGINT UNSIGNED NOT NULL,
+    requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by BIGINT UNSIGNED NULL,
+    reviewed_at DATETIME NULL,
+    review_reason TEXT NULL,
+    point_transaction_id BIGINT UNSIGNED NULL,
+    request_hash CHAR(64) NOT NULL,
+    INDEX idx_adjustment_status (status, requested_at),
+    INDEX idx_adjustment_competitor_event (competitor_id, event_id),
+    UNIQUE INDEX uq_adjustment_request_hash (request_hash),
+    CONSTRAINT fk_adjustment_competitor FOREIGN KEY (competitor_id) REFERENCES bdc_competitors(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_adjustment_event FOREIGN KEY (event_id) REFERENCES bdc_events(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_adjustment_requester FOREIGN KEY (requested_by) REFERENCES bdc_users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_adjustment_reviewer FOREIGN KEY (reviewed_by) REFERENCES bdc_users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_adjustment_transaction FOREIGN KEY (point_transaction_id) REFERENCES bdc_point_transactions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS bdc_import_batches (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     file_name VARCHAR(255) NOT NULL,
@@ -147,7 +174,7 @@ CREATE TABLE IF NOT EXISTS bdc_audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO bdc_settings (setting_key, setting_value) VALUES
-('app_version', '0.4.0'),
+('app_version', '2.2.0'),
 ('novice_max_points', '25'),
 ('intermediate_min_novice_points', '20'),
 ('intermediate_max_points', '30'),

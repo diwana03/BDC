@@ -1,0 +1,23 @@
+BDC Portal v2.2.0
+=================
+
+Stabilization and Security Release
+
+Highlights
+----------
+* Strengthened authentication and session security.
+* Improved request validation and administrative protections.
+* Added controlled, checksum-tracked database migrations.
+* Improved registration integrity and duplicate prevention.
+* Hardened scoring, result processing and import workflows.
+* Added safer installation and maintenance commands.
+* Improved health checks, error handling and documentation.
+* Added security smoke tests.
+
+Deployment rules
+----------------
+* Deploy to BDC_STAGING first.
+* Never overwrite config/config.php.
+* Run php bin/migrate.php from the staging application root.
+* Run all validation commands in BDC_V2.2.0_PATCH_INSTRUCTIONS.txt.
+* Production deployment requires separate approval after staging testing.

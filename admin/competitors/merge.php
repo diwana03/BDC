@@ -8,9 +8,9 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
 
-Auth::requirePermission('competitors.edit');
+Auth::requireSuperAdmin();
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $search = trim((string)($_GET['q'] ?? ''));
 $keepId = (int)($_GET['keep_id'] ?? $_POST['keep_id'] ?? 0);
@@ -30,6 +30,13 @@ function loadCompetitor(PDO $pdo, int $id): ?array
     return $row ?: null;
 }
 
+function loadEventOverlaps(PDO $pdo,int $keepId,int $mergeId): array
+{
+ if($keepId<1||$mergeId<1||$keepId===$mergeId)return [];
+ $stmt=$pdo->prepare("SELECT k.id keep_transaction_id,d.id duplicate_transaction_id,k.event_id,k.division,k.dance_role,k.points keep_points,d.points duplicate_points,k.placement keep_placement,d.placement duplicate_placement,e.name event_name,e.event_date,(k.points=d.points AND COALESCE(k.placement,'')=COALESCE(d.placement,'')) exact_duplicate FROM bdc_point_transactions k JOIN bdc_point_transactions d ON d.event_id=k.event_id AND d.division=k.division AND d.dance_role=k.dance_role JOIN bdc_events e ON e.id=k.event_id WHERE k.competitor_id=:keep_id AND d.competitor_id=:merge_id ORDER BY e.event_date DESC,k.id,d.id");
+ $stmt->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);return $stmt->fetchAll();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Csrf::verify((string)($_POST['_csrf'] ?? ''));
     if ($keepId <= 0 || $mergeId <= 0 || $keepId === $mergeId) {
@@ -43,11 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'One of the selected competitors no longer exists.';
         } else {
             try {
+                $overlaps=loadEventOverlaps($pdo,$keepId,$mergeId);
+                if($overlaps&&!isset($_POST['overlap_reviewed']))throw new RuntimeException('Review and acknowledge the overlapping event points before merging.');
                 $pdo->beginTransaction();
+                $removeIds=array_values(array_unique(array_map('intval',(array)($_POST['remove_duplicate_transaction']??[]))));
+                if($removeIds){
+                    $marks=implode(',',array_fill(0,count($removeIds),'?'));
+                    $params=array_merge([$mergeId],$removeIds);
+                    $pdo->prepare("DELETE FROM bdc_participant_results WHERE point_transaction_id IN (SELECT id FROM bdc_point_transactions WHERE competitor_id=? AND id IN ($marks))")->execute($params);
+                    $pdo->prepare("DELETE FROM bdc_point_transactions WHERE competitor_id=? AND id IN ($marks)")->execute($params);
+                }
                 $tables = [
                     'bdc_claims',
                     'bdc_event_registrations',
                     'bdc_participant_results',
+                    'bdc_point_adjustment_requests',
                     'bdc_point_transactions',
                     'bdc_profile_requests',
                 ];
@@ -75,6 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'kept'=>['id'=>$keepId,'bdc_id'=>$keep['bdc_id'],'name'=>$keep['exact_name']],
                     'removed'=>['id'=>$mergeId,'bdc_id'=>$duplicate['bdc_id'],'name'=>$duplicate['exact_name']],
                     'moved_rows'=>$moved,
+                    'removed_duplicate_transaction_ids'=>$removeIds,
+                    'event_overlap_count'=>count($overlaps),
                 ], 'competitor', $keepId);
 
                 $delete = $pdo->prepare('DELETE FROM bdc_competitors WHERE id=:id');
@@ -105,6 +124,7 @@ if ($search !== '') {
 }
 $keep = loadCompetitor($pdo, $keepId);
 $duplicate = loadCompetitor($pdo, $mergeId);
+$eventOverlaps=loadEventOverlaps($pdo,$keepId,$mergeId);
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Merge Competitors | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head>
 <body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="<?=e(url('admin/'))?>">BDC Admin</a><a class="btn btn-outline-light btn-sm" href="./">Competitors</a></div></nav>
@@ -115,5 +135,7 @@ $duplicate = loadCompetitor($pdo, $mergeId);
 <?php if($results):?><div class="card border-0 shadow-sm mb-4"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>BDC ID</th><th>Name</th><th>Country</th><th>Role</th><th>Division</th><th>Points</th><th>Choose</th></tr></thead><tbody><?php foreach($results as $r):?><tr><td><code><?=e($r['bdc_id'])?></code></td><td><?=e($r['exact_name'])?></td><td><?=e($r['country']?:'—')?></td><td><?=e(ucfirst($r['dance_role']))?></td><td><?=e(ucwords(str_replace('_',' ',$r['current_division'])))?></td><td><?=e((string)(float)$r['total_points'])?></td><td class="text-nowrap"><a class="btn btn-sm btn-success" href="?q=<?=urlencode($search)?>&keep_id=<?=(int)$r['id']?>&merge_id=<?=$mergeId?>">Keep</a> <a class="btn btn-sm btn-outline-danger" href="?q=<?=urlencode($search)?>&keep_id=<?=$keepId?>&merge_id=<?=(int)$r['id']?>">Duplicate</a></td></tr><?php endforeach;?></tbody></table></div></div><?php endif;?>
 <div class="row g-3 mb-4"><div class="col-md-6"><div class="card h-100 border-success"><div class="card-header bg-success-subtle fw-semibold">Record to keep</div><div class="card-body"><?php if($keep):?><h2 class="h5"><?=e($keep['exact_name'])?></h2><div><code><?=e($keep['bdc_id'])?></code></div><div class="mt-2">Points: <strong><?=e((string)(float)$keep['total_points'])?></strong>, Transactions: <?= (int)$keep['transaction_count'] ?></div><a class="btn btn-sm btn-outline-dark mt-3" href="edit.php?id=<?=$keepId?>" target="_blank">Open profile</a><?php else:?><span class="text-muted">Not selected</span><?php endif;?></div></div></div>
 <div class="col-md-6"><div class="card h-100 border-danger"><div class="card-header bg-danger-subtle fw-semibold">Duplicate to remove</div><div class="card-body"><?php if($duplicate):?><h2 class="h5"><?=e($duplicate['exact_name'])?></h2><div><code><?=e($duplicate['bdc_id'])?></code></div><div class="mt-2">Points: <strong><?=e((string)(float)$duplicate['total_points'])?></strong>, Transactions: <?= (int)$duplicate['transaction_count'] ?></div><a class="btn btn-sm btn-outline-dark mt-3" href="edit.php?id=<?=$mergeId?>" target="_blank">Open profile</a><?php else:?><span class="text-muted">Not selected</span><?php endif;?></div></div></div></div>
-<?php if($keep && $duplicate && $keepId!==$mergeId):?><form method="post" class="card border-danger shadow-sm"><div class="card-body"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="keep_id" value="<?=$keepId?>"><input type="hidden" name="merge_id" value="<?=$mergeId?>"><h2 class="h5">Confirm merge</h2><p>All claims, event registrations, competition results, point transactions and profile requests belonging to <strong><?=e($duplicate['exact_name'])?></strong> will move to <strong><?=e($keep['exact_name'])?></strong>.</p><label class="form-label">Type <strong>MERGE</strong></label><input class="form-control mb-3" name="confirm_name" autocomplete="off" required><button class="btn btn-danger" onclick="return confirm('This permanently deletes the duplicate competitor. Continue?')">Merge competitors permanently</button></div></form><?php endif;?>
+<?php if($keep && $duplicate && $keepId!==$mergeId):?><form method="post" class="card border-danger shadow-sm"><div class="card-body"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="keep_id" value="<?=$keepId?>"><input type="hidden" name="merge_id" value="<?=$mergeId?>"><h2 class="h5">Confirm merge</h2><p>All claims, event registrations, competition results, point transactions and profile requests belonging to <strong><?=e($duplicate['exact_name'])?></strong> will move to <strong><?=e($keep['exact_name'])?></strong>.</p>
+<?php if($eventOverlaps):?><div class="alert alert-danger"><strong>Event duplicate finder found <?=count($eventOverlaps)?> overlapping point pair(s).</strong> Nothing is removed automatically. Select only confirmed duplicate rows; leave legitimate appended points unselected.</div><div class="table-responsive mb-3"><table class="table table-sm align-middle"><thead><tr><th>Event</th><th>Division, Role</th><th>Kept record</th><th>Duplicate record</th><th>Finding</th><th>Remove duplicate row</th></tr></thead><tbody><?php foreach($eventOverlaps as $o):?><tr><td><?=e($o['event_name'])?><br><small><?=e($o['event_date'])?></small></td><td><?=e(ucfirst($o['division']).', '.ucfirst($o['dance_role']))?></td><td><?=e((string)(float)$o['keep_points'])?> pts, <?=e($o['keep_placement']?:'no placement')?></td><td><?=e((string)(float)$o['duplicate_points'])?> pts, <?=e($o['duplicate_placement']?:'no placement')?></td><td><span class="badge <?=$o['exact_duplicate']?'text-bg-danger':'text-bg-warning'?>"><?=$o['exact_duplicate']?'Probable duplicate':'Different values'?></span></td><td><input class="form-check-input" type="checkbox" name="remove_duplicate_transaction[]" value="<?=(int)$o['duplicate_transaction_id']?>" <?=$o['exact_duplicate']?'checked':''?>></td></tr><?php endforeach;?></tbody></table></div><label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="overlap_reviewed" value="1" required><span class="form-check-label">I reviewed every overlapping event row. Unselected rows are legitimate points and should be preserved.</span></label><?php endif;?>
+<label class="form-label">Type <strong>MERGE</strong></label><input class="form-control mb-3" name="confirm_name" autocomplete="off" required><button class="btn btn-danger" onclick="return confirm('This permanently deletes the duplicate competitor after the reviewed event-point decisions. Continue?')">Merge competitors permanently</button></div></form><?php endif;?>
 </main></body></html>

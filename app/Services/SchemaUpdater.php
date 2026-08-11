@@ -7,6 +7,52 @@ final class SchemaUpdater
 {
  public static function run(PDO $pdo): void
  {
+  // Base scoring tables must exist before incremental scoring upgrades run.
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_rounds(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,
+   parent_round_id BIGINT UNSIGNED NULL,source_round_id BIGINT UNSIGNED NULL,
+   round_type ENUM('heats','semifinal','final') NOT NULL,division ENUM('novice','intermediate','advanced','all_star') NOT NULL,
+   yes_count INT UNSIGNED NOT NULL DEFAULT 10,callback_count INT UNSIGNED NOT NULL DEFAULT 10,
+   tier_manual_override TINYINT(1) NOT NULL DEFAULT 0,yes_weight DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+   alt1_weight DECIMAL(5,2) NOT NULL DEFAULT 4.50,alt2_weight DECIMAL(5,2) NOT NULL DEFAULT 4.30,alt3_weight DECIMAL(5,2) NOT NULL DEFAULT 4.20,
+   chief_judge_id BIGINT UNSIGNED NULL,status VARCHAR(40) NOT NULL DEFAULT 'draft',generated_version INT UNSIGNED NOT NULL DEFAULT 0,
+   last_calculation_ms INT UNSIGNED NULL,last_calculation_memory_bytes BIGINT UNSIGNED NULL,published_document_id BIGINT UNSIGNED NULL,
+   publication_id BIGINT UNSIGNED NULL,locked_at DATETIME NULL,locked_by BIGINT UNSIGNED NULL,
+   witness_1 VARCHAR(190) NULL,witness_2 VARCHAR(190) NULL,witness_3 VARCHAR(190) NULL,scoring_administrator VARCHAR(190) NULL,
+   created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   INDEX idx_scoring_event(event_id,division,round_type),INDEX idx_scoring_parent(parent_round_id),INDEX idx_scoring_publication(publication_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_entries(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,round_id BIGINT UNSIGNED NOT NULL,competitor_id BIGINT UNSIGNED NOT NULL,
+   dance_role ENUM('leader','follower') NOT NULL,bib_number INT UNSIGNED NULL,display_name VARCHAR(190) NOT NULL,
+   entry_status ENUM('active','withdrawn') NOT NULL DEFAULT 'active',desk_checked_in TINYINT(1) NOT NULL DEFAULT 0,
+   desk_ready TINYINT(1) NOT NULL DEFAULT 0,desk_updated_at DATETIME NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   UNIQUE INDEX uq_scoring_entry(round_id,competitor_id,dance_role),INDEX idx_scoring_entry_bib(round_id,dance_role,bib_number),INDEX idx_scoring_entry_status(round_id,entry_status)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_judges(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,round_id BIGINT UNSIGNED NOT NULL,judge_name VARCHAR(190) NOT NULL,
+   judge_order INT UNSIGNED NOT NULL,is_chief TINYINT(1) NOT NULL DEFAULT 0,scoring_scope ENUM('all','leader','follower') NOT NULL DEFAULT 'all',
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   UNIQUE INDEX uq_scoring_judge_order(round_id,judge_order),INDEX idx_scoring_judges_round(round_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_marks(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,round_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,judge_id BIGINT UNSIGNED NOT NULL,
+   mark_type ENUM('yes','alt','blank') NOT NULL DEFAULT 'blank',alt_rank TINYINT UNSIGNED NULL,weighted_score DECIMAL(6,2) NOT NULL DEFAULT 0,
+   updated_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   UNIQUE INDEX uq_scoring_mark(round_id,entry_id,judge_id),INDEX idx_scoring_marks_round(round_id),INDEX idx_scoring_marks_judge(judge_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_results(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,round_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,
+   total_score DECIMAL(10,2) NOT NULL DEFAULT 0,chief_score DECIMAL(10,2) NOT NULL DEFAULT 0,rank_number INT UNSIGNED NULL,
+   result_status VARCHAR(40) NOT NULL DEFAULT 'pending',alternate_rank INT UNSIGNED NULL,generated_version INT UNSIGNED NOT NULL DEFAULT 0,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   UNIQUE INDEX uq_scoring_result(round_id,entry_id),INDEX idx_scoring_result_rank(round_id,rank_number)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_audit(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,round_id BIGINT UNSIGNED NOT NULL,user_id BIGINT UNSIGNED NULL,action VARCHAR(100) NOT NULL,
+   details_json LONGTEXT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_scoring_audit(round_id,created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
   self::addColumn($pdo,'bdc_events','normalised_name','VARCHAR(190) NULL AFTER name');
   self::addColumn($pdo,'bdc_events','organiser_email','VARCHAR(190) NULL AFTER organiser_name');
   self::addColumn($pdo,'bdc_events','website_url','VARCHAR(500) NULL AFTER organiser_email');
@@ -45,6 +91,25 @@ final class SchemaUpdater
   self::addIndex($pdo,'bdc_competitors','idx_competitors_career_group','(career_group_id)');
 
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_user_permissions(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NOT NULL,permission_key VARCHAR(100) NOT NULL,allowed TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE INDEX uq_user_permission(user_id,permission_key),CONSTRAINT fk_permission_user FOREIGN KEY(user_id) REFERENCES bdc_users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_point_adjustment_requests(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   competitor_id BIGINT UNSIGNED NOT NULL,event_id BIGINT UNSIGNED NOT NULL,
+   division ENUM('novice','intermediate','advanced','all_star','unknown') NOT NULL,
+   dance_role ENUM('leader','follower','both','unknown') NOT NULL,
+   existing_event_points DECIMAL(8,2) NOT NULL DEFAULT 0,
+   additional_points DECIMAL(8,2) NOT NULL,reason TEXT NOT NULL,
+   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+   requested_by BIGINT UNSIGNED NOT NULL,requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   reviewed_by BIGINT UNSIGNED NULL,reviewed_at DATETIME NULL,review_reason TEXT NULL,
+   point_transaction_id BIGINT UNSIGNED NULL,request_hash CHAR(64) NOT NULL,
+   INDEX idx_adjustment_status(status,requested_at),INDEX idx_adjustment_competitor_event(competitor_id,event_id),
+   UNIQUE INDEX uq_adjustment_request_hash(request_hash),
+   CONSTRAINT fk_adjustment_competitor FOREIGN KEY(competitor_id) REFERENCES bdc_competitors(id) ON DELETE RESTRICT,
+   CONSTRAINT fk_adjustment_event FOREIGN KEY(event_id) REFERENCES bdc_events(id) ON DELETE RESTRICT,
+   CONSTRAINT fk_adjustment_requester FOREIGN KEY(requested_by) REFERENCES bdc_users(id) ON DELETE RESTRICT,
+   CONSTRAINT fk_adjustment_reviewer FOREIGN KEY(reviewed_by) REFERENCES bdc_users(id) ON DELETE SET NULL,
+   CONSTRAINT fk_adjustment_transaction FOREIGN KEY(point_transaction_id) REFERENCES bdc_point_transactions(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_result_documents(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NULL,title VARCHAR(190) NOT NULL,document_category ENUM('heats','finals','points','full_results','other') NOT NULL DEFAULT 'other',file_type ENUM('pdf','csv','world_result','external') NOT NULL DEFAULT 'external',url VARCHAR(1000) NOT NULL,storage_path VARCHAR(500) NULL,version_number INT UNSIGNED NOT NULL DEFAULT 1,status ENUM('draft','published','archived') NOT NULL DEFAULT 'published',source ENUM('historical_import','manual_upload','scoring_engine') NOT NULL DEFAULT 'manual_upload',import_batch_id BIGINT UNSIGNED NULL,source_row_hash CHAR(64) NULL,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,CONSTRAINT fk_result_document_event FOREIGN KEY(event_id) REFERENCES bdc_events(id) ON DELETE SET NULL,CONSTRAINT fk_result_document_user FOREIGN KEY(created_by) REFERENCES bdc_users(id) ON DELETE SET NULL,UNIQUE INDEX uq_result_documents_source_hash(source_row_hash),INDEX idx_result_documents_event(event_id),INDEX idx_result_documents_status(status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_event_points_tiers(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,division ENUM('novice','intermediate','advanced','all_star','unknown') NOT NULL,dance_role ENUM('leader','follower','both','unknown') NOT NULL,points_tier ENUM('1','2','3') NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE INDEX uq_event_division_role(event_id,division,dance_role),INDEX idx_event_points_tiers_event(event_id),CONSTRAINT fk_event_points_tiers_event FOREIGN KEY(event_id) REFERENCES bdc_events(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_participant_results(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,competitor_id BIGINT UNSIGNED NOT NULL,division ENUM('novice','intermediate','advanced','all_star','unknown') NOT NULL DEFAULT 'unknown',dance_role ENUM('leader','follower','both','unknown') NOT NULL DEFAULT 'unknown',placement VARCHAR(50) NULL,finalist_status ENUM('participant','finalist','placed','winner') NOT NULL DEFAULT 'participant',partner_name VARCHAR(190) NULL,points_awarded DECIMAL(8,2) NOT NULL DEFAULT 0,source ENUM('historical_import','manual','scoring_engine') NOT NULL DEFAULT 'manual',point_transaction_id BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,CONSTRAINT fk_participant_result_event FOREIGN KEY(event_id) REFERENCES bdc_events(id) ON DELETE CASCADE,CONSTRAINT fk_participant_result_competitor FOREIGN KEY(competitor_id) REFERENCES bdc_competitors(id) ON DELETE CASCADE,CONSTRAINT fk_participant_result_transaction FOREIGN KEY(point_transaction_id) REFERENCES bdc_point_transactions(id) ON DELETE SET NULL,UNIQUE INDEX uq_participant_result_transaction(point_transaction_id),INDEX idx_participant_result_competitor(competitor_id),INDEX idx_participant_result_event(event_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
@@ -334,6 +399,11 @@ final class SchemaUpdater
    INDEX idx_backup_runs_completed(completed_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_login_attempts(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,ip_address VARCHAR(45) NOT NULL,email_hash CHAR(64) NOT NULL,
+   attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_login_attempt_lookup(ip_address,email_hash,attempted_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
   $pdo->exec("INSERT INTO bdc_backup_settings(
    id,enabled,frequency,backup_time,weekday,month_day,backup_type,keep_count,
    google_drive_enabled,service_account_path
@@ -341,11 +411,11 @@ final class SchemaUpdater
    1,0,'daily','03:00:00',1,1,'full',7,0,'storage/private/google-drive-service-account.json'
   ) ON DUPLICATE KEY UPDATE id=id");
 
-  $pdo->exec("INSERT INTO bdc_settings(setting_key,setting_value) VALUES('app_version','2.1.0') ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)");
+  $pdo->exec("INSERT INTO bdc_settings(setting_key,setting_value) VALUES('app_version','2.2.0') ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)");
 
 
  }
  private static function tableExists(PDO $pdo,string $table):bool{$s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t');$s->execute(['t'=>$table]);return(int)$s->fetchColumn()>0;}
- private static function addColumn(PDO $pdo,string $table,string $column,string $definition):void{$s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND COLUMN_NAME=:c');$s->execute(['t'=>$table,'c'=>$column]);if((int)$s->fetchColumn()===0)$pdo->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");}
- private static function addIndex(PDO $pdo,string $table,string $index,string $columns,bool $unique=false):void{$s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND INDEX_NAME=:i');$s->execute(['t'=>$table,'i'=>$index]);if((int)$s->fetchColumn()===0)$pdo->exec('ALTER TABLE `'.$table.'` ADD '.($unique?'UNIQUE ':'').'INDEX `'.$index.'` '.$columns);}
+ private static function addColumn(PDO $pdo,string $table,string $column,string $definition):void{if(!self::tableExists($pdo,$table))return;$s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND COLUMN_NAME=:c');$s->execute(['t'=>$table,'c'=>$column]);if((int)$s->fetchColumn()===0)$pdo->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");}
+ private static function addIndex(PDO $pdo,string $table,string $index,string $columns,bool $unique=false):void{if(!self::tableExists($pdo,$table))return;$s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND INDEX_NAME=:i');$s->execute(['t'=>$table,'i'=>$index]);if((int)$s->fetchColumn()===0)$pdo->exec('ALTER TABLE `'.$table.'` ADD '.($unique?'UNIQUE ':'').'INDEX `'.$index.'` '.$columns);}
 }

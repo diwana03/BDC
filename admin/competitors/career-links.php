@@ -9,7 +9,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requirePermission('competitors.edit');
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $error='';$success='';
 $sourceId=(int)($_GET['source_id']??$_POST['source_id']??0);
 $destinationId=(int)($_GET['destination_id']??$_POST['destination_id']??0);
@@ -53,13 +53,36 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    Auth::audit((int)Auth::user()['id'],'competitor_career_linked',['group_id'=>$group,'competitor_ids'=>[$sourceId,$destinationId],'display_name'=>$display],'competitor',$sourceId);
    $pdo->commit();$success='Career records linked. Hall of Fame now combines Leader and Follower points.';
   }elseif($action==='unlink_career'){
+   if(!Auth::isSuperAdmin())throw new RuntimeException('Only a Super Admin can undo an identity match.');
    $id=(int)($_POST['competitor_id']??0);if($id<=0)throw new RuntimeException('Competitor not selected.');
-   $pdo->prepare('UPDATE bdc_competitors SET career_group_id=NULL WHERE id=:id')->execute(['id'=>$id]);
-   Auth::audit((int)Auth::user()['id'],'competitor_career_unlinked',['competitor_id'=>$id],'competitor',$id);$success='Career link removed.';
+   $pdo->beginTransaction();
+   $locked=$pdo->prepare('SELECT id,bdc_id,exact_name,career_group_id FROM bdc_competitors WHERE id=:id FOR UPDATE');
+   $locked->execute(['id'=>$id]);$competitor=$locked->fetch();
+   if(!$competitor)throw new RuntimeException('Competitor not found.');
+   $groupId=(int)($competitor['career_group_id']??0);
+   if($groupId<=0)throw new RuntimeException('This competitor is not currently identity matched.');
+   $members=$pdo->prepare('SELECT id,bdc_id FROM bdc_competitors WHERE career_group_id=:group_id ORDER BY id FOR UPDATE');
+   $members->execute(['group_id'=>$groupId]);$before=$members->fetchAll();
+   if(count($before)<2)throw new RuntimeException('This identity group does not contain another linked profile.');
+   $pdo->prepare('UPDATE bdc_competitors SET career_group_id=NULL WHERE id=:id AND career_group_id=:group_id')->execute(['id'=>$id,'group_id'=>$groupId]);
+   $remaining=$pdo->prepare('SELECT id,bdc_id FROM bdc_competitors WHERE career_group_id=:group_id ORDER BY id');
+   $remaining->execute(['group_id'=>$groupId]);$after=$remaining->fetchAll();
+   if(count($after)===1){
+    $pdo->prepare('UPDATE bdc_competitors SET career_group_id=NULL WHERE id=:id')->execute(['id'=>(int)$after[0]['id']]);
+    $after=[];
+   }
+   if(!$after)$pdo->prepare('DELETE FROM bdc_competitor_career_groups WHERE id=:group_id')->execute(['group_id'=>$groupId]);
+   Auth::audit((int)Auth::user()['id'],'identity_match_undone',['group_id'=>$groupId,'separated_competitor_id'=>$id,'separated_bdc_id'=>$competitor['bdc_id'],'previous_member_ids'=>array_map('intval',array_column($before,'id')),'remaining_member_ids'=>array_map('intval',array_column($after,'id'))],'competitor',$id);
+   $pdo->commit();$success='Identity match undone. Profiles, results, points and divisions were kept unchanged.';
   }
  }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();$error=$e->getMessage();}
 }
 $source=competitorRow($pdo,$sourceId);$destination=competitorRow($pdo,$destinationId);
+$linkedProfiles=[];
+if($source&&!empty($source['career_group_id'])){
+ $linked=$pdo->prepare('SELECT id,bdc_id,exact_name,dance_role,current_division FROM bdc_competitors WHERE career_group_id=:group_id ORDER BY exact_name,bdc_id');
+ $linked->execute(['group_id'=>(int)$source['career_group_id']]);$linkedProfiles=$linked->fetchAll();
+}
 $transactions=[];
 if($source){$s=$pdo->prepare("SELECT pt.id,pt.event_id,e.name event_name,e.event_date,pt.division,pt.dance_role,pt.placement,pt.points FROM bdc_point_transactions pt LEFT JOIN bdc_events e ON e.id=pt.event_id WHERE pt.competitor_id=:id ORDER BY e.event_date DESC,pt.id DESC");$s->execute(['id'=>$sourceId]);$transactions=$s->fetchAll();}
 ?>
@@ -68,6 +91,7 @@ if($source){$s=$pdo->prepare("SELECT pt.id,pt.event_id,e.name event_name,e.event
 <main class="container py-4" style="max-width:1200px"><h1 class="h3">Move Results & Career Links</h1><p class="text-muted">Move selected competition results to the correct BDC ID, and link separate Leader and Follower records for combined Hall of Fame career points.</p>
 <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($success):?><div class="alert alert-success"><?=e($success)?></div><?php endif;?>
 <form method="get" class="card border-0 shadow-sm mb-4"><div class="card-body"><div class="row g-3"><div class="col-md-5"><label class="form-label">Source competitor database ID</label><input class="form-control" type="number" name="source_id" value="<?=$sourceId?>" required></div><div class="col-md-5"><label class="form-label">Destination competitor database ID</label><input class="form-control" type="number" name="destination_id" value="<?=$destinationId?>" required></div><div class="col-md-2 d-flex align-items-end"><button class="btn btn-dark w-100">Load</button></div></div><div class="form-text mt-2">Use the numeric database IDs, not the BDC-000000 number. Example: Melissa Follower 206, Melissa Leader 352.</div></div></form>
+<?php if($source&&$linkedProfiles):?><section class="card border-warning shadow-sm mb-4"><div class="card-header bg-warning-subtle fw-semibold">Linked Identity Profiles</div><div class="card-body"><p class="text-muted">These BDC IDs currently share one identity. Undoing a match separates the selected profile only. Results, points, roles and divisions are not changed.</p><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>BDC ID</th><th>Name</th><th>Role</th><th>Division</th><th></th></tr></thead><tbody><?php foreach($linkedProfiles as $profile):?><tr><td><code><?=e($profile['bdc_id'])?></code></td><td><?=e($profile['exact_name'])?></td><td><?=e(ucfirst($profile['dance_role']))?></td><td><?=e(ucwords(str_replace('_',' ',$profile['current_division'])))?></td><td class="text-end"><?php if(Auth::isSuperAdmin()):?><form method="post" class="d-inline" onsubmit="return confirm('Undo this identity match? Both BDC profiles and all results will remain unchanged.')"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="unlink_career"><input type="hidden" name="competitor_id" value="<?=(int)$profile['id']?>"><input type="hidden" name="source_id" value="<?=$sourceId?>"><input type="hidden" name="destination_id" value="<?=$destinationId?>"><button class="btn btn-sm btn-outline-danger">Undo Identity Match</button></form><?php endif;?></td></tr><?php endforeach;?></tbody></table></div><?php if(!Auth::isSuperAdmin()):?><div class="alert alert-secondary mt-3 mb-0">Only a Super Admin can undo an identity match.</div><?php endif;?></div></section><?php endif;?>
 <?php if($source&&$destination):?><div class="row g-3 mb-4"><div class="col-md-6"><div class="card border-danger h-100"><div class="card-header bg-danger-subtle">Source</div><div class="card-body"><h2 class="h5"><?=e($source['exact_name'])?></h2><code><?=e($source['bdc_id'])?></code><div>Role: <?=e(ucfirst($source['dance_role']))?>, Career points: <?=e((string)(float)$source['career_points'])?></div><div>Career group: <?=e($source['career_group_name']?:'Not linked')?></div></div></div></div><div class="col-md-6"><div class="card border-success h-100"><div class="card-header bg-success-subtle">Destination</div><div class="card-body"><h2 class="h5"><?=e($destination['exact_name'])?></h2><code><?=e($destination['bdc_id'])?></code><div>Role: <?=e(ucfirst($destination['dance_role']))?>, Career points: <?=e((string)(float)$destination['career_points'])?></div><div>Career group: <?=e($destination['career_group_name']?:'Not linked')?></div></div></div></div></div>
 <form method="post" class="card border-0 shadow-sm mb-4"><div class="card-header fw-semibold">Move selected results</div><div class="card-body p-0"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="move_results"><input type="hidden" name="source_id" value="<?=$sourceId?>"><input type="hidden" name="destination_id" value="<?=$destinationId?>"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.tx').forEach(x=>x.checked=this.checked)"></th><th>Event</th><th>Division</th><th>Role</th><th>Placement</th><th>Points</th></tr></thead><tbody><?php foreach($transactions as $t):?><tr><td><input class="form-check-input tx" type="checkbox" name="transaction_ids[]" value="<?=(int)$t['id']?>"></td><td><?=e($t['event_name']?:'No event')?><?php if($t['event_date']):?><div class="small text-muted"><?=e($t['event_date'])?></div><?php endif;?></td><td><?=e(ucfirst($t['division']))?></td><td><?=e(ucfirst($t['dance_role']))?></td><td><?=e($t['placement']?:'—')?></td><td><?=e((string)(float)$t['points'])?></td></tr><?php endforeach;?></tbody></table></div></div><div class="card-footer"><button class="btn btn-primary" onclick="return confirm('Move the selected results to the destination competitor?')">Move selected results</button></div></form>
 <form method="post" class="card border-primary shadow-sm"><div class="card-header bg-primary-subtle fw-semibold">Combine career points</div><div class="card-body"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="link_career"><input type="hidden" name="source_id" value="<?=$sourceId?>"><input type="hidden" name="destination_id" value="<?=$destinationId?>"><label class="form-label">Hall of Fame display name</label><input class="form-control mb-3" name="display_name" value="<?=e($source['career_group_name']?:$source['exact_name'])?>" required><p class="text-muted">This combines both BDC IDs for Hall of Fame career points. Division leaderboards remain separate by role and BDC ID.</p><button class="btn btn-primary">Link career records</button></div></form><?php endif;?>

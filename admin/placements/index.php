@@ -9,7 +9,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requirePermission('registrations.manage');
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $error='';$notice='';$report=null;
 
 $maps=[

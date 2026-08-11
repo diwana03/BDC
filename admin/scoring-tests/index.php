@@ -6,10 +6,11 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
+use App\Services\ResultStorageService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 $userId=(int)(Auth::user()['id']??0);
 $error=''; $notice='';
 
@@ -59,9 +60,7 @@ function loadRound(PDO $pdo,int $id):?array{
     $s->execute(['id'=>$id]); return $s->fetch()?:null;
 }
 function resultRoot():string{
-    $root=dirname(__DIR__,2).'/public/results';
-    if(!is_dir($root) && !mkdir($root,0755,true) && !is_dir($root)) throw new RuntimeException('Could not create public/results.');
-    return $root;
+    return ResultStorageService::root();
 }
 function safeFile(string $value):string{
     $v=preg_replace('/[^A-Za-z0-9_-]+/','-',trim($value)); return trim((string)$v,'-')?:'result';
@@ -1285,7 +1284,7 @@ try{
   }elseif($action==='generate_results'){$roundId=(int)$_POST['round_id'];$round=loadRound($pdo,$roundId);if(!$round)throw new RuntimeException('Round not found.');computeResults($pdo,$round,$userId);$notice='Results generated. Review before publishing or discarding.';
   }elseif($action==='discard_results'){$roundId=(int)$_POST['round_id'];$pdo->prepare("UPDATE bdc_test_scoring_rounds SET status='discarded' WHERE id=:r")->execute(['r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'draft_result_discarded');$notice='Generated result discarded. Scores and registration were preserved.';
   }elseif($action==='publish_results'){
-   $roundId=(int)$_POST['round_id'];$round=loadRound($pdo,$roundId);if(!$round||!in_array($round['status'],['awaiting_decision','republish_required','discarded'],true))throw new RuntimeException('Generate results before publishing.');$html=buildResultHtml($pdo,$round);$name='HEATS-'.safeFile($round['event_name']).'-'.safeFile($round['division']).'-v'.((int)$round['generated_version']).'.html';file_put_contents(resultRoot().'/'.$name,$html);$relative='public/results/'.$name;$public=url($relative);
+   $roundId=(int)$_POST['round_id'];$round=loadRound($pdo,$roundId);if(!$round||!in_array($round['status'],['awaiting_decision','republish_required','discarded'],true))throw new RuntimeException('Generate results before publishing.');$html=buildResultHtml($pdo,$round);$name='HEATS-'.safeFile($round['event_name']).'-'.safeFile($round['division']).'-v'.((int)$round['generated_version']).'.html';file_put_contents(resultRoot().'/'.$name,$html);$relative=ResultStorageService::relative($name);$public=ResultStorageService::publicUrl($name);
    $old=$pdo->prepare("SELECT id FROM bdc_test_result_documents WHERE event_id=:e AND document_category='heats' AND status='published' ORDER BY id DESC LIMIT 1");$old->execute(['e'=>$round['event_id']]);$docId=(int)$old->fetchColumn();$title='HEATS — '.$round['event_name'].' ('.ucfirst($round['division']).')';if($docId){$pdo->prepare("UPDATE bdc_test_result_documents SET title=:t,file_type='external',url=:u,storage_path=:s,source='scoring_engine',version_number=version_number+1,updated_at=NOW() WHERE id=:id")->execute(['t'=>$title,'u'=>$public,'s'=>$relative,'id'=>$docId]);}else{$pdo->prepare("INSERT INTO bdc_test_result_documents(event_id,title,document_category,file_type,url,storage_path,status,source,created_by) VALUES(:e,:t,'heats','external',:u,:s,'published','scoring_engine',:uid)")->execute(['e'=>$round['event_id'],'t'=>$title,'u'=>$public,'s'=>$relative,'uid'=>$userId]);$docId=(int)$pdo->lastInsertId();}$pdo->prepare("UPDATE bdc_test_scoring_rounds SET status='published',published_document_id=:d WHERE id=:r")->execute(['d'=>$docId,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'published',['document_id'=>$docId,'file'=>$relative]);$notice='Heats result published to the Result Repository. Scores remain saved.';
   }
  }

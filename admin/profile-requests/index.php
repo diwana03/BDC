@@ -10,7 +10,7 @@ use App\Services\SchemaUpdater;
 
 Auth::requirePermission('competitors.edit');
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $error = '';
 $success = '';

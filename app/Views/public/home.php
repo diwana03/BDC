@@ -6,6 +6,7 @@
 <title>Bachata Dance Council Portal</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="<?= e(url('/public/assets/css/app.css')) ?>?v=0.9.0" rel="stylesheet">
+<link href="<?= e(url('/public/assets/css/bdc-brand-theme.css')) ?>?v=1" rel="stylesheet">
 </head>
 <body class="portal-home portal-home-compact">
 <nav class="navbar navbar-expand-lg navbar-dark portal-navbar sticky-top">
@@ -16,7 +17,8 @@
       </span>
       <span>Bachata Dance Council Portal</span>
     </a>
-    <div class="ms-auto">
+    <div class="ms-auto portal-top-actions">
+      <a class="btn btn-outline-light btn-sm px-3 portal-home-link" href="https://bachatadancecouncil.com/">⌂ Home</a>
       <?php if ($user): ?>
         <a class="btn btn-outline-light btn-sm px-3" href="<?= e(url('/admin/')) ?>">Dashboard</a>
       <?php else: ?>
@@ -70,7 +72,7 @@
     </section>
 
     <?php if (!empty($latestEvents) || !empty($careerLeaders)): ?>
-    <section class="latest-results-section mt-4 mb-5">
+    <section id="hall-of-fame" class="latest-results-section mt-4 mb-5">
       <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
         <div><div class="portal-welcome-label">BDC Champions</div><h2 class="mb-0">Hall of Fame</h2></div>
         <a class="btn btn-outline-dark" href="<?=e(url('/results/?segment=repository'))?>">View all official results</a>
@@ -84,6 +86,7 @@
                 <div class="latest-event-head">
                   <div class="latest-event-date"><?=e(date('d M Y',strtotime((string)$event['event_date'])))?></div>
                   <h3><?=e($event['name'])?></h3>
+                  <?php if (!empty($event['category_label'])): ?><div class="mb-2"><span class="badge text-bg-dark"><?=e((string)$event['category_label'])?></span></div><?php endif; ?>
                   <?php if (!empty($event['venue']) || !empty($event['location'])): ?><div class="text-muted small"><?=e($event['venue'] ?: $event['location'])?></div><?php endif; ?>
                 </div>
                 <div class="latest-podium-list">
@@ -102,7 +105,7 @@
                   </div>
                 <?php endforeach; ?>
                 </div>
-                <a class="btn btn-dark w-100 mt-3" href="<?=e(url('/results/?segment=repository&event='.(int)$event['id']))?>">View Full Results</a>
+                <a class="btn btn-dark w-100 mt-3" href="<?=e(url('/results/?segment=repository&event='.(int)$event['event_id']))?>">View Full Results</a>
               </article>
             </div>
             <?php endforeach; ?>

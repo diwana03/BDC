@@ -11,20 +11,27 @@ require __DIR__ . '/bootstrap.php';
 
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Services\SchemaUpdater;
 
 $error = '';
 $success = '';
 $schemaReady = false;
 $lockPath = __DIR__ . '/storage/installed.lock';
 
+if (is_file($lockPath)) {
+    http_response_code(404);
+    exit('Not found.');
+}
+
 try {
     $pdo = Database::connection();
     $pdo->query('SELECT 1');
+    $schemaReady = (bool) $pdo->query("SHOW TABLES LIKE 'bdc_users'")->fetchColumn();
 } catch (Throwable $e) {
     $error = 'Database connection failed: ' . $e->getMessage();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '' && !$schemaReady) {
     if (!Csrf::verify($_POST['_csrf'] ?? null)) {
         $error = 'Invalid security token. Refresh the page and try again.';
     } else {
@@ -49,16 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
                 }
 
                 $pdo->exec($schema);
+                SchemaUpdater::run($pdo);
                 $schemaReady = true;
 
                 $stmt = $pdo->prepare(
                     'INSERT INTO bdc_users (email, password_hash, full_name, role, status)
                      VALUES (:email, :password_hash, :full_name, :role, :status)
-                     ON DUPLICATE KEY UPDATE
-                        password_hash = VALUES(password_hash),
-                        full_name = VALUES(full_name),
-                        role = VALUES(role),
-                        status = VALUES(status)'
+                     '
                 );
                 $stmt->execute([
                     'email' => $email,
@@ -70,12 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
 
                 $settings = $pdo->prepare(
                     'INSERT INTO bdc_settings (setting_key, setting_value)
-                     VALUES ("installed_at", :installed_at), ("app_version", "0.3.1")
+                     VALUES ("installed_at", :installed_at), ("app_version", "2.2.0")
                      ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
                 );
                 $settings->execute(['installed_at' => date('Y-m-d H:i:s')]);
 
-                @file_put_contents($lockPath, "BDC Portal 0.3.1 installed at " . date(DATE_ATOM) . PHP_EOL, LOCK_EX);
+                if (file_put_contents($lockPath, "BDC Portal 2.2.0 installed at " . date(DATE_ATOM) . PHP_EOL, LOCK_EX) === false) {
+                    throw new RuntimeException('Could not create the installation lock.');
+                }
                 $success = 'Installation complete. Your database tables and administrator account are ready.';
             } catch (Throwable $e) {
                 $error = 'Installation failed: ' . $e->getMessage();
@@ -106,7 +112,7 @@ if ($error === '' && !$schemaReady) {
 <div class="container py-5" style="max-width:760px">
 <div class="card border-0 shadow-sm"><div class="card-body p-4 p-md-5">
 <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
-<div><h1 class="h3 mb-1">Install BDC Portal</h1><div class="text-muted">Version 0.3.1</div></div>
+<div><h1 class="h3 mb-1">Install BDC Portal</h1><div class="text-muted">Version 2.2.0</div></div>
 <span class="badge text-bg-success">Database connected</span>
 </div>
 
@@ -119,7 +125,7 @@ if ($error === '' && !$schemaReady) {
 </div>
 <div class="alert alert-warning mt-4 mb-0">For security, delete <code>install.php</code> and <code>setup.php</code> after confirming that login works. Keep <code>config/config.php</code>.</div>
 <?php else: ?>
-<?php if ($schemaReady): ?><div class="alert alert-info">BDC tables already exist. Submitting this form will create or reset the specified super administrator account.</div><?php endif; ?>
+<?php if ($schemaReady): ?><div class="alert alert-danger">Existing BDC tables were detected. Installation is blocked to protect the current administrator account.</div><?php endif; ?>
 <form method="post" autocomplete="off">
 <?= Csrf::field() ?>
 <div class="mb-3"><label class="form-label" for="full_name">Administrator name</label><input class="form-control" id="full_name" name="full_name" value="<?= e($_POST['full_name'] ?? '') ?>" required></div>

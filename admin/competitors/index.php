@@ -11,7 +11,7 @@ use App\Services\DivisionProgressionService;
 Auth::requirePermission('competitors.view');
 
 $pdo = Database::connection();
-SchemaUpdater::run($pdo);
+
 
 $q        = trim((string)($_GET['q'] ?? ''));
 $filter   = (string)($_GET['filter'] ?? '');
@@ -348,6 +348,7 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>
                                 <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>">Edit</a>
+                                <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>">Adjust photo</a>
                             <?php endif; ?>
                         </td>
                     </tr>

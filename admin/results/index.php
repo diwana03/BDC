@@ -6,14 +6,15 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
+use App\Services\ResultStorageService;
 
 if(!Auth::check()){header('Location: ../');exit;}
 
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 
 // v2.0.40: repair permissions on HTML archives created by earlier builds.
-$publicResultRoot=dirname(__DIR__,2).'/public/results';
+$publicResultRoot=null;
 if(is_dir($publicResultRoot)){
     @chmod($publicResultRoot,0755);
     foreach(glob($publicResultRoot.'/*.html')?:[] as $publicResultFile){
@@ -29,17 +30,13 @@ $editId=(int)($_GET['edit']??0);
 $editDoc=null;
 
 function resultStorageRoot(): string {
-    $root=dirname(__DIR__,2).'/storage/results';
-    if(!is_dir($root) && !mkdir($root,0755,true) && !is_dir($root)) {
-        throw new RuntimeException('Could not create the result storage folder.');
-    }
-    return $root;
+    return ResultStorageService::root();
 }
 
 function deleteStoredResult(?string $storagePath): void {
     if(!$storagePath) return;
-    $base=realpath(dirname(__DIR__,2).'/storage/results');
-    $file=realpath(dirname(__DIR__,2).'/'.ltrim($storagePath,'/'));
+    $base=realpath(ResultStorageService::root());
+    $file=realpath(ResultStorageService::resolve($storagePath)??'');
     if($base && $file && str_starts_with($file,$base.DIRECTORY_SEPARATOR) && is_file($file)) {
         @unlink($file);
     }
@@ -52,10 +49,10 @@ function processResultUpload(?array $file): ?array {
     if(!in_array($ext,['pdf','csv'],true)) throw new RuntimeException('Only PDF or CSV uploads are allowed.');
     if((int)$file['size']>20*1024*1024) throw new RuntimeException('File must be 20 MB or smaller.');
     $safe=date('YmdHis').'-'.bin2hex(random_bytes(5)).'.'.$ext;
-    $relative='storage/results/'.$safe;
+    $relative=ResultStorageService::relative($safe);
     $target=resultStorageRoot().'/'.$safe;
     if(!move_uploaded_file((string)$file['tmp_name'],$target)) throw new RuntimeException('Could not store uploaded file.');
-    $url=url($relative);
+    $url=ResultStorageService::publicUrl($safe);
     return ['url'=>$url,'storage_path'=>$relative,'file_type'=>$ext];
 }
 

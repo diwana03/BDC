@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
 use App\Core\Csrf;use App\Core\Database;use App\Services\SchemaUpdater;
-$pdo=Database::connection();SchemaUpdater::run($pdo);$mode=($_GET['mode']??$_POST['mode']??'new')==='update'?'update':'new';$error='';$success='';$matches=[];
+$pdo=Database::connection();$mode=($_GET['mode']??$_POST['mode']??'new')==='update'?'update':'new';$error='';$success='';$matches=[];
 $q=trim((string)($_GET['q']??''));
 if($mode==='update'&&$q!==''){$n=mb_strtolower(trim(preg_replace('/[^\pL\pN]+/u',' ',$q)??$q));$s=$pdo->prepare("SELECT id,bdc_id,exact_name,country,current_division,dance_role,photo_url FROM bdc_competitors WHERE exact_name LIKE :q OR normalised_name LIKE :n OR bdc_id=:id OR instagram=:ig ORDER BY exact_name LIMIT 20");$s->execute(['q'=>'%'.$q.'%','n'=>'%'.$n.'%','id'=>$q,'ig'=>ltrim($q,'@')]);$matches=$s->fetchAll();}
 if($_SERVER['REQUEST_METHOD']==='POST'){

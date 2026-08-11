@@ -1,0 +1,55 @@
+BDC PORTAL v2.2.0 STAGING PATCH
+================================
+
+Release commit: cda85dc
+Base version: v2.1.0, commit 78198ce
+Target: Bluehost BDC_STAGING only
+
+IMPORTANT
+---------
+1. Back up the BDC_STAGING files and staging database first.
+2. Do not upload this patch to Production /portal.
+3. This package does not contain config/config.php and must never overwrite it.
+4. Extract the CONTENTS of the patch folder into the existing BDC_STAGING root.
+
+UPLOAD THROUGH BLUEHOST CPANEL
+------------------------------
+1. Open Bluehost cPanel, File Manager.
+2. Go to:
+   /public_html/bachatadancecouncil/BDC_STAGING
+3. Create a backup of the staging directory and staging database.
+4. Upload BDC-v2.2.0-staging-patch.zip into BDC_STAGING.
+5. Extract it there.
+6. Open the extracted BDC-v2.2.0-staging-patch folder.
+7. Move all files and folders inside it into the BDC_STAGING root.
+8. Allow matching release files to be overwritten.
+9. Confirm config/config.php still exists and was not changed.
+
+DATABASE MIGRATION AND VALIDATION
+---------------------------------
+Open Bluehost Terminal and run:
+
+cd /home2/zqculgmy/public_html/bachatadancecouncil/BDC_STAGING
+php bin/migrate.php
+find . -name '*.php' -not -path './storage/*' -print0 | xargs -0 -n1 php -l
+php tests/relative-placement-v215.php
+php tests/security-smoke.php
+
+Then open:
+https://bachatadancecouncil.com/BDC_STAGING/health.php
+
+Expected response:
+{"status":"ok"}
+
+Finally, test login, registration, Registration Desk, scoring, result publishing,
+and public results in BDC_STAGING. Do not update Production until staging passes.
+
+ROLLBACK
+--------
+If the migration or staging tests fail, restore both the staging file backup and
+the staging database backup. Do not deploy this release to Production.
+
+LOCAL VALIDATION NOTE
+---------------------
+PHP was unavailable in the packaging workspace, so the PHP lint and automated
+tests were not rerun while creating this ZIP. Run all commands above on Bluehost.

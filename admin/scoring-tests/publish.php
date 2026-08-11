@@ -7,10 +7,11 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
+use App\Services\ResultStorageService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
-SchemaUpdater::run($pdo);
+
 function bdcV230IsSuperAdmin():bool{try{if(method_exists(\App\Core\Auth::class,'isSuperAdmin')&&\App\Core\Auth::isSuperAdmin())return true;}catch(\Throwable $e){}$u=\App\Core\Auth::user();$r=strtolower(str_replace(['-',' '],'_',trim((string)($u['role']??$u['user_role']??''))));return in_array($r,['super_admin','superadmin','owner','root','system_admin'],true)||!empty($u['is_super_admin']);}
 
 
@@ -192,19 +193,10 @@ function repositorySafeName(string $name):string{$name=preg_replace('/[\\\\\\/\\
 function removeStoredPublicationFile(?string $path):void{
  if(!$path)return;
 
- $root=dirname(__DIR__,2);
- $file=realpath($root.'/'.ltrim($path,'/'));
+ $file=realpath(ResultStorageService::resolve($path)??'');
  if(!$file || !is_file($file))return;
-
- foreach([
-  realpath($root.'/public/results'),
-  realpath($root.'/storage/results'),
- ] as $base){
-  if($base && str_starts_with($file,$base.DIRECTORY_SEPARATOR)){
-   @unlink($file);
-   return;
-  }
- }
+ $base=realpath(ResultStorageService::root());
+ if($base && str_starts_with($file,$base.DIRECTORY_SEPARATOR))@unlink($file);
 }
 
 
@@ -212,7 +204,7 @@ function removeStoredPublicationFile(?string $path):void{
 function pendingHtmlDirectory(int $roundId):string{
  $session=session_id()?:'no-session';
  $safeSession=preg_replace('/[^A-Za-z0-9_-]/','',$session)?:'session';
- $directory=dirname(__DIR__,2).'/storage/results/.pending-html/'.$safeSession.'/'.$roundId;
+ $directory=ResultStorageService::root().'/.pending-html/'.$safeSession.'/'.$roundId;
 
  if(!is_dir($directory) && !mkdir($directory,0700,true) && !is_dir($directory)){
   throw new RuntimeException('Could not create the temporary HTML archive folder.');
@@ -241,7 +233,7 @@ function consumeArchivedHtml(
  string $eventDate
 ):array{
  $temporaryDirectory=pendingHtmlDirectory($roundId);
- $resultRoot=dirname(__DIR__,2).'/public/results';
+ $resultRoot=ResultStorageService::root();
 
  if(!is_dir($resultRoot) && !mkdir($resultRoot,0755,true) && !is_dir($resultRoot)){
   throw new RuntimeException('Could not create public/results.');
@@ -269,9 +261,9 @@ function consumeArchivedHtml(
    throw new RuntimeException('Could not set 0644 permissions on the '.$category.' HTML result.');
   }
 
-  $relative='public/results/'.$filename;
+  $relative=ResultStorageService::relative($filename);
   $archivedFiles[$category]=[
-   'url'=>url($relative),
+   'url'=>ResultStorageService::publicUrl($filename),
    'storage_path'=>$relative,
    'absolute_path'=>$target,
    'size'=>filesize($target)?:0,
@@ -771,6 +763,13 @@ body{background:#f5f6f8}
 .submit-card{background:#fff;border:2px solid #0d6efd}
 .approval-card{background:#fff;border:2px solid #198754}
 .rollback-card{background:#fff;border:2px solid #dc3545}
+@media(max-width:575.98px){
+ .modal-dialog{margin:.5rem}
+ .modal-content{max-height:calc(100dvh - 1rem)}
+ .modal-body{overflow-y:auto}
+ .modal-footer{flex-wrap:wrap}
+ .modal-footer form,.modal-footer form .btn{width:100%}
+}
 </style>
 </head>
 <body>
@@ -1000,7 +999,6 @@ body{background:#f5f6f8}
     <div id="htmlGenerationStatus" class="small mt-2 text-muted">
      Archived Heats, Final and Points results will be created automatically when you approve.
     </div>
-   </div>
    </div>
    <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
