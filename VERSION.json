@@ -1,20 +1,16 @@
 {
-  "version": "2.3.3-dev128",
-  "build": 2458,
+  "version": "2.3.3-dev129",
+  "build": 2459,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Completed Events as a dedicated Admin Dashboard workflow separate from active scoring and long-term Archived Events",
-    "Completed events automatically disappear from the normal Scoring Dashboard saved-round list and from Select Existing Event",
-    "Published and Completed events cannot be reused to create a new scoring workflow, enforced both in the UI and server-side",
-    "Completed Events provides Open Scoring to reopen the exact existing scoring workflow for amendments without creating a duplicate event or round",
-    "Reopening a completed event unlocks the existing scoring workflow and returns the scorer to the existing scoring round for correction and resubmission",
-    "Completed Events remain separate from Archived Events; archiving is intended only when normal amendment access is no longer required",
-    "Admin Dashboard now shows a Completed Events navigation item and count",
-    "Archive Event list is restricted to completed events only",
-    "Published or completed scoring workflows cannot be destructively deleted from the normal Scoring Dashboard",
-    "Existing Bachata/Salsa discipline separation and one shared BDC ID architecture remain unchanged"
+    "Hotfixes the Scoring Dashboard 500 regression introduced in dev128",
+    "Restores admin/scoring/index.php exactly to the known-good dev127 scoring wrapper",
+    "Restores admin/scoring/discipline-actions.php exactly to the known-good dev127 discipline handler so Salsa entry, callback and deletion safeguards remain intact",
+    "Keeps the new Completed Events admin page and dashboard navigation from dev128",
+    "Temporarily defers completed/published event hiding inside the Scoring Dashboard until it can be reintroduced with a smaller isolated change",
+    "Does not alter the proven scoring core, scoring calculations, Relative Placement, Bachata/Salsa point separation or publication logic"
   ]
 }
