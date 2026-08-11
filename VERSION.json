@@ -1,18 +1,20 @@
 {
-  "version": "2.3.3-dev130",
-  "build": 2460,
+  "version": "2.3.3-dev131",
+  "build": 2461,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Moves active Scoring Dashboard list and event selection to a dedicated database-filtered view instead of post-processing the legacy scoring HTML",
-    "Select Existing Event now queries only events whose event status is neither Completed nor Published and which are not Archived",
-    "Saved Rounds now joins bdc_events and shows only rounds belonging to active non-completed, non-published, non-archived events",
-    "Completed event round status can no longer make a completed event appear as Draft on the active Scoring Dashboard because the event is excluded at query level",
-    "Completed Events remains the controlled entry point for reopening an existing completed scoring workflow for amendment",
-    "The proven admin/scoring/core.php scoring engine remains unchanged at known-good blob ea9a05219846458a5be26453a01af386c89c0068",
-    "Bachata and Salsa dance selection remains available for new active scoring workflows with Salsa limited to Novice, Intermediate and Advanced",
-    "No HTML regex filtering is used for completed-event lifecycle enforcement on the active dashboard"
+    "Adds Delete Draft to active Saved Rounds while keeping Open available for normal scoring continuation",
+    "Draft deletion inspects competitors, judges, marks, calculated results, Final pairings, Final marks and Final results before deletion",
+    "Drafts containing scoring data show a strong warning and require typing DELETE before permanent removal",
+    "Deleting a Draft removes only its scoring workflow data; the underlying Event record is preserved",
+    "After Draft deletion the same Event + Dance Style + Division becomes available for a new scoring workflow",
+    "Prevents duplicate scoring creation for an Event + Dance Style + Division while an existing workflow remains",
+    "An event can still host other independent Dance Style or Division workflows",
+    "Delete Draft is unavailable after the workflow progresses beyond Draft/Discarded and Completed or Published events remain protected",
+    "Completed and Published events remain excluded from the active Scoring Dashboard and are handled through Completed Events",
+    "The proven scoring core remains unchanged"
   ]
 }
