@@ -1,20 +1,16 @@
 {
-  "version": "2.3.3-dev131",
-  "build": 2461,
+  "version": "2.3.3-dev132",
+  "build": 2462,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Delete Draft to active Saved Rounds while keeping Open available for normal scoring continuation",
-    "Draft deletion inspects competitors, judges, marks, calculated results, Final pairings, Final marks and Final results before deletion",
-    "Drafts containing scoring data show a strong warning and require typing DELETE before permanent removal",
-    "Deleting a Draft removes only its scoring workflow data; the underlying Event record is preserved",
-    "After Draft deletion the same Event + Dance Style + Division becomes available for a new scoring workflow",
-    "Prevents duplicate scoring creation for an Event + Dance Style + Division while an existing workflow remains",
-    "An event can still host other independent Dance Style or Division workflows",
-    "Delete Draft is unavailable after the workflow progresses beyond Draft/Discarded and Completed or Published events remain protected",
-    "Completed and Published events remain excluded from the active Scoring Dashboard and are handled through Completed Events",
-    "The proven scoring core remains unchanged"
+    "Fixes Competitor Portal Current Division options so they change with the selected dance style",
+    "Bachata profile now offers Novice, Intermediate, Advanced, Bachata Rising, Bachata Open, Bachata Invitational, Semi Pro, Pro and Bachata All Star",
+    "Salsa profile remains limited to Novice, Intermediate and Advanced",
+    "The Salsa division limitation note is displayed only when Salsa is selected",
+    "Adds server-side discipline validation so a Salsa request cannot submit a Bachata-only division by manipulating the form",
+    "Keeps one shared BDC ID while storing competition profile requests against the selected Bachata or Salsa discipline"
   ]
 }
