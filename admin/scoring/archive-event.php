@@ -1,0 +1,36 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__,2).'/bootstrap.php';
+
+use App\Core\Auth;
+use App\Core\Csrf;
+use App\Core\Database;
+
+Auth::requireAdmin();
+if($_SERVER['REQUEST_METHOD']!=='POST'){
+    http_response_code(405);
+    exit('Method not allowed.');
+}
+if(!Csrf::verify($_POST['_csrf']??null)){
+    http_response_code(419);
+    exit('Your session expired. Please go back and try again.');
+}
+$eventId=(int)($_POST['event_id']??0);
+if($eventId<1){
+    http_response_code(400);
+    exit('Invalid event.');
+}
+$pdo=Database::connection();
+$stmt=$pdo->prepare('SELECT id,name FROM bdc_events WHERE id=:id LIMIT 1');
+$stmt->execute(['id'=>$eventId]);
+$event=$stmt->fetch();
+if(!$event){
+    http_response_code(404);
+    exit('Event not found.');
+}
+$userId=(int)(Auth::user()['id']??0);
+$archive=$pdo->prepare('INSERT INTO bdc_scoring_archived_events(event_id,archived_by) VALUES(:event,:user) ON DUPLICATE KEY UPDATE archived_by=VALUES(archived_by),archived_at=NOW()');
+$archive->execute(['event'=>$eventId,'user'=>$userId?:null]);
+header('Location: '.url('admin/scoring/?mode='.(string)($_POST['mode']??'manual').'&archived=1'));
+exit;
