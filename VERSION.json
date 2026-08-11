@@ -1,16 +1,18 @@
 {
-  "version": "2.3.3-dev129",
-  "build": 2459,
+  "version": "2.3.3-dev130",
+  "build": 2460,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Hotfixes the Scoring Dashboard 500 regression introduced in dev128",
-    "Restores admin/scoring/index.php exactly to the known-good dev127 scoring wrapper",
-    "Restores admin/scoring/discipline-actions.php exactly to the known-good dev127 discipline handler so Salsa entry, callback and deletion safeguards remain intact",
-    "Keeps the new Completed Events admin page and dashboard navigation from dev128",
-    "Temporarily defers completed/published event hiding inside the Scoring Dashboard until it can be reintroduced with a smaller isolated change",
-    "Does not alter the proven scoring core, scoring calculations, Relative Placement, Bachata/Salsa point separation or publication logic"
+    "Moves active Scoring Dashboard list and event selection to a dedicated database-filtered view instead of post-processing the legacy scoring HTML",
+    "Select Existing Event now queries only events whose event status is neither Completed nor Published and which are not Archived",
+    "Saved Rounds now joins bdc_events and shows only rounds belonging to active non-completed, non-published, non-archived events",
+    "Completed event round status can no longer make a completed event appear as Draft on the active Scoring Dashboard because the event is excluded at query level",
+    "Completed Events remains the controlled entry point for reopening an existing completed scoring workflow for amendment",
+    "The proven admin/scoring/core.php scoring engine remains unchanged at known-good blob ea9a05219846458a5be26453a01af386c89c0068",
+    "Bachata and Salsa dance selection remains available for new active scoring workflows with Salsa limited to Novice, Intermediate and Advanced",
+    "No HTML regex filtering is used for completed-event lifecycle enforcement on the active dashboard"
   ]
 }
