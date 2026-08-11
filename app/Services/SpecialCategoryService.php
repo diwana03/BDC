@@ -1,134 +1,16 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Services;
-
 use PDO;
-
-final class SpecialCategoryService
-{
-    public const RISING='bachata_rising';
-    public const OPEN='bachata_open';
-    public const INVITATIONAL='bachata_invitational';
-
-    public static function categories():array
-    {
-        return [
-            self::RISING=>'Bachata Rising',
-            self::OPEN=>'Bachata Open',
-            self::INVITATIONAL=>'Bachata Invitational',
-        ];
-    }
-
-    public static function isSpecial(?string $category):bool
-    {
-        return array_key_exists(strtolower(trim((string)$category)),self::categories());
-    }
-
-    public static function label(string $category):string
-    {
-        $category=strtolower(trim($category));
-        return self::categories()[$category]??ucwords(str_replace('_',' ',$category));
-    }
-
-    public static function fixedPoints(string $category,int $rank):float
-    {
-        $category=strtolower(trim($category));
-        $matrix=[
-            self::RISING=>[1=>5,2=>4,3=>3,4=>2,5=>1],
-            self::OPEN=>[1=>5,2=>4,3=>3,4=>2,5=>1],
-            self::INVITATIONAL=>[1=>3,2=>2,3=>1],
-        ];
-        return (float)($matrix[$category][$rank]??0);
-    }
-
-    public static function schedule(string $category):array
-    {
-        $category=strtolower(trim($category));
-        return match($category){
-            self::RISING,self::OPEN=>[1=>5,2=>4,3=>3,4=>2,5=>1],
-            self::INVITATIONAL=>[1=>3,2=>2,3=>1],
-            default=>[],
-        };
-    }
-
-    public static function entryEligibility(string $category):array
-    {
-        $category=strtolower(trim($category));
-        return match($category){
-            self::RISING=>['eligible'=>true,'reason'=>'Bachata Rising uses the event published eligibility rules.'],
-            self::OPEN=>['eligible'=>true,'reason'=>'Bachata Open is open to eligible competitors.'],
-            self::INVITATIONAL=>['eligible'=>true,'reason'=>'Bachata Invitational entry must be confirmed by the organiser.'],
-            default=>['eligible'=>false,'reason'=>'Unknown special category.'],
-        };
-    }
-
-    public static function pointDivision(PDO $pdo,int $competitorId,string $danceRole):string
-    {
-        if(!in_array($danceRole,['leader','follower'],true))$danceRole='unknown';
-
-        $competitorStmt=$pdo->prepare("SELECT current_division,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE id=:id LIMIT 1");
-        $competitorStmt->execute(['id'=>$competitorId]);
-        $competitor=$competitorStmt->fetch()?:[];
-
-        $pointsStmt=$pdo->prepare("SELECT
-          COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,
-          COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,
-          COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points
-          FROM bdc_point_transactions
-          WHERE competitor_id=:competitor AND dance_role IN(:role,'both')");
-        $pointsStmt->execute(['competitor'=>$competitorId,'role'=>$danceRole]);
-        $points=$pointsStmt->fetch()?:[];
-
-        $historyStmt=$pdo->prepare("SELECT
-          MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
-          MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,
-          MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star
-          FROM (
-            SELECT division FROM bdc_participant_results WHERE competitor_id=:p AND dance_role IN(:pr,'both')
-            UNION ALL
-            SELECT division FROM bdc_point_transactions WHERE competitor_id=:t AND dance_role IN(:tr,'both')
-          ) history");
-        $historyStmt->execute(['p'=>$competitorId,'pr'=>$danceRole,'t'=>$competitorId,'tr'=>$danceRole]);
-        $history=$historyStmt->fetch()?:[];
-
-        if(!empty($history['competed_advanced'])||!empty($history['competed_all_star']))return 'advanced';
-        if(!empty($history['competed_intermediate']))return 'intermediate';
-
-        $effective=DivisionProgressionService::effectiveDivision(
-            (float)($points['novice_points']??0),
-            (float)($points['intermediate_points']??0),
-            (float)($points['advanced_points']??0),
-            (string)($competitor['current_division']??'unknown'),
-            !empty($competitor['novice_manual_out']),
-            !empty($competitor['intermediate_manual_out'])
-        );
-
-        if($effective==='advanced'||$effective==='all_star')return 'advanced';
-        if($effective==='intermediate')return 'intermediate';
-        return 'novice';
-    }
-
-    public static function provisionalDivision():string
-    {
-        return 'novice';
-    }
-
-    public static function ensureSchema(PDO $pdo):void
-    {
-        $special="'novice','intermediate','advanced','all_star','bachata_rising','bachata_open','bachata_invitational'";
-        $specialUnknown="'novice','intermediate','advanced','all_star','bachata_rising','bachata_open','bachata_invitational','unknown'";
-
-        foreach([
-            "ALTER TABLE bdc_scoring_rounds MODIFY division ENUM($special) NOT NULL",
-            "ALTER TABLE bdc_registration_desk_links MODIFY division ENUM($special) NOT NULL",
-            "ALTER TABLE bdc_registration_desk_activity MODIFY division ENUM($special) NOT NULL",
-            "ALTER TABLE bdc_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
-            "ALTER TABLE bdc_participant_results MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
-            "ALTER TABLE bdc_test_scoring_rounds MODIFY division ENUM($special) NOT NULL",
-            "ALTER TABLE bdc_test_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'",
-        ] as $sql){
-            try{$pdo->exec($sql);}catch(\Throwable $e){}
-        }
-    }
+final class SpecialCategoryService{
+ public const RISING='bachata_rising';public const OPEN='bachata_open';public const INVITATIONAL='bachata_invitational';public const SALSA_RISING='salsa_rising';public const SALSA_OPEN='salsa_open';
+ public static function categories():array{return [self::RISING=>'Bachata Rising',self::OPEN=>'Bachata Open',self::INVITATIONAL=>'Bachata Invitational',self::SALSA_RISING=>'Salsa Rising',self::SALSA_OPEN=>'Salsa Open'];}
+ public static function isSpecial(?string $category):bool{return array_key_exists(strtolower(trim((string)$category)),self::categories());}
+ public static function label(string $category):string{$category=strtolower(trim($category));return self::categories()[$category]??ucwords(str_replace('_',' ',$category));}
+ public static function fixedPoints(string $category,int $rank):float{$category=strtolower(trim($category));$matrix=[self::RISING=>[1=>5,2=>4,3=>3,4=>2,5=>1],self::OPEN=>[1=>5,2=>4,3=>3,4=>2,5=>1],self::INVITATIONAL=>[1=>3,2=>2,3=>1],self::SALSA_RISING=>[1=>5,2=>4,3=>3,4=>2,5=>1],self::SALSA_OPEN=>[1=>5,2=>4,3=>3,4=>2,5=>1]];return(float)($matrix[$category][$rank]??0);}
+ public static function schedule(string $category):array{$category=strtolower(trim($category));return match($category){self::RISING,self::OPEN,self::SALSA_RISING,self::SALSA_OPEN=>[1=>5,2=>4,3=>3,4=>2,5=>1],self::INVITATIONAL=>[1=>3,2=>2,3=>1],default=>[]};}
+ public static function entryEligibility(string $category):array{$category=strtolower(trim($category));return match($category){self::RISING=>['eligible'=>true,'reason'=>'Bachata Rising uses the event published eligibility rules.'],self::OPEN=>['eligible'=>true,'reason'=>'Bachata Open is open to eligible competitors.'],self::INVITATIONAL=>['eligible'=>true,'reason'=>'Bachata Invitational entry must be confirmed by the organiser.'],self::SALSA_RISING=>['eligible'=>true,'reason'=>'Salsa Rising uses the same BDC special-category rules as Bachata Rising.'],self::SALSA_OPEN=>['eligible'=>true,'reason'=>'Salsa Open uses the same BDC special-category rules as Bachata Open.'],default=>['eligible'=>false,'reason'=>'Unknown special category.']};}
+ public static function pointDivision(PDO $pdo,int $competitorId,string $danceRole):string{if(!in_array($danceRole,['leader','follower'],true))$danceRole='unknown';$competitorStmt=$pdo->prepare("SELECT current_division,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE id=:id LIMIT 1");$competitorStmt->execute(['id'=>$competitorId]);$competitor=$competitorStmt->fetch()?:[];$pointsStmt=$pdo->prepare("SELECT COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points FROM bdc_point_transactions WHERE competitor_id=:competitor AND dance_role IN(:role,'both')");$pointsStmt->execute(['competitor'=>$competitorId,'role'=>$danceRole]);$points=$pointsStmt->fetch()?:[];$historyStmt=$pdo->prepare("SELECT MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star FROM (SELECT division FROM bdc_participant_results WHERE competitor_id=:p AND dance_role IN(:pr,'both') UNION ALL SELECT division FROM bdc_point_transactions WHERE competitor_id=:t AND dance_role IN(:tr,'both')) history");$historyStmt->execute(['p'=>$competitorId,'pr'=>$danceRole,'t'=>$competitorId,'tr'=>$danceRole]);$history=$historyStmt->fetch()?:[];if(!empty($history['competed_advanced'])||!empty($history['competed_all_star']))return'advanced';if(!empty($history['competed_intermediate']))return'intermediate';$effective=DivisionProgressionService::effectiveDivision((float)($points['novice_points']??0),(float)($points['intermediate_points']??0),(float)($points['advanced_points']??0),(string)($competitor['current_division']??'unknown'),!empty($competitor['novice_manual_out']),!empty($competitor['intermediate_manual_out']));if($effective==='advanced'||$effective==='all_star')return'advanced';if($effective==='intermediate')return'intermediate';return'novice';}
+ public static function provisionalDivision():string{return'novice';}
+ public static function ensureSchema(PDO $pdo):void{$special="'novice','intermediate','advanced','all_star','bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'";$specialUnknown="'novice','intermediate','advanced','all_star','bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open','unknown'";foreach(["ALTER TABLE bdc_scoring_rounds MODIFY division ENUM($special) NOT NULL","ALTER TABLE bdc_registration_desk_links MODIFY division ENUM($special) NOT NULL","ALTER TABLE bdc_registration_desk_activity MODIFY division ENUM($special) NOT NULL","ALTER TABLE bdc_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'","ALTER TABLE bdc_participant_results MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'","ALTER TABLE bdc_test_scoring_rounds MODIFY division ENUM($special) NOT NULL","ALTER TABLE bdc_test_scoring_publications MODIFY division ENUM($specialUnknown) NOT NULL DEFAULT 'unknown'"] as $sql){try{$pdo->exec($sql);}catch(\Throwable $e){}}}
 }
