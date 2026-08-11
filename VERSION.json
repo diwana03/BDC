@@ -1,18 +1,16 @@
 {
-  "version": "2.3.3-dev122",
-  "build": 2452,
+  "version": "2.3.3-dev123",
+  "build": 2453,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds an Archived Events library accessible directly from the main Admin Dashboard and sidebar",
-    "Archived Events lists event date, status, scoring-round count, registration count, archive time and archive administrator",
-    "Open lets admins access the preserved event and ticket record without restoring it to active operations",
-    "Restore Event removes only the archive marker and returns the event to active operational workflows without recreating or modifying historical data",
-    "Adds Open Archived Events and View Archived Events links beside the existing dashboard Archive Event workflow",
-    "Keeps archive and restore protected by authenticated admin access, CSRF validation and confirmation",
-    "Preserves registrations, competitors, scoring data, results and points throughout archive and restore",
+    "Restores the complete Admin Dashboard sidebar after the Archived Events addition",
+    "Restores Scoring Tests Dashboard, Storage Usage and the Super Admin section with Smart Result Import, Legacy & Bulk Import, Merge Duplicates, Users & Roles and SQL Console",
+    "Keeps Archived Events as an additional sidebar item without replacing any existing administration tools",
+    "Restores Pending Competition Publication Approvals, Pending Point Adjustments, Recent Registrations, System Overview and Recent Activity dashboard panels that were unintentionally dropped during the previous dashboard rewrite",
+    "Keeps Archive Event, Open Archived Events and Restore Event functionality from dev121 and dev122",
     "No Staging or Production deployment performed"
   ]
 }
