@@ -28,10 +28,11 @@ final class MigrationRunner
     public function run(): array
     {
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS bdc_schema_migrations(
-            version VARCHAR(50) PRIMARY KEY,
+            version VARCHAR(191) PRIMARY KEY,
             checksum CHAR(64) NOT NULL,
             applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $this->ensureMigrationVersionCapacity();
 
         $applied = $this->pdo->query('SELECT version,checksum FROM bdc_schema_migrations')->fetchAll(PDO::FETCH_KEY_PAIR);
         $files = glob(rtrim($this->directory, '/') . '/*.php') ?: [];
@@ -40,6 +41,9 @@ final class MigrationRunner
 
         foreach ($files as $file) {
             $version = basename($file, '.php');
+            if (strlen($version) > 191) {
+                throw new RuntimeException("Migration {$version} exceeds the supported identifier length.");
+            }
             $definition = require $file;
             $migration = $definition;
             $dependencies = [];
@@ -78,6 +82,32 @@ final class MigrationRunner
             $completed[] = $version;
         }
         return $completed;
+    }
+
+    private function ensureMigrationVersionCapacity(): void
+    {
+        $stmt = $this->pdo->query("SELECT CHARACTER_MAXIMUM_LENGTH
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE()
+              AND TABLE_NAME='bdc_schema_migrations'
+              AND COLUMN_NAME='version'
+            LIMIT 1");
+        $length = (int)($stmt->fetchColumn() ?: 0);
+        if ($length >= 191) {
+            return;
+        }
+        if ($length < 1) {
+            throw new RuntimeException('Cannot determine bdc_schema_migrations.version capacity.');
+        }
+
+        /*
+         * Older BDC databases created this key as VARCHAR(50). Newer migration
+         * filenames are longer than that, so MySQL silently/traditionally stored
+         * a truncated identifier on some installations. Expand the key before
+         * discovering or recording any new migration. Existing rows are retained
+         * exactly as stored; no Production migration history is deleted.
+         */
+        $this->pdo->exec('ALTER TABLE bdc_schema_migrations MODIFY version VARCHAR(191) NOT NULL');
     }
 
     private function isCompatibleAppliedChecksum(string $version, string $storedChecksum, string $currentChecksum): bool
