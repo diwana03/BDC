@@ -42,4 +42,6 @@ $stats['documents']=(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_documents 
 $pendingCompetitionApprovals=$pdo->query("SELECT p.final_round_id,p.division,p.submitted_at,e.name event_name,e.event_date FROM bdc_scoring_publications p JOIN bdc_events e ON e.id=p.event_id WHERE p.status='pending_approval' ORDER BY p.submitted_at")->fetchAll();
 $pendingPointAdjustments=[];
 try{$pendingPointAdjustments=$pdo->query("SELECT r.id,r.additional_points,r.requested_at,c.exact_name,e.name event_name,r.division,r.dance_role,u.full_name requester_name FROM bdc_point_adjustment_requests r JOIN bdc_competitors c ON c.id=r.competitor_id JOIN bdc_events e ON e.id=r.event_id JOIN bdc_users u ON u.id=r.requested_by WHERE r.status='pending' ORDER BY r.requested_at")->fetchAll();}catch(Throwable $e){}
+$activeArchiveEvents=[];
+try{$activeArchiveEvents=$pdo->query("SELECT e.id,e.name,e.event_date,e.status,COUNT(r.id) scoring_rounds FROM bdc_events e LEFT JOIN bdc_scoring_rounds r ON r.event_id=e.id LEFT JOIN bdc_scoring_event_archives a ON a.event_id=e.id WHERE a.event_id IS NULL GROUP BY e.id,e.name,e.event_date,e.status ORDER BY COALESCE(e.event_date,'9999-12-31') DESC,e.id DESC")->fetchAll();}catch(Throwable $e){}
 require dirname(__DIR__) . '/app/Views/admin/dashboard.php';
