@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev117",
-  "build": 2447,
+  "version": "2.3.3-dev118",
+  "build": 2448,
   "status": "development",
-  "release_date": "2026-08-11",
+  "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds post-deployment Production target verification in the deployment worker",
-    "A Production job can no longer remain successful unless the configured Production path reports the exact deployed commit SHA and production environment",
-    "False-success deployments are changed to failed and the release is returned to approved so it can be retried after the target-path issue is corrected",
-    "Successful Production jobs now record a PRODUCTION_TARGET_VERIFIED marker with version, commit SHA and configured Production path",
-    "Keeps the existing DeploymentPipelineService implementation unchanged after restoring the previous known-good version",
+    "Adds concise safe diagnostics to bin/migrate.php so Release Manager records the real PHP or database migration failure instead of only exit 255",
+    "Migration failures now report exception class, message, file, line, PHP version and application root without logging passwords or connection strings",
+    "Keeps diagnostic output short enough to be preserved by the deployment pipeline failure summary",
+    "Keeps Production automatic rollback behavior unchanged when migrations fail",
+    "Leaves DeploymentPipelineService.php untouched",
     "No Staging or Production deployment performed"
   ]
 }
