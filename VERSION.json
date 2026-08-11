@@ -1,17 +1,18 @@
 {
-  "version": "2.3.3-dev119",
-  "build": 2449,
+  "version": "2.3.3-dev120",
+  "build": 2450,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Production migration tracking for legacy bdc_schema_migrations tables whose version primary key was limited to VARCHAR(50)",
-    "Expands bdc_schema_migrations.version to VARCHAR(191) before migration discovery so long migration filenames are no longer truncated into duplicate primary keys",
-    "New installations now create the migration version key at VARCHAR(191)",
-    "Preserves all existing migration history rows and does not delete or manually rewrite Production migration records",
-    "Rejects future migration identifiers longer than the supported 191 characters",
-    "Keeps Production automatic backup, migration diagnostics, health verification and rollback behavior unchanged",
+    "Restores Archive Event on the Scoring Dashboard Saved Rounds table",
+    "Archive Event hides all scoring rounds for the selected event from the active dashboard while preserving the event, competitors, scores and result history",
+    "Adds a dedicated scoring archive registry instead of changing the main event status or deleting scoring data",
+    "Archive Event requires authenticated admin access, CSRF validation and confirmation before applying",
+    "Archived events remain preserved in the database and can still support historical result access",
+    "Keeps Open and Delete All Test Scoring actions unchanged",
+    "Includes the dev119 legacy migration-version capacity fix",
     "No Staging or Production deployment performed"
   ]
 }
