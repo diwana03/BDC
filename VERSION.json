@@ -1,15 +1,16 @@
 {
-  "version": "2.3.3-dev116",
-  "build": 2446,
+  "version": "2.3.3-dev117",
+  "build": 2447,
   "status": "development",
   "release_date": "2026-08-11",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds deployed version, build, commit SHA and environment metadata to health.php for release verification",
-    "Preserves no-store health responses so release checks cannot be satisfied by a cached old portal response",
-    "Prepares the current develop release for controlled promotion to the production source branch",
-    "Keeps configuration files excluded from repository deployment and does not deploy Production automatically",
-    "No Production server deployment performed"
+    "Adds post-deployment Production target verification in the deployment worker",
+    "A Production job can no longer remain successful unless the configured Production path reports the exact deployed commit SHA and production environment",
+    "False-success deployments are changed to failed and the release is returned to approved so it can be retried after the target-path issue is corrected",
+    "Successful Production jobs now record a PRODUCTION_TARGET_VERIFIED marker with version, commit SHA and configured Production path",
+    "Keeps the existing DeploymentPipelineService implementation unchanged after restoring the previous known-good version",
+    "No Staging or Production deployment performed"
   ]
 }
