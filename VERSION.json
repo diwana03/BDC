@@ -1,17 +1,21 @@
 {
-  "version": "2.3.3-dev125",
-  "build": 2455,
+  "version": "2.3.3-dev126",
+  "build": 2456,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Introduces the database foundation for independent Bachata and Salsa competition ledgers while retaining one shared BDC competitor ID",
-    "Existing point transactions, participant results and scoring rounds default safely to Bachata so historical Bachata data is preserved",
-    "Adds dance_style to point transactions, participant results and scoring rounds with indexes for discipline-isolated queries",
-    "Creates the initial BDC Dance Cup placement-results table with optional BDC competitor linkage, flexible category name and no BDC points allocation",
-    "Keeps Salsa and Bachata progression/scoring rules available to share one engine while allowing their points to remain completely separate",
-    "Does not yet switch public leaderboard, results, competitor profile or scoring UI to the new tabs; those surfaces require discipline-aware query updates before activation",
+    "Adds Bachata, Salsa and BDC Dance Cup tabs to the public Leaderboard with Bachata as the default",
+    "Keeps Bachata and Salsa leaderboard points completely isolated by dance_style while reusing the existing Novice, Intermediate and Advanced progression rules",
+    "Adds BDC Dance Cup placement-only leaderboard/results views with no BDC points allocation",
+    "Adds Bachata, Salsa and BDC Dance Cup tabs to public Results and Competitor Career Profile pages",
+    "Removes mixed career-point presentation from competitor profiles and shows discipline-specific points and histories instead",
+    "Adds competition type and dance style selection to New Registration and Update Profile while preserving one shared BDC ID",
+    "Adds bdc_competitor_discipline_profiles so Bachata and Salsa can store independent role and division data under the same competitor identity",
+    "Backfills existing competitor competition profiles as Bachata only and does not invent Salsa history",
+    "Updates admin Profile Requests to display and approve Jack & Jill discipline selections without allowing Salsa updates to overwrite Bachata profile fields",
+    "Keeps the homepage Career Points Leaders Bachata-only by default so future Salsa points cannot silently mix into the established leaderboard",
     "No manual Staging or Production deployment performed; automatic deployment status must be verified separately"
   ]
 }
