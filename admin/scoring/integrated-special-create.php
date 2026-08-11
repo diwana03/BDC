@@ -1,117 +1,15 @@
 <?php
 declare(strict_types=1);
-
 require dirname(__DIR__,2).'/bootstrap.php';
-
-use App\Core\Auth;
-use App\Core\Csrf;
-use App\Core\Database;
-use App\Services\SpecialCategoryService;
-
-Auth::requireAdmin();
-$pdo=Database::connection();
-SpecialCategoryService::ensureSchema($pdo);
-$userId=(int)(Auth::user()['id']??0);
-
-if($_SERVER['REQUEST_METHOD']!=='POST'){
-    header('Location: ./');
-    exit;
-}
-if(!Csrf::verify($_POST['_csrf']??null)){
-    throw new RuntimeException('Invalid security token.');
-}
-
-$category=(string)($_POST['division']??'');
-if(!SpecialCategoryService::isSpecial($category)){
-    throw new RuntimeException('Invalid special category.');
-}
-
-$scoringMode=(string)($_POST['scoring_mode']??'manual');
-if(!in_array($scoringMode,['manual','automated'],true))$scoringMode='manual';
-$roundType=(string)($_POST['round_type']??'heats');
-if(!in_array($roundType,['heats','final'],true))throw new RuntimeException('Invalid round type.');
-
-$eventId=(int)($_POST['event_id']??0);
-$newEventName=trim((string)($_POST['new_event_name']??''));
-$newEventDate=trim((string)($_POST['new_event_date']??''));
-
-if($eventId>0&&$newEventName!==''){
-    throw new RuntimeException('Select an existing event or create a new event, not both.');
-}
-
-if($eventId<1){
-    if($newEventName==='')throw new RuntimeException('Select an existing event or enter a new event name.');
-    if($newEventDate!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}$/',$newEventDate)){
-        throw new RuntimeException('Enter the event date as YYYY-MM-DD.');
-    }
-    $baseSlug=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$newEventName),'-'))?:'event';
-    $slug=$baseSlug;$n=2;
-    $check=$pdo->prepare('SELECT COUNT(*) FROM bdc_events WHERE slug=:slug');
-    while(true){
-        $check->execute(['slug'=>$slug]);
-        if(!(int)$check->fetchColumn())break;
-        $slug=$baseSlug.'-'.$n++;
-    }
-    $insertEvent=$pdo->prepare("INSERT INTO bdc_events(name,normalised_name,slug,event_date,status) VALUES(:name,:normalised,:slug,NULLIF(:event_date,''),'draft')");
-    $insertEvent->execute([
-        'name'=>$newEventName,
-        'normalised'=>strtolower($newEventName),
-        'slug'=>$slug,
-        'event_date'=>$newEventDate,
-    ]);
-    $eventId=(int)$pdo->lastInsertId();
-}
-
-$existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:event AND division=:division AND round_type=:round_type AND scoring_mode=:mode AND status<>'archived' ORDER BY id DESC LIMIT 1");
-$existing->execute([
-    'event'=>$eventId,
-    'division'=>$category,
-    'round_type'=>$roundType,
-    'mode'=>$scoringMode,
-]);
-$roundId=(int)$existing->fetchColumn();
-
-if($roundId<1){
-    $insertRound=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:event,:round_type,:mode,:division,10,10,10.00,4.50,4.30,4.20,:user)");
-    $insertRound->execute([
-        'event'=>$eventId,
-        'round_type'=>$roundType,
-        'mode'=>$scoringMode,
-        'division'=>$category,
-        'user'=>$userId?:null,
-    ]);
-    $roundId=(int)$pdo->lastInsertId();
-
-    $audit=$pdo->prepare('INSERT INTO bdc_scoring_audit(round_id,user_id,action,details_json) VALUES(:round,:user,:action,:details)');
-    $audit->execute([
-        'round'=>$roundId,
-        'user'=>$userId?:null,
-        'action'=>'round_created',
-        'details'=>json_encode([
-            'round_type'=>$roundType,
-            'scoring_mode'=>$scoringMode,
-            'special_category'=>$category,
-            'fixed_points'=>SpecialCategoryService::schedule($category),
-            'new_event'=>$newEventName!=='',
-        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),
-    ]);
-}
-
-/* Use the same secure Registration Desk identity model and BDC ID sequence. */
-$link=$pdo->prepare('SELECT id FROM bdc_registration_desk_links WHERE event_id=:event AND division=:division LIMIT 1');
-$link->execute(['event'=>$eventId,'division'=>$category]);
-if(!(int)$link->fetchColumn()){
-    $token=bin2hex(random_bytes(24));
-    $createLink=$pdo->prepare('INSERT INTO bdc_registration_desk_links(event_id,division,token_hash,token_hint,created_by) VALUES(:event,:division,:hash,:hint,:user)');
-    $createLink->execute([
-        'event'=>$eventId,
-        'division'=>$category,
-        'hash'=>hash('sha256',$token),
-        'hint'=>substr($token,0,8),
-        'user'=>$userId?:null,
-    ]);
-    $_SESSION['registration_desk_tokens'][(int)$pdo->lastInsertId()]=$token;
-}
-
-header('Location: ?mode='.rawurlencode($scoringMode).'&round_id='.$roundId);
-exit;
+use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\SpecialCategoryService;
+Auth::requireAdmin();$pdo=Database::connection();SpecialCategoryService::ensureSchema($pdo);$userId=(int)(Auth::user()['id']??0);
+if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: ./');exit;}if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
+$category=(string)($_POST['division']??'');if(!SpecialCategoryService::isSpecial($category))throw new RuntimeException('Invalid special category.');
+$danceStyle=(string)($_POST['dance_style']??'bachata');if($danceStyle!=='bachata')throw new RuntimeException('Bachata Rising, Bachata Open and Bachata Invitational are available only for Bachata.');
+$scoringMode=(string)($_POST['scoring_mode']??'manual');if(!in_array($scoringMode,['manual','automated'],true))$scoringMode='manual';$roundType=(string)($_POST['round_type']??'heats');if(!in_array($roundType,['heats','final'],true))throw new RuntimeException('Invalid round type.');
+$eventId=(int)($_POST['event_id']??0);$newEventName=trim((string)($_POST['new_event_name']??''));$newEventDate=trim((string)($_POST['new_event_date']??''));if($eventId>0&&$newEventName!=='')throw new RuntimeException('Select an existing event or create a new event, not both.');
+if($eventId<1){if($newEventName==='')throw new RuntimeException('Select an existing event or enter a new event name.');if($newEventDate!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}$/',$newEventDate))throw new RuntimeException('Enter the event date as YYYY-MM-DD.');$baseSlug=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$newEventName),'-'))?:'event';$slug=$baseSlug;$n=2;$check=$pdo->prepare('SELECT COUNT(*) FROM bdc_events WHERE slug=:slug');while(true){$check->execute(['slug'=>$slug]);if(!(int)$check->fetchColumn())break;$slug=$baseSlug.'-'.$n++;}$insertEvent=$pdo->prepare("INSERT INTO bdc_events(name,normalised_name,slug,event_date,status) VALUES(:name,:normalised,:slug,NULLIF(:event_date,''),'draft')");$insertEvent->execute(['name'=>$newEventName,'normalised'=>strtolower($newEventName),'slug'=>$slug,'event_date'=>$newEventDate]);$eventId=(int)$pdo->lastInsertId();}
+$existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:event AND dance_style='bachata' AND division=:division AND round_type=:round_type AND scoring_mode=:mode AND status<>'archived' ORDER BY id DESC LIMIT 1");$existing->execute(['event'=>$eventId,'division'=>$category,'round_type'=>$roundType,'mode'=>$scoringMode]);$roundId=(int)$existing->fetchColumn();
+if($roundId<1){$insertRound=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,dance_style,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:event,'bachata',:round_type,:mode,:division,10,10,10.00,4.50,4.30,4.20,:user)");$insertRound->execute(['event'=>$eventId,'round_type'=>$roundType,'mode'=>$scoringMode,'division'=>$category,'user'=>$userId?:null]);$roundId=(int)$pdo->lastInsertId();$audit=$pdo->prepare('INSERT INTO bdc_scoring_audit(round_id,user_id,action,details_json) VALUES(:round,:user,:action,:details)');$audit->execute(['round'=>$roundId,'user'=>$userId?:null,'action'=>'round_created','details'=>json_encode(['dance_style'=>'bachata','round_type'=>$roundType,'scoring_mode'=>$scoringMode,'special_category'=>$category,'fixed_points'=>SpecialCategoryService::schedule($category),'new_event'=>$newEventName!==''],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);}
+$link=$pdo->prepare("SELECT id FROM bdc_registration_desk_links WHERE event_id=:event AND dance_style='bachata' AND division=:division LIMIT 1");$link->execute(['event'=>$eventId,'division'=>$category]);if(!(int)$link->fetchColumn()){$token=bin2hex(random_bytes(24));$createLink=$pdo->prepare("INSERT INTO bdc_registration_desk_links(event_id,dance_style,division,token_hash,token_hint,created_by) VALUES(:event,'bachata',:division,:hash,:hint,:user)");$createLink->execute(['event'=>$eventId,'division'=>$category,'hash'=>hash('sha256',$token),'hint'=>substr($token,0,8),'user'=>$userId?:null]);$_SESSION['registration_desk_tokens'][(int)$pdo->lastInsertId()]=$token;}
+header('Location: ?mode='.rawurlencode($scoringMode).'&round_id='.$roundId);exit;
