@@ -1,18 +1,17 @@
 {
-  "version": "2.3.3-dev124",
-  "build": 2454,
+  "version": "2.3.3-dev125",
+  "build": 2455,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Enforces event lifecycle rules: completed events cannot be deleted and may only be archived",
-    "Archive Event is available only for events whose status is Completed, with server-side enforcement preventing bypass",
-    "Draft, Published and Cancelled non-completed events expose a permanent Delete action for test, duplicate or unwanted events",
-    "Completed events expose Archive instead of Delete in Events & Tickets",
-    "Archived events are removed from the active Events & Tickets list and remain accessible through Archived Events with Open and Restore actions",
-    "Delete and Archive actions require authenticated permissions, CSRF validation and explicit confirmation",
-    "Completed-event delete protection is enforced server-side even if a delete request is submitted manually",
+    "Introduces the database foundation for independent Bachata and Salsa competition ledgers while retaining one shared BDC competitor ID",
+    "Existing point transactions, participant results and scoring rounds default safely to Bachata so historical Bachata data is preserved",
+    "Adds dance_style to point transactions, participant results and scoring rounds with indexes for discipline-isolated queries",
+    "Creates the initial BDC Dance Cup placement-results table with optional BDC competitor linkage, flexible category name and no BDC points allocation",
+    "Keeps Salsa and Bachata progression/scoring rules available to share one engine while allowing their points to remain completely separate",
+    "Does not yet switch public leaderboard, results, competitor profile or scoring UI to the new tabs; those surfaces require discipline-aware query updates before activation",
     "No manual Staging or Production deployment performed; automatic deployment status must be verified separately"
   ]
 }
