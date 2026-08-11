@@ -1,16 +1,18 @@
 {
-  "version": "2.3.3-dev123",
-  "build": 2453,
+  "version": "2.3.3-dev124",
+  "build": 2454,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores the complete Admin Dashboard sidebar after the Archived Events addition",
-    "Restores Scoring Tests Dashboard, Storage Usage and the Super Admin section with Smart Result Import, Legacy & Bulk Import, Merge Duplicates, Users & Roles and SQL Console",
-    "Keeps Archived Events as an additional sidebar item without replacing any existing administration tools",
-    "Restores Pending Competition Publication Approvals, Pending Point Adjustments, Recent Registrations, System Overview and Recent Activity dashboard panels that were unintentionally dropped during the previous dashboard rewrite",
-    "Keeps Archive Event, Open Archived Events and Restore Event functionality from dev121 and dev122",
-    "No Staging or Production deployment performed"
+    "Enforces event lifecycle rules: completed events cannot be deleted and may only be archived",
+    "Archive Event is available only for events whose status is Completed, with server-side enforcement preventing bypass",
+    "Draft, Published and Cancelled non-completed events expose a permanent Delete action for test, duplicate or unwanted events",
+    "Completed events expose Archive instead of Delete in Events & Tickets",
+    "Archived events are removed from the active Events & Tickets list and remain accessible through Archived Events with Open and Restore actions",
+    "Delete and Archive actions require authenticated permissions, CSRF validation and explicit confirmation",
+    "Completed-event delete protection is enforced server-side even if a delete request is submitted manually",
+    "No manual Staging or Production deployment performed; automatic deployment status must be verified separately"
   ]
 }
