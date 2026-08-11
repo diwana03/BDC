@@ -1,16 +1,17 @@
 {
-  "version": "2.3.3-dev118",
-  "build": 2448,
+  "version": "2.3.3-dev119",
+  "build": 2449,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds concise safe diagnostics to bin/migrate.php so Release Manager records the real PHP or database migration failure instead of only exit 255",
-    "Migration failures now report exception class, message, file, line, PHP version and application root without logging passwords or connection strings",
-    "Keeps diagnostic output short enough to be preserved by the deployment pipeline failure summary",
-    "Keeps Production automatic rollback behavior unchanged when migrations fail",
-    "Leaves DeploymentPipelineService.php untouched",
+    "Fixes Production migration tracking for legacy bdc_schema_migrations tables whose version primary key was limited to VARCHAR(50)",
+    "Expands bdc_schema_migrations.version to VARCHAR(191) before migration discovery so long migration filenames are no longer truncated into duplicate primary keys",
+    "New installations now create the migration version key at VARCHAR(191)",
+    "Preserves all existing migration history rows and does not delete or manually rewrite Production migration records",
+    "Rejects future migration identifiers longer than the supported 191 characters",
+    "Keeps Production automatic backup, migration diagnostics, health verification and rollback behavior unchanged",
     "No Staging or Production deployment performed"
   ]
 }
