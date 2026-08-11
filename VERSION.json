@@ -1,16 +1,15 @@
 {
-  "version": "2.3.3-dev115",
-  "build": 2445,
+  "version": "2.3.3-dev116",
+  "build": 2446,
   "status": "development",
-  "release_date": "2026-08-10",
+  "release_date": "2026-08-11",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Removes the separate mobile Open Projector Controls navigation that produced a blank black page on the reported iPhone workflow",
-    "Mobile now remains on the authenticated Live Screen Projector page and loads the selected round control directly below the selectors",
-    "Restores one consistent embedded control route for desktop and mobile while giving the mobile iframe a large touch and scroll area",
-    "Automatically scrolls mobile operators to the control area after selecting a round",
-    "Keeps Event, Category, Round, projector session, remote feed, scoring and results logic unchanged",
-    "No Staging or Production deployment performed"
+    "Adds deployed version, build, commit SHA and environment metadata to health.php for release verification",
+    "Preserves no-store health responses so release checks cannot be satisfied by a cached old portal response",
+    "Prepares the current develop release for controlled promotion to the production source branch",
+    "Keeps configuration files excluded from repository deployment and does not deploy Production automatically",
+    "No Production server deployment performed"
   ]
 }
