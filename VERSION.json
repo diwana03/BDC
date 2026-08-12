@@ -1,20 +1,17 @@
 {
-  "version": "2.3.3-dev139",
-  "build": 2469,
+  "version": "2.3.3-dev140",
+  "build": 2470,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a continuously refreshing Competitor Scoring Matrix to Live Automated Scoring and the Test Automated Simulator",
-    "Heats matrix shows every competitor against every judge with YES, A1, A2, A3 or blank plus the current accumulated weighted score",
-    "Live Heats rows auto-sort provisionally from highest current score to lowest while judges are scoring",
-    "Adds manual sort controls for Score High to Low, Score Low to High, Bib Number, Name and Original Order",
-    "Adds an Auto Sort control so administrators can freeze row order while live scores continue updating",
-    "Judge Progress and Competitor Scoring Progress update independently through no-cache polling",
-    "Final matrix shows each confirmed couple and the rank entered by every judge; official Final ordering remains dependent on Relative Placement rather than raw rank totals",
-    "Adds Admin Reopen control for submitted Live Automated judge sessions with a mandatory reason while preserving existing marks for correction and resubmission",
-    "Test Automated Scoring receives the same live competitor matrix and sorting behavior while retaining one-click judge score generation",
-    "Live scoring remains read-only from the Admin matrix; only judges enter marks through their secure judge links"
+    "Integrates the continuously refreshing Competitor Scoring Progress matrix into the main Test Automated Scoring workflow",
+    "Adds Generate and Submit All Judges to create valid panel-aware marks and complete every Test judge session atomically",
+    "Generated Test judges now finish as Submitted with 100 percent progress and submission timestamps",
+    "Heats generation respects Leader, Follower and Chief Judge panel scopes plus configured YES and alternate weights",
+    "Final generation assigns each confirmed couple a unique rank for every judge before submission",
+    "Adds reusable Test judge submit-by-round and all-submitted lifecycle checks",
+    "Keeps official Live scoring calculations unchanged while repairing the isolated Test workflow"
   ]
 }
