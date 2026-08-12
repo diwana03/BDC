@@ -55,7 +55,8 @@ foreach($markStmt->fetchAll() as $mark)$marks[(int)$mark['pair_id']][(int)$mark[
 $logo=url('public/assets/img/bdc-logo-header.png');
 $pairCount=count($pairs);
 $judgeCount=count($judges);
-$largeJudgePanel=$judgeCount>15;
+$fitAll=(string)($_GET['layout']??'')==='fit';
+$largeJudgePanel=$judgeCount>15&&!$fitAll;
 $majority=(int)floor($judgeCount/2)+1;
 $witnesses=[
  trim((string)($round['witness_1']??'')),
@@ -109,7 +110,7 @@ foreach($judges as $judge){
 <meta charset="utf-8">
 <title><?=e($round['event_name'])?> · Final · <?=e($reportStatus)?></title>
 <style>
-@page{size:A4 landscape;margin:7mm}
+@page{size:<?=$fitAll?'A3 landscape':'A4 landscape'?>;margin:7mm}
 *{box-sizing:border-box}
 body{margin:0;background:#eef1f4;color:#171717;font-family:Arial,Helvetica,sans-serif}
 .toolbar{position:sticky;top:0;z-index:5;padding:10px;background:#fff;border-bottom:1px solid #ccc;text-align:right}
@@ -148,11 +149,12 @@ th{background:#eef1f4}
 .signature-box h3{margin:0 0 4mm;font-size:10pt}
 .signature-line{display:inline-block;min-width:52mm;margin:0 4mm 5mm 0;border-bottom:1px solid #111;padding-bottom:1mm;font-size:8.5pt}
 .footer{display:flex;justify-content:space-between;margin-top:4mm;padding-top:2mm;border-top:1px solid #cfd4da;font-size:8pt}
+.fit-all .page{width:max-content;min-width:400mm}.fit-all .judge-ranking-table{font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-all .judge-ranking-table th,.fit-all .judge-ranking-table td{min-width:9mm;padding:.8mm .5mm}.fit-all .judge-ranking-table .name-cell{min-width:48mm;width:auto}
 @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:0;margin:0;padding:0}}
 </style>
 </head>
-<body>
-<div class="toolbar"><?php if($largeJudgePanel):?><a href="final-audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Final Judge Audit</a><?php endif;?><button onclick="window.print()">Print / Save as PDF</button></div>
+<body class="<?=$fitAll?'fit-all':''?>">
+<div class="toolbar"><?php if($largeJudgePanel):?><a href="final-audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Final Judge Audit</a><?php endif;?><a href="?round_id=<?=$roundId?>" style="margin-right:10px">Readable Pages</a><a href="?round_id=<?=$roundId?>&amp;layout=fit" style="margin-right:10px">Landscape, All Judges</a><button onclick="window.print()">Print / Save as PDF</button></div>
 <section class="page">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">

@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev147",
-  "build": 2477,
+  "version": "2.3.3-dev148",
+  "build": 2478,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Splits the Automatic Testing scoring matrix into Leader and Follower panels",
-    "Adds independent horizontal and vertical scrolling to each role panel",
-    "Keeps Provisional and Competitor columns visible while scrolling through judges",
-    "Maintains independent provisional rankings starting from 1 for each role",
-    "Stacks role panels on smaller screens for responsive use",
-    "Preserves the single fixed-couple matrix for Final rounds"
+    "Adds Readable Pages and Landscape, All Judges print-preview modes",
+    "Supports landscape all-judge previews for Heats, Semifinal, and Final rounds",
+    "Applies the same print-preview choices to Testing and Live dashboards",
+    "Supports both Manual and Automatic scoring workflows through shared result previews",
+    "Keeps Leader and Follower result trails on separate landscape pages",
+    "Removes the duplicate Automatic Testing callback destination panel"
   ]
 }
