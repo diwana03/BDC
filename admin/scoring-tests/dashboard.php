@@ -131,6 +131,8 @@ $html=str_replace('Scoring Tests Dashboard</h1>','Scoring Tests Dashboard'.$badg
 $roundId=(int)($roundId??0);
 $currentDivision=(string)($round['division']??'');
 $currentYes=(int)($round['yes_count']??10);
+$currentYesLocked=(int)($round['tier_manual_override']??0)===1;
+$currentScoringStarted=false;if($roundId>0){$startedStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_marks WHERE round_id=:r AND (mark_type<>'blank' OR weighted_score>0)");$startedStmt->execute(['r'=>$roundId]);$currentScoringStarted=(int)$startedStmt->fetchColumn()>0;}
 $endpoint=url('admin/scoring-tests/automatic-inline.php?round_id='.$roundId.'&test_mode='.$mode);
 $actionEndpoint=url('admin/scoring-tests/automatic-inline.php');
 $csrf=Csrf::token();
@@ -152,6 +154,8 @@ $actionJson=json_encode($actionEndpoint,JSON_UNESCAPED_SLASHES);
 $csrfJson=json_encode($csrf,JSON_UNESCAPED_SLASHES);
 $judgeListJson=json_encode($judgeList,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 $currentDivisionJson=json_encode($currentDivision,JSON_UNESCAPED_SLASHES);
+$currentYesLockedJson=json_encode($currentYesLocked);
+$currentScoringStartedJson=json_encode($currentScoringStarted);
 $specialCategoriesJson=json_encode($specialCategories,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 $specialSchedulesJson=json_encode($specialSchedules,JSON_UNESCAPED_SLASHES);
 
@@ -166,6 +170,8 @@ $enhancement=<<<HTML
   const judgeList=$judgeListJson;
   const currentDivision=$currentDivisionJson;
   const currentYes=$currentYes;
+  const currentYesLocked=$currentYesLockedJson;
+  const currentScoringStarted=$currentScoringStartedJson;
   const specialCategories=$specialCategoriesJson;
   const specialSchedules=$specialSchedulesJson;
 
@@ -205,8 +211,11 @@ $enhancement=<<<HTML
       const holder=tier.closest('.col-12')||tier.parentElement;
       if(holder)holder.style.display='none';
       if(settingsForm&&!settingsForm.querySelector('[data-special-settings]')){
+        settingsForm.action='special-settings.php';
+        settingsForm.querySelector('input[name="action"]')?.remove();
+        const oldButton=settingsForm.querySelector('button:not([type="button"])');if(oldButton)oldButton.remove();
         const block=document.createElement('div');block.className='col-12';block.dataset.specialSettings='1';
-        block.innerHTML='<div class="alert alert-info mb-3"><strong>'+specialCategories[currentDivision]+' fixed points:</strong> '+scheduleText(currentDivision)+'<br><span class="small">Participant-count point tiers are disabled. Heats scoring and callbacks still use the normal scoring engine.</span></div><label class="form-label">YES / Callbacks per role</label><input class="form-control" type="number" min="1" max="100" name="special_yes_count" value="'+currentYes+'"><div class="form-text">This controls the Heats callback count only. It does not change the fixed points schedule.</div>';
+        block.innerHTML='<div class="alert alert-info mb-3"><strong>'+specialCategories[currentDivision]+' fixed points:</strong> '+scheduleText(currentDivision)+'<br><span class="small">Participant-count point tiers are disabled.</span></div><label class="form-label">YES per Judge</label><input class="form-control" type="number" min="1" max="100" name="special_yes_count" value="'+currentYes+'" '+(currentYesLocked?'readonly':'')+'><div class="border rounded p-3 bg-light mt-3"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row text-center"><div class="col-4">ALT 1<br><strong>4.5</strong></div><div class="col-4">ALT 2<br><strong>4.3</strong></div><div class="col-4">ALT 3<br><strong>4.2</strong></div></div></div><div class="mt-3">'+(currentScoringStarted?'<span class="badge text-bg-secondary">Locked because judging has started</span>':(currentYesLocked?'<button class="btn btn-outline-warning btn-sm" name="action" value="special_settings_unlock">Unlock YES Count</button>':'<button class="btn btn-dark btn-sm" name="action" value="special_settings_lock">Save &amp; Lock YES Count</button>'))+'</div>';
         settingsForm.querySelector('.row')?.appendChild(block);
       }
     }

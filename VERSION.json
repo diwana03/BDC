@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev157",
-  "build": 2487,
+  "version": "2.3.3-dev158",
+  "build": 2488,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes the dashboard logo contrast and circular clipping",
-    "Displays the complete BDC logo on a clean white header tile",
-    "Adds checkbox selection for completed events",
-    "Adds Select All and a live selected-event count",
-    "Archives multiple selected events in one database transaction",
-    "Preserves backward compatibility with individual archive actions"
+    "Lets every Admin Scorer configure the special-category YES count",
+    "Adds Save and Lock plus pre-scoring Unlock controls",
+    "Keeps ALT 1, ALT 2 and ALT 3 weights permanently fixed",
+    "Blocks YES changes after judging has started",
+    "Applies the same controls to Testing and Live, Manual and Automatic scoring",
+    "Sorts archived events from latest event date to oldest"
   ]
 }
