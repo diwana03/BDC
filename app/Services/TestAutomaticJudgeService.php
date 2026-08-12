@@ -67,12 +67,27 @@ final class TestAutomaticJudgeService
 
     public static function generateAndSubmitAll(PDO $pdo,int $roundId):void
     {
+        self::generateAll($pdo,$roundId,true);
+    }
+
+    public static function generateAllDraft(PDO $pdo,int $roundId):void
+    {
+        self::generateAll($pdo,$roundId,false);
+    }
+
+    private static function generateAll(PDO $pdo,int $roundId,bool $submit):void
+    {
         $roundStmt=$pdo->prepare('SELECT * FROM bdc_test_scoring_rounds WHERE id=:round');$roundStmt->execute(['round'=>$roundId]);$round=$roundStmt->fetch();if(!$round)throw new RuntimeException('Test round not found.');
         $judges=self::judges($pdo,$roundId);if(count($judges)<3)throw new RuntimeException('Save at least 3 judges first.');
         foreach($judges as $judge){$judgeId=(int)$judge['id'];
             if((string)$round['round_type']==='final'){$q=$pdo->prepare("SELECT id FROM bdc_test_scoring_final_pairs WHERE round_id=:round AND pairing_status='confirmed' ORDER BY pair_number");$q->execute(['round'=>$roundId]);$pairs=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));if(!$pairs)throw new RuntimeException('Confirm Final pairing first.');$ranks=range(1,count($pairs));shuffle($ranks);$pdo->prepare('DELETE FROM bdc_test_scoring_final_marks WHERE round_id=:round AND judge_id=:judge')->execute(['round'=>$roundId,'judge'=>$judgeId]);$insert=$pdo->prepare('INSERT INTO bdc_test_scoring_final_marks(round_id,pair_id,judge_id,rank_value) VALUES(:round,:pair,:judge,:rank)');foreach($pairs as $i=>$pair)$insert->execute(['round'=>$roundId,'pair'=>$pair,'judge'=>$judgeId,'rank'=>$ranks[$i]]);
             }else{$pdo->prepare('DELETE FROM bdc_test_scoring_marks WHERE round_id=:round AND judge_id=:judge')->execute(['round'=>$roundId,'judge'=>$judgeId]);$insert=$pdo->prepare('INSERT INTO bdc_test_scoring_marks(round_id,entry_id,judge_id,mark_type,alt_rank,weighted_score) VALUES(:round,:entry,:judge,:type,:alt,:weight)');foreach(['leader','follower'] as $role){if(!in_array((string)$judge['scoring_scope'],['all',$role],true))continue;$q=$pdo->prepare("SELECT id FROM bdc_test_scoring_entries WHERE round_id=:round AND dance_role=:role AND entry_status='active' ORDER BY id");$q->execute(['round'=>$roundId,'role'=>$role]);$ids=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));shuffle($ids);$yes=min((int)$round['yes_count'],count($ids));for($i=0;$i<$yes;$i++)$insert->execute(['round'=>$roundId,'entry'=>$ids[$i],'judge'=>$judgeId,'type'=>'yes','alt'=>null,'weight'=>$round['yes_weight']]);$cursor=$yes;foreach([1=>'alt1_weight',2=>'alt2_weight',3=>'alt3_weight'] as $alt=>$weight)if(isset($ids[$cursor]))$insert->execute(['round'=>$roundId,'entry'=>$ids[$cursor++],'judge'=>$judgeId,'type'=>'alt','alt'=>$alt,'weight'=>$round[$weight]]);}}
-            self::submitJudge($pdo,$roundId,$judgeId);
+            if($submit){
+                self::submitJudge($pdo,$roundId,$judgeId);
+            }else{
+                $session=$pdo->prepare("UPDATE bdc_test_scoring_judge_sessions SET status='scoring',opened_at=COALESCE(opened_at,NOW()),last_saved_at=NOW(),submitted_at=NULL WHERE round_id=:round AND judge_id=:judge");
+                $session->execute(['round'=>$roundId,'judge'=>$judgeId]);
+            }
         }
     }
 
