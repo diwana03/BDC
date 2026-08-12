@@ -1,18 +1,20 @@
 {
-  "version": "2.3.3-dev138",
-  "build": 2468,
+  "version": "2.3.3-dev139",
+  "build": 2469,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Automated Scoring progress after judge submission in both Live and Test engines",
-    "Submitted judges now report 100 percent progress even when Blank selections are intentionally left on non-selected competitors",
-    "Heats progress now uses the configured YES quota plus available A1/A2/A3 selections rather than treating every competitor as requiring a mark",
-    "Final progress now tracks ranked confirmed couples correctly in the Test engine as well as Live scoring",
-    "Live Display scoring feed now receives a dynamic data version derived from judge sessions and score updates",
-    "The projector scoring screen automatically reloads when judge marks are saved or a judge submits, without requiring a manual projector control change",
-    "Live Display continues polling approximately every 700 ms with no-cache requests",
-    "Test and Live progress logic remain synchronized while Test retains its generator and simulator tools"
+    "Adds a continuously refreshing Competitor Scoring Matrix to Live Automated Scoring and the Test Automated Simulator",
+    "Heats matrix shows every competitor against every judge with YES, A1, A2, A3 or blank plus the current accumulated weighted score",
+    "Live Heats rows auto-sort provisionally from highest current score to lowest while judges are scoring",
+    "Adds manual sort controls for Score High to Low, Score Low to High, Bib Number, Name and Original Order",
+    "Adds an Auto Sort control so administrators can freeze row order while live scores continue updating",
+    "Judge Progress and Competitor Scoring Progress update independently through no-cache polling",
+    "Final matrix shows each confirmed couple and the rank entered by every judge; official Final ordering remains dependent on Relative Placement rather than raw rank totals",
+    "Adds Admin Reopen control for submitted Live Automated judge sessions with a mandatory reason while preserving existing marks for correction and resubmission",
+    "Test Automated Scoring receives the same live competitor matrix and sorting behavior while retaining one-click judge score generation",
+    "Live scoring remains read-only from the Admin matrix; only judges enter marks through their secure judge links"
   ]
 }
