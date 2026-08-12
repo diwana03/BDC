@@ -48,6 +48,8 @@
 .admin-v203.admin-env-production{--admin-accent:#0879bf;--admin-accent-dark:#005a91;--admin-accent-soft:#e9f5fb;--admin-shell:#2995d3;--admin-shell-deep:#147ebc;--admin-banner:#1f8dcc;--admin-banner-text:#fff;background:#f0f0f0;color:#252525}
 .admin-v203.admin-env-production .admin-environment-banner{background:#1f8dcc!important;color:#fff!important;border-bottom:1px solid #0d6fa9;box-shadow:none}
 .admin-v203.admin-env-production .admin-topbar-v203{background:#2d98d4;box-shadow:none;border-bottom:1px solid #137bb8}
+.admin-v203.admin-env-production .admin-topbar-logo-v203{width:62px;height:62px;border-radius:4px;background:#fff;border:1px solid rgba(0,72,115,.32);box-shadow:none}
+.admin-v203.admin-env-production .admin-topbar-logo-v203 img{width:56px!important;height:56px!important;max-width:56px!important;max-height:56px!important;object-fit:contain}
 .admin-v203.admin-env-production .admin-sidebar-v203{background:#fff;border-right:1px solid #c8c8c8;color:#333}
 .admin-v203.admin-env-production .admin-sidebar-v203 nav a{color:#333;border-radius:0}
 .admin-v203.admin-env-production .admin-sidebar-v203 nav a>span{color:#1686c4}

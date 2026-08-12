@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev156",
-  "build": 2486,
+  "version": "2.3.3-dev157",
+  "build": 2487,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Updates Production to the bright blue Unisphere-style console palette",
-    "Uses a bright blue header with white and light-grey work areas",
-    "Adds flat square enterprise panels and circular status treatments",
-    "Keeps Staging amber and public pages unchanged",
-    "Adds Bachata Invitational as the third Bachata Special Category",
-    "Keeps Rising Star, Open, and Invitational at the bottom of the menu"
+    "Fixes the dashboard logo contrast and circular clipping",
+    "Displays the complete BDC logo on a clean white header tile",
+    "Adds checkbox selection for completed events",
+    "Adds Select All and a live selected-event count",
+    "Archives multiple selected events in one database transaction",
+    "Preserves backward compatibility with individual archive actions"
   ]
 }
