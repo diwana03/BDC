@@ -1,19 +1,20 @@
 {
-  "version": "2.3.3-dev136",
-  "build": 2466,
+  "version": "2.3.3-dev137",
+  "build": 2467,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a Test Engine-only Automated Judge Simulator for rapid automated scoring diagnostics",
-    "Test Heats simulation generates exactly the configured YES count per judge and role plus unique A1, A2 and A3 selections where competitors are available",
-    "Test Final simulation generates a complete random ranking permutation for each judge with every rank used exactly once",
-    "Allows generating one test judge at a time or all test judges with one click",
-    "Adds a live diagnostic progress table showing each test judge scope and saved score progress, refreshing every five seconds",
-    "The simulator uses only bdc_test_* scoring tables and cannot write official BDC points, official participant results or live judge marks",
-    "No score-generator controls are added to live judge hyperlinks; real Automated Scoring judges must continue entering their own scores",
-    "Live Automated Scoring retains the YES-limit and unique A1/A2/A3 validation introduced in dev135",
-    "Establishes the development rule that future scoring logic changes should be mirrored in the Test Engine while Test retains additional generation/debug tooling"
+    "Synchronizes Test Automated Judge scoring limits with the live Automated Scoring rules",
+    "Test judge links now enforce the configured YES maximum separately for Leaders and Followers",
+    "Test judge links now enforce A1, A2 and A3 as unique selections, maximum once each per judge per role",
+    "Adds server-side validation so Test judge limits cannot be bypassed by manipulating the browser form",
+    "Adds browser-side immediate warnings when a test judge attempts an extra YES or duplicate A1/A2/A3",
+    "Test judge screen displays live role counters for YES, A1, A2 and A3 usage",
+    "Adds Generate Valid Random Scores directly to the Test judge hyperlink screen",
+    "Random Test judge generation produces exactly the configured YES count plus unique A1/A2/A3 where enough competitors exist",
+    "Submitting a Test judge sheet requires exactly the configured YES count for each role the judge is assigned to",
+    "All Test judge data remains isolated in bdc_test_* tables and cannot affect official BDC scoring or points"
   ]
 }
