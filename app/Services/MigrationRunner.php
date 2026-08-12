@@ -11,13 +11,14 @@ final class MigrationRunner
     /**
      * Migration 20260803_2200 historically checksummed the shared SchemaUpdater.
      * dev16 legitimately extended that updater, which changed the dependency hash
-     * for databases that had already applied the migration. Accept only the two
+     * for databases that had already applied the migration. Accept only exact
      * known release checksums; every other mismatch must still fail closed.
      */
     private const COMPATIBLE_APPLIED_CHECKSUMS = [
         '20260803_2200' => [
             'cfa863294a58e28726f9a778fddac0bfe7dc00a4b5a8005aaba337f632fd7d6e',
             '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
+            'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
         ],
     ];
 

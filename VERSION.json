@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev151",
-  "build": 2481,
+  "version": "2.3.3-dev152",
+  "build": 2482,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Groups Special Categories below the standard BDC divisions",
-    "Adds contestant-controlled profile photo positioning and zoom",
-    "Generates a consistent 600 by 600 profile image crop",
-    "Supports mouse, touch, and pen dragging in the photo editor",
-    "Validates and stores the adjusted JPEG safely on submission",
-    "Removes unnecessary explanatory comments from the public registration page"
+    "Allows the exact dev146 SchemaUpdater checksum for migration 20260803_2200",
+    "Preserves fail-closed validation for every unknown migration checksum",
+    "Unblocks Production promotion from the web Release Manager",
+    "Does not rewrite Production migration history",
+    "Retains the pre-deployment backup and automatic rollback safeguards",
+    "Includes the public registration and profile photo improvements from dev151"
   ]
 }
