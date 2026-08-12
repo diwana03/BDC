@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev152",
-  "build": 2482,
+  "version": "2.3.3-dev153",
+  "build": 2483,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Allows the exact dev146 SchemaUpdater checksum for migration 20260803_2200",
+    "Allows both legitimate repository checksums for migration 20260806_1700",
+    "Retains the exact checksum compatibility added for migration 20260803_2200",
     "Preserves fail-closed validation for every unknown migration checksum",
-    "Unblocks Production promotion from the web Release Manager",
-    "Does not rewrite Production migration history",
-    "Retains the pre-deployment backup and automatic rollback safeguards",
-    "Includes the public registration and profile photo improvements from dev151"
+    "Does not rewrite Production migration history or application data",
+    "Unblocks the next Production promotion attempt through Release Manager",
+    "Includes all scoring and registration improvements through dev152"
   ]
 }

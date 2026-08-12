@@ -20,6 +20,10 @@ final class MigrationRunner
             '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
             'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
         ],
+        '20260806_1700' => [
+            '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
+            'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
+        ],
     ];
 
     public function __construct(private PDO $pdo, private string $directory)
