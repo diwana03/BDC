@@ -43,6 +43,8 @@ foreach($entryStmt->fetchAll() as $entry)$entries[$entry['dance_role']][]=$entry
 $largestRoleCount=max(count($entries['leader']),count($entries['follower']));
 $pageSize=(!$summaryOnly && $judgeCount<=7 && $largestRoleCount<=20)?'A4 portrait':'A4 landscape';
 $singleColumn=$pageSize==='A4 portrait';
+$paginateReport=!$summaryOnly&&($judgeCount>12||$largestRoleCount>24);
+$judgeChunks=$paginateReport?array_chunk($judges,10):[$judges];
 
 
 $markStmt=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank,weighted_score FROM bdc_test_scoring_marks WHERE round_id=:r");
@@ -115,6 +117,7 @@ th.result,td.result{width:16mm;font-weight:700}
 .witnesses strong{display:block;margin-bottom:2mm}
 .witness-line{display:inline-block;min-width:48mm;margin:0 5mm 3mm 0;border-bottom:1px solid #111;padding-bottom:1mm}
 .version{text-align:right}
+.page-label{margin:3mm 0 2mm;font-size:9pt;font-weight:700}.paginated-table{font-size:8.8pt}.paginated-table th,.paginated-table td{height:6.5mm;padding:1.2mm}.paginated-table th.name,.paginated-table td.name{width:55mm}.paginated-table th.judge,.paginated-table td.judge{width:14mm}.paginated-key{font-size:8.5pt;margin-top:3mm}.compact-footer{margin-top:3mm;padding-top:2mm}
 @media print{
  body{background:#fff}
  .toolbar{display:none}
@@ -124,6 +127,24 @@ th.result,td.result{width:16mm;font-weight:700}
 </head>
 <body>
 <div class="toolbar"><?php if($summaryOnly):?><a href="audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Judge Audit</a><?php endif;?><button onclick="window.print()">Print / Save as PDF</button></div>
+<?php if($paginateReport):?>
+<?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):$entryChunks=array_chunk($entries[$role],20);foreach($entryChunks as $entryChunkIndex=>$entryChunk):foreach($judgeChunks as $judgeChunkIndex=>$judgeChunk):?>
+<div class="page">
+ <header class="header">
+  <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
+  <div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e(strtoupper($label))?></h2></div>
+  <div class="meta"><strong>Competitors:</strong> <?=$entryChunkIndex*20+1?>–<?=min(($entryChunkIndex+1)*20,count($entries[$role]))?><br><strong>Judge Group:</strong> <?=$judgeChunkIndex+1?>/<?=count($judgeChunks)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div>
+ </header>
+ <div class="page-label"><?=e($label)?> · Judges <?=e(implode(', ',array_map(fn($judge):string=>'J'.(int)$judge['judge_order'],$judgeChunk)))?></div>
+ <table class="paginated-table">
+  <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total">Total</th><th class="result">Result</th></tr></thead>
+  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;?><td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
+ </table>
+ <div class="judge-key paginated-key"><strong>Judge Key</strong><?php foreach($judgeChunk as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
+ <footer class="footer compact-footer"><div class="witnesses"><strong>Scoring Witnesses</strong><?php if($witnesses):foreach($witnesses as $witness):?><span class="witness-line"><?=e($witness)?></span><?php endforeach;else:?><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><?php endif;?></div><div class="version"><strong>Chief Judge:</strong><br><?=e($chiefJudge?:'—')?><br><br><strong>Scoring Administrator:</strong><br><?=e((string)($round['scoring_administrator']??''))?></div></footer>
+</div>
+<?php endforeach;endforeach;endforeach;?>
+<?php else:?>
 <div class="page">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
@@ -186,5 +207,6 @@ th.result,td.result{width:16mm;font-weight:700}
   </div>
  </footer>
 </div>
+<?php endif;?>
 </body>
 </html>

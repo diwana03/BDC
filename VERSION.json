@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev144",
-  "build": 2474,
+  "version": "2.3.3-dev145",
+  "build": 2475,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Automatic Testing completion actions returning HTTP 404 on staging paths",
-    "Adds Save Scores Draft to the Automatic Testing dashboard",
-    "Adds editable automatic score generation without submitting or locking judges",
-    "Keeps Generate and Submit All Judges as a separate one-click completion option",
-    "Adds Print Judge Sheets and Preview or Print Scores to Automatic Testing",
-    "Retains Preview, Submit and callback destination controls from the Test-first workflow"
+    "Separates Leader and Follower live scoring matrices and provisional rankings in Automatic Testing",
+    "Paginates large score reports by role, judge group and competitor group for readable printing",
+    "Repeats competitor identity, totals, results and judge keys on every printed score page",
+    "Removes manual judge-sheet printing from the Automatic Testing workflow",
+    "Fixes Cancel Final returning to a deleted Final round and producing HTTP 404",
+    "Synchronizes the Automatic Test wrapper with the parent round after cancellation"
   ]
 }
