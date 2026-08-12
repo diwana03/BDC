@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev154",
-  "build": 2484,
+  "version": "2.3.3-dev155",
+  "build": 2485,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Limits each dance style to Rising and Open under Special Categories",
-    "Returns Bachata Invitational to the normal BDC division group",
-    "Returns Semi Pro, Pro, and Bachata All Star to normal BDC divisions",
-    "Keeps the Special Categories group at the bottom of the menu",
-    "Retains the profile photo crop and public-page cleanup",
-    "Retains both Production migration checksum compatibility fixes"
+    "Adds a Unisphere-inspired enterprise theme to the Production admin dashboard",
+    "Uses deep navy navigation with Dell-style blue and cyan accents",
+    "Adds clean storage-console cards, tables, and status treatments",
+    "Keeps the Production environment banner clearly visible",
+    "Leaves the amber Staging dashboard identity unchanged",
+    "Does not change any public portal page"
   ]
 }
