@@ -92,7 +92,7 @@ foreach($judges as $judge){
 @page{size:<?=$fitAll?'A3 landscape':$pageSize?>;margin:7mm}
 *{box-sizing:border-box}
 body{margin:0;background:#eceff2;color:#111;font-family:Arial,Helvetica,sans-serif}
-.toolbar{position:sticky;top:0;z-index:5;padding:10px;background:#fff;border-bottom:1px solid #ccc;text-align:right}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 230px 10px 12px;background:#fff;border-bottom:1px solid #ccc;text-align:left}.toolbar a,.toolbar button{display:inline-flex;align-items:center;min-height:36px;padding:7px 12px;border:1px solid #6c757d;border-radius:6px;background:#fff;color:#212529;font:600 14px Arial,Helvetica,sans-serif;text-decoration:none;cursor:pointer}.toolbar a:hover,.toolbar button:hover{background:#f1f3f5}body:not(.layout-fit) .toolbar a[href^="?round_id="]:not([href*="layout="]),body.layout-fit .toolbar a[href*="layout=fit"]{background:#212529;color:#fff;border-color:#212529}.toolbar button{background:#0d6efd;color:#fff;border-color:#0d6efd}@media(max-width:760px){.toolbar{padding-right:12px}}
 .page{width:<?=$singleColumn?'196mm':'283mm'?>;min-height:196mm;margin:8mm auto;padding:7mm;background:#fff;page-break-after:always}
 .page:last-child{page-break-after:auto}
 .header{display:grid;grid-template-columns:30mm 1fr 45mm;gap:6mm;align-items:start;border-bottom:2px solid #111;padding-bottom:3mm}
@@ -128,7 +128,7 @@ th.result,td.result{width:16mm;font-weight:700}
 }
 </style>
 </head>
-<body>
+<body class="<?=$fitAll?'layout-fit':''?>">
 <div class="toolbar"><?php if($summaryOnly):?><a href="audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Judge Audit</a><?php endif;?><a href="?round_id=<?=$roundId?>" style="margin-right:10px">Readable Pages</a><a href="?round_id=<?=$roundId?>&amp;layout=fit" style="margin-right:10px">Landscape, All Judges</a><button onclick="window.print()">Print / Save as PDF</button></div>
 <?php if($fitAll):?>
 <?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):?>

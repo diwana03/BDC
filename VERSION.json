@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev148",
-  "build": 2478,
+  "version": "2.3.3-dev149",
+  "build": 2479,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Readable Pages and Landscape, All Judges print-preview modes",
-    "Supports landscape all-judge previews for Heats, Semifinal, and Final rounds",
-    "Applies the same print-preview choices to Testing and Live dashboards",
-    "Supports both Manual and Automatic scoring workflows through shared result previews",
-    "Keeps Leader and Follower result trails on separate landscape pages",
-    "Removes the duplicate Automatic Testing callback destination panel"
+    "Replaces raw print-preview links with a clear button toolbar",
+    "Moves preview controls away from the floating Back and Dashboard navigation",
+    "Highlights the currently selected Readable or Landscape layout",
+    "Allows toolbar controls to wrap responsively on smaller screens",
+    "Applies the toolbar correction to Testing and Live result previews",
+    "Preserves Manual and Automatic scoring preview parity"
   ]
 }

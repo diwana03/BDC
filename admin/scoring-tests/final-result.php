@@ -113,7 +113,7 @@ foreach($judges as $judge){
 @page{size:<?=$fitAll?'A3 landscape':'A4 landscape'?>;margin:7mm}
 *{box-sizing:border-box}
 body{margin:0;background:#eef1f4;color:#171717;font-family:Arial,Helvetica,sans-serif}
-.toolbar{position:sticky;top:0;z-index:5;padding:10px;background:#fff;border-bottom:1px solid #ccc;text-align:right}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 230px 10px 12px;background:#fff;border-bottom:1px solid #ccc;text-align:left}.toolbar a,.toolbar button{display:inline-flex;align-items:center;min-height:36px;padding:7px 12px;border:1px solid #6c757d;border-radius:6px;background:#fff;color:#212529;font:600 14px Arial,Helvetica,sans-serif;text-decoration:none;cursor:pointer}.toolbar a:hover,.toolbar button:hover{background:#f1f3f5}body:not(.layout-fit) .toolbar a[href^="?round_id="]:not([href*="layout="]),body.layout-fit .toolbar a[href*="layout=fit"]{background:#212529;color:#fff;border-color:#212529}.toolbar button{background:#0d6efd;color:#fff;border-color:#0d6efd}@media(max-width:760px){.toolbar{padding-right:12px}}
 .page{width:283mm;min-height:196mm;margin:7mm auto;padding:7mm;background:#fff}
 .header{display:grid;grid-template-columns:25mm 1fr 45mm;gap:5mm;align-items:start;border-bottom:2px solid #111;padding-bottom:3mm}
 .logo{width:24mm;height:24mm;object-fit:contain}
@@ -153,7 +153,7 @@ th{background:#eef1f4}
 @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:0;margin:0;padding:0}}
 </style>
 </head>
-<body class="<?=$fitAll?'fit-all':''?>">
+<body class="<?=$fitAll?'fit-all layout-fit':''?>">
 <div class="toolbar"><?php if($largeJudgePanel):?><a href="final-audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Final Judge Audit</a><?php endif;?><a href="?round_id=<?=$roundId?>" style="margin-right:10px">Readable Pages</a><a href="?round_id=<?=$roundId?>&amp;layout=fit" style="margin-right:10px">Landscape, All Judges</a><button onclick="window.print()">Print / Save as PDF</button></div>
 <section class="page">
  <header class="header">
