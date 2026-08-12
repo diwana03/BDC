@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev155",
-  "build": 2485,
+  "version": "2.3.3-dev156",
+  "build": 2486,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a Unisphere-inspired enterprise theme to the Production admin dashboard",
-    "Uses deep navy navigation with Dell-style blue and cyan accents",
-    "Adds clean storage-console cards, tables, and status treatments",
-    "Keeps the Production environment banner clearly visible",
-    "Leaves the amber Staging dashboard identity unchanged",
-    "Does not change any public portal page"
+    "Updates Production to the bright blue Unisphere-style console palette",
+    "Uses a bright blue header with white and light-grey work areas",
+    "Adds flat square enterprise panels and circular status treatments",
+    "Keeps Staging amber and public pages unchanged",
+    "Adds Bachata Invitational as the third Bachata Special Category",
+    "Keeps Rising Star, Open, and Invitational at the bottom of the menu"
   ]
 }

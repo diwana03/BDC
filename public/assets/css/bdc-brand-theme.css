@@ -45,28 +45,32 @@
 .admin-v203 .admin-card-head-v203 a{color:var(--admin-accent)}
 
 /* Production: enterprise storage-console palette inspired by Unisphere */
-.admin-v203.admin-env-production{--admin-accent:#0672ce;--admin-accent-dark:#00447c;--admin-accent-soft:#e8f4fb;--admin-shell:#073b5c;--admin-shell-deep:#05283f;--admin-banner:#041f33;--admin-banner-text:#fff;background:#eef3f7;color:#1d2a35}
-.admin-v203.admin-env-production .admin-environment-banner{background:#041f33!important;color:#fff!important;border-bottom:5px solid #20a6d8;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)}
-.admin-v203.admin-env-production .admin-topbar-v203{background:linear-gradient(100deg,#05283f 0%,#073b5c 62%,#07547d 100%);box-shadow:0 3px 14px rgba(2,32,51,.28)}
-.admin-v203.admin-env-production .admin-sidebar-v203{background:linear-gradient(180deg,#073b5c 0%,#05283f 100%);border-right:1px solid #0b5d87}
-.admin-v203.admin-env-production .admin-sidebar-v203 nav a.active{background:#eaf7fc;color:#005b96;border-left-color:#20a6d8}
+.admin-v203.admin-env-production{--admin-accent:#0879bf;--admin-accent-dark:#005a91;--admin-accent-soft:#e9f5fb;--admin-shell:#2995d3;--admin-shell-deep:#147ebc;--admin-banner:#1f8dcc;--admin-banner-text:#fff;background:#f0f0f0;color:#252525}
+.admin-v203.admin-env-production .admin-environment-banner{background:#1f8dcc!important;color:#fff!important;border-bottom:1px solid #0d6fa9;box-shadow:none}
+.admin-v203.admin-env-production .admin-topbar-v203{background:#2d98d4;box-shadow:none;border-bottom:1px solid #137bb8}
+.admin-v203.admin-env-production .admin-sidebar-v203{background:#fff;border-right:1px solid #c8c8c8;color:#333}
+.admin-v203.admin-env-production .admin-sidebar-v203 nav a{color:#333;border-radius:0}
+.admin-v203.admin-env-production .admin-sidebar-v203 nav a>span{color:#1686c4}
+.admin-v203.admin-env-production .admin-sidebar-v203 nav a.active{background:#d9edf8;color:#111;border-left-color:#0879bf}
 .admin-v203.admin-env-production .admin-sidebar-v203 nav a.active>span{color:#0672ce}
-.admin-v203.admin-env-production .admin-sidebar-v203 nav a:hover{background:rgba(32,166,216,.17)}
-.admin-v203.admin-env-production .admin-sidebar-v203 nav a em{background:#20a6d8;color:#04283e}
-.admin-v203.admin-env-production .admin-main-v203{background:linear-gradient(180deg,#eef3f7 0%,#f7f9fb 260px)}
-.admin-v203.admin-env-production .admin-page-heading-v203 h1{color:#17364a}
-.admin-v203.admin-env-production .admin-date-chip-v203{background:#e8f4fb;color:#005b96;border:1px solid #b7dceb}
-.admin-v203.admin-env-production .admin-metric-card-v203,.admin-v203.admin-env-production .admin-card-v203{border-color:#cddbe4;border-radius:4px;box-shadow:0 2px 8px rgba(3,43,67,.07)}
-.admin-v203.admin-env-production .admin-metric-card-v203{border-top:4px solid #20a6d8}
-.admin-v203.admin-env-production .admin-metric-card-v203:hover{border-color:#75bdd8;box-shadow:0 6px 16px rgba(3,43,67,.13)}
+.admin-v203.admin-env-production .admin-sidebar-v203 nav a:hover{background:#eef7fc;color:#0879bf}
+.admin-v203.admin-env-production .admin-sidebar-v203 nav a em{background:#1686c4;color:#fff}
+.admin-v203.admin-env-production .admin-sidebar-label-v203{color:#777;border-color:#ddd}
+.admin-v203.admin-env-production .admin-main-v203{background:#f0f0f0}
+.admin-v203.admin-env-production .admin-page-heading-v203 h1{color:#252525}
+.admin-v203.admin-env-production .admin-date-chip-v203{background:#fff;color:#0879bf;border:1px solid #bdbdbd}
+.admin-v203.admin-env-production .admin-metric-card-v203,.admin-v203.admin-env-production .admin-card-v203{border-color:#c8c8c8;border-radius:0;box-shadow:none}
+.admin-v203.admin-env-production .admin-metric-card-v203{border-top:1px solid #c8c8c8}
+.admin-v203.admin-env-production .admin-metric-card-v203:hover{border-color:#2995d3;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .admin-v203.admin-env-production .metric-orange .metric-icon-v203,.admin-v203.admin-env-production .metric-blue .metric-icon-v203{background:#e8f4fb;color:#0672ce}
-.admin-v203.admin-env-production .metric-green .metric-icon-v203{background:#e7f6ef;color:#16865b}
-.admin-v203.admin-env-production .metric-gold .metric-icon-v203{background:#fff4da;color:#a66b00}
-.admin-v203.admin-env-production .admin-quick-actions-v203 a{border-color:#9bcfe3;color:#005b96;background:#f5fbfe}
-.admin-v203.admin-env-production .admin-quick-actions-v203 a:hover{background:#e1f3fa;border-color:#20a6d8}
-.admin-v203.admin-env-production .admin-table-wrap-v203 thead{background:#e5eef4;color:#17364a}
-.admin-v203.admin-env-production .admin-table-wrap-v203 tbody tr:hover{background:#f0f8fc}
-.admin-v203.admin-env-production .admin-system-card-v203{background:rgba(32,166,216,.12);border-color:rgba(115,205,236,.28)}
+.admin-v203.admin-env-production .metric-green .metric-icon-v203{background:#4caf50;color:#fff;border-radius:50%}
+.admin-v203.admin-env-production .metric-gold .metric-icon-v203{background:#ffb900;color:#fff;border-radius:50%}
+.admin-v203.admin-env-production .admin-quick-actions-v203 a{border-color:#b9b9b9;color:#0879bf;background:#fff;border-radius:0}
+.admin-v203.admin-env-production .admin-quick-actions-v203 a:hover{background:#e5f3fa;border-color:#2995d3}
+.admin-v203.admin-env-production .admin-table-wrap-v203 thead{background:#d8d8d8;color:#222}
+.admin-v203.admin-env-production .admin-table-wrap-v203 tbody tr:hover{background:#eaf5fa}
+.admin-v203.admin-env-production .admin-system-card-v203{background:#edf6fb;border-color:#b9d9e9;color:#333}
+.admin-v203.admin-env-production .admin-system-card-v203 small{color:#777}
 
 /* Staging: amber/gold so it cannot be confused with production */
 .admin-v203.admin-env-staging{--admin-accent:#d79000;--admin-accent-dark:#9d6700;--admin-accent-soft:#fff8e6;--admin-shell:#6a4700;--admin-shell-deep:#3f2a00;--admin-banner:#f59e0b;--admin-banner-text:#171717}
