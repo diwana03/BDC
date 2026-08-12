@@ -1,25 +1,19 @@
 {
-  "version": "2.3.3-dev135",
-  "build": 2465,
+  "version": "2.3.3-dev136",
+  "build": 2466,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Salsa Rising and Salsa Open as full BDC special competition categories across the live BDC workflow",
-    "Salsa divisions are now Novice, Intermediate, Advanced, Salsa Rising and Salsa Open on the Competitor Portal and Admin competitor editor",
-    "Salsa Rising and Salsa Open use the same fixed placement point schedule as Bachata Rising and Bachata Open: 5, 4, 3, 2, 1 for places 1 through 5",
-    "Special-category points are written only to the Salsa ledger and are assigned to each dancer's current Salsa Novice, Intermediate or Advanced progression bucket",
-    "Extends scoring, registration, publication, participant-result, discipline-profile and points-tier enums to support Salsa Rising/Open safely",
-    "Scoring Dashboard dynamically shows Salsa Rising/Open only when Salsa is selected while Bachata special categories remain Bachata-specific",
-    "Final publication now routes through a discipline/category-aware gate so normal Salsa, Salsa Rising/Open, normal Bachata and Bachata special categories use the correct approval path",
-    "Salsa Rising/Open publication preserves the existing Super Admin approval workflow and generates Heats, Final and Final Ranking & Points repository documents",
-    "Bachata Invitational remains Bachata-only; no Salsa Invitational, Semi Pro, Pro or All Star category is introduced",
-    "Public Results remain discipline-separated and the main Leaderboard remains progression-based on Novice, Intermediate and Advanced buckets",
-    "The isolated legacy Scoring Tests Dashboard is intentionally not converted to multi-dance Salsa special categories in this release",
-    "Automatic judge scoring now enforces the configured YES limit separately for Leaders and Followers and blocks any extra YES selection immediately",
-    "A1, A2 and A3 can each be assigned only once per judge per role, with both browser-side feedback and server-side validation",
-    "Automatic scoring judge screens now show live YES and alternate counters and clear validation messages when a selection is blocked",
-    "Automatic scoring submission now requires the configured YES count rather than incorrectly requiring every competitor to receive a YES or alternate mark"
+    "Adds a Test Engine-only Automated Judge Simulator for rapid automated scoring diagnostics",
+    "Test Heats simulation generates exactly the configured YES count per judge and role plus unique A1, A2 and A3 selections where competitors are available",
+    "Test Final simulation generates a complete random ranking permutation for each judge with every rank used exactly once",
+    "Allows generating one test judge at a time or all test judges with one click",
+    "Adds a live diagnostic progress table showing each test judge scope and saved score progress, refreshing every five seconds",
+    "The simulator uses only bdc_test_* scoring tables and cannot write official BDC points, official participant results or live judge marks",
+    "No score-generator controls are added to live judge hyperlinks; real Automated Scoring judges must continue entering their own scores",
+    "Live Automated Scoring retains the YES-limit and unique A1/A2/A3 validation introduced in dev135",
+    "Establishes the development rule that future scoring logic changes should be mirrored in the Test Engine while Test retains additional generation/debug tooling"
   ]
 }
