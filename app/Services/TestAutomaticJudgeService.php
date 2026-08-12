@@ -40,7 +40,7 @@ final class TestAutomaticJudgeService
     public static function regenerate(PDO $pdo,int $roundId,int $judgeId):string
     {
         self::ensureSchema($pdo);$stmt=$pdo->prepare('SELECT id FROM bdc_test_scoring_judges WHERE id=:judge AND round_id=:round');$stmt->execute(['judge'=>$judgeId,'round'=>$roundId]);if(!(int)$stmt->fetchColumn())throw new RuntimeException('Test judge not found.');
-        $token=bin2hex(random_bytes(24));$pdo->prepare("INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status) VALUES(:round,:judge,:hash,:hint,'not_started') ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),status='not_started',opened_at=NULL,last_saved_at=NULL,submitted_at=NULL,updated_at=NOW()")
+        $token=bin2hex(random_bytes(24));$pdo->prepare("INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status) VALUES(:round,:judge,:hash,:hint,'not_started') ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),updated_at=NOW()")
             ->execute(['round'=>$roundId,'judge'=>$judgeId,'hash'=>hash('sha256',$token),'hint'=>substr($token,0,8)]);return $token;
     }
 

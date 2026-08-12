@@ -24,7 +24,7 @@ final class AutomaticJudgeBrowserService
     {
         $round=self::round($pdo,$roundId);if(($round['scoring_mode']??'manual')!=='automated')throw new RuntimeException('This is not an Automatic scoring round.');
         $stmt=$pdo->prepare('SELECT id FROM bdc_scoring_judges WHERE id=:judge AND round_id=:round');$stmt->execute(['judge'=>$judgeId,'round'=>$roundId]);if(!(int)$stmt->fetchColumn())throw new RuntimeException('Judge not found for this round.');
-        $token=bin2hex(random_bytes(24));$hash=hash('sha256',$token);$hint=substr($token,0,8);$pdo->prepare("INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status) VALUES(:round,:judge,:hash,:hint,'not_started') ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),status='not_started',opened_at=NULL,last_saved_at=NULL,submitted_at=NULL,updated_at=NOW()")
+        $token=bin2hex(random_bytes(24));$hash=hash('sha256',$token);$hint=substr($token,0,8);$pdo->prepare("INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status) VALUES(:round,:judge,:hash,:hint,'not_started') ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),updated_at=NOW()")
             ->execute(['round'=>$roundId,'judge'=>$judgeId,'hash'=>$hash,'hint'=>$hint]);return $token;
     }
 
