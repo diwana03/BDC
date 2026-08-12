@@ -1,20 +1,18 @@
 {
-  "version": "2.3.3-dev137",
-  "build": 2467,
+  "version": "2.3.3-dev138",
+  "build": 2468,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Synchronizes Test Automated Judge scoring limits with the live Automated Scoring rules",
-    "Test judge links now enforce the configured YES maximum separately for Leaders and Followers",
-    "Test judge links now enforce A1, A2 and A3 as unique selections, maximum once each per judge per role",
-    "Adds server-side validation so Test judge limits cannot be bypassed by manipulating the browser form",
-    "Adds browser-side immediate warnings when a test judge attempts an extra YES or duplicate A1/A2/A3",
-    "Test judge screen displays live role counters for YES, A1, A2 and A3 usage",
-    "Adds Generate Valid Random Scores directly to the Test judge hyperlink screen",
-    "Random Test judge generation produces exactly the configured YES count plus unique A1/A2/A3 where enough competitors exist",
-    "Submitting a Test judge sheet requires exactly the configured YES count for each role the judge is assigned to",
-    "All Test judge data remains isolated in bdc_test_* tables and cannot affect official BDC scoring or points"
+    "Fixes Automated Scoring progress after judge submission in both Live and Test engines",
+    "Submitted judges now report 100 percent progress even when Blank selections are intentionally left on non-selected competitors",
+    "Heats progress now uses the configured YES quota plus available A1/A2/A3 selections rather than treating every competitor as requiring a mark",
+    "Final progress now tracks ranked confirmed couples correctly in the Test engine as well as Live scoring",
+    "Live Display scoring feed now receives a dynamic data version derived from judge sessions and score updates",
+    "The projector scoring screen automatically reloads when judge marks are saved or a judge submits, without requiring a manual projector control change",
+    "Live Display continues polling approximately every 700 ms with no-cache requests",
+    "Test and Live progress logic remain synchronized while Test retains its generator and simulator tools"
   ]
 }
