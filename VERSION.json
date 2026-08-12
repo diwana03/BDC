@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev145",
-  "build": 2475,
+  "version": "2.3.3-dev146",
+  "build": 2476,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Separates Leader and Follower live scoring matrices and provisional rankings in Automatic Testing",
-    "Paginates large score reports by role, judge group and competitor group for readable printing",
-    "Repeats competitor identity, totals, results and judge keys on every printed score page",
-    "Removes manual judge-sheet printing from the Automatic Testing workflow",
-    "Fixes Cancel Final returning to a deleted Final round and producing HTTP 404",
-    "Synchronizes the Automatic Test wrapper with the parent round after cancellation"
+    "Adds BDC Rising Star and BDC Open to new registration and profile update forms",
+    "Adds BDC Rising Star and BDC Open to admin competitor editing and scoring screens",
+    "Updates special-category labels consistently across registration and scoring",
+    "Expands profile-request division storage for all supported Bachata and Salsa divisions",
+    "Adds a migration for existing profile-request tables",
+    "Preserves special divisions through profile-request approval and discipline-profile updates"
   ]
 }
