@@ -1,17 +1,15 @@
 {
-  "version": "2.3.3-dev159",
-  "build": 2489,
+  "version": "2.3.3-dev160",
+  "build": 2490,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Replaces the free YES input with 5, 10 and 15 tier choices",
-    "Recommends the tier from the larger Leader or Follower count",
-    "Preserves the Admin Scorer selection after Save and Lock",
-    "Allows the recommended tier to be amended before judging",
-    "Keeps ALT 1, ALT 2 and ALT 3 weights permanently fixed",
-    "Blocks YES changes after judging has started",
-    "Applies the same controls to Testing and Live, Manual and Automatic scoring"
+    "Shows Scoring Completed for finished projector rounds",
+    "Removes the misleading zero judge-submission counter from finished rounds",
+    "Uses event and round status to distinguish active from completed scoring",
+    "Keeps live judge-submission progress for active rounds",
+    "Applies the same projector behaviour to Testing and Live"
   ]
 }
