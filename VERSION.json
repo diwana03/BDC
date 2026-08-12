@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3-dev134",
-  "build": 2464,
+  "version": "2.3.3-dev135",
+  "build": 2465,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
@@ -16,6 +16,10 @@
     "Salsa Rising/Open publication preserves the existing Super Admin approval workflow and generates Heats, Final and Final Ranking & Points repository documents",
     "Bachata Invitational remains Bachata-only; no Salsa Invitational, Semi Pro, Pro or All Star category is introduced",
     "Public Results remain discipline-separated and the main Leaderboard remains progression-based on Novice, Intermediate and Advanced buckets",
-    "The isolated legacy Scoring Tests Dashboard is intentionally not converted to multi-dance Salsa special categories in this release"
+    "The isolated legacy Scoring Tests Dashboard is intentionally not converted to multi-dance Salsa special categories in this release",
+    "Automatic judge scoring now enforces the configured YES limit separately for Leaders and Followers and blocks any extra YES selection immediately",
+    "A1, A2 and A3 can each be assigned only once per judge per role, with both browser-side feedback and server-side validation",
+    "Automatic scoring judge screens now show live YES and alternate counters and clear validation messages when a selection is blocked",
+    "Automatic scoring submission now requires the configured YES count rather than incorrectly requiring every competitor to receive a YES or alternate mark"
   ]
 }
