@@ -18,6 +18,13 @@ Read `PROJECT.md` and this file before changing the repository.
 
 ## Release boundaries
 
+### Test-first and parity rule
+
+- Implement every scoring, judge, competitor, result, registration, projector, or dashboard feature in the isolated Test workflow first.
+- Verify the complete Test phone, administration, calculation, and end-to-end workflow before applying the approved behavior to Live.
+- A final release must keep Test and Live dashboards synchronized for labels, controls, validation, calculation inputs, statuses, and user-visible behavior.
+- Do not release a workflow change when only Test or only Live contains the intended behavior, unless it is explicitly an isolated Test repair and Live already has the approved equivalent.
+
 Version 2.2.0 is a stabilization and security release. Do not consolidate or redesign scoring behavior in this release. That work belongs to 2.3.0 and must retain golden fixtures from real competitions.
 
 ## Verification

@@ -1,17 +1,16 @@
 {
-  "version": "2.3.3-dev141",
-  "build": 2471,
+  "version": "2.3.3-dev142",
+  "build": 2472,
   "status": "development",
   "release_date": "2026-08-12",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a yellow LATER decision to the Live judge phone screen for competitors who need another-song review",
-    "Adds a Review Later list with direct navigation back to every flagged competitor",
-    "Blocks score submission until every LATER decision is resolved",
-    "Replaces the visible Blank action with the clearer NO action while retaining zero scoring weight",
-    "Keeps YES at 10, A1 at 4.5, A2 at 4.3 and A3 at 4.2",
-    "Regenerating Live or Test secure judge URLs now preserves judge status, marks, progress and submission locks",
-    "No database migration or official scoring calculation change is required"
+    "Adds YES, A1, A2, A3, LATER and NO parity to the Test judge phone workflow",
+    "Adds the Review Later list and blocks Test submission until every LATER choice is resolved",
+    "Fixes small Test panels by using the configured YES count or available competitor count, whichever is lower",
+    "Executes dynamically injected Test dashboard scripts so Competitor Scoring Progress loads and refreshes",
+    "Preserves existing Live judge behavior and scoring weights",
+    "Documents the mandatory Test-first and Test-Live dashboard parity release rule"
   ]
 }
