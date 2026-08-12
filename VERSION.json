@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev146",
-  "build": 2476,
+  "version": "2.3.3-dev147",
+  "build": 2477,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds BDC Rising Star and BDC Open to new registration and profile update forms",
-    "Adds BDC Rising Star and BDC Open to admin competitor editing and scoring screens",
-    "Updates special-category labels consistently across registration and scoring",
-    "Expands profile-request division storage for all supported Bachata and Salsa divisions",
-    "Adds a migration for existing profile-request tables",
-    "Preserves special divisions through profile-request approval and discipline-profile updates"
+    "Splits the Automatic Testing scoring matrix into Leader and Follower panels",
+    "Adds independent horizontal and vertical scrolling to each role panel",
+    "Keeps Provisional and Competitor columns visible while scrolling through judges",
+    "Maintains independent provisional rankings starting from 1 for each role",
+    "Stacks role panels on smaller screens for responsive use",
+    "Preserves the single fixed-couple matrix for Final rounds"
   ]
 }
