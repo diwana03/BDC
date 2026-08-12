@@ -1,16 +1,17 @@
 {
-  "version": "2.3.3-dev142",
-  "build": 2472,
+  "version": "2.3.3-dev143",
+  "build": 2473,
   "status": "development",
-  "release_date": "2026-08-12",
+  "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds YES, A1, A2, A3, LATER and NO parity to the Test judge phone workflow",
-    "Adds the Review Later list and blocks Test submission until every LATER choice is resolved",
-    "Fixes small Test panels by using the configured YES count or available competitor count, whichever is lower",
-    "Executes dynamically injected Test dashboard scripts so Competitor Scoring Progress loads and refreshes",
-    "Preserves existing Live judge behavior and scoring weights",
-    "Documents the mandatory Test-first and Test-Live dashboard parity release rule"
+    "Adds Preview Scores and Calculate and Sort to the Automatic Testing dashboard",
+    "Adds Submit Scores and draft result preview to the Automatic Testing dashboard",
+    "Adds callback routing from Heats to Semifinal or directly to Final",
+    "Adds callback routing from Semifinal to Final",
+    "Blocks next-round creation while callback ties remain unresolved",
+    "Keeps Automatic Testing on the automatic workflow after opening the next round",
+    "Preserves scoring witnesses and scoring administrator values during automatic calculation"
   ]
 }
