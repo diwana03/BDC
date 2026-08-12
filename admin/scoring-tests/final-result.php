@@ -149,12 +149,34 @@ th{background:#eef1f4}
 .signature-box h3{margin:0 0 4mm;font-size:10pt}
 .signature-line{display:inline-block;min-width:52mm;margin:0 4mm 5mm 0;border-bottom:1px solid #111;padding-bottom:1mm;font-size:8.5pt}
 .footer{display:flex;justify-content:space-between;margin-top:4mm;padding-top:2mm;border-top:1px solid #cfd4da;font-size:8pt}
-.fit-all .page{width:max-content;min-width:400mm}.fit-all .judge-ranking-table{font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-all .judge-ranking-table th,.fit-all .judge-ranking-table td{min-width:9mm;padding:.8mm .5mm}.fit-all .judge-ranking-table .name-cell{min-width:48mm;width:auto}
+.fit-all .page{width:max-content;min-width:400mm;page-break-after:always}.fit-all .judge-ranking-table,.fit-all .placement-count-table{width:max-content;min-width:100%;font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-all .judge-ranking-table th,.fit-all .judge-ranking-table td,.fit-all .placement-count-table th,.fit-all .placement-count-table td{min-width:9mm;padding:.8mm .5mm}.fit-all .name-cell{width:55mm!important;min-width:55mm!important;max-width:55mm;white-space:normal}.fit-all .rank-col,.fit-all .couple-col{width:14mm!important;min-width:14mm!important}.fit-all .summary-col{width:18mm!important;min-width:18mm!important;font-weight:700}
 @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:0;margin:0;padding:0}}
 </style>
 </head>
 <body class="<?=$fitAll?'fit-all layout-fit':''?>">
 <div class="toolbar"><?php if($largeJudgePanel):?><a href="final-audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Final Judge Audit</a><?php endif;?><a href="?round_id=<?=$roundId?>" style="margin-right:10px">Readable Pages</a><a href="?round_id=<?=$roundId?>&amp;layout=fit" style="margin-right:10px">Landscape, All Judges</a><button onclick="window.print()">Print / Save as PDF</button></div>
+<?php if($fitAll):?>
+<section class="page">
+ <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2>FINAL · JUDGE RANKINGS · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Judges:</strong> <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <section class="panel" style="margin-top:5mm"><h3>All Finalist Judge Rankings</h3>
+  <table class="judge-ranking-table"><colgroup><col style="width:14mm"><col style="width:14mm"><col style="width:55mm"><?php foreach($judges as $judge):?><col style="width:9mm"><?php endforeach;?></colgroup>
+   <thead><tr><th class="rank-col">Rank</th><th class="couple-col">Couple</th><th class="name-cell">Contestants</th><?php foreach($judges as $judgeIndex=>$judge):?><th>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?></th><?php endforeach;?></tr></thead>
+   <tbody><?php foreach($pairs as $pair):?><tr><td class="rank-col"><strong><?=ordinal((int)$pair['final_rank'])?></strong></td><td class="couple-col"><?=$pair['pair_number']?></td><td class="name-cell"><?=e($pair['leader_name'])?> &amp; <?=e((string)$pair['follower_name'])?></td><?php foreach($judges as $judge):?><td><?=$marks[(int)$pair['id']][(int)$judge['id']]??'—'?></td><?php endforeach;?></tr><?php endforeach;?></tbody>
+  </table>
+  <div class="judge-key"><strong>Judge Key</strong><?php foreach($judges as $judgeIndex=>$judge):?><span><b>J<?=$judgeIndex+1?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
+ </section>
+</section>
+<section class="page">
+ <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2>FINAL · RELATIVE PLACEMENT · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Majority:</strong> <?=$majority?> of <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <section class="panel" style="margin-top:5mm"><h3>All Finalist Relative Placements</h3>
+  <table class="placement-count-table"><colgroup><col style="width:14mm"><col style="width:14mm"><col style="width:55mm"><?php for($level=1;$level<=$pairCount;$level++):?><col style="width:11mm"><?php endfor;?><col style="width:18mm"><col style="width:18mm"></colgroup>
+   <thead><tr><th class="rank-col">Rank</th><th class="couple-col">Couple</th><th class="name-cell">Contestants</th><?php for($level=1;$level<=$pairCount;$level++):?><th>Top <?=$level?></th><?php endfor;?><th class="summary-col">Majority</th><th class="summary-col">Sum</th></tr></thead>
+   <tbody><?php foreach($pairs as $pair):?><tr><td class="rank-col"><strong><?=ordinal((int)$pair['final_rank'])?></strong></td><td class="couple-col"><?=$pair['pair_number']?></td><td class="name-cell"><?=e($pair['leader_name'])?> &amp; <?=e((string)$pair['follower_name'])?></td><?php for($level=1;$level<=$pairCount;$level++):$count=0;foreach($judges as $judge){$rank=$marks[(int)$pair['id']][(int)$judge['id']]??0;if($rank>0&&$rank<=$level)$count++;}?><td><?=$count?></td><?php endfor;?><td class="summary-col"><?=(int)($pair['majority_count']??0)?> @ Top <?=(int)($pair['majority_level']??0)?></td><td class="summary-col"><?=(int)($pair['placement_sum']??0)?></td></tr><?php endforeach;?></tbody>
+  </table>
+ </section>
+ <footer class="footer"><span>Bachata Dance Council</span><span>Final Relative Placement trail · Chief Judge: <?=e($chiefJudge?:'—')?></span></footer>
+</section>
+<?php else:?>
 <section class="page">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
@@ -276,5 +298,6 @@ th{background:#eef1f4}
   <span>Final Relative Placement result</span>
  </footer>
 </section>
+<?php endif;?>
 </body>
 </html>

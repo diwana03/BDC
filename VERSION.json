@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev149",
-  "build": 2479,
+  "version": "2.3.3-dev150",
+  "build": 2480,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Replaces raw print-preview links with a clear button toolbar",
-    "Moves preview controls away from the floating Back and Dashboard navigation",
-    "Highlights the currently selected Readable or Landscape layout",
-    "Allows toolbar controls to wrap responsively on smaller screens",
-    "Applies the toolbar correction to Testing and Live result previews",
-    "Preserves Manual and Automatic scoring preview parity"
+    "Creates a dedicated all-finalist Judge Rankings landscape page",
+    "Creates a dedicated all-finalist Relative Placement landscape page",
+    "Reduces the Final contestant column to a compact fixed width",
+    "Shows every judge rank across the remaining landscape width",
+    "Adds majority level, majority count, and placement sum to the placement trail",
+    "Applies the Final report structure to Testing and Live dashboards"
   ]
 }
