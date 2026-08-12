@@ -14,7 +14,7 @@ if($roundId>0){
     $s->execute(['r'=>$roundId]);$judges=$s->fetchAll();
     $s=$pdo->prepare('SELECT division,yes_count,tier_manual_override FROM bdc_test_scoring_rounds WHERE id=:r');
     $s->execute(['r'=>$roundId]);$round=$s->fetch()?:[];$division=(string)($round['division']??'');$yesCount=(int)($round['yes_count']??10);$yesLocked=(int)($round['tier_manual_override']??0)===1;
-    $s=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_marks WHERE round_id=:r AND (mark_type<>'blank' OR weighted_score>0)");$s->execute(['r'=>$roundId]);$scoringStarted=(int)$s->fetchColumn()>0;
+    $s=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_marks WHERE round_id=:r AND (mark_type<>'blank' OR weighted_score>0)");$s->execute(['r'=>$roundId]);$scoringStarted=(int)$s->fetchColumn()>0;if(!$yesLocked){$s=$pdo->prepare("SELECT COALESCE(MAX(total),0) FROM (SELECT COUNT(*) total FROM bdc_test_scoring_entries WHERE round_id=:r AND entry_status='active' GROUP BY dance_role) role_counts");$s->execute(['r'=>$roundId]);$largest=(int)$s->fetchColumn();$yesCount=$largest<=15?5:($largest<=30?10:15);}
 }
 $categories=SpecialCategoryService::categories();$schedules=[];
 foreach(array_keys($categories) as $category)$schedules[$category]=SpecialCategoryService::schedule($category);

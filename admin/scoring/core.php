@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 38859)
+Warning: truncated output (original token count: 39110)
 Total output lines: 2226
 
 <?php
@@ -678,7 +678,7 @@ try{
    if(!$specialRound||!SpecialCategoryService::isSpecial((string)$specialRound['division']))throw new RuntimeException('Special-category round not found.');
    $started=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks WHERE round_id=:round AND (mark_type<>'blank' OR weighted_score>0)");$started->execute(['round'=>$roundId]);
    if((int)$started->fetchColumn()>0)throw new RuntimeException('The YES count cannot be changed or unlocked after judging has started.');
-   if($action==='special_settings_lock'){$yes=max(1,min(100,(int)($_POST['special_yes_count']??10)));$pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')->execute(['yes'=>$yes,'id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_locked',['yes_count'=>$yes,'alternates'=>[4.5,4.3,4.2]]);$notice='Special-category YES count saved and locked at '.$yes.' per judge.';}
+   if($action==='special_settings_lock'){$yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');$pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')->execute(['yes'=>$yes,'id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_locked',['yes_count'=>$yes,'alternates'=>[4.5,4.3,4.2]]);$notice='Special-category YES count saved and locked at '.$yes.' per judge.';}
    else{$pdo->prepare('UPDATE bdc_scoring_rounds SET tier_manual_override=0 WHERE id=:id')->execute(['id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_unlocked',['yes_count'=>(int)$specialRound['yes_count']]);$notice='Special-category YES count unlocked. Save and lock it again before judging.';}
   }elseif($action==='settings'){
    $roundId=(int)$_POST['round_id'];
@@ -941,20 +941,7 @@ try{
     }
     $pdo->commit();
     $notice='Tie resolved. '.$selected['display_name'].' was selected by the Chief Judge as the callback.';
-   }catch(Throwable $e){
-    if($pdo->inTransaction())$pdo->rollBack();
-    throw $e;
-   }
-  }…8859 tokens truncated…a['total_score']:-1;
-   $totalB=$rb?(float)$rb['total_score']:-1;
-   if($totalA!==$totalB)return $totalB<=>$totalA;
-   return (int)$a['bib_number']<=>(int)$b['bib_number'];
-  });
- }
-}
-$s=$pdo->prepare("SELECT fp.*,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib FROM bdc_scoring_final_pairs fp JOIN bdc_scoring_entries le ON le.id=fp.leader_entry_id LEFT JOIN bdc_scoring_entries fe ON fe.id=fp.follower_entry_id WHERE fp.round_id=:r ORDER BY fp.pair_number");$s->execute(['r'=>$roundId]);$finalPairs=$s->fetchAll();
-$s=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM bdc_scoring_final_marks WHERE round_id=:r");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $fm)$finalMarks[(int)$fm['pair_id']][(int)$fm['judge_id']]=(int)$fm['rank_value'];
-$s=$pdo->prepare("SELECT * FROM bdc_scoring_final_results WHERE round_id=:r ORDER BY final_rank");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $fr)$finalResults[(int)$fr['pair_id']]=$fr;
+   }catch(Thr…9110 tokens truncated…te(['r'=>$roundId]);foreach($s->fetchAll() as $fr)$finalResults[(int)$fr['pair_id']]=$fr;
 if($finalResults){
  usort($finalPairs,function($a,$b)use($finalResults){
   $rankA=(int)($finalResults[(int)$a['id']]['final_rank']??PHP_INT_MAX);
@@ -1409,13 +1396,13 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
 <?php endif;?>
 <?php else:?>
 <?php
-$currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);$specialSettings=SpecialCategoryService::isSpecial((string)$round['division']);
+$currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);$specialSettings=SpecialCategoryService::isSpecial((string)$round['division']);$specialSuggestedYes=(int)$round['yes_count'];if($specialSettings&&(int)$round['tier_manual_override']!==1){$countStmt=$pdo->prepare("SELECT COALESCE(MAX(total),0) FROM (SELECT COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role) role_counts");$countStmt->execute(['round'=>$roundId]);$largest=(int)$countStmt->fetchColumn();$specialSuggestedYes=$largest<=15?5:($largest<=30?10:15);}
 ?>
 <div class="row g-3 mb-4"><div class="col-lg-4"><div class="card shadow-sm h-100"><div class="card-body">
 <h2 class="h5"><?=e(ucfirst($round['round_type']))?> Settings</h2>
 <?php if($specialSettings):?>
 <form method="post" class="row g-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>">
-<div class="col-12"><label class="form-label">YES per Judge</label><input class="form-control" type="number" min="1" max="100" name="special_yes_count" value="<?=(int)$round['yes_count']?>" <?=((int)$round['tier_manual_override']===1)?'readonly':''?>></div>
+<div class="col-12"><label class="form-label">YES Tier per Judge</label><select class="form-select" name="special_yes_count" <?=((int)$round['tier_manual_override']===1)?'disabled':''?>><option value="5" <?=$specialSuggestedYes===5?'selected':''?>>Tier 1 · 5 YES</option><option value="10" <?=$specialSuggestedYes===10?'selected':''?>>Tier 2 · 10 YES</option><option value="15" <?=$specialSuggestedYes===15?'selected':''?>>Tier 3 · 15 YES</option></select><?php if((int)$round['tier_manual_override']===1):?><input type="hidden" name="special_yes_count" value="<?=(int)$round['yes_count']?>"><?php endif;?><div class="form-text">Recommended automatically from the larger Leader or Follower count. You may amend it before locking.</div></div>
 <div class="col-12"><div class="border rounded p-3 bg-light"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row g-2 text-center"><div class="col-4"><small class="text-muted d-block">ALT 1</small><strong>4.5</strong></div><div class="col-4"><small class="text-muted d-block">ALT 2</small><strong>4.3</strong></div><div class="col-4"><small class="text-muted d-block">ALT 3</small><strong>4.2</strong></div></div></div></div>
 <div class="col-12"><?php if((int)$round['tier_manual_override']===1):?><button class="btn btn-outline-warning btn-sm" name="action" value="special_settings_unlock">Unlock YES Count</button><?php else:?><button class="btn btn-dark btn-sm" name="action" value="special_settings_lock">Save &amp; Lock YES Count</button><?php endif;?></div></form>
 <?php else:?>

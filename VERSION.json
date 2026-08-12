@@ -1,16 +1,17 @@
 {
-  "version": "2.3.3-dev158",
-  "build": 2488,
+  "version": "2.3.3-dev159",
+  "build": 2489,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Lets every Admin Scorer configure the special-category YES count",
-    "Adds Save and Lock plus pre-scoring Unlock controls",
+    "Replaces the free YES input with 5, 10 and 15 tier choices",
+    "Recommends the tier from the larger Leader or Follower count",
+    "Preserves the Admin Scorer selection after Save and Lock",
+    "Allows the recommended tier to be amended before judging",
     "Keeps ALT 1, ALT 2 and ALT 3 weights permanently fixed",
     "Blocks YES changes after judging has started",
-    "Applies the same controls to Testing and Live, Manual and Automatic scoring",
-    "Sorts archived events from latest event date to oldest"
+    "Applies the same controls to Testing and Live, Manual and Automatic scoring"
   ]
 }

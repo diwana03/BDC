@@ -29,7 +29,7 @@ if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
  if($action==='settings'&&$rid>0){
   $s=$pdo->prepare('SELECT division FROM bdc_test_scoring_rounds WHERE id=:r');$s->execute(['r'=>$rid]);$division=(string)$s->fetchColumn();
   if(SpecialCategoryService::isSpecial($division)){
-   $yes=max(1,min(100,(int)($_POST['special_yes_count']??10)));
+   $yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');
    $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:y,callback_count=:y,tier_manual_override=1 WHERE id=:r')->execute(['y'=>$yes,'r'=>$rid]);
    header('Location: '.testWorkspaceUrl($testMode,$rid,['special_settings'=>1]),true,303);exit;
   }
