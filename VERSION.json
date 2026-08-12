@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev162",
-  "build": 2510,
+  "version": "2.3.3-dev163",
+  "build": 2520,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes persistent projector tab looping in the server state poll",
-    "Shows the Final Relative Placement judge matrix in landscape",
-    "Uses the same final scoring-sheet data as the printable PDF view",
-    "Keeps Winner Podium blank until an operator reveals a placement",
-    "Applies the corrected projector workflow to Testing and Live"
+    "Applies projector loop delay changes immediately while looping",
+    "Preserves the selected delay for the next loop when stopped",
+    "Shows clear success or failure feedback after changing delay",
+    "Keeps the Relative Placement landscape final scoring sheet",
+    "Applies the loop delay correction to Testing and Live"
   ]
 }
