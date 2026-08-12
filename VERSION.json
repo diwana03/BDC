@@ -1,16 +1,16 @@
 {
-  "version": "2.3.3-dev150",
-  "build": 2480,
+  "version": "2.3.3-dev151",
+  "build": 2481,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Creates a dedicated all-finalist Judge Rankings landscape page",
-    "Creates a dedicated all-finalist Relative Placement landscape page",
-    "Reduces the Final contestant column to a compact fixed width",
-    "Shows every judge rank across the remaining landscape width",
-    "Adds majority level, majority count, and placement sum to the placement trail",
-    "Applies the Final report structure to Testing and Live dashboards"
+    "Groups Special Categories below the standard BDC divisions",
+    "Adds contestant-controlled profile photo positioning and zoom",
+    "Generates a consistent 600 by 600 profile image crop",
+    "Supports mouse, touch, and pen dragging in the photo editor",
+    "Validates and stores the adjusted JPEG safely on submission",
+    "Removes unnecessary explanatory comments from the public registration page"
   ]
 }
