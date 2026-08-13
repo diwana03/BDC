@@ -162,6 +162,7 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
     }
     return $currentOrder === 'asc' ? ' ▲' : ' ▼';
 }
+$currentListReturn = '?' . http_build_query($_GET);
 ?>
 <!doctype html>
 <html lang="en">
@@ -333,7 +334,7 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                 <?php foreach ($rows as $row):
                     $photo = $row['photo_url'] ?: url('public/assets/img/default-competitor.svg');
                 ?>
-                    <tr>
+                    <tr id="competitor-<?= (int)$row['id'] ?>">
                         <td><img src="<?= e($photo) ?>" class="competitor-photo" alt=""></td>
                         <td><code><?= e((string)$row['bdc_id']) ?></code></td>
                         <td>
@@ -346,8 +347,9 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>
-                                <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>">Edit</a>
-                                <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>">Adjust photo</a>
+                                <?php $rowReturn=$currentListReturn.'#competitor-'.(int)$row['id']; ?>
+                                <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Edit</a>
+                                <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Adjust photo</a>
                             <?php endif; ?>
                         </td>
                     </tr>
