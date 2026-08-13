@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev181",
-  "build": 2700,
+  "version": "2.3.3-dev182",
+  "build": 2710,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Catches saved-round loader failures before the shared scoring page can return an empty HTTP 500",
-    "Shows a traceable error reference while preserving the saved round and scores",
-    "Allows unscored draft event name, date, dance style, and division details to be corrected",
-    "Locks draft detail editing immediately after any heats or final judge mark is saved",
-    "Provides matching draft-edit controls and validation on Testing and Live dashboards"
+    "Repairs draft-detail saving against legacy Registration Desk activity tables",
+    "Updates Registration Desk links by dance style and division without querying a missing activity column",
+    "Leaves historical Registration Desk activity unchanged because the legacy table has no dance-style identity",
+    "Preserves transactional rollback so failed edits cannot partially change a draft",
+    "Retains matching draft-edit controls and validation on Testing and Live dashboards"
   ]
 }
