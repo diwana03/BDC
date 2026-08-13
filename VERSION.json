@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev177",
-  "build": 2660,
+  "version": "2.3.3-dev178",
+  "build": 2670,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores high-contrast sidebar links inside Staging navigation folders",
-    "Uses a dark translucent folder surface on the amber Staging shell",
-    "Keeps folder titles, icons and links clearly readable",
-    "Bumps the brand stylesheet cache version",
-    "Preserves the server-rendered collapsible navigation"
+    "Keeps Release Manager permanently visible outside collapsible folders",
+    "Adds a clear DEPLOY badge to Release Manager",
+    "Applies an enterprise Unisphere blue-and-white folder palette in Production",
+    "Preserves the amber high-contrast Staging palette",
+    "Bumps the brand stylesheet cache version"
   ]
 }

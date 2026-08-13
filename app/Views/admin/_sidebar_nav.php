@@ -35,8 +35,9 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/scoring-tests/', '⚗', 'Scoring Tests Dashboard', 'TEST'); ?>
     <?php $sidebarLink('admin/system-maintenance/', '☁', 'Backup & Recovery'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/storage-usage/', '◫', 'Storage Usage', 'NEW'); ?>
-    <?php if (Auth::isSuperAdmin() && ReleaseManagerService::isReleaseManagerAvailable()) $sidebarLink('admin/system-release/', '⚙', 'Release Manager'); ?>
 </div></details>
+
+<?php if (Auth::isSuperAdmin() && ReleaseManagerService::isReleaseManagerAvailable()) $sidebarLink('admin/system-release/', '⚙', 'Release Manager', 'DEPLOY'); ?>
 
 <?php if (Auth::isSuperAdmin()): ?>
 <details class="admin-nav-group-v203"><summary>Super Admin</summary><div class="admin-nav-group-links-v203">

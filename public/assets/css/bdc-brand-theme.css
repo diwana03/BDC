@@ -58,6 +58,15 @@
 .admin-v203.admin-env-production .admin-sidebar-v203 nav a:hover{background:#eef7fc;color:#0879bf}
 .admin-v203.admin-env-production .admin-sidebar-v203 nav a em{background:#1686c4;color:#fff}
 .admin-v203.admin-env-production .admin-sidebar-label-v203{color:#777;border-color:#ddd}
+.admin-v203.admin-env-production .admin-nav-group-v203{border-color:#d5dadd;background:#fff;border-radius:2px}
+.admin-v203.admin-env-production .admin-nav-group-v203[open]{border-color:#9dc9df;background:#fff}
+.admin-v203.admin-env-production .admin-nav-group-v203 summary{color:#075f91;background:#edf6fb;border-radius:0}
+.admin-v203.admin-env-production .admin-nav-group-v203[open] summary{background:#d9edf8;color:#064f79;border-bottom:1px solid #b9d9e9}
+.admin-v203.admin-env-production .admin-nav-group-v203 summary:before{color:#0879bf}
+.admin-v203.admin-env-production .admin-nav-group-v203 summary:hover{background:#cce7f5;color:#064f79}
+.admin-v203.admin-env-production .admin-nav-group-links-v203 a{color:#2d3742}
+.admin-v203.admin-env-production .admin-nav-group-links-v203 a>span{color:#1686c4}
+.admin-v203.admin-env-production .admin-nav-group-links-v203 a:hover{background:#eef7fc;color:#075f91}
 .admin-v203.admin-env-production .admin-main-v203{background:#f0f0f0}
 .admin-v203.admin-env-production .admin-page-heading-v203 h1{color:#252525}
 .admin-v203.admin-env-production .admin-date-chip-v203{background:#fff;color:#0879bf;border:1px solid #bdbdbd}
