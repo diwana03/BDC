@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\DivisionProgressionService;
+use App\Services\SpecialCategoryService;
 
 Auth::requirePermission('competitors.view');
 
@@ -19,6 +20,7 @@ $country  = trim((string)($_GET['country'] ?? ''));
 $role     = (string)($_GET['role'] ?? '');
 $division = (string)($_GET['division'] ?? '');
 $status   = (string)($_GET['status'] ?? '');
+$danceStyle = in_array((string)($_GET['dance_style'] ?? ''), ['bachata', 'salsa'], true) ? (string)$_GET['dance_style'] : '';
 $sort     = (string)($_GET['sort'] ?? 'name');
 $order    = strtolower((string)($_GET['order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 $perPage  = (int)($_GET['per_page'] ?? 50);
@@ -30,7 +32,7 @@ if (!in_array($perPage, $allowedPerPage, true)) {
 }
 
 $allowedRoles = ['leader', 'follower', 'both', 'unknown'];
-$allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'unknown'];
+$allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'bachata_rising', 'bachata_open', 'bachata_invitational', 'salsa_rising', 'salsa_open', 'unknown'];
 $allowedStatuses = ['active', 'pending', 'archived'];
 
 $where = ['1=1'];
@@ -52,23 +54,31 @@ if ($filter === 'missing_photo') {
     $where[] = "(c.photo_url IS NULL OR TRIM(c.photo_url) = '')";
 } elseif ($filter === 'missing_country') {
     $where[] = "(c.country IS NULL OR TRIM(c.country) = '')";
-} elseif ($filter === 'missing_role') {
-    $where[] = "c.dance_role = 'unknown'";
-} elseif ($filter === 'missing_division') {
-    $where[] = "c.current_division = 'unknown'";
+} elseif ($filter === 'incomplete_profile') {
+    $where[] = "EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles ip WHERE ip.competitor_id=c.id AND (:profile_style='' OR ip.dance_style=:profile_style2) AND (ip.dance_role='unknown' OR ip.current_division='unknown'))";
+    $params['profile_style'] = $danceStyle; $params['profile_style2'] = $danceStyle;
+} elseif ($filter === 'special_category') {
+    $where[] = "EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles spx WHERE spx.competitor_id=c.id AND (:special_style='' OR spx.dance_style=:special_style2) AND spx.current_division IN ('bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'))";
+    $params['special_style'] = $danceStyle; $params['special_style2'] = $danceStyle;
 }
 
 if ($country !== '') {
     $where[] = 'c.country = :country';
     $params['country'] = $country;
 }
+if ($danceStyle !== '') {
+    $where[] = 'EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles ds WHERE ds.competitor_id=c.id AND ds.dance_style=:dance_style)';
+    $params['dance_style'] = $danceStyle;
+}
 if (in_array($role, $allowedRoles, true)) {
-    $where[] = 'c.dance_role = :role';
+    $where[] = 'EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles rp WHERE rp.competitor_id=c.id AND rp.dance_role=:role AND (:role_style="" OR rp.dance_style=:role_style2))';
     $params['role'] = $role;
+    $params['role_style'] = $danceStyle; $params['role_style2'] = $danceStyle;
 }
 if (in_array($division, $allowedDivisions, true)) {
-    $where[] = 'c.current_division = :division';
+    $where[] = 'EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles dp WHERE dp.competitor_id=c.id AND dp.current_division=:division AND (:division_style="" OR dp.dance_style=:division_style2))';
     $params['division'] = $division;
+    $params['division_style'] = $danceStyle; $params['division_style2'] = $danceStyle;
 }
 if (in_array($status, $allowedStatuses, true)) {
     $where[] = 'c.status = :status';
@@ -79,8 +89,8 @@ $sortMap = [
     'name'       => 'c.exact_name',
     'bdc_id'     => 'c.bdc_id',
     'country'    => 'c.country',
-    'role'       => 'c.dance_role',
-    'division'   => 'c.current_division',
+    'role'       => 'COALESCE(bp.dance_role,sp.dance_role)',
+    'division'   => 'COALESCE(bp.current_division,sp.current_division)',
     'total'      => 'total_points',
     'status'     => 'c.status',
     'created'    => 'c.created_at',
@@ -99,15 +109,15 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT c.*,
-        COALESCE(SUM(CASE WHEN p.division='novice' THEN p.points ELSE 0 END),0) AS novice_points,
-        COALESCE(SUM(CASE WHEN p.division='intermediate' THEN p.points ELSE 0 END),0) AS intermediate_points,
-        COALESCE(SUM(CASE WHEN p.division='advanced' THEN p.points ELSE 0 END),0) AS advanced_points,
-        COALESCE(SUM(p.points),0) AS total_points
+$sql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,
+        sp.dance_role salsa_role,sp.current_division salsa_division,
+        COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.salsa_points,0) salsa_points,
+        COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
     FROM bdc_competitors c
-    LEFT JOIN bdc_point_transactions p ON p.competitor_id = c.id
+    LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
+    LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
+    LEFT JOIN (SELECT competitor_id,SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,SUM(CASE WHEN dance_style='salsa' THEN points ELSE 0 END) salsa_points FROM bdc_point_transactions GROUP BY competitor_id) pp ON pp.competitor_id=c.id
     WHERE {$whereSql}
-    GROUP BY c.id
     ORDER BY {$orderBy} {$orderSql}, c.id ASC
     LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($sql);
@@ -122,8 +132,8 @@ $rows = $stmt->fetchAll();
 $counts = [
     'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE photo_url IS NULL OR TRIM(photo_url)='' ")->fetchColumn(),
     'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE country IS NULL OR TRIM(country)='' ")->fetchColumn(),
-    'missing_role'     => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE dance_role='unknown'")->fetchColumn(),
-    'missing_division' => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE current_division='unknown'")->fetchColumn(),
+    'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE dance_role='unknown' OR current_division='unknown'")->fetchColumn(),
+    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE current_division IN ('bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open')")->fetchColumn(),
 ];
 
 $countries = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
@@ -167,6 +177,8 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
         .filter-card.active { outline: 2px solid #212529; }
         .competitor-photo { width:48px; height:48px; object-fit:cover; border-radius:8px; }
         .table thead th { vertical-align: middle; }
+        .profile-box { min-width:190px; padding:.55rem .7rem; border:1px solid #dee2e6; border-radius:.55rem; background:#fff; }
+        .profile-box.special { border-color:#0dcaf0; background:#f0fbff; }
     </style>
 </head>
 <body class="bg-light">
@@ -218,6 +230,10 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
+                    <label class="form-label small text-muted">Dance Style</label>
+                    <select class="form-select" name="dance_style"><option value="">Bachata &amp; Salsa</option><option value="bachata" <?=$danceStyle==='bachata'?'selected':''?>>Bachata</option><option value="salsa" <?=$danceStyle==='salsa'?'selected':''?>>Salsa</option></select>
+                </div>
+                <div class="col-lg-2 col-md-3">
                     <label class="form-label small text-muted">Role</label>
                     <select class="form-select" name="role">
                         <option value="">All roles</option>
@@ -230,9 +246,8 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                     <label class="form-label small text-muted">Division</label>
                     <select class="form-select" name="division">
                         <option value="">All divisions</option>
-                        <?php foreach ($allowedDivisions as $item): ?>
-                            <option value="<?= e($item) ?>" <?= $division === $item ? 'selected' : '' ?>><?= e(ucwords(str_replace('_', ' ', $item))) ?></option>
-                        <?php endforeach; ?>
+                        <optgroup label="Career Divisions"><?php foreach (['novice','intermediate','advanced','all_star','professional','unknown'] as $item): ?><option value="<?=e($item)?>" <?=$division===$item?'selected':''?>><?=e(ucwords(str_replace('_',' ',$item)))?></option><?php endforeach;?></optgroup>
+                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>BDC Rising Star</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>BDC Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option></optgroup>
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
@@ -249,7 +264,7 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                     <label class="form-label small text-muted">Missing information</label>
                     <select class="form-select" name="filter">
                         <option value="">Any</option>
-                        <?php foreach (['missing_photo', 'missing_country', 'missing_role', 'missing_division'] as $item): ?>
+                        <?php foreach (['missing_photo', 'missing_country', 'incomplete_profile', 'special_category'] as $item): ?>
                             <option value="<?= e($item) ?>" <?= $filter === $item ? 'selected' : '' ?>><?= e(ucwords(str_replace('_', ' ', $item))) ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -305,10 +320,8 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                     <th><a class="sortable" href="<?= e(sortUrl('bdc_id', $sort, $order)) ?>">BDC ID<?= sortMark('bdc_id', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('name', $sort, $order)) ?>">Name<?= sortMark('name', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('country', $sort, $order)) ?>">Country<?= sortMark('country', $sort, $order) ?></a></th>
-                    <th><a class="sortable" href="<?= e(sortUrl('role', $sort, $order)) ?>">Role<?= sortMark('role', $sort, $order) ?></a></th>
-                    <th><a class="sortable" href="<?= e(sortUrl('division', $sort, $order)) ?>">Division<?= sortMark('division', $sort, $order) ?></a></th>
-                    <th>Division Status</th>
-                    <th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>">Total<?= sortMark('total', $sort, $order) ?></a></th>
+                    <th>Bachata Profile</th><th>Salsa Profile</th>
+                    <th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>">Points by Style<?= sortMark('total', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('status', $sort, $order)) ?>">Status<?= sortMark('status', $sort, $order) ?></a></th>
                     <th></th>
                 </tr>
@@ -319,14 +332,6 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                 <?php endif; ?>
                 <?php foreach ($rows as $row):
                     $photo = $row['photo_url'] ?: url('public/assets/img/default-competitor.svg');
-                    $effectiveDivision=DivisionProgressionService::effectiveDivision(
-                        (float)$row['novice_points'],
-                        (float)$row['intermediate_points'],
-                        (float)$row['advanced_points'],
-                        $row['current_division'],
-                        (bool)$row['novice_manual_out'],
-                        (bool)$row['intermediate_manual_out']
-                    );
                 ?>
                     <tr>
                         <td><img src="<?= e($photo) ?>" class="competitor-photo" alt=""></td>
@@ -336,14 +341,8 @@ function sortMark(string $column, string $currentSort, string $currentOrder): st
                             <div class="small text-muted"><?= e((string)$row['instagram']) ?></div>
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
-                        <td><?= e(ucfirst($row['dance_role'])) ?></td>
-                        <td><?= e(ucwords(str_replace('_', ' ', $row['current_division']))) ?></td>
-                        <td>
-                            <span class="badge text-bg-primary"><?=e(DivisionProgressionService::label($effectiveDivision))?></span>
-                            <?php if($effectiveDivision!==$row['current_division']):?><div class="small text-warning mt-1">Rule-based division differs from stored division</div><?php endif;?>
-                            <?php if(!empty($row['division_override_reason'])):?><div class="small text-muted mt-1"><?=e($row['division_override_reason'])?></div><?php endif;?>
-                        </td>
-                        <td><?= e((string)(float)$row['total_points']) ?></td>
+                        <?php foreach (['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$special=SpecialCategoryService::isSpecial($div);?><td><div class="profile-box <?=$special?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge <?=$special?'text-bg-info':'text-bg-primary'?>"><?=e($special?SpecialCategoryService::label($div):ucwords(str_replace('_',' ',$div)))?></span></div><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php else:?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
+                        <td><div><strong>Bachata:</strong> <?=e((string)(float)$row['bachata_points'])?></div><div><strong>Salsa:</strong> <?=e((string)(float)$row['salsa_points'])?></div></td>
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>
