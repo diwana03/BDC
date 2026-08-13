@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev183",
-  "build": 2720,
+  "version": "2.3.3-dev184",
+  "build": 2730,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Shows the actual event date as a separate Saved Rounds column",
-    "Distinguishes the competition date from the system Updated timestamp",
-    "Formats event dates consistently for quick scanning",
-    "Shows Date pending when an event date has not been entered",
-    "Provides the same event-date visibility on Testing and Live dashboards"
+    "Shows the event date at the top of every open scoring round",
+    "Covers Heats, Semifinal, and Final scoring forms",
+    "Includes manual and automatic scoring workflows",
+    "Formats dates consistently and shows Date pending when missing",
+    "Provides matching event-date visibility on Testing and Live dashboards"
   ]
 }
