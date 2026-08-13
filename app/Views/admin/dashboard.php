@@ -103,6 +103,8 @@ if (
  const nav=document.currentScript.previousElementSibling;if(!nav)return;
  const links=[...nav.querySelectorAll(':scope > a')],labels=[...nav.querySelectorAll(':scope > .admin-sidebar-label-v203')];labels.forEach(x=>x.remove());
  const dashboard=links.shift();
+ const readState=name=>{try{return localStorage.getItem('bdc-admin-nav-'+name)}catch(e){return null}};
+ const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
   'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard'],
   'People':['Competitors','Identity Matches','Profile Requests'],
@@ -114,10 +116,10 @@ if (
  Object.entries(groups).forEach(([name,names],index)=>{
   const selected=links.filter(a=>names.some(n=>a.textContent.trim().startsWith(n)));if(!selected.length)return;
   const details=document.createElement('details');details.className='admin-nav-group-v203';details.dataset.group=name;
-  const saved=localStorage.getItem('bdc-admin-nav-'+name);details.open=saved===null?index===0:saved==='1';
+  const saved=readState(name);details.open=saved===null?index===0:saved==='1';
   const summary=document.createElement('summary');summary.textContent=name;
   const box=document.createElement('div');box.className='admin-nav-group-links-v203';selected.forEach(a=>box.appendChild(a));
-  details.append(summary,box);details.addEventListener('toggle',()=>localStorage.setItem('bdc-admin-nav-'+name,details.open?'1':'0'));nav.appendChild(details);
+  details.append(summary,box);details.addEventListener('toggle',()=>saveState(name,details.open?'1':'0'));nav.appendChild(details);
  });
  links.filter(a=>!a.parentElement.classList.contains('admin-nav-group-links-v203')).forEach(a=>nav.appendChild(a));
 })();
