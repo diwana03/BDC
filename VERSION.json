@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev169",
-  "build": 2580,
+  "version": "2.3.3-dev170",
+  "build": 2590,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Replaces emoji projector effects with a cinematic canvas particle engine",
-    "Adds multi-burst glowing fireworks with launch trails and gravity",
-    "Adds depth, rotation and natural movement to full-screen confetti",
-    "Adds a dramatic drum-roll light, shockwave and stage reveal effect",
-    "Removes the incorrect Random Match wording from general drum rolls"
+    "Forces all presentation effects into a transparent top-level projector overlay",
+    "Starts cinematic fireworks immediately above the active screen",
+    "Adds Gold Celebration with reflective metallic streamers",
+    "Adds Laser Sweep and Champion Impact projector effects",
+    "Shares the complete overlay engine between Testing and Live"
   ]
 }
