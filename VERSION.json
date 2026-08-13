@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev175",
-  "build": 2640,
+  "version": "2.3.3-dev176",
+  "build": 2650,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Builds the categorized sidebar atomically before replacing the original menu",
-    "Keeps the complete original navigation visible if category construction fails",
-    "Prevents Release Manager and administrative tools from disappearing",
-    "Retains collapsible app folders and category memory",
+    "Renders collapsible admin categories directly on the server",
+    "Removes the dashboard sidebar dependency on inline JavaScript and browser storage",
+    "Keeps Release Manager reliably available under Testing & System",
+    "Organizes daily tools into five app-style categories",
     "Preserves permissions, badges and notification counts"
   ]
 }

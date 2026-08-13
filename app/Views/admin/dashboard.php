@@ -25,7 +25,7 @@ $bdcEnvironmentClass =
     ? "Super Admin"
     : "Admin" ?></small></span><a class="admin-topbar-logout-v203" href="<?= e(
     url("admin/?logout=1"),
-) ?>">Logout</a></div></header><aside class="admin-sidebar-v203"><nav><a class="active" href="<?= e(
+) ?>">Logout</a></div></header><aside class="admin-sidebar-v203"><nav><?php require __DIR__.'/_sidebar_nav.php'; if(false): ?><a class="active" href="<?= e(
     url("admin/"),
 ) ?>"><span>▦</span>Dashboard</a><a href="<?= e(
     url("admin/live-screen/"),
@@ -98,7 +98,7 @@ if (
 ) ?>"><span>♙</span>Users &amp; Roles</a><a href="<?= e(
     url("admin/sql/"),
 ) ?>"><span>⌘</span>SQL Console</a><?php endif;
-?></nav><script>
+?><?php endif; ?></nav><?php if(false): ?><script>
 (function(){
  const nav=document.currentScript.previousElementSibling;if(!nav)return;
  const links=[...nav.querySelectorAll(':scope > a')],labels=[...nav.querySelectorAll(':scope > .admin-sidebar-label-v203')];labels.forEach(x=>x.remove());
@@ -124,7 +124,7 @@ if (
  const grouped=new Set(Object.values(groups).flat());links.filter(a=>!grouped.some(n=>a.textContent.trim().startsWith(n))).forEach(a=>fragment.appendChild(a.cloneNode(true)));
  nav.replaceChildren(fragment);
 })();
-</script><div class="admin-system-card-v203"><strong>ⓘ BDC System</strong><span>Version <?= e(
+</script><?php endif; ?><div class="admin-system-card-v203"><strong>ⓘ BDC System</strong><span>Version <?= e(
     (string) ($bdcVersion["version"] ?? ReleaseManagerService::VERSION),
 ) ?></span><small>© <?= date(
     "Y",
