@@ -32,7 +32,7 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
 </div></details>
 
 <details class="admin-nav-group-v203"><summary>Testing &amp; System</summary><div class="admin-nav-group-links-v203">
-    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/scoring-tests/', '⚗', 'Scoring Tests Dashboard', 'TEST'); ?>
+    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/scoring-tests/select-mode.php', '⚗', 'Scoring Tests Dashboard', 'TEST'); ?>
     <?php $sidebarLink('admin/system-maintenance/', '☁', 'Backup & Recovery'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/storage-usage/', '◫', 'Storage Usage', 'NEW'); ?>
 </div></details>

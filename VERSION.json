@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev192",
-  "build": 2810,
+  "version": "2.3.3-dev193",
+  "build": 2820,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes unreadable compressed bytes on the Testing scoring dashboard",
-    "Uses the same safe HTML response headers already proven on Live scoring",
-    "Allows Bluehost to advertise the actual compression encoding",
-    "Prevents intermediary transformation and stale cached dashboard responses",
+    "Disables PHP-side compression for the large Testing scoring response",
+    "Disables Bluehost caching and double compression for every Scoring Tests route",
+    "Routes admins through an uncached Testing dashboard URL",
+    "Prevents authenticated Testing pages from being retained by shared-hosting cache",
     "Does not change Testing or Live scoring calculations and data"
   ]
 }
