@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev179",
-  "build": 2680,
+  "version": "2.3.3-dev180",
+  "build": 2690,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Preserves competitor filters during photo adjustment and profile editing",
-    "Returns to the exact competitor row after saving an adjusted photo",
-    "Carries list context between Bachata and Salsa profile tabs",
-    "Preserves search, sorting, pagination and rows per page",
-    "Validates return destinations as local competitor-list queries"
+    "Repairs missing legacy scoring-round fields before opening saved rounds",
+    "Protects both Live and Test scoring dashboards with the same preflight checks",
+    "Preserves saved rounds and scores during compatibility repair",
+    "Records a traceable server reference instead of returning an empty HTTP 500",
+    "Keeps scoring schema repair limited to required scoring fields and tables"
   ]
 }
