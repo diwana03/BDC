@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev187",
-  "build": 2760,
+  "version": "2.3.3-dev188",
+  "build": 2770,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a Saved Rounds column selector without changing table data or workflow",
-    "Remembers selected columns and provides Show All and Reset controls",
-    "Uses a cleaner default view while preserving access to every existing column",
-    "Replaces manual round time entry with a 15-minute time selector and date picker",
-    "Provides matching column and scheduling controls on Testing and Live dashboards"
+    "Enforces each judge's tier-based YES quota during selection",
+    "Prevents duplicate A1, A2, and A3 selections separately for Leaders and Followers",
+    "Updates judge-browser quota counters immediately when a selection changes",
+    "Visually marks exhausted choices and displays a clear notification when tapped",
+    "Retains server-side validation and matching Testing and Live behavior"
   ]
 }
