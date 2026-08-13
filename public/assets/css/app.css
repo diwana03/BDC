@@ -93,6 +93,15 @@ body{min-height:100vh}
 .admin-sidebar-v203 nav a em{margin-left:auto;padding:3px 7px;border-radius:999px;background:#ff6400;color:#fff;font-style:normal;font-size:10px}
 .admin-sidebar-v203 nav a i{margin-left:auto;display:grid;min-width:20px;height:20px;place-items:center;border-radius:999px;background:#ef4444;color:#fff;font-style:normal;font-size:10px}
 .admin-sidebar-label-v203{padding:18px 12px 6px;color:#9aa1ad;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.admin-nav-group-v203{margin:4px 0;border:1px solid transparent;border-radius:10px}
+.admin-nav-group-v203[open]{border-color:#dce7ef;background:#f8fbfd}
+.admin-nav-group-v203 summary{display:flex;align-items:center;min-height:42px;padding:9px 11px;border-radius:9px;color:#4b5563;font-size:12px;font-weight:800;letter-spacing:.035em;cursor:pointer;list-style:none;user-select:none}
+.admin-nav-group-v203 summary::-webkit-details-marker{display:none}
+.admin-nav-group-v203 summary:before{content:'›';display:grid;width:20px;height:20px;margin-right:8px;place-items:center;color:#1289c3;font-size:20px;transition:transform .16s ease}
+.admin-nav-group-v203[open] summary:before{transform:rotate(90deg)}
+.admin-nav-group-v203 summary:hover{background:#eaf5fb;color:#176f9b}
+.admin-nav-group-links-v203{display:flex;flex-direction:column;gap:2px;padding:0 6px 7px}
+.admin-nav-group-links-v203 a{min-height:39px!important;padding:8px 9px 8px 15px!important;font-size:13px!important}
 .admin-system-card-v203{margin-top:auto;padding:15px;border:1px solid #ffd8bf;border-radius:10px;background:#fff8f3;color:#c84500}
 .admin-system-card-v203 strong,.admin-system-card-v203 span,.admin-system-card-v203 small{display:block}
 .admin-system-card-v203 span{margin:6px 0 16px;font-size:12px}

@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev172",
-  "build": 2610,
+  "version": "2.3.3-dev173",
+  "build": 2620,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Separates Bachata and Salsa profiles in Competitor Management",
-    "Adds Dance Style filtering and per-style points",
-    "Integrates BDC Rising Star, BDC Open, Bachata Invitational, Salsa Rising and Salsa Open as special categories",
-    "Stops special categories and non-Jack-and-Jill roles being presented as ordinary missing divisions",
-    "Improves the unrevealed podium wording"
+    "Organizes the admin sidebar into five task-based app folders",
+    "Allows each sidebar category to be expanded or hidden",
+    "Remembers the administrator's open and closed sidebar categories",
+    "Keeps Dashboard permanently visible",
+    "Preserves role permissions, badges and notification counts"
   ]
 }

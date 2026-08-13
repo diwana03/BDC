@@ -8,7 +8,7 @@ $bdcEnvironmentClass =
         : "admin-env-production";
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard | BDC Admin</title><link rel="stylesheet" href="<?= e(
-    url("public/assets/css/app.css?v=203"),
+    url("public/assets/css/app.css?v=204"),
 ) ?>"><link rel="stylesheet" href="<?= e(
     url("public/assets/css/bdc-brand-theme.css?v=4"),
 ) ?>"></head><body class="admin-v203 <?= e(
@@ -98,7 +98,30 @@ if (
 ) ?>"><span>♙</span>Users &amp; Roles</a><a href="<?= e(
     url("admin/sql/"),
 ) ?>"><span>⌘</span>SQL Console</a><?php endif;
-?></nav><div class="admin-system-card-v203"><strong>ⓘ BDC System</strong><span>Version <?= e(
+?></nav><script>
+(function(){
+ const nav=document.currentScript.previousElementSibling;if(!nav)return;
+ const links=[...nav.querySelectorAll(':scope > a')],labels=[...nav.querySelectorAll(':scope > .admin-sidebar-label-v203')];labels.forEach(x=>x.remove());
+ const dashboard=links.shift();
+ const groups={
+  'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard'],
+  'People':['Competitors','Identity Matches','Profile Requests'],
+  'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],
+  'Testing & System':['Scoring Tests Dashboard','Backup & Recovery','Storage Usage','Release Manager'],
+  'Super Admin':['AI Operations','Smart Result Import','Legacy & Bulk Import','Merge Duplicates','Users & Roles','SQL Console']
+ };
+ nav.replaceChildren(dashboard);
+ Object.entries(groups).forEach(([name,names],index)=>{
+  const selected=links.filter(a=>names.some(n=>a.textContent.trim().startsWith(n)));if(!selected.length)return;
+  const details=document.createElement('details');details.className='admin-nav-group-v203';details.dataset.group=name;
+  const saved=localStorage.getItem('bdc-admin-nav-'+name);details.open=saved===null?index===0:saved==='1';
+  const summary=document.createElement('summary');summary.textContent=name;
+  const box=document.createElement('div');box.className='admin-nav-group-links-v203';selected.forEach(a=>box.appendChild(a));
+  details.append(summary,box);details.addEventListener('toggle',()=>localStorage.setItem('bdc-admin-nav-'+name,details.open?'1':'0'));nav.appendChild(details);
+ });
+ links.filter(a=>!a.parentElement.classList.contains('admin-nav-group-links-v203')).forEach(a=>nav.appendChild(a));
+})();
+</script><div class="admin-system-card-v203"><strong>ⓘ BDC System</strong><span>Version <?= e(
     (string) ($bdcVersion["version"] ?? ReleaseManagerService::VERSION),
 ) ?></span><small>© <?= date(
     "Y",
