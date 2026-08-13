@@ -3,6 +3,7 @@ declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;
 Auth::requirePermission('competitors.edit');$pdo=Database::connection();$id=(int)($_GET['id']??$_POST['id']??0);
+$return=(string)($_GET['return']??($_SESSION['competitor_list_return_'.$id]??'?'));if($return===''||$return[0]!=='?'||str_contains($return,"\r")||str_contains($return,"\n"))$return='?';if($_SERVER['REQUEST_METHOD']==='GET')$_SESSION['competitor_list_return_'.$id]=$return;
 $s=$pdo->prepare('SELECT id,bdc_id,exact_name,photo_url,original_photo_url FROM bdc_competitors WHERE id=:id');$s->execute(['id'=>$id]);$c=$s->fetch();if(!$c){http_response_code(404);exit('Competitor not found.');}
 $error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
@@ -12,7 +13,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $bytes=base64_decode($m[1],true);if($bytes===false||strlen($bytes)>3*1024*1024)$error='Adjusted photo is invalid.';else{
     $dir=dirname(__DIR__,2).'/uploads/competitors';if(!is_dir($dir))mkdir($dir,0755,true);$name='competitor-framed-'.$id.'-'.bin2hex(random_bytes(5)).'.jpg';
     if(file_put_contents($dir.'/'.$name,$bytes)===false)$error='Adjusted photo could not be saved.';else{
-     $source=(string)($c['original_photo_url']?:$c['photo_url']);$pdo->prepare('UPDATE bdc_competitors SET original_photo_url=COALESCE(original_photo_url,:source),photo_url=:photo WHERE id=:id')->execute(['source'=>$source?:null,'photo'=>url('uploads/competitors/'.$name),'id'=>$id]);Auth::audit((int)Auth::user()['id'],'competitor_photo_adjusted',[],'competitor',$id);header('Location: edit.php?id='.$id.'&photo=adjusted');exit;
+     $source=(string)($c['original_photo_url']?:$c['photo_url']);$pdo->prepare('UPDATE bdc_competitors SET original_photo_url=COALESCE(original_photo_url,:source),photo_url=:photo WHERE id=:id')->execute(['source'=>$source?:null,'photo'=>url('uploads/competitors/'.$name),'id'=>$id]);Auth::audit((int)Auth::user()['id'],'competitor_photo_adjusted',[],'competitor',$id);header('Location: ./'.$return);exit;
     }
    }
   }
