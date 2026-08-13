@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev194",
-  "build": 2830,
+  "version": "2.3.3-dev195",
+  "build": 2840,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes the HTTP 500 on the Scoring Tests mode-selection route",
-    "Restores strict_types as the first executable PHP declaration",
-    "Points dashboard navigation directly to the clean uncached Testing dashboard",
+    "Adds a clean direct entry point for the isolated Testing scoring engine",
+    "Removes the failing post-login output-capture wrapper from dashboard navigation",
+    "Runs compression safeguards before any Testing output buffer exists",
     "Retains the Bluehost cache and double-compression protection",
     "Does not change Testing or Live scoring calculations and data"
   ]
