@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev166",
-  "build": 2550,
+  "version": "2.3.3-dev167",
+  "build": 2560,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a Super Admin AI Operations dashboard",
-    "Separates Testing and Live operational analysis",
-    "Sends privacy-safe aggregate metrics only",
-    "Adds no-cost deterministic monitoring checks",
-    "Adds saved AI reports, audit logging, rate limits and daily limits"
+    "Adds secure auditable Final random matching",
+    "Adds an independent expiring Emcee Match Link",
+    "Projects random matches with drum roll, fireworks and confetti",
+    "Expires judge scoring links after 12 hours",
+    "Updates Testing and Live matching workflows together"
   ]
 }

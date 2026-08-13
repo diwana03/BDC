@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 39110)
-Total output lines: 2226
-
 <?php
 declare(strict_types=1);
 
@@ -146,1623 +143,30 @@ function applyAutomaticTier(PDO $pdo,int $roundId,bool $force=false):array{
     $manual=(int)$stmt->fetchColumn()===1;
     if($force||!$manual){
         $pdo->prepare("UPDATE bdc_scoring_rounds SET yes_count=:yes_count,callback_count=:callback_count WHERE id=:round")
-            ->execute([
-                'yes_count'=>$info['yes'],
-                'callback_count'=>$info['yes'],
-                'round'=>$roundId
-            ]);
-    }
-    $info['manual']=$manual;
-    return $info;
-}
-
-function computeResults(PDO $pdo,array $round,int $userId):void{
-    $rid=(int)$round['id'];
-    $judges=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$judges->execute(['r'=>$rid]);$judges=$judges->fetchAll();
-    if(count($judges)<3) throw new RuntimeException('At least 3 judges are required.');
-    $chief=array_values(array_filter($judges,fn($j)=>(int)$j['is_chief']===1));
-    if(count($chief)!==1) throw new RuntimeException('Exactly one Chief Judge is required.');
-    $roleJudgeIds=[
-      'leader'=>array_map('intval',array_column(array_values(array_filter($judges,fn($j)=>in_array($j['scoring_scope']??'all',['all','leader'],true))),'id')),
-      'follower'=>array_map('intval',array_column(array_values(array_filter($judges,fn($j)=>in_array($j['scoring_scope']??'all',['all','follower'],true))),'id')),
-    ];
-    foreach(['leader','follower'] as $panelRole){
-      if(count($roleJudgeIds[$panelRole])<3)throw new RuntimeException(ucfirst($panelRole).' panel requires at least 3 assigned judges.');
-    }
-    $entries=$pdo->prepare("SELECT * FROM bdc_scoring_entries WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number");$entries->execute(['r'=>$rid]);$entries=$entries->fetchAll();
-    if(!$entries) throw new RuntimeException('Add competitors before calculating.');
-    $markStmt=$pdo->prepare('SELECT judge_id,weighted_score FROM bdc_scoring_marks WHERE entry_id=:e');
-    $rows=[];
-    foreach($entries as $entry){
-        $markStmt->execute(['e'=>$entry['id']]);$marks=$markStmt->fetchAll();
-        $total=0.0;$chiefScore=0.0;
-        $assignedIds=$roleJudgeIds[$entry['dance_role']]??[];
-        $roleChief=array_values(array_filter($judges,fn($j)=>(int)$j['is_chief']===1 && in_array((int)$j['id'],$assignedIds,true)));
-        $chiefId=(int)($roleChief[0]['id']??0);
-        foreach($marks as $m){
-          if(!in_array((int)$m['judge_id'],$assignedIds,true))continue;
-          $score=(float)$m['weighted_score'];$total+=$score;
-          if((int)$m['judge_id']===$chiefId)$chiefScore=$score;
-        }
-        $rows[$entry['dance_role']][]=['entry'=>$entry,'total'=>$total,'chief'=>$chiefScore];
-    }
-    $pdo->beginTransaction();
-    try{
-        $version=(int)$round['generated_version']+1;
-        $up=$pdo->prepare("INSERT INTO bdc_scoring_results(round_id,entry_id,total_score,chief_score,rank_number,result_status,alternate_rank,generated_version) VALUES(:r,:e,:t,:c,:rank,:st,:alt,:v) ON DUPLICATE KEY UPDATE total_score=VALUES(total_score),chief_score=VALUES(chief_score),rank_number=VALUES(rank_number),result_status=VALUES(result_status),alternate_rank=VALUES(alternate_rank),generated_version=VALUES(generated_version),updated_at=NOW()");
-        foreach(['leader','follower'] as $role){
-            $list=$rows[$role]??[];
-            usort($list,function($a,$b){
-                $totalOrder=$b['total']<=>$a['total'];
-                return $totalOrder!==0?$totalOrder:($b['chief']<=>$a['chief']);
-            });
-
-            $callbackLimit=min((int)$round['callback_count'],count($list));
-            $alternateLimit=min($callbackLimit+3,count($list));
-            $i=0;
-
-            while($i<count($list)){
-                $groupStart=$i;
-                $groupTotal=$list[$i]['total'];
-                $groupChief=$list[$i]['chief'];
-
-                while(
-                    $i+1<count($list)
-                    && $list[$i+1]['total']===$groupTotal
-                    && $list[$i+1]['chief']===$groupChief
-                ){
-                    $i++;
-                }
-
-                $groupEnd=$i;
-                $startPosition=$groupStart+1;
-                $endPosition=$groupEnd+1;
-                $rank=$startPosition;
-
-                $crossesCallbackCutoff=$startPosition<=$callbackLimit && $endPosition>$callbackLimit;
-                $crossesAlternateCutoff=$startPosition<=$alternateLimit && $endPosition>$alternateLimit;
-
-                for($j=$groupStart;$j<=$groupEnd;$j++){
-                    $status='eliminated';
-                    $alt=null;
-
-                    if($crossesCallbackCutoff || $crossesAlternateCutoff){
-                        $status='tie_pending';
-                    }elseif($endPosition<=$callbackLimit){
-                        // An exact tie entirely inside the callback zone is still a callback.
-                        $status='callback';
-                    }elseif($startPosition>$callbackLimit && $endPosition<=$alternateLimit){
-                        $status='alternate';
-                        $alt=$j-$callbackLimit+1;
-                    }
-
-                    $item=$list[$j];
-                    $up->execute([
-                        'r'=>$rid,
-                        'e'=>$item['entry']['id'],
-                        't'=>$item['total'],
-                        'c'=>$item['chief'],
-                        'rank'=>$rank,
-                        'st'=>$status,
-                        'alt'=>$alt,
-                        'v'=>$version
-                    ]);
-                }
-
-                $i++;
-            }
-        }
-        $pdo->prepare("UPDATE bdc_scoring_rounds SET status='awaiting_decision',generated_version=:v WHERE id=:id")->execute(['v'=>$version,'id'=>$rid]);
-        auditScoring($pdo,$rid,$userId,'results_generated',['version'=>$version]);
-        $pdo->commit();
-    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
-}
-
-
-
-function calculateRelativePlacement(PDO $pdo,int $roundId,int $userId):array{
-    $judgeStmt=$pdo->prepare("SELECT id,judge_order,is_chief,judge_name FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
-    $judgeStmt->execute(['r'=>$roundId]);
-    $judges=$judgeStmt->fetchAll();
-    if(count($judges)<3) throw new RuntimeException('At least 3 judges are required for Final scoring.');
-
-    $pairStmt=$pdo->prepare("SELECT * FROM bdc_scoring_final_pairs WHERE round_id=:r AND pairing_status='confirmed' ORDER BY pair_number");
-    $pairStmt->execute(['r'=>$roundId]);
-    $pairs=$pairStmt->fetchAll();
-    if(!$pairs) throw new RuntimeException('Confirm Final pairing before calculating rankings.');
-
-    $markStmt=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM bdc_scoring_final_marks WHERE round_id=:r");
-    $markStmt->execute(['r'=>$roundId]);
-    $marks=[];
-    foreach($markStmt->fetchAll() as $mark){
-        $marks[(int)$mark['pair_id']][(int)$mark['judge_id']]=(int)$mark['rank_value'];
-    }
-
-    $pairIds=array_map(fn($pair)=>(int)$pair['id'],$pairs);
-    $judgeIds=array_map(fn($judge)=>(int)$judge['id'],$judges);
-    $chiefJudge=array_values(array_filter($judges,fn($judge)=>(int)$judge['is_chief']===1));
-    $chiefId=(int)($chiefJudge[0]['id']??0);
-
-    $final=\App\Services\RelativePlacementCalculator::calculate(
-        $pairIds,
-        $judgeIds,
-        $chiefId,
-        $marks
-    );
-
-    $pdo->beginTransaction();
-    try{
-        $pdo->prepare("DELETE FROM bdc_scoring_final_results WHERE round_id=:r")->execute(['r'=>$roundId]);
-        $insert=$pdo->prepare("
-          INSERT INTO bdc_scoring_final_results(
-            round_id,pair_id,final_rank,majority_level,majority_count,placement_sum,chief_rank,decision_json
-          ) VALUES(:r,:p,:rank,:level,:count,:sum,:chief,:json)
-        ");
-        foreach($final as $row){
-            $insert->execute([
-                'r'=>$roundId,
-                'p'=>$row['pair_id'],
-                'rank'=>$row['final_rank'],
-                'level'=>$row['level'],
-                'count'=>$row['count'],
-                'sum'=>$row['sum'],
-                'chief'=>$row['chief_rank'],
-                'json'=>json_encode($row,JSON_UNESCAPED_UNICODE)
-            ]);
-        }
-        auditScoring($pdo,$roundId,$userId,'final_relative_placement_calculated',[
-          'pairs'=>count($pairIds),
-          'judges'=>count($judgeIds),
-          'algorithm_version'=>'2.0.15'
-        ]);
-        $pdo->commit();
-    }catch(Throwable $e){
-        if($pdo->inTransaction())$pdo->rollBack();
-        throw $e;
-    }
-
-    return $final;
-}
-
-function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int $userId):int{
-    $callbackCount=$pdo->prepare("
-      SELECT COUNT(*)
-      FROM bdc_scoring_entries se
-      JOIN bdc_scoring_results sr
-        ON sr.entry_id=se.id
-       AND sr.round_id=se.round_id
-      WHERE se.round_id=:source_round
-        AND se.entry_status='active'
-        AND sr.result_status='callback'
-    ");
-    $callbackCount->execute(['source_round'=>$source['id']]);
-    $expected=(int)$callbackCount->fetchColumn();
-    if($expected<1) throw new RuntimeException('No callback competitors were found in the submitted result.');
-
-    $copyEntries=$pdo->prepare("
-      INSERT INTO bdc_scoring_entries(
-        round_id,competitor_id,dance_role,bib_number,display_name,entry_status
-      )
-      SELECT
-        :new_round,se.competitor_id,se.dance_role,se.bib_number,se.display_name,'active'
-      FROM bdc_scoring_entries se
-      JOIN bdc_scoring_results sr
-        ON sr.entry_id=se.id
-       AND sr.round_id=se.round_id
-      WHERE se.round_id=:source_round
-        AND se.entry_status='active'
-        AND sr.result_status='callback'
-      ON DUPLICATE KEY UPDATE
-        bib_number=VALUES(bib_number),
-        display_name=VALUES(display_name),
-        entry_status='active'
-    ");
-    $copyEntries->execute([
-      'new_round'=>$childRoundId,
-      'source_round'=>$source['id']
-    ]);
-
-    $actualStmt=$pdo->prepare("
-      SELECT COUNT(*)
-      FROM bdc_scoring_entries
-      WHERE round_id=:r AND entry_status='active'
-    ");
-    $actualStmt->execute(['r'=>$childRoundId]);
-    $actual=(int)$actualStmt->fetchColumn();
-
-    if($actual<1){
-      throw new RuntimeException('Callbacks could not be transferred to the next round.');
-    }
-
-    $judgeCount=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_judges WHERE round_id=:r");
-    $judgeCount->execute(['r'=>$childRoundId]);
-    if((int)$judgeCount->fetchColumn()===0){
-      $copyJudges=$pdo->prepare("
-        INSERT INTO bdc_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope)
-        SELECT :new_round,judge_name,judge_order,is_chief,scoring_scope
-        FROM bdc_scoring_judges
-        WHERE round_id=:source_round
-        ORDER BY judge_order
-      ");
-      $copyJudges->execute([
-        'new_round'=>$childRoundId,
-        'source_round'=>$source['id']
-      ]);
-
-      $chief=$pdo->prepare("
-        SELECT id
-        FROM bdc_scoring_judges
-        WHERE round_id=:r AND is_chief=1
-        LIMIT 1
-      ");
-      $chief->execute(['r'=>$childRoundId]);
-      $pdo->prepare("
-        UPDATE bdc_scoring_rounds
-        SET chief_judge_id=:chief
-        WHERE id=:round_id
-      ")->execute([
-        'chief'=>(int)$chief->fetchColumn() ?: null,
-        'round_id'=>$childRoundId
-      ]);
-    }
-
-    auditScoring($pdo,$childRoundId,$userId,'callbacks_synced',[
-      'source_round_id'=>(int)$source['id'],
-      'expected_callbacks'=>$expected,
-      'active_child_entries'=>$actual
-    ]);
-
-    return $actual;
-}
-
-function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $userId):int{
-    if(!in_array($nextType,['semifinal','final'],true)) throw new RuntimeException('Invalid next round.');
-    $pending=$pdo->prepare("
-      SELECT COUNT(*) FROM (
-       SELECT se.dance_role,sr.rank_number,sr.total_score,sr.chief_score
-       FROM bdc_scoring_results sr
-       JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-       WHERE sr.round_id=:r AND sr.result_status='tie_pending'
-       GROUP BY se.dance_role,sr.rank_number,sr.total_score,sr.chief_score
-       HAVING COUNT(*)>1
-      ) unresolved_ties
-    ");
-    $pending->execute(['r'=>$source['id']]);
-    if((int)$pending->fetchColumn()>0) throw new RuntimeException('Resolve all callback ties before proceeding.');
-
-    $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND status<>'archived' ORDER BY id DESC LIMIT 1");
-    $existing->execute(['e'=>$source['event_id'],'d'=>$source['division'],'t'=>$nextType]);
-    $existingId=(int)$existing->fetchColumn();
-    if($existingId>0){
-        $pdo->beginTransaction();
-        try{
-            syncCallbacksToChildRound($pdo,$source,$existingId,$userId);
-            $pdo->prepare("UPDATE bdc_scoring_rounds SET status='completed' WHERE id=:id")
-                ->execute(['id'=>$source['id']]);
-            auditScoring($pdo,(int)$source['id'],$userId,'round_completed',[
-              'advanced_to_round_id'=>$existingId,
-              'advanced_to_round_type'=>$nextType
-            ]);
-            $pdo->commit();
-            return $existingId;
-        }catch(Throwable $e){
-            if($pdo->inTransaction())$pdo->rollBack();
-            throw $e;
-        }
-    }
-
-    $pdo->beginTransaction();
-    try{
-        $insert=$pdo->prepare("INSERT INTO bdc_scoring_rounds(
-          event_id,parent_round_id,source_round_id,round_type,division,
-          yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,
-          status,created_by
-        ) VALUES(:e,:p,:s,:t,:d,:yes,:cb,:yw,:a1,:a2,:a3,'draft',:u)");
-        $insert->execute([
-          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,
-          'd'=>$source['division'],'yes'=>$source['yes_count'],'cb'=>$source['callback_count'],
-          'yw'=>$source['yes_weight'],'a1'=>$source['alt1_weight'],'a2'=>$source['alt2_weight'],
-          'a3'=>$source['alt3_weight'],'u'=>$userId?:null
-        ]);
-        $newId=(int)$pdo->lastInsertId();
-
-        syncCallbacksToChildRound($pdo,$source,$newId,$userId);
-        $pdo->prepare("UPDATE bdc_scoring_rounds SET status='completed' WHERE id=:id")
-            ->execute(['id'=>$source['id']]);
-        auditScoring($pdo,(int)$source['id'],$userId,'next_round_created',['next_round_id'=>$newId,'next_round_type'=>$nextType]);
-        auditScoring($pdo,(int)$source['id'],$userId,'round_completed',[
-          'advanced_to_round_id'=>$newId,
-          'advanced_to_round_type'=>$nextType
-        ]);
-        auditScoring($pdo,$newId,$userId,'round_created_from_callbacks',['source_round_id'=>$source['id']]);
-        $pdo->commit();
-        return $newId;
-    }catch(Throwable $e){
-        if($pdo->inTransaction()) $pdo->rollBack();
-        throw $e;
-    }
-}
-
-function buildResultHtml(PDO $pdo,array $round):string{
-    $rid=(int)$round['id'];
-    $judges=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$judges->execute(['r'=>$rid]);$judges=$judges->fetchAll();
-    $q=$pdo->prepare("SELECT se.*,sr.total_score,sr.rank_number,sr.result_status,sr.alternate_rank FROM bdc_scoring_entries se LEFT JOIN bdc_scoring_results sr ON sr.entry_id=se.id AND sr.round_id=se.round_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,sr.rank_number,se.bib_number");$q->execute(['r'=>$rid]);$all=$q->fetchAll();
-    $by=['leader'=>[],'follower'=>[]];foreach($all as $x)$by[$x['dance_role']][]=$x;
-    $logo=url('public/assets/bdc-logo.png');
-    $isAutomatic=($round['scoring_mode']??'manual')==='automated';
-    $table=function(string $role,array $rows)use($judges,$isAutomatic){ob_start();?><table><thead><tr><th><?=strtoupper($role)==='LEADER'?'LEAD #':'FOLLOW #'?></th><th><?=strtoupper($role).'S'?></th><?php foreach($judges as $j):?><th>J<?= (int)$j['judge_order'] ?><?= (int)$j['is_chief']?'*':'' ?></th><?php endforeach;?><th><?=$isAutomatic?'AVG':'TOTAL'?></th><th>CB</th></tr></thead><tbody><?php foreach($rows as $r):?><tr class="<?=e((string)$r['result_status'])?>"><td><?= (int)$r['bib_number'] ?></td><td><?=e($r['display_name'])?></td><?php foreach($judges as $j):?><td></td><?php endforeach;?><td><?=number_format((float)$r['total_score'],$isAutomatic?2:1)?></td><td><?=($r['result_status']==='callback')?(int)$r['rank_number']:(($r['result_status']==='alternate')?'A'.(int)$r['alternate_rank']:'')?></td></tr><?php endforeach;?></tbody></table><?php return ob_get_clean();};
-    ob_start();?><!doctype html><html><head><meta charset="utf-8"><title>Heats Results</title><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial,sans-serif;color:#111;margin:0}.head{display:flex;justify-content:space-between;align-items:flex-start}.logo{width:90px}.title{font-weight:700;font-size:18px}.sub{font-weight:700;margin-top:5px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #111;padding:4px;text-align:center}th:nth-child(2),td:nth-child(2){text-align:left}.callback{background:#d1e7dd}.alternate{background:#fff3cd}.tie_pending{background:#f8d7da}.foot{margin-top:8mm;font-size:10px;display:flex;justify-content:space-between}.no-print{margin:10px}@media print{.no-print{display:none}}</style></head><body><div class="no-print"><button onclick="window.print()">Print / Save as PDF</button></div><div class="head"><div><div class="title"><?=e($round['event_name'])?></div><div class="sub"><?=strtoupper(e($round['division']))?> DIVISION - HEATS</div><div><?=e((string)$round['event_date'])?></div></div><img class="logo" src="<?=e($logo)?>"></div><div class="grid"><section><?=$table('leader',$by['leader'])?></section><section><?=$table('follower',$by['follower'])?></section></div><div class="foot"><div>Witness(es): ______________________________</div><div>Bachata Dance Council Â· Version <?= (int)$round['generated_version'] ?></div></div><script src="<?=e(url('admin/scoring/heats-live-v230.js?v=230'))?>"></script>
-<div id="scoringProgressOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:10000;align-items:center;justify-content:center;color:#fff"><div style="background:#111827;padding:28px;border-radius:14px;min-width:320px;text-align:center"><div class="spinner-border mb-3" role="status"></div><h3 class="h5">Processing Scores</h3><div id="scoringProgressText">Saving scoresâ€¦</div><div class="progress mt-3" style="height:10px"><div id="scoringProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:20%"></div></div></div></div></body></html><?php return ob_get_clean();
-}
-
-$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
-try{
- if($_SERVER['REQUEST_METHOD']==='POST'){
-  if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
-  $action=(string)($_POST['action']??'');
-  if($action!=='create_round' && !empty($_POST['round_id'])){
-   $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['pending_approval','archived'],true)){
-    $message=$lockedRound['status']==='pending_approval'
-      ? 'This competition is pending Super Admin approval and is temporarily read-only.'
-      : 'This competition is archived and read-only. Only Super Admin rollback can reopen it.';
-    throw new RuntimeException($message);
-   }
-  }
-  if($action==='create_round'){
-   $createMode=(string)($_POST['scoring_mode']??'manual');if(!in_array($createMode,['manual','automated'],true))$createMode='manual';
-   $eventId=(int)($_POST['event_id']??0);
-   $newEventName=trim((string)($_POST['new_event_name']??''));
-   $newEventDate=trim((string)($_POST['new_event_date']??''));
-   $division=(string)($_POST['division']??'novice');
-   $roundType=(string)($_POST['round_type']??'heats');
-   if(!in_array($division,['novice','intermediate','advanced','all_star'],true))throw new RuntimeException('Invalid division.');
-   if(!in_array($roundType,['heats','final'],true))throw new RuntimeException('Invalid round type.');
-   if($eventId>0 && $newEventName!=='')throw new RuntimeException('Select an existing event or create a new event, not both.');
-   if($eventId<1){
-    if($newEventName==='')throw new RuntimeException('Select an existing event or enter a new event name.');
-    if($newEventDate!=='' && !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/',$newEventDate))throw new RuntimeException('Enter the event date as YYYY-MM-DD.');
-    $baseSlug=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$newEventName),'-'));
-    if($baseSlug==='')$baseSlug='event';
-    $slug=$baseSlug;$n=2;
-    $checkSlug=$pdo->prepare('SELECT COUNT(*) FROM bdc_events WHERE slug=:slug');
-    while(true){$checkSlug->execute(['slug'=>$slug]);if(!(int)$checkSlug->fetchColumn())break;$slug=$baseSlug.'-'.$n++;}
-    $eventInsert=$pdo->prepare("INSERT INTO bdc_events(name,normalised_name,slug,event_date,status) VALUES(:name,:normalised,:slug,NULLIF(:event_date,''),'draft')");
-    $eventInsert->execute(['name'=>$newEventName,'normalised'=>strtolower($newEventName),'slug'=>$slug,'event_date'=>$newEventDate]);
-    $eventId=(int)$pdo->lastInsertId();
-   }
-   $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:rt AND scoring_mode=:mode AND status<>'archived' ORDER BY id DESC LIMIT 1");
-   $existing->execute(['e'=>$eventId,'d'=>$division,'rt'=>$roundType,'mode'=>$createMode]);
-   $existingId=(int)$existing->fetchColumn();
-   if($existingId>0){$roundId=$existingId;$notice=ucfirst($roundType).' round already exists. Existing round opened.';}
-   else{
-    $s=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:mode,:d,10,10,10.00,4.50,4.30,4.20,:u)");
-    $s->execute(['e'=>$eventId,'rt'=>$roundType,'mode'=>$createMode,'d'=>$division,'u'=>$userId]);
-    $roundId=(int)$pdo->lastInsertId();
-    auditScoring($pdo,$roundId,$userId,'round_created',['round_type'=>$roundType,'new_event'=>$newEventName!=='']);
-    $deskLink=ensureRegistrationDeskLink($pdo,$eventId,$division,$userId);
-    if(!empty($deskLink['plain_token']))$_SESSION['registration_desk_tokens'][(int)$deskLink['id']]=$deskLink['plain_token'];
-    $notice=ucfirst($roundType).' round created. Registration Desk link is ready below.';
-   }
-  }elseif($action==='automatic_save_scores' || $action==='automatic_calculate_scores'){
-   $roundId=(int)($_POST['round_id']??0);
-   $automaticRound=loadRound($pdo,$roundId);
-   if(!$automaticRound || ($automaticRound['scoring_mode']??'manual')!=='automated')throw new RuntimeException('Automated scoring round not found.');
-   if(!in_array((string)$automaticRound['round_type'],['heats','semifinal'],true))throw new RuntimeException('Numeric automatic calculation applies only to Heats and Semi-Finals.');
-
-   $entryStmt=$pdo->prepare("SELECT id,dance_role FROM bdc_scoring_entries WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number");
-   $entryStmt->execute(['r'=>$roundId]);$automaticEntries=$entryStmt->fetchAll();
-   if(!$automaticEntries)throw new RuntimeException('Add active competitors through the Registration Desk before scoring.');
-   $judgeStmt=$pdo->prepare("SELECT id,is_chief,scoring_scope FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
-   $judgeStmt->execute(['r'=>$roundId]);$automaticJudges=$judgeStmt->fetchAll();
-   if(count($automaticJudges)<3)throw new RuntimeException('Configure at least three judges before scoring.');
-
-   $postedMarks=$_POST['automatic_mark']??[];
-   $validEntryIds=array_map('intval',array_column($automaticEntries,'id'));
-   $validJudgeIds=array_map('intval',array_column($automaticJudges,'id'));
-   $upsert=$pdo->prepare("INSERT INTO bdc_scoring_marks(round_id,entry_id,judge_id,mark_type,alt_rank,weighted_score,updated_by) VALUES(:r,:e,:j,'blank',NULL,:score,:u) ON DUPLICATE KEY UPDATE mark_type='blank',alt_rank=NULL,weighted_score=VALUES(weighted_score),updated_by=VALUES(updated_by),updated_at=NOW()");
-   $normalisedMarks=[];
-   $pdo->beginTransaction();
-   try{
-    foreach($postedMarks as $entryId=>$judgeMarks){
-     $entryId=(int)$entryId;if(!in_array($entryId,$validEntryIds,true)||!is_array($judgeMarks))continue;
-     foreach($judgeMarks as $judgeId=>$rawScore){
-      $judgeId=(int)$judgeId;if(!in_array($judgeId,$validJudgeIds,true))continue;
-      $rawScore=trim((string)$rawScore);if($rawScore==='')continue;
-      if(!is_numeric($rawScore))throw new RuntimeException('Automatic scores must be numeric.');
-      $score=round((float)$rawScore,2);if($score<0||$score>100)throw new RuntimeException('Automatic scores must be between 0 and 100.');
-      $upsert->execute(['r'=>$roundId,'e'=>$entryId,'j'=>$judgeId,'score'=>$score,'u'=>$userId?:null]);
-      $normalisedMarks[$entryId][$judgeId]=$score;
-     }
-    }
-
-    if($action==='automatic_calculate_scores'){
-     $savedStmt=$pdo->prepare("SELECT entry_id,judge_id,weighted_score FROM bdc_scoring_marks WHERE round_id=:r");
-     $savedStmt->execute(['r'=>$roundId]);foreach($savedStmt->fetchAll() as $saved)$normalisedMarks[(int)$saved['entry_id']][(int)$saved['judge_id']]=(float)$saved['weighted_score'];
-     $calculated=AutomaticScoringEngine::calculateHeats($automaticEntries,$automaticJudges,$normalisedMarks,(int)$automaticRound['callback_count']);
-     $pdo->prepare("DELETE FROM bdc_scoring_results WHERE round_id=:r")->execute(['r'=>$roundId]);
-     $version=(int)$automaticRound['generated_version']+1;
-     $resultInsert=$pdo->prepare("INSERT INTO bdc_scoring_results(round_id,entry_id,total_score,chief_score,rank_number,result_status,alternate_rank,generated_version) VALUES(:r,:e,:average,:chief,:rank,:status,:alternate,:version)");
-     $hasPendingTie=false;
-     foreach($calculated as $result){
-      if($result['status']==='tie_pending')$hasPendingTie=true;
-      $resultInsert->execute(['r'=>$roundId,'e'=>$result['entry_id'],'average'=>$result['average_score'],'chief'=>$result['chief_score']??0,'rank'=>$result['rank'],'status'=>$result['status'],'alternate'=>$result['alternate_rank'],'version'=>$version]);
-     }
-     $pdo->prepare("UPDATE bdc_scoring_rounds SET status=:status,generated_version=:version WHERE id=:r")->execute(['status'=>$hasPendingTie?'tie_pending':'awaiting_decision','version'=>$version,'r'=>$roundId]);
-     auditScoring($pdo,$roundId,$userId,'automatic_results_calculated',['method'=>'average_then_judge_majority_then_chief','callback_count'=>(int)$automaticRound['callback_count'],'pending_tie'=>$hasPendingTie,'entry_count'=>count($automaticEntries),'judge_count'=>count($automaticJudges)]);
-     $notice=$hasPendingTie?'Automatic calculation complete. A callback-boundary tie requires Chief Judge review.':'Automatic calculation complete. Results are ready for authorized review.';
-    }else{
-     auditScoring($pdo,$roundId,$userId,'automatic_scores_saved',['saved_cells'=>array_sum(array_map('count',$normalisedMarks))]);
-     $notice='Automatic scoring draft saved.';
-    }
-    $pdo->commit();
-   }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
-  }elseif($action==='delete_scoring_workflow'){
-   $eventId=(int)($_POST['event_id']??0);
-   $division=(string)($_POST['division']??'');
-   $confirmation=trim((string)($_POST['delete_confirmation']??''));
-
-   if($eventId<1 || !in_array($division,['novice','intermediate','advanced','all_star'],true)){
-    throw new RuntimeException('Invalid scoring workflow.');
-   }
-   if($confirmation!=='DELETE'){
-    throw new RuntimeException('Type DELETE to confirm removal of the complete scoring workflow.');
-   }
-
-   $published=$pdo->prepare("
-    SELECT COUNT(*)
-    FROM bdc_scoring_publications p
-    JOIN bdc_scoring_rounds r ON r.id=p.final_round_id
-    WHERE r.event_id=:e AND r.division=:d AND p.status='published'
-   ");
-   $published->execute(['e'=>$eventId,'d'=>$division]);
-   if((int)$published->fetchColumn()>0){
-    throw new RuntimeException('This workflow is published. Use Super Admin rollback before deleting it.');
-   }
-
-   $roundStmt=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d ORDER BY id");
-   $roundStmt->execute(['e'=>$eventId,'d'=>$division]);
-   $ids=array_map('intval',$roundStmt->fetchAll(PDO::FETCH_COLUMN));
-   if(!$ids)throw new RuntimeException('No scoring rounds found.');
-
-   $ph=implode(',',array_fill(0,count($ids),'?'));
-   $pdo->beginTransaction();
-   try{
-    $pairStmt=$pdo->prepare("SELECT id FROM bdc_scoring_final_pairs WHERE round_id IN ($ph)");
-    $pairStmt->execute($ids);
-    $pairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
-    if($pairIds){
-     $pph=implode(',',array_fill(0,count($pairIds),'?'));
-     $pdo->prepare("DELETE FROM bdc_scoring_final_results WHERE pair_id IN ($pph)")->execute($pairIds);
-     $pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE pair_id IN ($pph)")->execute($pairIds);
-    }
-
-    foreach([
-     'bdc_scoring_final_results',
-     'bdc_scoring_final_marks',
-     'bdc_scoring_final_pairs',
-     'bdc_scoring_results',
-     'bdc_scoring_marks',
-     'bdc_scoring_judges',
-     'bdc_scoring_entries',
-     'bdc_scoring_audit'
-    ] as $table){
-     $pdo->prepare("DELETE FROM {$table} WHERE round_id IN ($ph)")->execute($ids);
-    }
-
-    $pubStmt=$pdo->prepare("
-      SELECT p.id
-      FROM bdc_scoring_publications p
-      JOIN bdc_scoring_rounds r ON r.id=p.final_round_id
-      WHERE r.event_id=? AND r.division=? AND p.status='rolled_back'
-    ");
-    $pubStmt->execute([$eventId,$division]);
-    $pubIds=array_map('intval',$pubStmt->fetchAll(PDO::FETCH_COLUMN));
-    if($pubIds){
-     $pubPh=implode(',',array_fill(0,count($pubIds),'?'));
-     $pdo->prepare("DELETE FROM bdc_scoring_publication_points WHERE publication_id IN ($pubPh)")->execute($pubIds);
-     $pdo->prepare("DELETE FROM bdc_scoring_publications WHERE id IN ($pubPh)")->execute($pubIds);
-    }
-
-    $pdo->prepare("DELETE FROM bdc_scoring_rounds WHERE id IN ($ph)")->execute($ids);
-    $pdo->commit();
-    $roundId=0;
-    $notice='Complete '.ucfirst($division).' test scoring workflow deleted. Event and competitor records were preserved.';
-   }catch(Throwable $e){
-    if($pdo->inTransaction())$pdo->rollBack();
-    throw $e;
-   }
-
-  }elseif(in_array($action,['special_settings_lock','special_settings_unlock'],true)){
-   $roundId=(int)($_POST['round_id']??0);$specialRound=loadRound($pdo,$roundId);
-   if(!$specialRound||!SpecialCategoryService::isSpecial((string)$specialRound['division']))throw new RuntimeException('Special-category round not found.');
-   $started=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks WHERE round_id=:round AND (mark_type<>'blank' OR weighted_score>0)");$started->execute(['round'=>$roundId]);
-   if((int)$started->fetchColumn()>0)throw new RuntimeException('The YES count cannot be changed or unlocked after judging has started.');
-   if($action==='special_settings_lock'){$yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');$pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')->execute(['yes'=>$yes,'id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_locked',['yes_count'=>$yes,'alternates'=>[4.5,4.3,4.2]]);$notice='Special-category YES count saved and locked at '.$yes.' per judge.';}
-   else{$pdo->prepare('UPDATE bdc_scoring_rounds SET tier_manual_override=0 WHERE id=:id')->execute(['id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_unlocked',['yes_count'=>(int)$specialRound['yes_count']]);$notice='Special-category YES count unlocked. Save and lock it again before judging.';}
-  }elseif($action==='settings'){
-   $roundId=(int)$_POST['round_id'];
-   $tier=(int)($_POST['competition_tier']??2);
-   $tierYes=[1=>5,2=>10,3=>15];
-   if(!isset($tierYes[$tier]))throw new RuntimeException('Select a valid competition tier.');
-   $yes=$tierYes[$tier];
-   $pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:y,callback_count=:c,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')->execute(['y'=>$yes,'c'=>$yes,'id'=>$roundId]);
-   auditScoring($pdo,$roundId,$userId,'heats_settings_saved',['tier'=>$tier,'yes_count'=>$yes,'alternate_count'=>3,'weights'=>['yes'=>10.0,'alt1'=>4.5,'alt2'=>4.3,'alt3'=>4.2]]);
-   $notice='BDC Tier '.$tier.' settings saved: '.$yes.' YES selections and 3 alternates.';
-  }elseif($action==='add_entry'){
-   $roundId=(int)$_POST['round_id'];$role=(string)$_POST['dance_role'];$bib=(int)$_POST['bib_number'];$term=trim((string)$_POST['competitor_search']);$entryMode=(string)($_POST['entry_mode']??'existing');
-   $overrideDivision=isset($_POST['override_division']) && (string)$_POST['override_division']==='1';
-   $overrideReason=trim((string)($_POST['override_reason']??''));
-   if(!in_array($role,['leader','follower'],true)||$bib<1||$term==='')throw new RuntimeException('Choose role, bib and competitor name.');
-   $roundForEntry=loadRound($pdo,$roundId);if(!$roundForEntry)throw new RuntimeException('Round not found.');
-   $bibCheck=$pdo->prepare("SELECT se.id,se.display_name FROM bdc_scoring_entries se WHERE se.round_id=:r AND se.dance_role=:role AND se.bib_number=:bib AND se.entry_status='active' LIMIT 1");
-   $bibCheck->execute(['r'=>$roundId,'role'=>$role,'bib'=>$bib]);$bibTaken=$bibCheck->fetch();
-   if($bibTaken)throw new RuntimeException('Bib '.$bib.' is already assigned to '.$bibTaken['display_name'].' on the '.ucfirst($role).' side.');
-   $selectedBdc='';
-   if(preg_match('/^(BDC-\d+)/i',$term,$m))$selectedBdc=strtoupper($m[1]);
-   $comp=null;
-   if($entryMode!=='create'){
-    $c=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE (bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact)) AND dance_role IN(:role,'both') ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");
-    $c->execute(['bdc'=>$selectedBdc!==''?$selectedBdc:$term,'num'=>ctype_digit($term)?(int)$term:0,'exact'=>$term,'role'=>$role,'preferred'=>$role]);$comp=$c->fetch()?:null;
-    if(!$comp){
-     $c=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE exact_name LIKE :like AND dance_role IN(:role,'both') ORDER BY exact_name,id LIMIT 2");
-     $c->execute(['like'=>'%'.$term.'%','role'=>$role]);$matches=$c->fetchAll();
-     if(count($matches)===1)$comp=$matches[0];
-     elseif(count($matches)>1)throw new RuntimeException('Several competitors match this name. Select the correct BDC ID from the suggestions.');
-    }
-   }
-   if(!$comp){
-    if($entryMode!=='create')throw new RuntimeException('Competitor not found in the BDC database. To add a dancer whose BDC record or points are not updated, use Add Non-BDC / Not Updated and provide an override reason.');
-    if(!$overrideDivision || $overrideReason==='')throw new RuntimeException('This competitor is not confirmed in the BDC database. Tick Add Anyway and enter the reason for the override.');
-    $normalised=strtolower(trim((string)preg_replace('/\s+/',' ',$term)));
-    $existingName=$pdo->prepare("SELECT id,bdc_id,exact_name FROM bdc_competitors WHERE normalised_name=:n ORDER BY id LIMIT 1");
-    $existingName->execute(['n'=>$normalised]);$same=$existingName->fetch();
-    if($same)throw new RuntimeException('A competitor with this name already exists: '.$same['exact_name'].' ('.$same['bdc_id'].'). Select the existing record.');
-    $pdo->beginTransaction();
-    try{
-     $next=(int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(bdc_id,5) AS UNSIGNED)),0)+1 FROM bdc_competitors WHERE bdc_id LIKE 'BDC-%'")->fetchColumn();
-     $bdcId='BDC-'.str_pad((string)$next,6,'0',STR_PAD_LEFT);
-     $ins=$pdo->prepare("INSERT INTO bdc_competitors(bdc_id,exact_name,normalised_name,dance_role,current_division,status,is_historical) VALUES(:bdc,:name,:normalised,:role,:division,'pending',0)");
-     $ins->execute(['bdc'=>$bdcId,'name'=>$term,'normalised'=>$normalised,'role'=>$role,'division'=>$roundForEntry['division']]);
-     $comp=['id'=>(int)$pdo->lastInsertId(),'bdc_id'=>$bdcId,'exact_name'=>$term,'current_division'=>$roundForEntry['division'],'status'=>'pending'];
-     $pdo->commit();
-    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
-   }
-   $competitorDivision=(string)($comp['current_division']??'unknown');
-   $divisionMismatch=false;
-   if($entryMode!=='create'){
-    $pointStmt=$pdo->prepare("SELECT
-      COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,
-      COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,
-      COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points
-     FROM bdc_point_transactions WHERE competitor_id=:competitor AND dance_role IN(:role,'both')");
-    $pointStmt->execute(['competitor'=>$comp['id'],'role'=>$role]);$points=$pointStmt->fetch()?:[];
-    $historyStmt=$pdo->prepare("SELECT
-      MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,
-      MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,
-      MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star
-     FROM (
-      SELECT division FROM bdc_participant_results WHERE competitor_id=:participant AND dance_role IN(:participant_role,'both')
-      UNION ALL
-      SELECT division FROM bdc_point_transactions WHERE competitor_id=:transaction AND dance_role IN(:transaction_role,'both')
-     ) history");
-    $historyStmt->execute(['participant'=>$comp['id'],'participant_role'=>$role,'transaction'=>$comp['id'],'transaction_role'=>$role]);$history=$historyStmt->fetch()?:[];
-    $eligibility=DivisionProgressionService::eligibilityFor(
-     (string)$roundForEntry['division'],
-     (float)($points['novice_points']??0),(float)($points['intermediate_points']??0),(float)($points['advanced_points']??0),
-     (string)($comp['current_division']??'unknown'),
-     !empty($history['competed_intermediate']),!empty($history['competed_advanced']),!empty($history['competed_all_star'])
-    );
-    $divisionMismatch=!$eligibility['eligible'];
-    if($divisionMismatch){
-     throw new RuntimeException('Cannot add '.$comp['exact_name'].' to '.DivisionProgressionService::label((string)$roundForEntry['division']).': '.$eligibility['reason'].' Known BDC competitors cannot bypass division eligibility. Update their official points or competition history first.');
-    }
-   }
-   $pdo->prepare("INSERT INTO bdc_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name) VALUES(:r,:c,:role,:bib,:n) ON DUPLICATE KEY UPDATE bib_number=VALUES(bib_number),display_name=VALUES(display_name),entry_status='active'")->execute(['r'=>$roundId,'c'=>$comp['id'],'role'=>$role,'bib'=>$bib,'n'=>$comp['exact_name']]);
-   auditScoring($pdo,$roundId,$userId,'entry_added',['competitor_id'=>$comp['id'],'bdc_id'=>$comp['bdc_id'],'role'=>$role,'bib'=>$bib,'provisional'=>$entryMode==='create','division'=>$competitorDivision,'division_override'=>$entryMode==='create','override_reason'=>$entryMode==='create'?$overrideReason:null]);
-   $notice=ucfirst($role).' added: '.$comp['exact_name'].' ('.$comp['bdc_id'].').';
-  }elseif($action==='update_bib'){
-   $roundId=(int)($_POST['round_id']??0);$entryId=(int)($_POST['entry_id']??0);$newBib=(int)($_POST['bib_number']??0);
-   if($roundId<1||$entryId<1||$newBib<1)throw new RuntimeException('Enter a valid bib number.');
-   $entryStmt=$pdo->prepare("SELECT id,dance_role,bib_number,display_name FROM bdc_scoring_entries WHERE id=:id AND round_id=:r AND entry_status='active'");
-   $entryStmt->execute(['id'=>$entryId,'r'=>$roundId]);$entry=$entryStmt->fetch();
-   if(!$entry)throw new RuntimeException('Scoring entry not found.');
-   $duplicate=$pdo->prepare("SELECT display_name FROM bdc_scoring_entries WHERE round_id=:r AND dance_role=:role AND bib_number=:bib AND entry_status='active' AND id<>:id LIMIT 1");
-   $duplicate->execute(['r'=>$roundId,'role'=>$entry['dance_role'],'bib'=>$newBib,'id'=>$entryId]);$takenBy=$duplicate->fetchColumn();
-   if($takenBy)throw new RuntimeException('Bib '.$newBib.' is already assigned to '.$takenBy.' on the '.ucfirst($entry['dance_role']).' side.');
-   $pdo->prepare("UPDATE bdc_scoring_entries SET bib_number=:bib WHERE id=:id AND round_id=:r")->execute(['bib'=>$newBib,'id'=>$entryId,'r'=>$roundId]);
-   auditScoring($pdo,$roundId,$userId,'bib_updated',['entry_id'=>$entryId,'role'=>$entry['dance_role'],'old_bib'=>(int)$entry['bib_number'],'new_bib'=>$newBib]);
-   $notice=$entry['display_name'].' bib updated to '.$newBib.'.';
-  }elseif($action==='remove_entry'){
-   $roundId=(int)$_POST['round_id'];$id=(int)$_POST['entry_id'];$pdo->prepare("UPDATE bdc_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id]);$notice='Entry removed.';
-  }elseif($action==='save_judges'){
-   $roundId=(int)$_POST['round_id'];$rawNames=$_POST['judge_name']??[];$rawScopes=$_POST['judge_scope']??[];$chief=(int)($_POST['chief_index']??-1);$rows=[];
-   foreach($rawNames as $index=>$rawName){$name=trim((string)$rawName);if($name==='')continue;$scope=(string)($rawScopes[$index]??'all');if(!in_array($scope,['all','leader','follower'],true))$scope='all';$rows[]=['name'=>$name,'scope'=>$scope,'original_index'=>(int)$index];}
-   if(count($rows)<3)throw new RuntimeException('Minimum 3 judges required.');
-   if(count($rows)!==count(array_unique(array_map(fn($row)=>mb_strtolower($row['name']),$rows))))throw new RuntimeException('Judge names must be unique.');
-   $chiefRowIndex=null;foreach($rows as $rowIndex=>$row){if($row['original_index']===$chief){$chiefRowIndex=$rowIndex;break;}}if($chiefRowIndex===null)throw new RuntimeException('Select one Chief Judge.');
-   foreach(['leader','follower'] as $role){$panelCount=count(array_filter($rows,fn($row)=>in_array($row['scope'],['all',$role],true)));if($panelCount<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');}
-   $existingStmt=$pdo->prepare("SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");$existingStmt->execute(['r'=>$roundId]);$existing=$existingStmt->fetchAll();$existingByName=[];foreach($existing as $judge)$existingByName[mb_strtolower(trim((string)$judge['judge_name']))]=$judge;
-   $pdo->beginTransaction();
-   try{
-    $usedIds=[];$chiefId=0;$update=$pdo->prepare("UPDATE bdc_scoring_judges SET judge_name=:name,judge_order=:order_no,is_chief=:chief,scoring_scope=:scope WHERE id=:id AND round_id=:round");$insert=$pdo->prepare("INSERT INTO bdc_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:round,:name,:order_no,:chief,:scope)");
-    foreach($rows as $index=>$row){$key=mb_strtolower($row['name']);$isChief=$index===$chiefRowIndex?1:0;if(isset($existingByName[$key])){$id=(int)$existingByName[$key]['id'];$update->execute(['name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope'],'id'=>$id,'round'=>$roundId]);}else{$insert->execute(['round'=>$roundId,'name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope']]);$id=(int)$pdo->lastInsertId();}$usedIds[]=$id;if($isChief)$chiefId=$id;}
-    if($usedIds){$ph=implode(',',array_fill(0,count($usedIds),'?'));$pdo->prepare("DELETE FROM bdc_scoring_judges WHERE round_id=? AND id NOT IN ($ph)")->execute(array_merge([$roundId],$usedIds));}
-    $pdo->prepare('UPDATE bdc_scoring_rounds SET chief_judge_id=:chief WHERE id=:round')->execute(['chief'=>$chiefId,'round'=>$roundId]);auditScoring($pdo,$roundId,$userId,'judges_saved',['count'=>count($rows),'chief'=>$rows[$chiefRowIndex]['name'],'scopes'=>array_count_values(array_column($rows,'scope'))]);$pdo->commit();$notice='Judges saved. Existing scores for unchanged judges were preserved.';
-   }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
-  }elseif($action==='save_round_officials'){
-   $roundId=(int)($_POST['round_id']??0);
-   $roundForOfficials=loadRound($pdo,$roundId);
-   if(!$roundForOfficials)throw new RuntimeException('Round not found.');
-   $administrator=trim((string)($_POST['scoring_administrator']??''));
-   $w1=trim((string)($_POST['witness_1']??''));
-   $w2=trim((string)($_POST['witness_2']??''));
-   $w3=trim((string)($_POST['witness_3']??''));
-   $pdo->prepare("UPDATE bdc_scoring_rounds SET scoring_administrator=NULLIF(:admin,''),witness_1=NULLIF(:w1,''),witness_2=NULLIF(:w2,''),witness_3=NULLIF(:w3,'') WHERE id=:r")
-       ->execute(['admin'=>$administrator,'w1'=>$w1,'w2'=>$w2,'w3'=>$w3,'r'=>$roundId]);
-   auditScoring($pdo,$roundId,$userId,'round_officials_saved',['scoring_administrator'=>$administrator]);
-   $notice='Officials and scoring witnesses saved.';
-
-  }elseif($action==='save_scores' || $action==='calculate_scores' || $action==='submit_scores'){
-   @set_time_limit(180);
-   $roundId=(int)$_POST['round_id'];$round=loadRound($pdo,$roundId);if(!$round)throw new RuntimeException('Round not found.');
-   $postedMarks=$_POST['mark']??[];
-   if(!empty($_POST['score_payload'])){
-    $decodedMarks=json_decode((string)$_POST['score_payload'],true);
-    if(!is_array($decodedMarks))throw new RuntimeException('The score payload could not be read.');
-    $postedMarks=$decodedMarks;
-   }
-   $witnesses=[
-    trim((string)($_POST['witness_1']??'')),
-    trim((string)($_POST['witness_2']??'')),
-    trim((string)($_POST['witness_3']??''))
-   ];
-   $scoringAdministrator=trim((string)($_POST['scoring_administrator']??''));
-   $pdo->prepare("UPDATE bdc_scoring_rounds SET witness_1=NULLIF(:w1,''),witness_2=NULLIF(:w2,''),witness_3=NULLIF(:w3,''),scoring_administrator=NULLIF(:admin,'') WHERE id=:r")
-       ->execute(['w1'=>$witnesses[0],'w2'=>$witnesses[1],'w3'=>$witnesses[2],'admin'=>$scoringAdministrator,'r'=>$roundId]);
-   $round=loadRound($pdo,$roundId);$judges=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r');$judges->execute(['r'=>$roundId]);$judges=$judges->fetchAll();$validJudge=array_column($judges,'id');$judgeById=[];foreach($judges as $judge)$judgeById[(int)$judge['id']]=$judge;$entryRoleStmt=$pdo->prepare("SELECT dance_role FROM bdc_scoring_entries WHERE id=:id AND round_id=:round");$up=$pdo->prepare("INSERT INTO bdc_scoring_marks(round_id,entry_id,judge_id,mark_type,alt_rank,weighted_score,updated_by) VALUES(:r,:e,:j,:t,:a,:w,:u) ON DUPLICATE KEY UPDATE mark_type=VALUES(mark_type),alt_rank=VALUES(alt_rank),weighted_score=VALUES(weighted_score),updated_by=VALUES(updated_by),updated_at=NOW()");
-   foreach($postedMarks as $entryId=>$marks){$entryRoleStmt->execute(['id'=>(int)$entryId,'round'=>$roundId]);$entryRole=(string)$entryRoleStmt->fetchColumn();foreach($marks as $judgeId=>$raw){if(!in_array((int)$judgeId,array_map('intval',$validJudge),true))continue;$scope=(string)(($judgeById[(int)$judgeId]['scoring_scope']??'all'));if($scope!=='all'&&$scope!==$entryRole)continue;$raw=trim((string)$raw);$type='blank';$alt=null;$weight=0.0;if($raw==='1'||strtolower($raw)==='y'||strtolower($raw)==='yes'){$type='yes';$weight=(float)$round['yes_weight'];}elseif(in_array($raw,['A1','a1','2'],true)){$type='alt';$alt=1;$weight=(float)$round['alt1_weight'];}elseif(in_array($raw,['A2','a2','3'],true)){$type='alt';$alt=2;$weight=(float)$round['alt2_weight'];}elseif(in_array($raw,['A3','a3','4'],true)){$type='alt';$alt=3;$weight=(float)$round['alt3_weight'];}$up->execute(['r'=>$roundId,'e'=>(int)$entryId,'j'=>(int)$judgeId,'t'=>$type,'a'=>$alt,'w'=>$weight,'u'=>$userId]);}}
-   if($action==='submit_scores'){
-    $calcStarted=microtime(true);$memoryBefore=memory_get_usage(true);
-    computeResults($pdo,$round,$userId);
-    $calcMs=(int)round((microtime(true)-$calcStarted)*1000);$calcMemory=max(0,memory_get_peak_usage(true)-$memoryBefore);
-    $pdo->prepare("UPDATE bdc_scoring_rounds SET last_calculation_ms=:ms,last_calculation_memory_bytes=:memory WHERE id=:round")->execute(['ms'=>$calcMs,'memory'=>$calcMemory,'round'=>$roundId]);
-    $notice='Scores submitted in '.$calcMs.' ms. Callback results are saved. Choose Semifinal or Final below.';
-   }elseif($action==='calculate_scores'){
-    $calcStarted=microtime(true);$memoryBefore=memory_get_usage(true);
-    computeResults($pdo,$round,$userId);
-    $calcMs=(int)round((microtime(true)-$calcStarted)*1000);$calcMemory=max(0,memory_get_peak_usage(true)-$memoryBefore);
-    $pdo->prepare("UPDATE bdc_scoring_rounds SET last_calculation_ms=:ms,last_calculation_memory_bytes=:memory WHERE id=:round")->execute(['ms'=>$calcMs,'memory'=>$calcMemory,'round'=>$roundId]);
-    $pdo->prepare("UPDATE bdc_scoring_rounds SET status='draft' WHERE id=:r")->execute(['r'=>$roundId]);
-    auditScoring($pdo,$roundId,$userId,'calculate_and_sort_preview');
-    $notice='Calculated and sorted result is ready for review in '.$calcMs.' ms. The round remains editable.';
-   }else{
-    $pdo->prepare("UPDATE bdc_scoring_rounds SET status='draft' WHERE id=:r")->execute(['r'=>$roundId]);
-    auditScoring($pdo,$roundId,$userId,'save_scores');
-    $notice='Draft saved. Screen data retained.';
-   }
-  }elseif($action==='resolve_callback_tie'){
-   $roundId=(int)($_POST['round_id']??0);
-   $selectedEntryId=(int)($_POST['selected_entry_id']??0);
-   if($roundId<1||$selectedEntryId<1)throw new RuntimeException('Select a tied competitor.');
-
-   $selectedStmt=$pdo->prepare("
-    SELECT sr.*,se.dance_role,se.display_name,se.bib_number
-    FROM bdc_scoring_results sr
-    JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-    WHERE sr.round_id=:r AND sr.entry_id=:e AND sr.result_status='tie_pending'
-    LIMIT 1
-   ");
-   $selectedStmt->execute(['r'=>$roundId,'e'=>$selectedEntryId]);
-   $selected=$selectedStmt->fetch();
-   if(!$selected)throw new RuntimeException('This competitor is no longer in an unresolved callback tie.');
-
-   $groupStmt=$pdo->prepare("
-    SELECT sr.*,se.display_name,se.bib_number
-    FROM bdc_scoring_results sr
-    JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-    WHERE sr.round_id=:r
-      AND se.dance_role=:role
-      AND sr.result_status='tie_pending'
-      AND sr.rank_number=:rank
-      AND ABS(sr.total_score-:total)<0.0001
-      AND ABS(sr.chief_score-:chief)<0.0001
-    ORDER BY se.bib_number,se.id
-   ");
-   $groupStmt->execute([
-    'r'=>$roundId,
-    'role'=>$selected['dance_role'],
-    'rank'=>$selected['rank_number'],
-    'total'=>$selected['total_score'],
-    'chief'=>$selected['chief_score']
-   ]);
-   $group=$groupStmt->fetchAll();
-   if(count($group)<2)throw new RuntimeException('The unresolved tie group could not be found.');
-
-   $roundForTie=loadRound($pdo,$roundId);
-   if(!$roundForTie)throw new RuntimeException('Round not found.');
-   $callbackLimit=(int)$roundForTie['callback_count'];
-
-   $pdo->beginTransaction();
-   try{
-    $update=$pdo->prepare("
-     UPDATE bdc_scoring_results
-     SET result_status=:status,
-         rank_number=:rank,
-         alternate_rank=:alternate_rank,
-         updated_at=NOW()
-     WHERE round_id=:round_id AND entry_id=:entry_id
-    ");
-
-    // Chief Judge-selected competitor receives the final callback place.
-    $update->execute([
-     'status'=>'callback',
-     'rank'=>$callbackLimit,
-     'alternate_rank'=>null,
-     'round_id'=>$roundId,
-     'entry_id'=>$selectedEntryId
-    ]);
-
-    // Remaining tied competitors become ALT 1-3, then eliminated.
-    $alternateRank=1;
-    $displayRank=$callbackLimit+1;
-    foreach($group as $candidate){
-     if((int)$candidate['entry_id']===$selectedEntryId)continue;
-     if($alternateRank<=3){
-      $update->execute([
-       'status'=>'alternate',
-       'rank'=>$displayRank++,
-       'alternate_rank'=>$alternateRank++,
-       'round_id'=>$roundId,
-       'entry_id'=>(int)$candidate['entry_id']
-      ]);
-     }else{
-      $update->execute([
-       'status'=>'eliminated',
-       'rank'=>$displayRank++,
-       'alternate_rank'=>null,
-       'round_id'=>$roundId,
-       'entry_id'=>(int)$candidate['entry_id']
-      ]);
-     }
-    }
-
-    auditScoring($pdo,$roundId,$userId,'callback_tie_resolved',[
-     'role'=>$selected['dance_role'],
-     'selected_entry_id'=>$selectedEntryId,
-     'selected_name'=>$selected['display_name'],
-     'selected_bib'=>(int)$selected['bib_number'],
-     'tie_rank'=>(int)$selected['rank_number']
-    ]);
-    $remainingTie=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_results WHERE round_id=:r AND result_status='tie_pending'");
-    $remainingTie->execute(['r'=>$roundId]);
-    if((int)$remainingTie->fetchColumn()===0 && ($roundForTie['scoring_mode']??'manual')==='automated'){
-     $pdo->prepare("UPDATE bdc_scoring_rounds SET status='awaiting_decision' WHERE id=:r")->execute(['r'=>$roundId]);
-    }
-    $pdo->commit();
-    $notice='Tie resolved. '.$selected['display_name'].' was selected by the Chief Judge as the callback.';
-   }catch(Thrâ€¦9110 tokens truncatedâ€¦te(['r'=>$roundId]);foreach($s->fetchAll() as $fr)$finalResults[(int)$fr['pair_id']]=$fr;
-if($finalResults){
- usort($finalPairs,function($a,$b)use($finalResults){
-  $rankA=(int)($finalResults[(int)$a['id']]['final_rank']??PHP_INT_MAX);
-  $rankB=(int)($finalResults[(int)$b['id']]['final_rank']??PHP_INT_MAX);
-  if($rankA!==$rankB)return $rankA<=>$rankB;
-  return (int)$a['pair_number']<=>(int)$b['pair_number'];
- });
-}}
-$tieGroups=[];
-if($round){
- $tieStmt=$pdo->prepare("
-  SELECT sr.entry_id,sr.total_score,sr.chief_score,sr.rank_number,
-         se.dance_role,se.display_name,se.bib_number
-  FROM bdc_scoring_results sr
-  JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-  JOIN (
-   SELECT se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score
-   FROM bdc_scoring_results sr2
-   JOIN bdc_scoring_entries se2 ON se2.id=sr2.entry_id
-   WHERE sr2.round_id=:round_id_1 AND sr2.result_status='tie_pending'
-   GROUP BY se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score
-   HAVING COUNT(*)>1
-  ) valid_tie
-    ON valid_tie.dance_role=se.dance_role
-   AND valid_tie.rank_number=sr.rank_number
-   AND ABS(valid_tie.total_score-sr.total_score)<0.0001
-   AND ABS(valid_tie.chief_score-sr.chief_score)<0.0001
-  WHERE sr.round_id=:round_id_2
-    AND sr.result_status='tie_pending'
-  ORDER BY se.dance_role,sr.rank_number,se.bib_number
- ");
- $tieStmt->execute(['round_id_1'=>$roundId,'round_id_2'=>$roundId]);
- foreach($tieStmt->fetchAll() as $tieRow){
-  $key=$tieRow['dance_role'].'|'.$tieRow['rank_number'].'|'.$tieRow['total_score'].'|'.$tieRow['chief_score'];
-  if(!isset($tieGroups[$key])){
-   $tieGroups[$key]=[
-    'role'=>$tieRow['dance_role'],
-    'rank'=>(int)$tieRow['rank_number'],
-    'total'=>(float)$tieRow['total_score'],
-    'chief'=>(float)$tieRow['chief_score'],
-    'competitors'=>[]
-   ];
-  }
-  $tieGroups[$key]['competitors'][]=$tieRow;
- }
-}
-
-$nextBib=['leader'=>1,'follower'=>1];
-foreach(['leader','follower'] as $role){
- $activeBibs=array_map(static fn($row)=>(int)$row['bib_number'],$entries[$role]);
- $nextBib[$role]=$activeBibs?max($activeBibs)+1:1;
-}
-$csrf=Csrf::token();
-?>
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}@media(max-width:575.98px){.navbar .container-fluid{align-items:flex-start}.navbar-brand{margin-bottom:.5rem}.dashboard-heading{gap:.75rem}.dashboard-heading .text-muted{font-size:1rem}.modal-dialog{margin:.5rem}.modal-content{max-height:calc(100dvh - 1rem)}.modal-body{overflow-y:auto}.modal-footer{flex-wrap:wrap}.modal-footer form,.modal-footer form .btn{width:100%}}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="dashboard-heading d-flex flex-wrap justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Dashboard</h1><div class="text-muted"><?=($round && ($round['scoring_mode']??'manual')==='automated')?'Automatic Relative Placement Final':'Manual Scoring Engine Â· Event Round Workflow'?></div></div><?php if($round):?><span class="badge text-bg-primary status-pill"><?=e(str_replace('_',' ',$round['status']))?></span><?php endif;?></div>
-<?php if($round):?>
-<div class="card shadow-sm mb-4 border-primary" id="registration-desk-sync">
- <div class="card-header d-flex justify-content-between align-items-center">
-  <strong>Registration Desk</strong>
-  <span class="badge text-bg-primary">LIVE SYNC</span>
- </div>
- <div class="card-body">
-  <?php if($registrationDeskUrl):?>
-   <div class="input-group mb-3">
-    <input class="form-control" id="registrationDeskUrl" value="<?=e($registrationDeskUrl)?>" readonly>
-    <button type="button" class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('registrationDeskUrl').value)">Copy Link</button>
-    <a class="btn btn-primary" href="<?=e($registrationDeskUrl)?>" target="_blank">Open Desk</a>
-   </div>
-  <?php else:?>
-   <div class="alert alert-warning mb-3">The secure token is not visible in this session. Generate a new shareable URL below.<form method="post" action="registration-link.php" class="mt-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-primary btn-sm">Generate New Registration Desk Link</button></form><div class="small mt-2">Existing competitors, bibs, check-ins and ready status are preserved.</div></div>
-  <?php endif;?>
-  <div class="row g-3" id="deskSyncStats">
-   <div class="col-md-3"><div class="border rounded p-3"><strong>Leaders</strong><div class="fs-4" data-stat="leaders">â€”</div></div></div>
-   <div class="col-md-3"><div class="border rounded p-3"><strong>Followers</strong><div class="fs-4" data-stat="followers">â€”</div></div></div>
-   <div class="col-md-3"><div class="border rounded p-3"><strong>Missing Bibs</strong><div class="fs-4" data-stat="missing">â€”</div></div></div>
-   <div class="col-md-3"><div class="border rounded p-3"><strong>Last Update</strong><div class="fs-6" data-stat="updated">â€”</div></div></div>
-  </div>
- </div>
-</div>
-<?php endif;?>
-<?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?>
-<?php if(!$round):?>
-<div class="card shadow-sm mb-4"><div class="card-body">
-<h2 class="h5">Create Scoring Round</h2>
-<p class="text-muted">Select an existing event or enter a new event name. New event details can be completed later under Events &amp; Tickets.</p>
-<form method="post" class="row g-3">
-<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-<input type="hidden" name="action" value="create_round">
-<input type="hidden" name="scoring_mode" value="<?=e($scoringMode==='automated'?'automated':'manual')?>">
-<div class="col-lg-7">
-<label class="form-label">Select Existing Event</label>
-<select class="form-select" name="event_id">
-<option value="">Select event</option>
-<?php foreach($events as $e):?><option value="<?=$e['id']?>"><?=e(($e['event_date']?:'Date pending').' â€” '.$e['name'])?></option><?php endforeach;?>
-</select>
-</div>
-<div class="col-lg-5">
-<label class="form-label">Division</label>
-<select class="form-select" name="division">
-<option value="novice">Novice</option>
-<option value="intermediate">Intermediate</option>
-<option value="advanced">Advanced</option>
-<option value="all_star">All Star</option>
-</select>
-</div>
-<div class="col-12"><div class="text-center text-muted fw-semibold">OR CREATE A BASIC EVENT</div></div>
-<div class="col-lg-8">
-<label class="form-label">New Event Name</label>
-<input class="form-control" name="new_event_name" maxlength="190" placeholder="Example: BASS 8 August 2026 at Caliente">
-</div>
-<div class="col-lg-4">
-<label class="form-label">Event Date</label>
-<input class="form-control" type="date" name="new_event_date">
-<div class="form-text">Optional now. Complete or correct it later in Events &amp; Tickets.</div>
-</div>
-<div class="col-12">
-<h3 class="h6 mb-2">Competition Format</h3>
-<p class="text-muted small mb-2">Choose the first round for this event and division.</p>
-<div class="d-flex flex-wrap gap-2">
-<button class="btn btn-success" name="round_type" value="heats">Start with Heats</button>
-<button class="btn btn-dark" name="round_type" value="final">Go Straight to Final</button>
-</div>
-</div>
-<div class="col-12"><small class="text-muted">Starting with Heats keeps the existing options to continue to either Semifinal or Final. Go Straight to Final when no qualification round is required.</small></div>
-</form>
-</div></div>
-<div class="card shadow-sm"><div class="card-body">
-<h2 class="h5">Saved Rounds</h2>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
-<tbody><?php foreach($rounds as $r):
- $status=(string)$r['status'];
- $label=match($status){
-  'draft'=>'Draft',
-  'awaiting_decision'=>'Awaiting Next Round Decision',
-  'scores_submitted'=>'Scores Submitted',
-  'pending_approval'=>'Pending Super Admin Approval',
-  'completed'=>'Completed',
-  'archived'=>'Archived',
-  default=>ucwords(str_replace('_',' ',$status))
- };
- if((int)$r['has_child_round']===1 && $status==='awaiting_decision')$label='Completed';
- $badge=match($label){
-  'Completed'=>'text-bg-success',
-  'Archived'=>'text-bg-dark',
-  'Pending Super Admin Approval'=>'text-bg-warning',
-  'Scores Submitted'=>'text-bg-primary',
-  'Awaiting Next Round Decision'=>'text-bg-warning',
-  default=>'text-bg-secondary'
- };
-?>
-<tr>
-<td><?=e($r['event_name'])?></td>
-<td><?=e(ucfirst($r['division']))?></td>
-<td><?=e(ucfirst($r['round_type']))?></td>
-<td><span class="badge <?=$badge?>"><?=e($label)?></span></td>
-<td><?=e($r['updated_at'])?></td>
-<td class="text-end">
- <div class="d-inline-flex gap-2">
-  <a class="btn btn-sm btn-outline-dark" href="?round_id=<?=$r['id']?>">Open</a>
-  <?php if($r['status']!=='archived' && empty($r['locked_at'])):?>
-  <form method="post" onsubmit="return confirmDeleteWorkflow(this,'<?=e(addslashes($r['event_name']))?>','<?=e(ucfirst($r['division']))?>');">
-   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-   <input type="hidden" name="action" value="delete_scoring_workflow">
-   <input type="hidden" name="event_id" value="<?=$r['event_id']?>">
-   <input type="hidden" name="division" value="<?=e($r['division'])?>">
-   <input type="hidden" name="delete_confirmation" value="">
-   <button class="btn btn-sm btn-outline-danger">Delete All Test Scoring</button>
-  </form>
-  <?php endif;?>
- </div>
-</td>
-</tr>
-<?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">â† All rounds</a> <strong><?=e($round['event_name'])?></strong> Â· <?=e(ucfirst($round['division']))?> Â· <?=e(ucfirst($round['round_type']))?></div>
-<?php if($round['round_type']==='final'):?>
-<?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,function($suggestion)use($round){
- $check=DivisionProgressionService::eligibilityFor((string)$round['division'],(float)$suggestion['novice_points'],(float)$suggestion['intermediate_points'],(float)$suggestion['advanced_points'],(string)$suggestion['current_division'],!empty($suggestion['competed_intermediate']),!empty($suggestion['competed_advanced']),!empty($suggestion['competed_all_star']));
- return $check['eligible'];
-}));?>
-<datalist id="finalCompetitorSuggestions"><?php foreach($finalDivisionSuggestions as $suggestion):?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' Â· '.ucfirst($suggestion['dance_role']).' Â· '.ucwords(str_replace('_',' ',$suggestion['current_division'])))?></option><?php endforeach;?></datalist>
-<div class="card shadow-sm mb-4"><div class="card-body">
-<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
- <div>
-  <h2 class="h5 mb-1">Final Dashboard</h2>
-  <p class="text-muted mb-0">Match fixed couples first. Repository publication will appear only after Final scores are submitted and previewed.</p>
- </div>
- <?php if((int)$round['parent_round_id']>0):?>
- <form method="post" onsubmit="return confirm('Cancel this Final draft and return to the previous round? Final pairing data will be removed.');">
-  <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-  <input type="hidden" name="action" value="cancel_child_round">
-  <input type="hidden" name="round_id" value="<?=$roundId?>">
-  <button class="btn btn-outline-danger btn-sm">â† Cancel Final &amp; Return</button>
- </form>
- <?php endif;?>
-</div>
-</div></div>
-
-<div class="card shadow-sm mb-4"><div class="card-body">
- <h2 class="h5 mb-1">Add Competitors Directly to Final</h2>
- <p class="text-muted mb-3">Search suggestions show active BDC <?=e(ucwords(str_replace('_',' ',$round['division'])))?> competitors. Leaders and Followers are added independently, so the numbers may be different.</p>
- <div class="row g-3">
- <?php foreach(['leader'=>['Leaders','primary'],'follower'=>['Followers','danger']] as $finalRole=>$finalRoleMeta):?>
-  <div class="col-lg-6"><div class="border rounded p-3 h-100">
-   <h3 class="h6"><?=e($finalRoleMeta[0])?></h3>
-   <form method="post" class="row g-2">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-    <input type="hidden" name="action" value="add_entry">
-    <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="dance_role" value="<?=$finalRole?>">
-    <div class="col-3"><label class="form-label">Bib</label><input class="form-control" type="number" min="1" name="bib_number" value="<?=$nextBib[$finalRole]?>" required></div>
-    <div class="col-9"><label class="form-label">BDC competitor</label><input class="form-control" name="competitor_search" list="finalCompetitorSuggestions" placeholder="Name or BDC ID" required><div class="form-text">Select a matching <?=e(ucwords(str_replace('_',' ',$round['division'])))?> competitor.</div></div>
-    <div class="col-12"><button class="btn btn-<?=e($finalRoleMeta[1])?> w-100" name="entry_mode" value="existing">Add from BDC Database</button></div>
-    <div class="col-12 mt-3"><div class="border border-warning rounded p-2 bg-warning-subtle">
-     <div class="small fw-semibold mb-2">Missing from BDC only</div>
-     <div class="form-check"><input class="form-check-input" type="checkbox" name="override_division" value="1" id="override_<?=$finalRole?>"><label class="form-check-label" for="override_<?=$finalRole?>">Confirm this dancer has no existing BDC record</label></div>
-     <input class="form-control form-control-sm mt-2" name="override_reason" maxlength="255" placeholder="Required reason for override">
-     <button class="btn btn-outline-dark btn-sm mt-2" name="entry_mode" value="create" onclick="return confirm('Create a provisional BDC record and add this missing competitor directly to the Final? Existing ineligible BDC competitors cannot use this option. The reason will be audited.')">Add Missing Non-BDC Competitor</button>
-    </div></div>
-   </form>
-  </div></div>
- <?php endforeach;?>
- </div>
-</div></div>
-
-<div class="row g-3 mb-4">
- <div class="col-lg-6"><div class="card shadow-sm h-100">
-  <div class="card-header fw-semibold bg-primary-subtle d-flex justify-content-between align-items-center">
-   <span>Finalist Leaders</span>
-   <form method="post">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-    <input type="hidden" name="action" value="add_next_finalist">
-    <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="dance_role" value="leader">
-    <button class="btn btn-sm btn-primary">Add Next Ranked Leader</button>
-   </form>
-  </div>
-  <div class="card-body">
-  <?php if(!$entries['leader']):?><div class="text-muted">No finalist Leaders yet.</div><?php endif;?>
-  <?php foreach($entries['leader'] as $x):?>
-   <div class="border rounded p-2 mb-2 d-flex justify-content-between align-items-center gap-2">
-    <span><strong>Bib <?=$x['bib_number']?></strong> Â· <?=e($x['display_name'])?></span>
-    <form method="post" onsubmit="return confirm('Remove this Leader from the Final only?');">
-     <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-     <input type="hidden" name="action" value="remove_finalist">
-     <input type="hidden" name="round_id" value="<?=$roundId?>">
-     <input type="hidden" name="entry_id" value="<?=$x['id']?>">
-     <button class="btn btn-sm btn-outline-danger">Remove</button>
-    </form>
-   </div>
-  <?php endforeach;?>
-  </div>
- </div></div>
-
- <div class="col-lg-6"><div class="card shadow-sm h-100">
-  <div class="card-header fw-semibold bg-danger-subtle d-flex justify-content-between align-items-center">
-   <span>Finalist Followers</span>
-   <form method="post">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-    <input type="hidden" name="action" value="add_next_finalist">
-    <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="dance_role" value="follower">
-    <button class="btn btn-sm btn-danger">Add Next Ranked Follower</button>
-   </form>
-  </div>
-  <div class="card-body">
-  <?php if(!$entries['follower']):?><div class="text-muted">No finalist Followers yet.</div><?php endif;?>
-  <?php foreach($entries['follower'] as $x):?>
-   <div class="border rounded p-2 mb-2 d-flex justify-content-between align-items-center gap-2">
-    <span><strong>Bib <?=$x['bib_number']?></strong> Â· <?=e($x['display_name'])?></span>
-    <form method="post" onsubmit="return confirm('Remove this Follower from the Final only?');">
-     <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-     <input type="hidden" name="action" value="remove_finalist">
-     <input type="hidden" name="round_id" value="<?=$roundId?>">
-     <input type="hidden" name="entry_id" value="<?=$x['id']?>">
-     <button class="btn btn-sm btn-outline-danger">Remove</button>
-    </form>
-   </div>
-  <?php endforeach;?>
-  </div>
- </div></div>
-</div>
-
-<div class="card shadow-sm mb-4"><div class="card-body">
- <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-  <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
-  <form method="post">
-   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-   <input type="hidden" name="action" value="random_final_pairing">
-   <input type="hidden" name="round_id" value="<?=$roundId?>">
-   <button class="btn btn-warning">Random Match</button>
-  </form>
- </div>
-
- <form method="post">
-  <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-  <input type="hidden" name="round_id" value="<?=$roundId?>">
-  <div class="table-responsive"><table class="table align-middle">
-   <thead><tr><th>Couple</th><th>Leader</th><th>Follower</th><th>Status</th></tr></thead>
-   <tbody>
-   <?php
-   $pairMap=[];foreach($finalPairs as $pair)$pairMap[(int)$pair['leader_entry_id']]=$pair;
-   foreach($entries['leader'] as $i=>$leader):
-    $current=$pairMap[(int)$leader['id']]??null;
-   ?>
-    <tr>
-     <td>#<?=$i+1?></td>
-     <td><strong>Bib <?=$leader['bib_number']?></strong><br><?=e($leader['display_name'])?></td>
-     <td>
-      <select class="form-select" name="pair[<?=$leader['id']?>]">
-       <option value="0">Select Follower</option>
-       <?php foreach($entries['follower'] as $follower):?>
-        <option value="<?=$follower['id']?>" <?=$current && (int)$current['follower_entry_id']===(int)$follower['id']?'selected':''?>>
-         Bib <?=$follower['bib_number']?> Â· <?=e($follower['display_name'])?>
-        </option>
-       <?php endforeach;?>
-      </select>
-     </td>
-     <td><?=e($current['pairing_status']??'draft')?></td>
-    </tr>
-   <?php endforeach;?>
-   </tbody>
-  </table></div>
-  <div class="d-flex gap-2 flex-wrap">
-   <button class="btn btn-outline-primary" name="action" value="save_final_pairing">Save Pairing Draft</button>
-   <button class="btn btn-success" name="action" value="confirm_final_pairing" onclick="return confirm('Confirm these fixed Final couples?')">Confirm Final Pairing</button>
-  </div>
- </form>
-</div></div>
-
-<?php
-$pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair['pairing_status']==='confirmed'))===count($finalPairs);
-?>
-<?php if($pairingConfirmed):?>
-<div class="card shadow-sm mb-4"><div class="card-body">
- <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-  <div>
-   <h2 class="h5 mb-1">Final Relative Placement Scoring</h2>
-   <p class="text-muted mb-0">Each judge must rank every fixed couple once, from 1 to <?=count($finalPairs)?>. Duplicate ranks in one judge column are not allowed.</p>
-  </div>
-  <a class="btn btn-outline-primary" href="print.php?round_id=<?=$roundId?>" target="_blank">Print Final Judge Sheets</a>
- </div>
-
- <div class="card border-0 bg-light mb-3"><div class="card-body">
-  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
-   <div>
-    <h3 class="h6 mb-1">Final Judges</h3>
-    <div class="text-muted small">The Final can use a different judging panel. Edit existing judges, append new judges, remove judges and select one Final Chief Judge.</div>
-   </div>
-  </div>
-  <form method="post" id="finalJudgesForm">
-   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-   <input type="hidden" name="action" value="save_final_judges">
-   <input type="hidden" name="round_id" value="<?=$roundId?>">
-   <div id="finalJudgesWrap">
-   <?php
-   $finalJudgeDisplay=$judges?:[
-    ['id'=>0,'judge_name'=>'','is_chief'=>1],
-    ['id'=>0,'judge_name'=>'','is_chief'=>0],
-    ['id'=>0,'judge_name'=>'','is_chief'=>0]
-   ];
-   foreach($finalJudgeDisplay as $i=>$judge):
-    $judgeKey='judge_'.$i;
-   ?>
-    <div class="input-group mb-2 judge-row" data-judge-row>
-     <span class="input-group-text final-judge-number">Judge <?=$i+1?></span>
-     <input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>">
-     <input class="form-control" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Final judge name" required>
-     <span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span>
-     <button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button>
-    </div>
-   <?php endforeach;?>
-   </div>
-   <div class="d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button>
-    <button class="btn btn-dark btn-sm">Save Final Judges</button>
-   </div>
-  </form>
- </div></div>
-
- <form method="post" id="finalScoreForm">
-  <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-  <input type="hidden" name="round_id" value="<?=$roundId?>">
-  <input type="hidden" name="final_rank_payload" id="finalRankPayload" value="">
-  <?php $finalJudgePageSize=10;$finalJudgePageCount=max(1,(int)ceil(count($judges)/$finalJudgePageSize));?>
-  <?php if(count($judges)>10):?><div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-   <strong>Judge columns:</strong>
-   <?php for($judgePage=0;$judgePage<$finalJudgePageCount;$judgePage++):$start=$judgePage*$finalJudgePageSize+1;$end=min(count($judges),($judgePage+1)*$finalJudgePageSize);?>
-    <button type="button" class="btn btn-sm <?=$judgePage===0?'btn-dark':'btn-outline-dark'?> final-judge-page-button" data-page="<?=$judgePage?>">J<?=$start?>â€“J<?=$end?></button>
-   <?php endfor;?>
-   <span class="text-muted small">Only one judge group is shown at a time. All scores remain saved.</span>
-  </div><?php endif;?>
-  <div class="table-responsive"><table class="table table-bordered align-middle final-scoring-table">
-   <thead><tr>
-    <th>Final Rank</th><th>Couple</th><th>Leader</th><th>Follower</th>
-    <?php foreach($judges as $judgeIndex=>$judge):?><th class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' â˜…':''?></th><?php endforeach;?>
-    <th>Relative Placement</th>
-   </tr></thead>
-   <tbody>
-   <?php foreach($finalPairs as $pair):$finalResult=$finalResults[(int)$pair['id']]??null;?>
-    <tr>
-     <td class="fw-bold"><?= $finalResult ? (int)$finalResult['final_rank'] : 'â€”' ?></td>
-     <td>Couple <?=$pair['pair_number']?></td>
-     <td><strong>Bib <?=$pair['leader_bib']?></strong><br><?=e($pair['leader_name'])?></td>
-     <td><strong>Bib <?=$pair['follower_bib']?></strong><br><?=e($pair['follower_name'])?></td>
-     <?php foreach($judges as $judgeIndex=>$judge):?>
-      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input" type="number" min="1" max="<?=count($finalPairs)?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" required></td>
-     <?php endforeach;?>
-     <td>
-      <?php if($finalResult):?>
-       <div class="fw-semibold">Relative Placement Summary</div>
-       <div>âœ“ Majority achieved in Top <?=$finalResult['majority_level']?></div>
-       <div>âœ“ <?=$finalResult['majority_count']?> of <?=count($judges)?> judges ranked this couple in the Top <?=$finalResult['majority_level']?></div>
-       <div>âœ“ Best placement score among qualifying couples</div>
-      <?php else:?>Not calculated<?php endif;?>
-     </td>
-    </tr>
-   <?php endforeach;?>
-   </tbody>
-  </table></div>
-  <div class="border rounded bg-light p-3 mb-3">
-   <div class="fw-semibold mb-2">Final Judge Key</div>
-   <div class="d-flex flex-wrap gap-3 small">
-    <?php foreach($judges as $judgeIndex=>$judge):?>
-     <span><strong>J<?=$judgeIndex+1?></strong> Â· <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' â˜… Chief Judge':''?></span>
-    <?php endforeach;?>
-   </div>
-  </div>
-  <div class="card border-0 bg-light mb-3"><div class="card-body">
-   <h3 class="h6 mb-3">Final Scoring Witnesses</h3>
-   <div class="row g-2">
-    <div class="col-md-3"><label class="form-label">Witness 1</label><input class="form-control" name="witness_1" maxlength="190" value="<?=e((string)($round['witness_1']??''))?>" placeholder="Witness name"></div>
-    <div class="col-md-3"><label class="form-label">Witness 2</label><input class="form-control" name="witness_2" maxlength="190" value="<?=e((string)($round['witness_2']??''))?>" placeholder="Witness name"></div>
-    <div class="col-md-3"><label class="form-label">Witness 3</label><input class="form-control" name="witness_3" maxlength="190" value="<?=e((string)($round['witness_3']??''))?>" placeholder="Witness name"></div>
-    <div class="col-md-3"><label class="form-label">Scoring Administrator</label><input class="form-control" name="scoring_administrator" maxlength="190" value="<?=e((string)($round['scoring_administrator']??''))?>" placeholder="Administrator name"></div>
-   </div>
-  </div></div>
-  <div class="d-flex flex-wrap gap-2 align-items-center">
-   <button class="btn btn-outline-dark" name="action" value="save_final_scores">Save Final Draft</button>
-   <button class="btn btn-success" name="action" value="calculate_final_ranking">Calculate &amp; Sort Final Ranking</button>
-   <button class="btn btn-primary" name="action" value="submit_final_scores">Submit Final Scores</button>
-   <?php if($finalResults):?>
-    <a class="btn btn-outline-primary" target="_blank" href="final-result.php?round_id=<?=$roundId?>">Print Final Scoring Sheet</a>
-    <a class="btn btn-danger" href="publish.php?round_id=<?=$roundId?>">Review &amp; Publish Competition</a>
-   <?php endif;?>
-  </div>
- </form>
-</div></div>
-<?php else:?>
-<div class="alert alert-secondary">
- <strong>Next step:</strong> confirm fixed couples to open manual Relative Placement scoring.
-</div>
-<?php endif;?>
-<?php else:?>
-<?php
-$currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);$specialSettings=SpecialCategoryService::isSpecial((string)$round['division']);$specialSuggestedYes=(int)$round['yes_count'];if($specialSettings&&(int)$round['tier_manual_override']!==1){$countStmt=$pdo->prepare("SELECT COALESCE(MAX(total),0) FROM (SELECT COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role) role_counts");$countStmt->execute(['round'=>$roundId]);$largest=(int)$countStmt->fetchColumn();$specialSuggestedYes=$largest<=15?5:($largest<=30?10:15);}
-?>
-<div class="row g-3 mb-4"><div class="col-lg-4"><div class="card shadow-sm h-100"><div class="card-body">
-<h2 class="h5"><?=e(ucfirst($round['round_type']))?> Settings</h2>
-<?php if($specialSettings):?>
-<form method="post" class="row g-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>">
-<div class="col-12"><label class="form-label">YES Tier per Judge</label><select class="form-select" name="special_yes_count" <?=((int)$round['tier_manual_override']===1)?'disabled':''?>><option value="5" <?=$specialSuggestedYes===5?'selected':''?>>Tier 1 Â· 5 YES</option><option value="10" <?=$specialSuggestedYes===10?'selected':''?>>Tier 2 Â· 10 YES</option><option value="15" <?=$specialSuggestedYes===15?'selected':''?>>Tier 3 Â· 15 YES</option></select><?php if((int)$round['tier_manual_override']===1):?><input type="hidden" name="special_yes_count" value="<?=(int)$round['yes_count']?>"><?php endif;?><div class="form-text">Recommended automatically from the larger Leader or Follower count. You may amend it before locking.</div></div>
-<div class="col-12"><div class="border rounded p-3 bg-light"><div class="fw-semibold mb-2">Alternates Â· Locked</div><div class="row g-2 text-center"><div class="col-4"><small class="text-muted d-block">ALT 1</small><strong>4.5</strong></div><div class="col-4"><small class="text-muted d-block">ALT 2</small><strong>4.3</strong></div><div class="col-4"><small class="text-muted d-block">ALT 3</small><strong>4.2</strong></div></div></div></div>
-<div class="col-12"><?php if((int)$round['tier_manual_override']===1):?><button class="btn btn-outline-warning btn-sm" name="action" value="special_settings_unlock">Unlock YES Count</button><?php else:?><button class="btn btn-dark btn-sm" name="action" value="special_settings_lock">Save &amp; Lock YES Count</button><?php endif;?></div></form>
-<?php else:?>
-<form method="post" class="row g-3">
-<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-<input type="hidden" name="action" value="settings">
-<input type="hidden" name="round_id" value="<?=$roundId?>">
-<div class="col-12">
-<label class="form-label">Competition Tier</label>
-<select class="form-select" name="competition_tier" id="competitionTier" onchange="updateTierSummary()">
-<option value="1" <?=$currentTier===1?'selected':''?>>Tier 1 Â· 5â€“15 competitors</option>
-<option value="2" <?=$currentTier===2?'selected':''?>>Tier 2 Â· 16â€“30 competitors</option>
-<option value="3" <?=$currentTier===3?'selected':''?>>Tier 3 Â· 30+ competitors</option>
-</select>
-</div>
-<div class="col-6">
-<label class="form-label">YES per Judge</label>
-<input class="form-control" id="tierYesCount" value="<?=$round['yes_count']?>" readonly>
-</div>
-<div class="col-6">
-<label class="form-label">Alternates</label>
-<input class="form-control" value="3" readonly>
-</div>
-<div class="col-12">
-<div class="border rounded p-3 bg-light">
-<div class="fw-semibold mb-2">Official BDC Weights Â· Locked</div>
-<div class="row g-2 text-center">
-<div class="col-3"><small class="text-muted d-block">YES</small><strong>10</strong></div>
-<div class="col-3"><small class="text-muted d-block">ALT 1</small><strong>4.5</strong></div>
-<div class="col-3"><small class="text-muted d-block">ALT 2</small><strong>4.3</strong></div>
-<div class="col-3"><small class="text-muted d-block">ALT 3</small><strong>4.2</strong></div>
-</div>
-</div>
-</div>
-<div class="col-12"><small class="text-muted">Automatic tier uses the larger individual role count, not Leaders + Followers combined. Tier 1: 5â€“15, Tier 2: 16â€“30, Tier 3: 31+. Saving here creates a manual override.</small></div>
-<div class="col-12"><button class="btn btn-outline-dark btn-sm">Save Tier Settings</button></div>
-</form>
-<?php endif;?>
-</div></div></div>
-<div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Default is All. Each role panel must contain at least 3 judges.</div><form method="post" id="judgesForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div id="judgesWrap"><?php $display=$judges?:[['judge_name'=>'','is_chief'=>1,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all']];foreach($display as $i=>$j):?><div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge <?=$i+1?></strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" value="<?=e($j['judge_name'])?>" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><?php foreach(['all'=>'All','leader'=>'Leaders','follower'=>'Followers'] as $scopeValue=>$scopeLabel):?><option value="<?=$scopeValue?>" <?=($j['scoring_scope']??'all')===$scopeValue?'selected':''?>><?=$scopeLabel?></option><?php endforeach;?></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="<?=$i?>" <?=(int)$j['is_chief']?'checked':''?>> Chief</label></div></div><?php endforeach;?></div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addJudge()">+ Judge</button><button class="btn btn-dark btn-sm">Submit Judges</button><a class="btn btn-outline-primary btn-sm" href="print.php?round_id=<?=$roundId?>" target="_blank">Generate Judge Sheets</a></div></form></div></div></div></div>
-<datalist id="competitorSuggestions"><?php foreach($competitorSuggestions as $suggestion):?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' Â· '.ucfirst($suggestion['dance_role']).($suggestion['status']==='pending'?' Â· Details pending':''))?></option><?php endforeach;?></datalist>
-<div class="row g-3 mb-4">
-<div class="col-lg-6"><div class="card shadow-sm role-card"><div class="card-header bg-primary-subtle fw-semibold">Leaders</div><div class="card-body">
-<form method="post" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="dance_role" value="leader">
-<div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="<?=$nextBib['leader']?>" aria-label="Leader bib number" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div>
-<div class="col-9"><input class="form-control" name="competitor_search" list="competitorSuggestions" placeholder="Type competitor name or BDC ID" required><div class="form-text">Select an existing BDC ID, or type a new name and use Create Name &amp; Add.</div></div>
-<div class="col-6"><button class="btn btn-primary w-100" name="entry_mode" value="existing">Add Existing</button></div>
-<div class="col-6"><button class="btn btn-outline-primary w-100" name="entry_mode" value="create" onclick="return confirm('Create a provisional BDC competitor using only this name? The competitor can complete details later.')">Create Name &amp; Add</button></div>
-</form>
-<table class="table table-sm align-middle"><thead><tr><th style="width:150px">Bib</th><th>Competitor</th><th>BDC ID</th><th style="width:100px"></th></tr></thead><tbody><?php foreach($entries['leader'] as $x):?><tr><td><form method="post" class="d-flex gap-1"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="update_bib"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><input class="form-control form-control-sm" style="width:76px" type="number" min="1" name="bib_number" value="<?=$x['bib_number']?>" aria-label="Edit leader bib"><button class="btn btn-sm btn-outline-primary">Save</button></form></td><td><?=e($x['display_name'])?><?php if($x['competitor_status']==='pending'):?> <span class="badge text-bg-warning">Details pending</span><?php endif;?></td><td><code><?=e($x['bdc_id'])?></code></td><td><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="remove_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr><?php endforeach;?></tbody></table>
-</div></div></div>
-<div class="col-lg-6"><div class="card shadow-sm role-card"><div class="card-header bg-danger-subtle fw-semibold">Followers</div><div class="card-body">
-<form method="post" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="dance_role" value="follower">
-<div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="<?=$nextBib['follower']?>" aria-label="Follower bib number" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div>
-<div class="col-9"><input class="form-control" name="competitor_search" list="competitorSuggestions" placeholder="Type competitor name or BDC ID" required><div class="form-text">Select an existing BDC ID, or type a new name and use Create Name &amp; Add.</div></div>
-<div class="col-6"><button class="btn btn-danger w-100" name="entry_mode" value="existing">Add Existing</button></div>
-<div class="col-6"><button class="btn btn-outline-danger w-100" name="entry_mode" value="create" onclick="return confirm('Create a provisional BDC competitor using only this name? The competitor can complete details later.')">Create Name &amp; Add</button></div>
-</form>
-<table class="table table-sm align-middle"><thead><tr><th style="width:150px">Bib</th><th>Competitor</th><th>BDC ID</th><th style="width:100px"></th></tr></thead><tbody><?php foreach($entries['follower'] as $x):?><tr><td><form method="post" class="d-flex gap-1"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="update_bib"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><input class="form-control form-control-sm" style="width:76px" type="number" min="1" name="bib_number" value="<?=$x['bib_number']?>" aria-label="Edit follower bib"><button class="btn btn-sm btn-outline-primary">Save</button></form></td><td><?=e($x['display_name'])?><?php if($x['competitor_status']==='pending'):?> <span class="badge text-bg-warning">Details pending</span><?php endif;?></td><td><code><?=e($x['bdc_id'])?></code></td><td><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="remove_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr><?php endforeach;?></tbody></table>
-</div></div></div>
-</div></div></div>
-<?php if($judges && ($entries['leader']||$entries['follower'])):$leaderPanelCount=count(array_filter($judges,fn($judge)=>in_array($judge['scoring_scope']??'all',['all','leader'],true)));$followerPanelCount=count(array_filter($judges,fn($judge)=>in_array($judge['scoring_scope']??'all',['all','follower'],true)));?><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><span class="badge text-bg-primary me-2">Leader Panel: <?=$leaderPanelCount?> judges</span><span class="badge text-bg-danger">Follower Panel: <?=$followerPanelCount?> judges</span></div><a class="btn btn-outline-dark btn-sm" href="#judge-setup">Reselect Judges</a></div><form method="post" id="heatsScoreForm" data-callback-count="<?=(int)$round['callback_count']?>"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="score_payload" id="scorePayload" value=""><div class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Manual <?=e(ucfirst($round['round_type']))?> Score Entry</h2><div class="text-muted small mb-2">Enter 1 or YES for a YES mark. Enter A1, A2 or A3 for alternates. Every save retains the screen data.</div><div class="alert alert-info py-2 mb-3"><strong>Live Preview:</strong> totals and provisional ranks update immediately. Use Calculate &amp; Sort to review the server result before Submit Scores.</div><?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):?><h3 class="h6 mt-4"><?=$label?></h3><div class="table-responsive"><table class="table table-bordered score-table"><thead><tr><th>Bib</th><th>Name</th><?php foreach($judges as $j):?><th><?=e($j['judge_name'])?><?=(int)$j['is_chief']?' â˜…':''?></th><?php endforeach;?><th>Total</th><th>Result</th></tr></thead><tbody><?php foreach($entries[$role] as $x):$res=$results[$x['id']]??null;?><tr class="score-row <?=e($res['result_status']??'')?>" data-role="<?=$role?>" data-entry-id="<?=$x['id']?>"><td><?=$x['bib_number']?></td><td><?=e($x['display_name'])?></td><?php foreach($judges as $j):$assigned=in_array($j['scoring_scope']??'all',['all',$role],true);$m=$marks[$x['id']][$j['id']]??null;$val='';if($m){$val=$m['mark_type']==='yes'?'1':($m['mark_type']==='alt'?'A'.$m['alt_rank']:'');}?><td><?php if($assigned):?><input class="form-control form-control-sm score-input" data-entry-id="<?=$x['id']?>" data-judge-id="<?=$j['id']?>" data-chief="<?=(int)$j['is_chief']?>" name="mark[<?=$x['id']?>][<?=$j['id']?>]" value="<?=e($val)?>"><?php else:?><span class="badge text-bg-light border text-muted">Not Assigned</span><?php endif;?></td><?php endforeach;?><td><span class="live-total"><?=isset($res['total_score'])?number_format((float)$res['total_score'],1):'0.0'?></span><div class="small text-muted">YES <span class="live-yes">0</span> Â· Chief <span class="live-chief">0.0</span></div></td><td><span class="live-status"><?=e($res['result_status']??'Live preview')?></span> <span class="live-rank"><?=isset($res['rank_number'])?'#'.$res['rank_number']:''?></span></td></tr><?php endforeach;?></tbody></table></div><?php endforeach;?></div></div>
-<div class="card shadow-sm mb-3"><div class="card-body">
- <h2 class="h6 mb-3">Scoring Witnesses</h2>
- <div class="row g-2">
-  <div class="col-md-3"><label class="form-label">Witness 1</label><input class="form-control" name="witness_1" maxlength="190" value="<?=e((string)($round['witness_1']??''))?>" placeholder="Witness name"></div>
-  <div class="col-md-3"><label class="form-label">Witness 2</label><input class="form-control" name="witness_2" maxlength="190" value="<?=e((string)($round['witness_2']??''))?>" placeholder="Witness name"></div>
-  <div class="col-md-3"><label class="form-label">Witness 3</label><input class="form-control" name="witness_3" maxlength="190" value="<?=e((string)($round['witness_3']??''))?>" placeholder="Witness name"></div>
-  <div class="col-md-3"><label class="form-label">Scoring Administrator</label><input class="form-control" name="scoring_administrator" maxlength="190" value="<?=e((string)($round['scoring_administrator']??''))?>" placeholder="Administrator name"></div>
- </div>
- <div class="form-text mt-2">Witness names are saved with the scoring draft and printed on the official draft result.</div>
-</div></div>
-<div class="sticky-actions d-flex flex-wrap gap-2 align-items-center">
- <button name="action" value="save_scores" class="btn btn-outline-dark">Save Draft</button>
- <button name="action" value="calculate_scores" class="btn btn-warning">Calculate &amp; Sort</button>
- <button name="action" value="submit_scores" class="btn btn-primary">Submit Scores</button>
- <span id="autosaveStatus" class="small text-muted ms-auto">Autosave ready</span>
- <?php if(in_array($round['status'],['awaiting_decision','scores_submitted'],true)):?>
- <a class="btn btn-outline-primary" target="_blank" href="result.php?round_id=<?=$roundId?>">Preview / Print Draft Result</a>
- <?php endif;?>
-</div></form>
-
-<?php if(in_array($round['status'],['awaiting_decision','scores_submitted'],true)):?>
-<div class="card shadow-sm mt-3 mb-4 border-primary">
- <div class="card-body">
-  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-   <div>
-    <h2 class="h5 mb-1">Next Round</h2>
-    <p class="text-muted mb-0">Scores are submitted and sorted. Choose the next round for the callback competitors.</p>
-   </div>
-   <a class="btn btn-outline-primary" target="_blank" href="result.php?round_id=<?=$roundId?>">Print Full Draft Result</a>
-  </div>
-
-  <?php if($tieGroups):?>
-   <div class="alert alert-warning mt-3 mb-0">Resolve all callback ties above before creating the next round.</div>
-  <?php else:?>
-   <div class="d-flex flex-wrap gap-2 mt-3">
-    <?php if($round['round_type']==='heats'):?>
-     <form method="post">
-      <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-      <input type="hidden" name="action" value="create_next_round">
-      <input type="hidden" name="round_id" value="<?=$roundId?>">
-      <input type="hidden" name="next_round_type" value="semifinal">
-      <button class="btn btn-warning">Move Callbacks to Semifinal</button>
-     </form>
-     <form method="post">
-      <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-      <input type="hidden" name="action" value="create_next_round">
-      <input type="hidden" name="round_id" value="<?=$roundId?>">
-      <input type="hidden" name="next_round_type" value="final">
-      <button class="btn btn-dark">Move Callbacks Directly to Final</button>
-     </form>
-    <?php elseif($round['round_type']==='semifinal'):?>
-     <form method="post">
-      <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-      <input type="hidden" name="action" value="create_next_round">
-      <input type="hidden" name="round_id" value="<?=$roundId?>">
-      <input type="hidden" name="next_round_type" value="final">
-      <button class="btn btn-dark">Move Semifinal Callbacks to Final</button>
-     </form>
-    <?php endif;?>
-
-    <?php if((int)$round['parent_round_id']>0):?>
-     <form method="post" onsubmit="return confirm('Cancel this round draft and return to the previous round?');">
-      <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-      <input type="hidden" name="action" value="cancel_child_round">
-      <input type="hidden" name="round_id" value="<?=$roundId?>">
-      <button class="btn btn-outline-danger">Cancel This Round &amp; Go Back</button>
-     </form>
-    <?php endif;?>
-   </div>
-  <?php endif;?>
- </div>
-</div>
-<?php endif;?>
-
-<?php if($tieGroups):?>
-<div class="card shadow-sm mt-3 mb-4 border-warning">
- <div class="card-header bg-warning-subtle fw-semibold">Chief Judge Tie Resolution</div>
- <div class="card-body">
-  <p class="mb-3">These exact ties cross the callback cutoff. The Chief Judge must select the competitor who receives the callback place.</p>
-  <?php foreach($tieGroups as $tieGroup):?>
-   <div class="border rounded p-3 mb-3">
-    <div class="fw-semibold mb-2">
-     <?=e(ucfirst($tieGroup['role']))?> Â· Callback position #<?=$tieGroup['rank']?> Â·
-     Total <?=number_format($tieGroup['total'],1)?> Â· Chief Judge score <?=number_format($tieGroup['chief'],1)?>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-     <?php foreach($tieGroup['competitors'] as $candidate):?>
-      <form method="post" onsubmit="return confirm('Select <?=e(addslashes($candidate['display_name']))?> as the callback winner of this tie?');">
-       <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-       <input type="hidden" name="action" value="resolve_callback_tie">
-       <input type="hidden" name="round_id" value="<?=$roundId?>">
-       <input type="hidden" name="selected_entry_id" value="<?=$candidate['entry_id']?>">
-       <button class="btn btn-warning">
-        Select Bib <?=$candidate['bib_number']?> Â· <?=e($candidate['display_name'])?>
-       </button>
-      </form>
-     <?php endforeach;?>
-    </div>
-   </div>
-  <?php endforeach;?>
-  <div class="small text-muted">The selected competitor becomes Callback. The remaining tied competitors become Alternates in order, then Eliminated if more than three remain.</div>
- </div>
-</div>
-<?php endif;?>
-
-<?php endif;?>
-<?php endif;?><?php endif;?></div><script>
-function confirmDeleteWorkflow(form,eventName,division){
- const answer=window.prompt(
-  'Delete ALL '+division+' scoring rounds for '+eventName+'?\n\n'
-  +'This removes Heats, Semifinal, Final, judges, marks, pairings and calculated results.\n'
-  +'The event and competitor records remain.\n\n'
-  +'Type DELETE to continue.'
- );
- if(answer!=='DELETE')return false;
- form.querySelector('[name="delete_confirmation"]').value='DELETE';
- return window.confirm('Final confirmation: permanently delete this complete test scoring workflow?');
-}
-function updateTierSummary(){const tier=document.getElementById('competitionTier');const out=document.getElementById('tierYesCount');if(!tier||!out)return;out.value=({1:5,2:10,3:15})[tier.value]||10;}let finalJudgeSequence=1000;
-function renumberFinalJudges(){
- const rows=document.querySelectorAll('#finalJudgesWrap [data-judge-row]');
- rows.forEach((row,index)=>{
-  const label=row.querySelector('.final-judge-number');
-  if(label)label.textContent='Judge '+(index+1);
- });
-}
-function addFinalJudge(){
- const w=document.getElementById('finalJudgesWrap');
- if(!w)return;
- const key='new_'+(finalJudgeSequence++);
- const d=document.createElement('div');
- d.className='input-group mb-2 judge-row';
- d.setAttribute('data-judge-row','');
- d.innerHTML='<span class="input-group-text final-judge-number"></span>'
-  +'<input type="hidden" name="final_judges['+key+'][id]" value="0">'
-  +'<input class="form-control" name="final_judges['+key+'][name]" placeholder="Final judge name" required>'
-  +'<span class="input-group-text"><input type="radio" name="final_chief_key" value="'+key+'"> Chief</span>'
-  +'<button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button>';
- w.appendChild(d);
- renumberFinalJudges();
-}
-function removeFinalJudge(button){
- const row=button.closest('[data-judge-row]');
- if(!row)return;
- const rows=document.querySelectorAll('#finalJudgesWrap [data-judge-row]');
- if(rows.length<=3){alert('Final requires at least 3 judges.');return;}
- row.remove();
- renumberFinalJudges();
-}function addJudge(){const w=document.getElementById('judgesWrap');const i=w.querySelectorAll('.judge-row').length;const d=document.createElement('div');d.className='row g-2 mb-2 judge-row align-items-center';d.innerHTML='<div class="col-md-2"><strong>Judge '+(i+1)+'</strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="'+i+'"> Chief</label></div>';w.appendChild(d);}
-const scoreForm=document.getElementById('heatsScoreForm');
-const autosaveStatus=document.getElementById('autosaveStatus');
-const scoreWeights={'1':10,'YES':10,'Y':10,'A1':4.5,'A2':4.3,'A3':4.2,'2':4.5,'3':4.3,'4':4.2,'':0};
-let autosaveTimers=new Map();
-let unsavedScoreChanges=false;
-function normaliseScoreValue(raw){const value=String(raw||'').trim().toUpperCase();if(value==='YES'||value==='Y'||value==='1')return '1';if(value==='A1'||value==='2')return 'A1';if(value==='A2'||value==='3')return 'A2';if(value==='A3'||value==='4')return 'A3';return '';}
-function weightFor(raw){return scoreWeights[normaliseScoreValue(raw)]||0;}
-function updateLiveScoring(){
- if(!scoreForm)return;
- const callbackCount=parseInt(scoreForm.dataset.callbackCount||'0',10);
- ['leader','follower'].forEach(role=>{
-  const rows=[...scoreForm.querySelectorAll('.score-row[data-role="'+role+'"]')];
-  const calculated=rows.map(row=>{
-   let total=0,yes=0,chief=0;
-   row.querySelectorAll('.score-input').forEach(input=>{const value=normaliseScoreValue(input.value);const weight=weightFor(value);total+=weight;if(value==='1')yes++;if(input.dataset.chief==='1')chief=weight;});
-   row.querySelector('.live-total').textContent=total.toFixed(1);
-   row.querySelector('.live-yes').textContent=String(yes);
-   row.querySelector('.live-chief').textContent=chief.toFixed(1);
-   return {row,total,chief,yes,entry:parseInt(row.dataset.entryId||'0',10)};
-  });
-  calculated.sort((a,b)=>b.total-a.total||b.chief-a.chief||b.yes-a.yes||a.entry-b.entry);
-  calculated.forEach((item,index)=>{const rank=index+1;const status=rank<=callbackCount?'Callback':(rank<=callbackCount+3?'Alternate':'Eliminated');item.row.querySelector('.live-rank').textContent='#'+rank;item.row.querySelector('.live-status').textContent=status+' Â· Live';});
- });
-}
-function setAutosaveStatus(text,className){if(!autosaveStatus)return;autosaveStatus.textContent=text;autosaveStatus.className='small ms-auto '+(className||'text-muted');}
-async function autosaveScore(input){
- const key=input.dataset.entryId+':'+input.dataset.judgeId;
- if(autosaveTimers.has(key))clearTimeout(autosaveTimers.get(key));
- autosaveTimers.set(key,setTimeout(async()=>{
-  setAutosaveStatus('Savingâ€¦','text-primary');
-  try{
-   const body=new URLSearchParams();
-   body.set('_csrf',scoreForm.querySelector('[name="_csrf"]').value);
-   body.set('round_id',scoreForm.querySelector('[name="round_id"]').value);
-   body.set('entry_id',input.dataset.entryId);
-   body.set('judge_id',input.dataset.judgeId);
-   body.set('value',normaliseScoreValue(input.value));
-   const response=await fetch('autosave.php',{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
-   const data=await response.json();
-   if(!response.ok||!data.ok)throw new Error(data.error||'Autosave failed');
-   unsavedScoreChanges=false;
-   setAutosaveStatus('Saved at '+new Date().toLocaleTimeString(),'text-success');
-  }catch(error){unsavedScoreChanges=true;setAutosaveStatus('Autosave failed Â· use Save Draft','text-danger');}
- },900));
-}
-function buildScorePayload(){const payload={};scoreForm.querySelectorAll('.score-input').forEach(input=>{const entry=input.dataset.entryId,judge=input.dataset.judgeId;if(!payload[entry])payload[entry]={};payload[entry][judge]=normaliseScoreValue(input.value);});return payload;}
-if(scoreForm){
- const handleScoreChange=input=>{
-  if(!input||!input.classList.contains('score-input'))return;
-  input.value=normaliseScoreValue(input.value);
-  unsavedScoreChanges=true;
-  setAutosaveStatus('Unsaved changes','text-warning');
-  updateLiveScoring();
-  autosaveScore(input);
- };
- scoreForm.addEventListener('input',event=>handleScoreChange(event.target));
- scoreForm.addEventListener('change',event=>handleScoreChange(event.target));
- scoreForm.addEventListener('keyup',event=>{
-  if(event.target&&event.target.classList.contains('score-input'))updateLiveScoring();
- });
- scoreForm.addEventListener('submit',event=>{if(event.submitter&&['calculate_scores','submit_scores'].includes(event.submitter.value))showScoringProgress();
-  document.getElementById('scorePayload').value=JSON.stringify(buildScorePayload());
-  scoreForm.querySelectorAll('.score-input').forEach(input=>input.removeAttribute('name'));
-  setAutosaveStatus('Saving full draftâ€¦','text-primary');
- });
- requestAnimationFrame(updateLiveScoring);
-}
-window.addEventListener('beforeunload',event=>{if(!unsavedScoreChanges)return;event.preventDefault();event.returnValue='';});
-
-const scoringOverlay=document.getElementById('scoringProgressOverlay');
-const scoringProgressText=document.getElementById('scoringProgressText');
-const scoringProgressBar=document.getElementById('scoringProgressBar');
-function showScoringProgress(){
- if(!scoringOverlay)return;
- scoringOverlay.style.display='flex';
- const stages=[['Saving scoresâ€¦',20],['Calculating totalsâ€¦',42],['Sorting competitorsâ€¦',64],['Resolving tiesâ€¦',82],['Rendering resultsâ€¦',94]];
- let index=0;
- const advance=()=>{if(index>=stages.length)return;scoringProgressText.textContent=stages[index][0];scoringProgressBar.style.width=stages[index][1]+'%';index++;setTimeout(advance,650);};
- advance();
-}
-
-const finalScoreForm=document.getElementById('finalScoreForm');
-if(finalScoreForm){
- finalScoreForm.addEventListener('submit',event=>{
-  const submitter=event.submitter;
-  if(submitter&&submitter.value==='generate_test_final_scores')return;
-
-  const payload={};
-  const byJudge={};
-  let invalidMessage='';
-  finalScoreForm.querySelectorAll('.final-rank-input').forEach(input=>{
-   const pair=input.dataset.pairId;
-   const judge=input.dataset.judgeId;
-   const rank=parseInt(input.value||'0',10);
-   if(!payload[pair])payload[pair]={};
-   payload[pair][judge]=rank;
-   if(!byJudge[judge])byJudge[judge]=[];
-   byJudge[judge].push(rank);
-  });
-
-  const pairCount=finalScoreForm.querySelectorAll('tbody tr').length;
-  Object.entries(byJudge).some(([judge,ranks])=>{
-   if(ranks.length!==pairCount||ranks.some(rank=>rank<1||rank>pairCount)){
-    invalidMessage='Every Final judge must rank every couple from 1 to '+pairCount+'.';
-    return true;
-   }
-   if(new Set(ranks).size!==pairCount){
-    invalidMessage='Each Final judge must use every rank exactly once. Duplicate ranks were found.';
-    return true;
-   }
-   return false;
-  });
-
-  if(invalidMessage){
-   event.preventDefault();
-   alert(invalidMessage);
-   return;
-  }
-
-  document.getElementById('finalRankPayload').value=JSON.stringify(payload);
-  finalScoreForm.querySelectorAll('.final-rank-input').forEach(input=>input.removeAttribute('name'));
-  if(typeof showScoringProgress==='function')showScoringProgress();
- });
-}
-
-document.querySelectorAll('.final-judge-page-button').forEach(button=>{
- button.addEventListener('click',()=>{
-  const page=button.dataset.page;
-  document.querySelectorAll('.final-judge-column').forEach(cell=>{cell.style.display=cell.dataset.judgePage===page?'':'none';});
-  document.querySelectorAll('.final-judge-page-button').forEach(item=>{
-   item.classList.toggle('btn-dark',item===button);
-   item.classList.toggle('btn-outline-dark',item!==button);
-  });
- });
-});
-
-async function refreshRegistrationDeskSync(){
- const box=document.getElementById('deskSyncStats');
- if(!box)return;
- try{
-  const response=await fetch('registration-sync.php?round_id=<?=$roundId?>',{headers:{'X-Requested-With':'XMLHttpRequest'}});
-  const data=await response.json();
-  if(!data.ok)return;
-  box.querySelector('[data-stat="leaders"]').textContent=data.leaders_ready+' / '+data.leaders_total;
-  box.querySelector('[data-stat="followers"]').textContent=data.followers_ready+' / '+data.followers_total;
-  box.querySelector('[data-stat="missing"]').textContent=data.missing_bibs;
-  box.querySelector('[data-stat="updated"]').textContent=data.last_update||'No desk changes yet';
- }catch(error){}
-}
-refreshRegistrationDeskSync();
-setInterval(refreshRegistrationDeskSync,3000);
-</script></body></html>
+            ->execv÷žy¶‰žËkºwµçE¹¬tüýA!A}%9Q}5`¤ì(€€‘É…¹­ô¡¥¹Ð¤ ‘™¥¹…±I•ÍÕ±ÑÍl¡¥¹Ð¤‘‰l¥uul™¥¹…±}É…¹¬tüýA!A}%9Q}5`¤ì(€¥˜ ‘É…¹­„ôô‘É…¹­¥É•ÑÕÉ¸€‘É…¹­ðôø‘É…¹­ì(€É•ÑÕÉ¸€¡¥¹Ð¤‘…lÁ…¥É}¹Õµ‰•Ètðôø¡¥¹Ð¤‘‰lÁ…¥É}¹Õµ‰•Ètì(ô¤ì)õô(‘Ñ¥•É½ÕÁÌõmtì)¥˜ ‘É½Õ¹¥ì(€‘Ñ¥•MÑµÐô‘Á‘¼´ùÁÉ•Á…É” ˆ(€M1PÍÈ¹•¹ÑÉå}¥±ÍÈ¹Ñ½Ñ…±}Í½É”±ÍÈ¹¡¥•™}Í½É”±ÍÈ¹É…¹­}¹Õµ‰•È°(€€€€€€€€Í”¹‘…¹•}É½±”±Í”¹‘¥ÍÁ±…å}¹…µ”±Í”¹‰¥‰}¹Õµ‰•È(€I=4‰‘}Í½É¥¹}É•ÍÕ±ÑÌÍÈ(€)=%8‰‘}Í½É¥¹}•¹ÑÉ¥•ÌÍ”=8Í”¹¥õÍÈ¹•¹ÑÉå}¥(€)=%8€ (€€M1PÍ”È¹‘…¹•}É½±”±ÍÈÈ¹É…¹­}¹Õµ‰•È±ÍÈÈ¹Ñ½Ñ…±}Í½É”±ÍÈÈ¹¡¥•™}Í½É”(€€I=4‰‘}Í½É¥¹}É•ÍÕ±ÑÌÍÈÈ(€€)=%8‰‘}Í½É¥¹}•¹ÑÉ¥•ÌÍ”È=8Í”È¹¥õÍÈÈ¹•¹ÑÉå}¥(€€]!IÍÈÈ¹É½Õ¹‘}¥ôéÉ½Õ¹‘}¥‘|Ä9ÍÈÈ¹É•ÍÕ±Ñ}ÍÑ…ÑÕÌôÑ¥•}Á•¹‘¥¹œœ(€€I=U@	dÍ”È¹‘…¹•}É½±”±ÍÈÈ¹É…¹­}¹Õµ‰•È±ÍÈÈ¹Ñ½Ñ…±}Í½É”±ÍÈÈ¹¡¥•™}Í½É”(€€!Y%9=U9P ¨¤øÄ(€€¤Ù…±¥‘}Ñ¥”(€€€=8Ù…±¥‘}Ñ¥”¹‘…¹•}É½±”õÍ”¹‘…¹•}É½±”(€€9Ù…±¥‘}Ñ¥”¹É…¹­}¹Õµ‰•ÈõÍÈ¹É…¹­}¹Õµ‰•È(€€9	L¡Ù…±¥‘}Ñ¥”¹Ñ½Ñ…±}Í½É”µÍÈ¹Ñ½Ñ…±}Í½É”¤ðÀ¸ÀÀÀÄ(€€9	L¡Ù…±¥‘}Ñ¥”¹¡¥•™}Í½É”µÍÈ¹¡¥•™}Í½É”¤ðÀ¸ÀÀÀÄ(€]!IÍÈ¹É½Õ¹‘}¥ôéÉ½Õ¹‘}¥‘|È(€€€9ÍÈ¹É•ÍÕ±Ñ}ÍÑ…ÑÕÌôÑ¥•}Á•¹‘¥¹œœ(€=IH	dÍ”¹‘…¹•}É½±”±ÍÈ¹É…¹­}¹Õµ‰•È±Í”¹‰¥‰}¹Õµ‰•È(€ˆ¤ì(€‘Ñ¥•MÑµÐ´ù•á•ÕÑ”¡lÉ½Õ¹‘}¥‘|Äœôø‘É½Õ¹‘%°É½Õ¹‘}¥‘|Èœôø‘É½Õ¹‘%‘t¤ì(™½É•…  ‘Ñ¥•MÑµÐ´ù™•Ñ¡±° ¤…Ì€‘Ñ¥•I½Ü¥ì(€€‘­•äô‘Ñ¥•I½Ýl‘…¹•}É½±”t¸ðœ¸‘Ñ¥•I½ÝlÉ…¹­}¹Õµ‰•Èt¸ðœ¸‘Ñ¥•I½ÝlÑ½Ñ…±}Í½É”t¸ðœ¸‘Ñ¥•I½Ýl¡¥•™}Í½É”tì(€¥˜ …¥ÍÍ•Ð ‘Ñ¥•É½ÕÁÍl‘­•åt¤¥ì(€€€‘Ñ¥•É½ÕÁÍl‘­•åtõl(€€€€É½±”œôø‘Ñ¥•I½Ýl‘…¹•}É½±”t°(€€€€É…¹¬œôø¡¥¹Ð¤‘Ñ¥•I½ÝlÉ…¹­}¹Õµ‰•Èt°(€€€€Ñ½Ñ…°œôø¡™±½…Ð¤‘Ñ¥•I½ÝlÑ½Ñ…±}Í½É”t°(€€€€¡¥•˜œôø¡™±½…Ð¤‘Ñ¥•I½Ýl¡¥•™}Í½É”t°(€€€€½µÁ•Ñ¥Ñ½ÉÌœôùmt(€€tì(€ô(€€‘Ñ¥•É½ÕÁÍl‘­•åul½µÁ•Ñ¥Ñ½ÉÌumtô‘Ñ¥•I½Üì(ô)ô((‘¹•áÑ	¥ˆõl±•…‘•ÈœôøÄ°™½±±½Ý•ÈœôøÅtì)™½É•… ¡l±•…‘•Èœ°™½±±½Ý•Èt…Ì€‘É½±”¥ì(€‘…Ñ¥Ù•	¥‰Ìõ…ÉÉ…å}µ…À¡ÍÑ…Ñ¥Œ™¸ ‘É½Ü¤ôø¡¥¹Ð¤‘É½Ýl‰¥‰}¹Õµ‰•Èt°‘•¹ÑÉ¥•Íl‘É½±•t¤ì(€‘¹•áÑ	¥‰l‘É½±•tô‘…Ñ¥Ù•	¥‰Ìýµ…à ‘…Ñ¥Ù•	¥‰Ì¤¬ÄèÄì)ô(‘ÍÉ˜õÍÉ˜èéÑ½­•¸ ¤ì(üø(ð…‘½ÑåÁ”¡Ñµ°øñ¡Ñµ°±…¹œô‰•¸ˆøñ¡•…øñµ•Ñ„¡…ÉÍ•Ðô‰ÕÑ˜´àˆøñµ•Ñ„¹…µ”ô‰Ù¥•ÝÁ½ÉÐˆ½¹Ñ•¹Ðô‰Ý¥‘Ñ õ‘•Ù¥”µÝ¥‘Ñ ±¥¹¥Ñ¥…°µÍ…±”ôÄˆøñÑ¥Ñ±”ùM½É¥¹œ…Í¡‰½…Éð	‘µ¥¸ð½Ñ¥Ñ±”øñ±¥¹¬¡É•˜ô‰¡ÑÑÁÌè¼½‘¸¹©Í‘•±¥ÙÈ¹¹•Ð½¹Á´½‰½½ÑÍÑÉ…Á Ô¸Ì¸Ì½‘¥ÍÐ½ÍÌ½‰½½ÑÍÑÉ…À¹µ¥¸¹ÍÌˆÉ•°ô‰ÍÑå±•Í¡••ÐˆøñÍÑå±”ø¹Í½É”µ¥¹ÁÕÑíÝ¥‘Ñ èÐáÁàíÑ•áÐµ…±¥¸é•¹Ñ•Éô¹ÍÑ¥­äµ…Ñ¥½¹ÍíÁ½Í¥Ñ¥½¸éÍÑ¥­äí‰½ÑÑ½´èÀí‰…­É½Õ¹è™™˜í‰½É‘•ÈµÑ½ÀèÅÁàÍ½±¥€‘‘íÁ…‘‘¥¹œèÄÁÁàíèµ¥¹‘•àèÕô¹É½±”µ…É‘íµ¥¸µ¡•¥¡ÐèÈÈÁÁáô¹ÍÑ…ÑÕÌµÁ¥±±íÑ•áÐµÑÉ…¹Í™½É´é…Á¥Ñ…±¥é•ô¹Í½É”µÑ…‰±”Ñ¡íÝ¡¥Ñ”µÍÁ…”é¹½ÝÉ…Àí™½¹ÐµÍ¥é”è¸áÉ•µô¹Í½É”µÑ…‰±”Ñ‘íÙ•ÉÑ¥…°µ…±¥¸éµ¥‘‘±•ô¹…±±‰…­í‰…­É½Õ¹èÅ”Ý‘…¥µÁ½ÉÑ…¹Ñô¹…±Ñ•É¹…Ñ•í‰…­É½Õ¹è™™˜Í…¥µÁ½ÉÑ…¹Ñô¹Ñ¥•}Á•¹‘¥¹í‰…­É½Õ¹è˜áÝ‘„…¥µÁ½ÉÑ…¹Ñõµ•‘¥„¡µ…àµÝ¥‘Ñ èÔÜÔ¸äáÁà¥ì¹¹…Ù‰…È€¹½¹Ñ…¥¹•Èµ™±Õ¥‘í…±¥¸µ¥Ñ•µÌé™±•àµÍÑ…ÉÑô¹¹…Ù‰…Èµ‰É…¹‘íµ…É¥¸µ‰½ÑÑ½´è¸ÕÉ•µô¹‘…Í¡‰½…Éµ¡•…‘¥¹í…Àè¸ÜÕÉ•µô¹‘…Í¡‰½…Éµ¡•…‘¥¹œ€¹Ñ•áÐµµÕÑ•‘í™½¹ÐµÍ¥é”èÅÉ•µô¹µ½‘…°µ‘¥…±½íµ…É¥¸è¸ÕÉ•µô¹µ½‘…°µ½¹Ñ•¹Ñíµ…àµ¡•¥¡Ðé…±Œ ÄÀÁ‘Ù €´€ÅÉ•´¥ô¹µ½‘…°µ‰½‘åí½Ù•É™±½Üµäé…ÕÑ½ô¹µ½‘…°µ™½½Ñ•Éí™±•àµÝÉ…ÀéÝÉ…Áô¹µ½‘…°µ™½½Ñ•È™½É´°¹µ½‘…°µ™½½Ñ•È™½É´€¹‰Ñ¹íÝ¥‘Ñ èÄÀÀ•õôð½ÍÑå±”øð½¡•…øñ‰½‘ä±…ÍÌô‰‰œµ±¥¡Ðˆøñ¹…Ø±…ÍÌô‰¹…Ù‰…È¹…Ù‰…Èµ‘…É¬‰œµ‘…É¬ˆøñ‘¥Ø±…ÍÌô‰½¹Ñ…¥¹•Èµ™±Õ¥ˆøñ„±…ÍÌô‰¹…Ù‰…Èµ‰É…¹ˆ¡É•˜ôˆ¸¸¼ˆù	‘µ¥¸ð½„øñ‘¥Ø±…ÍÌô‰µ™±•à…À´Èˆøñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µÝ…É¹¥¹œ‰Ñ¸µÍ´ˆ¡É•˜ô‰¡ÑÑÁÌè¼½‰…¡…Ñ…‘…¹•½Õ¹¥°¹½´¼ˆù	!½µ”ð½„øñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ±¥¡Ð‰Ñ¸µÍ´ˆ¡É•˜ôˆ¸¸¼ˆù…Í¡‰½…Éð½„øð½‘¥Øøð½‘¥Øøð½¹…Øøñ‘¥Ø±…ÍÌô‰½¹Ñ…¥¹•Èµ™±Õ¥Áä´ÐˆÍÑå±”ô‰µ…àµÝ¥‘Ñ èÄØÀÁÁàˆøñ‘¥Ø±…ÍÌô‰‘…Í¡‰½…Éµ¡•…‘¥¹œµ™±•à™±•àµÝÉ…À©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµÍÑ…ÉÐµˆ´Ìˆøñ‘¥Øøñ Ä±…ÍÌô‰ Ìµˆ´ÄˆùM½É¥¹œ…Í¡‰½…Éð½ Äøñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•ˆøðüô ‘É½Õ¹€˜˜€ ‘É½Õ¹‘lÍ½É¥¹}µ½‘”tüüµ…¹Õ…°œ¤ôôô…ÕÑ½µ…Ñ•œ¤üÕÑ½µ…Ñ¥ŒI•±…Ñ¥Ù”A±…•µ•¹Ð¥¹…°œè5…¹Õ…°M½É¥¹œ¹¥¹”ƒ
+ÜÙ•¹ÐI½Õ¹]½É­™±½Üœüøð½‘¥Øøð½‘¥ØøðýÁ¡À¥˜ ‘É½Õ¹¤èüøñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµÁÉ¥µ…ÉäÍÑ…ÑÕÌµÁ¥±°ˆøðüõ”¡ÍÑÉ}É•Á±…” |œ°œ€œ°‘É½Õ¹‘lÍÑ…ÑÕÌt¤¤üøð½ÍÁ…¸øðýÁ¡À•¹‘¥˜ìüøð½‘¥Øø(ðýÁ¡À¥˜ ‘É½Õ¹¤èüø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ð‰½É‘•ÈµÁÉ¥µ…Éäˆ¥ô‰É•¥ÍÑÉ…Ñ¥½¸µ‘•Í¬µÍå¹Œˆø(€ñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•Èµ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆø(€€ñÍÑÉ½¹œùI•¥ÍÑÉ…Ñ¥½¸•Í¬ð½ÍÑÉ½¹œø(€€ñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµÁÉ¥µ…Éäˆù1%YMe9ð½ÍÁ…¸ø(€ð½‘¥Øø(€ñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ðýÁ¡À¥˜ ‘É•¥ÍÑÉ…Ñ¥½¹•Í­UÉ°¤èüø(€€€ñ‘¥Ø±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµˆ´Ìˆø(€€€€ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¥ô‰É•¥ÍÑÉ…Ñ¥½¹•Í­UÉ°ˆÙ…±Õ”ôˆðüõ” ‘É•¥ÍÑÉ…Ñ¥½¹•Í­UÉ°¤üøˆÉ•…‘½¹±äø(€€€€ñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…Éäˆ½¹±¥¬ô‰¹…Ù¥…Ñ½È¹±¥Á‰½…É¹ÝÉ¥Ñ•Q•áÐ¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É•¥ÍÑÉ…Ñ¥½¹•Í­UÉ°œ¤¹Ù…±Õ”¤ˆù½Áä1¥¹¬ð½‰ÕÑÑ½¸ø(€€€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µÁÉ¥µ…Éäˆ¡É•˜ôˆðüõ” ‘É•¥ÍÑÉ…Ñ¥½¹•Í­UÉ°¤üøˆÑ…É•Ðô‰}‰±…¹¬ˆù=Á•¸•Í¬ð½„ø(€€€ð½‘¥Øø(€€ðýÁ¡À•±Í”èüø(€€€ñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµÝ…É¹¥¹œµˆ´ÌˆùQ¡”Í•ÕÉ”Ñ½­•¸¥Ì¹½ÐÙ¥Í¥‰±”¥¸Ñ¡¥ÌÍ•ÍÍ¥½¸¸•¹•É…Ñ”„¹•ÜÍ¡…É•…‰±”UI0‰•±½Ü¸ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ…Ñ¥½¸ô‰É•¥ÍÑÉ…Ñ¥½¸µ±¥¹¬¹Á¡Àˆ±…ÍÌô‰µÐ´Èˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÁÉ¥µ…Éä‰Ñ¸µÍ´ˆù•¹•É…Ñ”9•ÜI•¥ÍÑÉ…Ñ¥½¸•Í¬1¥¹¬ð½‰ÕÑÑ½¸øð½™½É´øñ‘¥Ø±…ÍÌô‰Íµ…±°µÐ´Èˆùá¥ÍÑ¥¹œ½µÁ•Ñ¥Ñ½ÉÌ°‰¥‰Ì°¡•¬µ¥¹Ì…¹É•…‘äÍÑ…ÑÕÌ…É”ÁÉ•Í•ÉÙ•¸ð½‘¥Øøð½‘¥Øø(€€ðýÁ¡À•¹‘¥˜ìüø(€€ñ‘¥Ø±…ÍÌô‰É½Üœ´Ìˆ¥ô‰‘•Í­Må¹MÑ…ÑÌˆø(€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´ÌˆøñÍÑÉ½¹œù1•…‘•ÉÌð½ÍÑÉ½¹œøñ‘¥Ø±…ÍÌô‰™Ì´Ðˆ‘…Ñ„µÍÑ…Ðô‰±•…‘•ÉÌˆûŠPð½‘¥Øøð½‘¥Øøð½‘¥Øø(€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´ÌˆøñÍÑÉ½¹œù½±±½Ý•ÉÌð½ÍÑÉ½¹œøñ‘¥Ø±…ÍÌô‰™Ì´Ðˆ‘…Ñ„µÍÑ…Ðô‰™½±±½Ý•ÉÌˆûŠPð½‘¥Øøð½‘¥Øøð½‘¥Øø(€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´ÌˆøñÍÑÉ½¹œù5¥ÍÍ¥¹œ	¥‰Ìð½ÍÑÉ½¹œøñ‘¥Ø±…ÍÌô‰™Ì´Ðˆ‘…Ñ„µÍÑ…Ðô‰µ¥ÍÍ¥¹œˆûŠPð½‘¥Øøð½‘¥Øøð½‘¥Øø(€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´ÌˆøñÍÑÉ½¹œù1…ÍÐUÁ‘…Ñ”ð½ÍÑÉ½¹œøñ‘¥Ø±…ÍÌô‰™Ì´Øˆ‘…Ñ„µÍÑ…Ðô‰ÕÁ‘…Ñ•ˆûŠPð½‘¥Øøð½‘¥Øøð½‘¥Øø(€€ð½‘¥Øø(€ð½‘¥Øø(ð½‘¥Øø(ðýÁ¡À•¹‘¥˜ìüø(ðýÁ¡À¥˜ ‘•ÉÉ½È¤èüøñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµ‘…¹•Èˆøðüõ” ‘•ÉÉ½È¤üøð½‘¥ØøðýÁ¡À•¹‘¥˜ìüøðýÁ¡À¥˜ ‘¹½Ñ¥”¤èüøñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµÍÕ•ÍÌˆøðüõ” ‘¹½Ñ¥”¤üøð½‘¥ØøðýÁ¡À•¹‘¥˜ìüø(ðýÁ¡À¥˜ „‘É½Õ¹¤èüø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ È±…ÍÌô‰ ÔˆùÉ•…Ñ”M½É¥¹œI½Õ¹ð½ Èø(ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•ˆùM•±•Ð…¸•á¥ÍÑ¥¹œ•Ù•¹Ð½È•¹Ñ•È„¹•Ü•Ù•¹Ð¹…µ”¸9•Ü•Ù•¹Ð‘•Ñ…¥±Ì…¸‰”½µÁ±•Ñ•±…Ñ•ÈÕ¹‘•ÈÙ•¹ÑÌ€™…µÀìQ¥­•ÑÌ¸ð½Àø(ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Ìˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•…Ñ•}É½Õ¹ˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰Í½É¥¹}µ½‘”ˆÙ…±Õ”ôˆðüõ” ‘Í½É¥¹5½‘”ôôô…ÕÑ½µ…Ñ•œü…ÕÑ½µ…Ñ•œèµ…¹Õ…°œ¤üøˆø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´Üˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùM•±•Ðá¥ÍÑ¥¹œÙ•¹Ðð½±…‰•°ø(ñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰•Ù•¹Ñ}¥ˆø(ñ½ÁÑ¥½¸Ù…±Õ”ôˆˆùM•±•Ð•Ù•¹Ðð½½ÁÑ¥½¸ø(ðýÁ¡À™½É•…  ‘•Ù•¹ÑÌ…Ì€‘”¤èüøñ½ÁÑ¥½¸Ù…±Õ”ôˆðüô‘•l¥tüøˆøðüõ”  ‘•l•Ù•¹Ñ}‘…Ñ”tüè…Ñ”Á•¹‘¥¹œœ¤¸œƒŠP€œ¸‘•l¹…µ”t¤üøð½½ÁÑ¥½¸øðýÁ¡À•¹‘™½É•… ìüø(ð½Í•±•Ðø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´Ôˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù¥Ù¥Í¥½¸ð½±…‰•°ø(ñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰‘¥Ù¥Í¥½¸ˆø(ñ½ÁÑ¥½¸Ù…±Õ”ô‰¹½Ù¥”ˆù9½Ù¥”ð½½ÁÑ¥½¸ø(ñ½ÁÑ¥½¸Ù…±Õ”ô‰¥¹Ñ•Éµ•‘¥…Ñ”ˆù%¹Ñ•Éµ•‘¥…Ñ”ð½½ÁÑ¥½¸ø(ñ½ÁÑ¥½¸Ù…±Õ”ô‰…‘Ù…¹•ˆù‘Ù…¹•ð½½ÁÑ¥½¸ø(ñ½ÁÑ¥½¸Ù…±Õ”ô‰…±±}ÍÑ…Èˆù±°MÑ…Èð½½ÁÑ¥½¸ø(ð½Í•±•Ðø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñ‘¥Ø±…ÍÌô‰Ñ•áÐµ•¹Ñ•ÈÑ•áÐµµÕÑ•™ÜµÍ•µ¥‰½±ˆù=HIQ	M%Y9Pð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´àˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù9•ÜÙ•¹Ð9…µ”ð½±…‰•°ø(ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰¹•Ý}•Ù•¹Ñ}¹…µ”ˆµ…á±•¹Ñ ôˆÄäÀˆÁ±…•¡½±‘•Èô‰á…µÁ±”è	ML€àÕÕÍÐ€ÈÀÈØ…Ð…±¥•¹Ñ”ˆø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´Ðˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùÙ•¹Ð…Ñ”ð½±…‰•°ø(ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆÑåÁ”ô‰‘…Ñ”ˆ¹…µ”ô‰¹•Ý}•Ù•¹Ñ}‘…Ñ”ˆø(ñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆù=ÁÑ¥½¹…°¹½Ü¸½µÁ±•Ñ”½È½ÉÉ•Ð¥Ð±…Ñ•È¥¸Ù•¹ÑÌ€™…µÀìQ¥­•ÑÌ¸ð½‘¥Øø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆø(ñ Ì±…ÍÌô‰ Øµˆ´Èˆù½µÁ•Ñ¥Ñ¥½¸½Éµ…Ðð½ Ìø(ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•Íµ…±°µˆ´Èˆù¡½½Í”Ñ¡”™¥ÉÍÐÉ½Õ¹™½ÈÑ¡¥Ì•Ù•¹Ð…¹‘¥Ù¥Í¥½¸¸ð½Àø(ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…À´Èˆø(ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍÕ•ÍÌˆ¹…µ”ô‰É½Õ¹‘}ÑåÁ”ˆÙ…±Õ”ô‰¡•…ÑÌˆùMÑ…ÉÐÝ¥Ñ !•…ÑÌð½‰ÕÑÑ½¸ø(ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬ˆ¹…µ”ô‰É½Õ¹‘}ÑåÁ”ˆÙ…±Õ”ô‰™¥¹…°ˆù¼MÑÉ…¥¡ÐÑ¼¥¹…°ð½‰ÕÑÑ½¸ø(ð½‘¥Øø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•ˆùMÑ…ÉÑ¥¹œÝ¥Ñ !•…ÑÌ­••ÁÌÑ¡”•á¥ÍÑ¥¹œ½ÁÑ¥½¹ÌÑ¼½¹Ñ¥¹Õ”Ñ¼•¥Ñ¡•ÈM•µ¥™¥¹…°½È¥¹…°¸¼MÑÉ…¥¡ÐÑ¼¥¹…°Ý¡•¸¹¼ÅÕ…±¥™¥…Ñ¥½¸É½Õ¹¥ÌÉ•ÅÕ¥É•¸ð½Íµ…±°øð½‘¥Øø(ð½™½É´ø(ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´ˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ È±…ÍÌô‰ ÔˆùM…Ù•I½Õ¹‘Ìð½ Èø(ñ‘¥Ø±…ÍÌô‰Ñ…‰±”µÉ•ÍÁ½¹Í¥Ù”ˆøñÑ…‰±”±…ÍÌô‰Ñ…‰±”…±¥¸µµ¥‘‘±”ˆøñÑ¡•…øñÑÈøñÑ ùÙ•¹Ðð½Ñ øñÑ ù¥Ù¥Í¥½¸ð½Ñ øñÑ ùI½Õ¹ð½Ñ øñÑ ùMÑ…ÑÕÌð½Ñ øñÑ ùUÁ‘…Ñ•ð½Ñ øñÑ ±…ÍÌô‰Ñ•áÐµ•¹ˆùÑ¥½¹Ìð½Ñ øð½ÑÈøð½Ñ¡•…ø(ñÑ‰½‘äøðýÁ¡À™½É•…  ‘É½Õ¹‘Ì…Ì€‘È¤è(€‘ÍÑ…ÑÕÌô¡ÍÑÉ¥¹œ¤‘ÉlÍÑ…ÑÕÌtì(€‘±…‰•°õµ…Ñ  ‘ÍÑ…ÑÕÌ¥ì(€€‘É…™ÐœôøÉ…™Ðœ°(€€…Ý…¥Ñ¥¹}‘•¥Í¥½¸œôøÝ…¥Ñ¥¹œ9•áÐI½Õ¹•¥Í¥½¸œ°(€€Í½É•Í}ÍÕ‰µ¥ÑÑ•œôøM½É•ÌMÕ‰µ¥ÑÑ•œ°(€€Á•¹‘¥¹}…ÁÁÉ½Ù…°œôøA•¹‘¥¹œMÕÁ•È‘µ¥¸ÁÁÉ½Ù…°œ°(€€½µÁ±•Ñ•œôø½µÁ±•Ñ•œ°(€€…É¡¥Ù•œôøÉ¡¥Ù•œ°(€‘•™…Õ±ÐôùÕÝ½É‘Ì¡ÍÑÉ}É•Á±…” |œ°œ€œ°‘ÍÑ…ÑÕÌ¤¤(ôì(¥˜ ¡¥¹Ð¤‘Él¡…Í}¡¥±‘}É½Õ¹tôôôÄ€˜˜€‘ÍÑ…ÑÕÌôôô…Ý…¥Ñ¥¹}‘•¥Í¥½¸œ¤‘±…‰•°ô½µÁ±•Ñ•œì(€‘‰…‘”õµ…Ñ  ‘±…‰•°¥ì(€€½µÁ±•Ñ•œôøÑ•áÐµ‰œµÍÕ•ÍÌœ°(€€É¡¥Ù•œôøÑ•áÐµ‰œµ‘…É¬œ°(€€A•¹‘¥¹œMÕÁ•È‘µ¥¸ÁÁÉ½Ù…°œôøÑ•áÐµ‰œµÝ…É¹¥¹œœ°(€€M½É•ÌMÕ‰µ¥ÑÑ•œôøÑ•áÐµ‰œµÁÉ¥µ…Éäœ°(€€Ý…¥Ñ¥¹œ9•áÐI½Õ¹•¥Í¥½¸œôøÑ•áÐµ‰œµÝ…É¹¥¹œœ°(€‘•™…Õ±ÐôøÑ•áÐµ‰œµÍ•½¹‘…Éäœ(ôì(üø(ñÑÈø(ñÑøðüõ” ‘Él•Ù•¹Ñ}¹…µ”t¤üøð½Ñø(ñÑøðüõ”¡Õ™¥ÉÍÐ ‘Él‘¥Ù¥Í¥½¸t¤¤üøð½Ñø(ñÑøðüõ”¡Õ™¥ÉÍÐ ‘ÉlÉ½Õ¹‘}ÑåÁ”t¤¤üøð½Ñø(ñÑøñÍÁ…¸±…ÍÌô‰‰…‘”€ðüô‘‰…‘”üøˆøðüõ” ‘±…‰•°¤üøð½ÍÁ…¸øð½Ñø(ñÑøðüõ” ‘ÉlÕÁ‘…Ñ•‘}…Ðt¤üøð½Ñø(ñÑ±…ÍÌô‰Ñ•áÐµ•¹ˆø(€ñ‘¥Ø±…ÍÌô‰µ¥¹±¥¹”µ™±•à…À´Èˆø(€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬ˆ¡É•˜ôˆýÉ½Õ¹‘}¥ôðüô‘Él¥tüøˆù=Á•¸ð½„ø(€€ðýÁ¡À¥˜ ‘ÉlÍÑ…ÑÕÌt„ôô…É¡¥Ù•œ€˜˜•µÁÑä ‘Él±½­•‘}…Ðt¤¤èüø(€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥Éµ•±•Ñ•]½É­™±½Ü¡Ñ¡¥Ì°œðüõ”¡…‘‘Í±…Í¡•Ì ‘Él•Ù•¹Ñ}¹…µ”t¤¤üøœ°œðüõ”¡Õ™¥ÉÍÐ ‘Él‘¥Ù¥Í¥½¸t¤¤üøœ¤ìˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰‘•±•Ñ•}Í½É¥¹}Ý½É­™±½Üˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•Ù•¹Ñ}¥ˆÙ…±Õ”ôˆðüô‘Él•Ù•¹Ñ}¥tüøˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘¥Ù¥Í¥½¸ˆÙ…±Õ”ôˆðüõ” ‘Él‘¥Ù¥Í¥½¸t¤üøˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘•±•Ñ•}½¹™¥Éµ…Ñ¥½¸ˆÙ…±Õ”ôˆˆø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•Èˆù•±•Ñ”±°Q•ÍÐM½É¥¹œð½‰ÕÑÑ½¸ø(€€ð½™½É´ø(€€ðýÁ¡À•¹‘¥˜ìüø(€ð½‘¥Øø(ð½Ñø(ð½ÑÈø(ðýÁ¡À•¹‘™½É•… ìüøð½Ñ‰½‘äøð½Ñ…‰±”øð½‘¥Øøð½‘¥Øøð½‘¥ØøðýÁ¡À•±Í”èüø(ñ‘¥Ø±…ÍÌô‰µˆ´Ìˆøñ„¡É•˜ôˆýµ½‘”õµ…¹Õ…°ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÍ•½¹‘…Éä‰Ñ¸µÍ´ˆûŠ@±°É½Õ¹‘Ìð½„ø€ñÍÑÉ½¹œøðüõ” ‘É½Õ¹‘l•Ù•¹Ñ}¹…µ”t¤üøð½ÍÑÉ½¹œøƒ
+Ü€ðüõ”¡Õ™¥ÉÍÐ ‘É½Õ¹‘l‘¥Ù¥Í¥½¸t¤¤üøƒ
+Ü€ðüõ”¡Õ™¥ÉÍÐ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”t¤¤üøð½‘¥Øø(ðýÁ¡À¥˜ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”tôôô™¥¹…°œ¤èüø(ðýÁ¡À€‘™¥¹…±¥Ù¥Í¥½¹MÕ•ÍÑ¥½¹Ìõ…ÉÉ…å}Ù…±Õ•Ì¡…ÉÉ…å}™¥±Ñ•È ‘½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹Ì±™Õ¹Ñ¥½¸ ‘ÍÕ•ÍÑ¥½¸¥ÕÍ” ‘É½Õ¹¥ì(€‘¡•¬õ¥Ù¥Í¥½¹AÉ½É•ÍÍ¥½¹M•ÉÙ¥”èé•±¥¥‰¥±¥Ñå½È ¡ÍÑÉ¥¹œ¤‘É½Õ¹‘l‘¥Ù¥Í¥½¸t°¡™±½…Ð¤‘ÍÕ•ÍÑ¥½¹l¹½Ù¥•}Á½¥¹ÑÌt°¡™±½…Ð¤‘ÍÕ•ÍÑ¥½¹l¥¹Ñ•Éµ•‘¥…Ñ•}Á½¥¹ÑÌt°¡™±½…Ð¤‘ÍÕ•ÍÑ¥½¹l…‘Ù…¹•‘}Á½¥¹ÑÌt°¡ÍÑÉ¥¹œ¤‘ÍÕ•ÍÑ¥½¹lÕÉÉ•¹Ñ}‘¥Ù¥Í¥½¸t°…•µÁÑä ‘ÍÕ•ÍÑ¥½¹l½µÁ•Ñ•‘}¥¹Ñ•Éµ•‘¥…Ñ”t¤°…•µÁÑä ‘ÍÕ•ÍÑ¥½¹l½µÁ•Ñ•‘}…‘Ù…¹•t¤°…•µÁÑä ‘ÍÕ•ÍÑ¥½¹l½µÁ•Ñ•‘}…±±}ÍÑ…Èt¤¤ì(É•ÑÕÉ¸€‘¡•­l•±¥¥‰±”tì)ô¤¤ìüø(ñ‘…Ñ…±¥ÍÐ¥ô‰™¥¹…±½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹ÌˆøðýÁ¡À™½É•…  ‘™¥¹…±¥Ù¥Í¥½¹MÕ•ÍÑ¥½¹Ì…Ì€‘ÍÕ•ÍÑ¥½¸¤èüøñ½ÁÑ¥½¸Ù…±Õ”ôˆðüõ” ‘ÍÕ•ÍÑ¥½¹l‰‘}¥t¤üøˆøðüõ” ‘ÍÕ•ÍÑ¥½¹l•á…Ñ}¹…µ”t¸œƒ
+Ü€œ¹Õ™¥ÉÍÐ ‘ÍÕ•ÍÑ¥½¹l‘…¹•}É½±”t¤¸œƒ
+Ü€œ¹ÕÝ½É‘Ì¡ÍÑÉ}É•Á±…” |œ°œ€œ°‘ÍÕ•ÍÑ¥½¹lÕÉÉ•¹Ñ}‘¥Ù¥Í¥½¸t¤¤¤üøð½½ÁÑ¥½¸øðýÁ¡À•¹‘™½É•… ìüøð½‘…Ñ…±¥ÍÐø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµÍÑ…ÉÐ…À´Ì™±•àµÝÉ…Àˆø(€ñ‘¥Øø(€€ñ È±…ÍÌô‰ Ôµˆ´Äˆù¥¹…°…Í¡‰½…Éð½ Èø(€€ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•µˆ´Àˆù5…Ñ ™¥á•½ÕÁ±•Ì™¥ÉÍÐ¸I•Á½Í¥Ñ½ÉäÁÕ‰±¥…Ñ¥½¸Ý¥±°…ÁÁ•…È½¹±ä…™Ñ•È¥¹…°Í½É•Ì…É”ÍÕ‰µ¥ÑÑ•…¹ÁÉ•Ù¥•Ý•¸ð½Àø(€ð½‘¥Øø(€ðýÁ¡À¥˜ ¡¥¹Ð¤‘É½Õ¹‘lÁ…É•¹Ñ}É½Õ¹‘}¥tøÀ¤èüø(€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥É´ …¹•°Ñ¡¥Ì¥¹…°‘É…™Ð…¹É•ÑÕÉ¸Ñ¼Ñ¡”ÁÉ•Ù¥½ÕÌÉ½Õ¹ü¥¹…°Á…¥É¥¹œ‘…Ñ„Ý¥±°‰”É•µ½Ù•¸œ¤ìˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…¹•±}¡¥±‘}É½Õ¹ˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•È‰Ñ¸µÍ´ˆûŠ@…¹•°¥¹…°€™…µÀìI•ÑÕÉ¸ð½‰ÕÑÑ½¸ø(€ð½™½É´ø(€ðýÁ¡À•¹‘¥˜ìüø(ð½‘¥Øø(ð½‘¥Øøð½‘¥Øø((ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€ñ È±…ÍÌô‰ Ôµˆ´Äˆù‘½µÁ•Ñ¥Ñ½ÉÌ¥É•Ñ±äÑ¼¥¹…°ð½ Èø(€ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•µˆ´ÌˆùM•…É ÍÕ•ÍÑ¥½¹ÌÍ¡½Ü…Ñ¥Ù”	€ðüõ”¡ÕÝ½É‘Ì¡ÍÑÉ}É•Á±…” |œ°œ€œ°‘É½Õ¹‘l‘¥Ù¥Í¥½¸t¤¤¤üø½µÁ•Ñ¥Ñ½ÉÌ¸1•…‘•ÉÌ…¹½±±½Ý•ÉÌ…É”…‘‘•¥¹‘•Á•¹‘•¹Ñ±ä°Í¼Ñ¡”¹Õµ‰•ÉÌµ…ä‰”‘¥™™•É•¹Ð¸ð½Àø(€ñ‘¥Ø±…ÍÌô‰É½Üœ´Ìˆø(€ðýÁ¡À™½É•… ¡l±•…‘•Èœôùl1•…‘•ÉÌœ°ÁÉ¥µ…Éät°™½±±½Ý•Èœôùl½±±½Ý•ÉÌœ°‘…¹•Èut…Ì€‘™¥¹…±I½±”ôø‘™¥¹…±I½±•5•Ñ„¤èüø(€€ñ‘¥Ø±…ÍÌô‰½°µ±œ´Øˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Ì ´ÄÀÀˆø(€€€ñ Ì±…ÍÌô‰ Øˆøðüõ” ‘™¥¹…±I½±•5•Ñ…lÁt¤üøð½ Ìø(€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Èˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…‘‘}•¹ÑÉäˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘…¹•}É½±”ˆÙ…±Õ”ôˆðüô‘™¥¹…±I½±”üøˆø(€€€€ñ‘¥Ø±…ÍÌô‰½°´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù	¥ˆð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆ¹…µ”ô‰‰¥‰}¹Õµ‰•ÈˆÙ…±Õ”ôˆðüô‘¹•áÑ	¥‰l‘™¥¹…±I½±•tüøˆÉ•ÅÕ¥É•øð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°´äˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù	½µÁ•Ñ¥Ñ½Èð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰½µÁ•Ñ¥Ñ½É}Í•…É ˆ±¥ÍÐô‰™¥¹…±½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹ÌˆÁ±…•¡½±‘•Èô‰9…µ”½È	%ˆÉ•ÅÕ¥É•øñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆùM•±•Ð„µ…Ñ¡¥¹œ€ðüõ”¡ÕÝ½É‘Ì¡ÍÑÉ}É•Á±…” |œ°œ€œ°‘É½Õ¹‘l‘¥Ù¥Í¥½¸t¤¤¤üø½µÁ•Ñ¥Ñ½È¸ð½‘¥Øøð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸´ðüõ” ‘™¥¹…±I½±•5•Ñ…lÅt¤üøÜ´ÄÀÀˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰•á¥ÍÑ¥¹œˆù‘™É½´	…Ñ…‰…Í”ð½‰ÕÑÑ½¸øð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°´ÄÈµÐ´Ìˆøñ‘¥Ø±…ÍÌô‰‰½É‘•È‰½É‘•ÈµÝ…É¹¥¹œÉ½Õ¹‘•À´È‰œµÝ…É¹¥¹œµÍÕ‰Ñ±”ˆø(€€€€€ñ‘¥Ø±…ÍÌô‰Íµ…±°™ÜµÍ•µ¥‰½±µˆ´Èˆù5¥ÍÍ¥¹œ™É½´	½¹±äð½‘¥Øø(€€€€€ñ‘¥Ø±…ÍÌô‰™½É´µ¡•¬ˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ¡•¬µ¥¹ÁÕÐˆÑåÁ”ô‰¡•­‰½àˆ¹…µ”ô‰½Ù•ÉÉ¥‘•}‘¥Ù¥Í¥½¸ˆÙ…±Õ”ôˆÄˆ¥ô‰½Ù•ÉÉ¥‘•|ðüô‘™¥¹…±I½±”üøˆøñ±…‰•°±…ÍÌô‰™½É´µ¡•¬µ±…‰•°ˆ™½Èô‰½Ù•ÉÉ¥‘•|ðüô‘™¥¹…±I½±”üøˆù½¹™¥É´Ñ¡¥Ì‘…¹•È¡…Ì¹¼•á¥ÍÑ¥¹œ	É•½Éð½±…‰•°øð½‘¥Øø(€€€€€ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°™½É´µ½¹ÑÉ½°µÍ´µÐ´Èˆ¹…µ”ô‰½Ù•ÉÉ¥‘•}É•…Í½¸ˆµ…á±•¹Ñ ôˆÈÔÔˆÁ±…•¡½±‘•Èô‰I•ÅÕ¥É•É•…Í½¸™½È½Ù•ÉÉ¥‘”ˆø(€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬‰Ñ¸µÍ´µÐ´Èˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰É•…Ñ”ˆ½¹±¥¬ô‰É•ÑÕÉ¸½¹™¥É´ É•…Ñ”„ÁÉ½Ù¥Í¥½¹…°	É•½É…¹…‘Ñ¡¥Ìµ¥ÍÍ¥¹œ½µÁ•Ñ¥Ñ½È‘¥É•Ñ±äÑ¼Ñ¡”¥¹…°üá¥ÍÑ¥¹œ¥¹•±¥¥‰±”	½µÁ•Ñ¥Ñ½ÉÌ…¹¹½ÐÕÍ”Ñ¡¥Ì½ÁÑ¥½¸¸Q¡”É•…Í½¸Ý¥±°‰”…Õ‘¥Ñ•¸œ¤ˆù‘5¥ÍÍ¥¹œ9½¸µ	½µÁ•Ñ¥Ñ½Èð½‰ÕÑÑ½¸ø(€€€€ð½‘¥Øøð½‘¥Øø(€€€ð½™½É´ø(€€ð½‘¥Øøð½‘¥Øø(€ðýÁ¡À•¹‘™½É•… ìüø(€ð½‘¥Øø(ð½‘¥Øøð½‘¥Øø((ñ‘¥Ø±…ÍÌô‰É½Üœ´Ìµˆ´Ðˆø(€ñ‘¥Ø±…ÍÌô‰½°µ±œ´Øˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´ ´ÄÀÀˆø(€€ñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•È™ÜµÍ•µ¥‰½±‰œµÁÉ¥µ…ÉäµÍÕ‰Ñ±”µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆø(€€€ñÍÁ…¸ù¥¹…±¥ÍÐ1•…‘•ÉÌð½ÍÁ…¸ø(€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…‘‘}¹•áÑ}™¥¹…±¥ÍÐˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘…¹•}É½±”ˆÙ…±Õ”ô‰±•…‘•Èˆø(€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µÁÉ¥µ…Éäˆù‘9•áÐI…¹­•1•…‘•Èð½‰ÕÑÑ½¸ø(€€€ð½™½É´ø(€€ð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ðýÁ¡À¥˜ „‘•¹ÑÉ¥•Íl±•…‘•Èt¤èüøñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•ˆù9¼™¥¹…±¥ÍÐ1•…‘•ÉÌå•Ð¸ð½‘¥ØøðýÁ¡À•¹‘¥˜ìüø(€€ðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl±•…‘•Èt…Ì€‘à¤èüø(€€€ñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Èµˆ´Èµ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•È…À´Èˆø(€€€€ñÍÁ…¸øñÍÑÉ½¹œù	¥ˆ€ðüô‘ál‰¥‰}¹Õµ‰•Ètüøð½ÍÑÉ½¹œøƒ
+Ü€ðüõ” ‘ál‘¥ÍÁ±…å}¹…µ”t¤üøð½ÍÁ…¸ø(€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥É´ I•µ½Ù”Ñ¡¥Ì1•…‘•È™É½´Ñ¡”¥¹…°½¹±äüœ¤ìˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•µ½Ù•}™¥¹…±¥ÍÐˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆø(€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•ÈˆùI•µ½Ù”ð½‰ÕÑÑ½¸ø(€€€€ð½™½É´ø(€€€ð½‘¥Øø(€€ðýÁ¡À•¹‘™½É•… ìüø(€€ð½‘¥Øø(€ð½‘¥Øøð½‘¥Øø((€ñ‘¥Ø±…ÍÌô‰½°µ±œ´Øˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´ ´ÄÀÀˆø(€€ñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•È™ÜµÍ•µ¥‰½±‰œµ‘…¹•ÈµÍÕ‰Ñ±”µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆø(€€€ñÍÁ…¸ù¥¹…±¥ÍÐ½±±½Ý•ÉÌð½ÍÁ…¸ø(€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…‘‘}¹•áÑ}™¥¹…±¥ÍÐˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘…¹•}É½±”ˆÙ…±Õ”ô‰™½±±½Ý•Èˆø(€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ‘…¹•Èˆù‘9•áÐI…¹­•½±±½Ý•Èð½‰ÕÑÑ½¸ø(€€€ð½™½É´ø(€€ð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ðýÁ¡À¥˜ „‘•¹ÑÉ¥•Íl™½±±½Ý•Èt¤èüøñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•ˆù9¼™¥¹…±¥ÍÐ½±±½Ý•ÉÌå•Ð¸ð½‘¥ØøðýÁ¡À•¹‘¥˜ìüø(€€ðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl™½±±½Ý•Èt…Ì€‘à¤èüø(€€€ñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Èµˆ´Èµ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•È…À´Èˆø(€€€€ñÍÁ…¸øñÍÑÉ½¹œù	¥ˆ€ðüô‘ál‰¥‰}¹Õµ‰•Ètüøð½ÍÑÉ½¹œøƒ
+Ü€ðüõ” ‘ál‘¥ÍÁ±…å}¹…µ”t¤üøð½ÍÁ…¸ø(€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥É´ I•µ½Ù”Ñ¡¥Ì½±±½Ý•È™É½´Ñ¡”¥¹…°½¹±äüœ¤ìˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•µ½Ù•}™¥¹…±¥ÍÐˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆø(€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•ÈˆùI•µ½Ù”ð½‰ÕÑÑ½¸ø(€€€€ð½™½É´ø(€€€ð½‘¥Øø(€€ðýÁ¡À•¹‘™½É•… ìüø(€€ð½‘¥Øø(€ð½‘¥Øøð½‘¥Øø(ð½‘¥Øø((ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€ñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•È™±•àµÝÉ…À…À´Èµˆ´Ìˆø(€€ñ‘¥Øøñ È±…ÍÌô‰ Ôµˆ´Äˆù5…Ñ ½µÁ•Ñ¥Ñ½ÉÌð½ Èøñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•Íµ…±°ˆù¡½½Í”½¹”½±±½Ý•È‰•Í¥‘”•… 1•…‘•È°½È•¹•É…Ñ”„É…¹‘½´µ…Ñ ¸ð½‘¥Øøð½‘¥Øø(€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É…¹‘½µ}™¥¹…±}Á…¥É¥¹œˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÝ…É¹¥¹œˆùI…¹‘½´5…Ñ ð½‰ÕÑÑ½¸ø(€€ð½™½É´øñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•Èˆ¡É•˜ôˆ¸¸½±¥Ù”µÍÉ••¸½Á…¥É¥¹œµ±¥¹¬¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆùµ•”5…Ñ 1¥¹¬ð½„ø(€ð½‘¥Øø((€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€ñ‘¥Ø±…ÍÌô‰Ñ…‰±”µÉ•ÍÁ½¹Í¥Ù”ˆøñÑ…‰±”±…ÍÌô‰Ñ…‰±”…±¥¸µµ¥‘‘±”ˆø(€€€ñÑ¡•…øñÑÈøñÑ ù½ÕÁ±”ð½Ñ øñÑ ù1•…‘•Èð½Ñ øñÑ ù½±±½Ý•Èð½Ñ øñÑ ùMÑ…ÑÕÌð½Ñ øð½ÑÈøð½Ñ¡•…ø(€€€ñÑ‰½‘äø(€€€ðýÁ¡À(€€€‘Á…¥É5…Àõmtí™½É•…  ‘™¥¹…±A…¥ÉÌ…Ì€‘Á…¥È¤‘Á…¥É5…Ál¡¥¹Ð¤‘Á…¥Él±•…‘•É}•¹ÑÉå}¥utô‘Á…¥Èì(€€™½É•…  ‘•¹ÑÉ¥•Íl±•…‘•Èt…Ì€‘¤ôø‘±•…‘•È¤è(€€€€‘ÕÉÉ•¹Ðô‘Á…¥É5…Ál¡¥¹Ð¤‘±•…‘•Él¥utüý¹Õ±°ì(€€€üø(€€€€ñÑÈø(€€€€€ñÑøŒðüô‘¤¬Äüøð½Ñø(€€€€€ñÑøñÍÑÉ½¹œù	¥ˆ€ðüô‘±•…‘•Él‰¥‰}¹Õµ‰•Ètüøð½ÍÑÉ½¹œøñ‰Èøðüõ” ‘±•…‘•Él‘¥ÍÁ±…å}¹…µ”t¤üøð½Ñø(€€€€€ñÑø(€€€€€€ñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰Á…¥Élðüô‘±•…‘•Él¥tüùtˆø(€€€€€€€ñ½ÁÑ¥½¸Ù…±Õ”ôˆÀˆùM•±•Ð½±±½Ý•Èð½½ÁÑ¥½¸ø(€€€€€€€ðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl™½±±½Ý•Èt…Ì€‘™½±±½Ý•È¤èüø(€€€€€€€€ñ½ÁÑ¥½¸Ù…±Õ”ôˆðüô‘™½±±½Ý•Él¥tüøˆ€ðüô‘ÕÉÉ•¹Ð€˜˜€¡¥¹Ð¤‘ÕÉÉ•¹Ñl™½±±½Ý•É}•¹ÑÉå}¥tôôô¡¥¹Ð¤‘™½±±½Ý•Él¥tüÍ•±•Ñ•œèœœüøø(€€€€€€€€	¥ˆ€ðüô‘™½±±½Ý•Él‰¥‰}¹Õµ‰•Ètüøƒ
+Ü€ðüõ” ‘™½±±½Ý•Él‘¥ÍÁ±…å}¹…µ”t¤üø(€€€€€€€€ð½½ÁÑ¥½¸ø(€€€€€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€€€€ð½Í•±•Ðø(€€€€€ð½Ñø(€€€€€ñÑøðüõ” ‘ÕÉÉ•¹ÑlÁ…¥É¥¹}ÍÑ…ÑÕÌtüü‘É…™Ðœ¤üøð½Ñø(€€€€ð½ÑÈø(€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€ð½Ñ‰½‘äø(€€ð½Ñ…‰±”øð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰µ™±•à…À´È™±•àµÝÉ…Àˆø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…Éäˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í…Ù•}™¥¹…±}Á…¥É¥¹œˆùM…Ù”A…¥É¥¹œÉ…™Ðð½‰ÕÑÑ½¸ø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍÕ•ÍÌˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰½¹™¥Éµ}™¥¹…±}Á…¥É¥¹œˆ½¹±¥¬ô‰É•ÑÕÉ¸½¹™¥É´ ½¹™¥É´Ñ¡•Í”™¥á•¥¹…°½ÕÁ±•Ìüœ¤ˆù½¹™¥É´¥¹…°A…¥É¥¹œð½‰ÕÑÑ½¸ø(€€ð½‘¥Øø(€ð½™½É´ø(ð½‘¥Øøð½‘¥Øø((ðýÁ¡À(‘Á…¥É¥¹½¹™¥Éµ•ô‘™¥¹…±A…¥ÉÌ€˜˜½Õ¹Ð¡…ÉÉ…å}™¥±Ñ•È ‘™¥¹…±A…¥ÉÌ±™¸ ‘Á…¥È¤ôø‘Á…¥ÉlÁ…¥É¥¹}ÍÑ…ÑÕÌtôôô½¹™¥Éµ•œ¤¤ôôõ½Õ¹Ð ‘™¥¹…±A…¥ÉÌ¤ì(üø(ðýÁ¡À¥˜ ‘Á…¥É¥¹½¹™¥Éµ•¤èüø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€ñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµÍÑ…ÉÐ…À´Ì™±•àµÝÉ…Àµˆ´Ìˆø(€€ñ‘¥Øø(€€€ñ È±…ÍÌô‰ Ôµˆ´Äˆù¥¹…°I•±…Ñ¥Ù”A±…•µ•¹ÐM½É¥¹œð½ Èø(€€€ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•µˆ´Àˆù… ©Õ‘”µÕÍÐÉ…¹¬•Ù•Éä™¥á•½ÕÁ±”½¹”°™É½´€ÄÑ¼€ðüõ½Õ¹Ð ‘™¥¹…±A…¥ÉÌ¤üø¸ÕÁ±¥…Ñ”É…¹­Ì¥¸½¹”©Õ‘”½±Õµ¸…É”¹½Ð…±±½Ý•¸ð½Àø(€€ð½‘¥Øø(€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…Éäˆ¡É•˜ô‰ÁÉ¥¹Ð¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆÑ…É•Ðô‰}‰±…¹¬ˆùAÉ¥¹Ð¥¹…°)Õ‘”M¡••ÑÌð½„ø(€ð½‘¥Øø((€ñ‘¥Ø±…ÍÌô‰…É‰½É‘•È´À‰œµ±¥¡Ðµˆ´Ìˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµÍÑ…ÉÐ…À´Ì™±•àµÝÉ…Àµˆ´Èˆø(€€€ñ‘¥Øø(€€€€ñ Ì±…ÍÌô‰ Øµˆ´Äˆù¥¹…°)Õ‘•Ìð½ Ìø(€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•Íµ…±°ˆùQ¡”¥¹…°…¸ÕÍ”„‘¥™™•É•¹Ð©Õ‘¥¹œÁ…¹•°¸‘¥Ð•á¥ÍÑ¥¹œ©Õ‘•Ì°…ÁÁ•¹¹•Ü©Õ‘•Ì°É•µ½Ù”©Õ‘•Ì…¹Í•±•Ð½¹”¥¹…°¡¥•˜)Õ‘”¸ð½‘¥Øø(€€€ð½‘¥Øø(€€ð½‘¥Øø(€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ¥ô‰™¥¹…±)Õ‘•Í½É´ˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í…Ù•}™¥¹…±}©Õ‘•Ìˆø(€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€ñ‘¥Ø¥ô‰™¥¹…±)Õ‘•Í]É…Àˆø(€€€ðýÁ¡À(€€€‘™¥¹…±)Õ‘•¥ÍÁ±…äô‘©Õ‘•Ìüél(€€€l¥œôøÀ°©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÅt°(€€€l¥œôøÀ°©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÁt°(€€€l¥œôøÀ°©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÁt(€€tì(€€™½É•…  ‘™¥¹…±)Õ‘•¥ÍÁ±…ä…Ì€‘¤ôø‘©Õ‘”¤è(€€€€‘©Õ‘•-•äô©Õ‘•|œ¸‘¤ì(€€€üø(€€€€ñ‘¥Ø±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµˆ´È©Õ‘”µÉ½Üˆ‘…Ñ„µ©Õ‘”µÉ½Üø(€€€€€ñÍÁ…¸±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµÑ•áÐ™¥¹…°µ©Õ‘”µ¹Õµ‰•Èˆù)Õ‘”€ðüô‘¤¬Äüøð½ÍÁ…¸ø(€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰™¥¹…±}©Õ‘•Ílðüô‘©Õ‘•-•äüùum¥‘tˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘©Õ‘•l¥tüüÀ¤¤üøˆø(€€€€€ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰™¥¹…±}©Õ‘•Ílðüô‘©Õ‘•-•äüùum¹…µ•tˆÙ…±Õ”ôˆðüõ” ‘©Õ‘•l©Õ‘•}¹…µ”t¤üøˆÁ±…•¡½±‘•Èô‰¥¹…°©Õ‘”¹…µ”ˆÉ•ÅÕ¥É•ø(€€€€€ñÍÁ…¸±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµÑ•áÐˆøñ¥¹ÁÕÐÑåÁ”ô‰É…‘¥¼ˆ¹…µ”ô‰™¥¹…±}¡¥•™}­•äˆÙ…±Õ”ôˆðüô‘©Õ‘•-•äüøˆ€ðüô¡¥¹Ð¤‘©Õ‘•l¥Í}¡¥•˜tü¡•­•œèœœüøø¡¥•˜ð½ÍÁ…¸ø(€€€€€ñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•Èˆ½¹±¥¬ô‰É•µ½Ù•¥¹…±)Õ‘”¡Ñ¡¥Ì¤ˆùI•µ½Ù”ð½‰ÕÑÑ½¸ø(€€€€ð½‘¥Øø(€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€ð½‘¥Øø(€€€ñ‘¥Ø±…ÍÌô‰µ™±•à…À´È™±•àµÝÉ…Àˆø(€€€€ñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÍ•½¹‘…Éä‰Ñ¸µÍ´ˆ½¹±¥¬ô‰…‘‘¥¹…±)Õ‘” ¤ˆø¬‘¥¹…°)Õ‘”ð½‰ÕÑÑ½¸ø(€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬‰Ñ¸µÍ´ˆùM…Ù”¥¹…°)Õ‘•Ìð½‰ÕÑÑ½¸ø(€€€ð½‘¥Øø(€€ð½™½É´ø(€ð½‘¥Øøð½‘¥Øø((€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ¥ô‰™¥¹…±M½É•½É´ˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰™¥¹…±}É…¹­}Á…å±½…ˆ¥ô‰™¥¹…±I…¹­A…å±½…ˆÙ…±Õ”ôˆˆø(€€ðýÁ¡À€‘™¥¹…±)Õ‘•A…•M¥é”ôÄÀì‘™¥¹…±)Õ‘•A…•½Õ¹Ðõµ…à Ä°¡¥¹Ð¥•¥°¡½Õ¹Ð ‘©Õ‘•Ì¤¼‘™¥¹…±)Õ‘•A…•M¥é”¤¤ìüø(€€ðýÁ¡À¥˜¡½Õ¹Ð ‘©Õ‘•Ì¤øÄÀ¤èüøñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…±¥¸µ¥Ñ•µÌµ•¹Ñ•È…À´Èµˆ´Ìˆø(€€€ñÍÑÉ½¹œù)Õ‘”½±Õµ¹Ìèð½ÍÑÉ½¹œø(€€€ðýÁ¡À™½È ‘©Õ‘•A…”ôÀì‘©Õ‘•A…”ð‘™¥¹…±)Õ‘•A…•½Õ¹Ðì‘©Õ‘•A…”¬¬¤è‘ÍÑ…ÉÐô‘©Õ‘•A…”¨‘™¥¹…±)Õ‘•A…•M¥é”¬Äì‘•¹õµ¥¸¡½Õ¹Ð ‘©Õ‘•Ì¤° ‘©Õ‘•A…”¬Ä¤¨‘™¥¹…±)Õ‘•A…•M¥é”¤ìüø(€€€€ñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´€ðüô‘©Õ‘•A…”ôôôÀü‰Ñ¸µ‘…É¬œè‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬œüø™¥¹…°µ©Õ‘”µÁ…”µ‰ÕÑÑ½¸ˆ‘…Ñ„µÁ…”ôˆðüô‘©Õ‘•A…”üøˆù(ðüô‘ÍÑ…ÉÐüûŠM(ðüô‘•¹üøð½‰ÕÑÑ½¸ø(€€€ðýÁ¡À•¹‘™½Èìüø(€€€ñÍÁ…¸±…ÍÌô‰Ñ•áÐµµÕÑ•Íµ…±°ˆù=¹±ä½¹”©Õ‘”É½ÕÀ¥ÌÍ¡½Ý¸…Ð„Ñ¥µ”¸±°Í½É•ÌÉ•µ…¥¸Í…Ù•¸ð½ÍÁ…¸ø(€€ð½‘¥ØøðýÁ¡À•¹‘¥˜ìüø(€€ñ‘¥Ø±…ÍÌô‰Ñ…‰±”µÉ•ÍÁ½¹Í¥Ù”ˆøñÑ…‰±”±…ÍÌô‰Ñ…‰±”Ñ…‰±”µ‰½É‘•É•…±¥¸µµ¥‘‘±”™¥¹…°µÍ½É¥¹œµÑ…‰±”ˆø(€€€ñÑ¡•…øñÑÈø(€€€€ñÑ ù¥¹…°I…¹¬ð½Ñ øñÑ ù½ÕÁ±”ð½Ñ øñÑ ù1•…‘•Èð½Ñ øñÑ ù½±±½Ý•Èð½Ñ ø(€€€€ðýÁ¡À™½É•…  ‘©Õ‘•Ì…Ì€‘©Õ‘•%¹‘•àôø‘©Õ‘”¤èüøñÑ ±…ÍÌô‰™¥¹…°µ©Õ‘”µ½±Õµ¸ˆ‘…Ñ„µ©Õ‘”µÁ…”ôˆðüõ¥¹Ñ‘¥Ø ‘©Õ‘•%¹‘•à°‘™¥¹…±)Õ‘•A…•M¥é”¤üøˆ€ðüô‘©Õ‘•%¹‘•àøô‘™¥¹…±)Õ‘•A…•M¥é”üÍÑå±”ô‰‘¥ÍÁ±…äé¹½¹”ˆœèœœüøù(ðüô‘©Õ‘•%¹‘•à¬Äüøðüô¡¥¹Ð¤‘©Õ‘•l¥Í}¡¥•˜tüœƒŠbœèœœüøð½Ñ øðýÁ¡À•¹‘™½É•… ìüø(€€€€ñÑ ùI•±…Ñ¥Ù”A±…•µ•¹Ðð½Ñ ø(€€€ð½ÑÈøð½Ñ¡•…ø(€€€ñÑ‰½‘äø(€€€ðýÁ¡À™½É•…  ‘™¥¹…±A…¥ÉÌ…Ì€‘Á…¥È¤è‘™¥¹…±I•ÍÕ±Ðô‘™¥¹…±I•ÍÕ±ÑÍl¡¥¹Ð¤‘Á…¥Él¥utüý¹Õ±°ìüø(€€€€ñÑÈø(€€€€€ñÑ±…ÍÌô‰™Üµ‰½±ˆøðüô€‘™¥¹…±I•ÍÕ±Ð€ü€¡¥¹Ð¤‘™¥¹…±I•ÍÕ±Ñl™¥¹…±}É…¹¬t€è€ŸŠPœ€üøð½Ñø(€€€€€ñÑù½ÕÁ±”€ðüô‘Á…¥ÉlÁ…¥É}¹Õµ‰•Ètüøð½Ñø(€€€€€ñÑøñÍÑÉ½¹œù	¥ˆ€ðüô‘Á…¥Él±•…‘•É}‰¥ˆtüøð½ÍÑÉ½¹œøñ‰Èøðüõ” ‘Á…¥Él±•…‘•É}¹…µ”t¤üøð½Ñø(€€€€€ñÑøñÍÑÉ½¹œù	¥ˆ€ðüô‘Á…¥Él™½±±½Ý•É}‰¥ˆtüøð½ÍÑÉ½¹œøñ‰Èøðüõ” ‘Á…¥Él™½±±½Ý•É}¹…µ”t¤üøð½Ñø(€€€€€ðýÁ¡À™½É•…  ‘©Õ‘•Ì…Ì€‘©Õ‘•%¹‘•àôø‘©Õ‘”¤èüø(€€€€€€ñÑ±…ÍÌô‰™¥¹…°µ©Õ‘”µ½±Õµ¸ˆ‘…Ñ„µ©Õ‘”µÁ…”ôˆðüõ¥¹Ñ‘¥Ø ‘©Õ‘•%¹‘•à°‘™¥¹…±)Õ‘•A…•M¥é”¤üøˆ€ðüô‘©Õ‘•%¹‘•àøô‘™¥¹…±)Õ‘•A…•M¥é”üÍÑå±”ô‰‘¥ÍÁ±…äé¹½¹”ˆœèœœüøøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°™½É´µ½¹ÑÉ½°µÍ´Ñ•áÐµ•¹Ñ•È™¥¹…°µÉ…¹¬µ¥¹ÁÕÐˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆµ…àôˆðüõ½Õ¹Ð ‘™¥¹…±A…¥ÉÌ¤üøˆ‘…Ñ„µÁ…¥Èµ¥ôˆðüô‘Á…¥Él¥tüøˆ‘…Ñ„µ©Õ‘”µ¥ôˆðüô‘©Õ‘•l¥tüøˆ¹…µ”ô‰™¥¹…±}É…¹­lðüô‘Á…¥Él¥tüùulðüô‘©Õ‘•l¥tüùtˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘™¥¹…±5…É­Íl¡¥¹Ð¤‘Á…¥Él¥uul¡¥¹Ð¤‘©Õ‘•l¥utüüœœ¤¤üøˆÉ•ÅÕ¥É•øð½Ñø(€€€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€€€ñÑø(€€€€€€ðýÁ¡À¥˜ ‘™¥¹…±I•ÍÕ±Ð¤èüø(€€€€€€€ñ‘¥Ø±…ÍÌô‰™ÜµÍ•µ¥‰½±ˆùI•±…Ñ¥Ù”A±…•µ•¹ÐMÕµµ…Éäð½‘¥Øø(€€€€€€€ñ‘¥ØûŠrL5…©½É¥Ñä…¡¥•Ù•¥¸Q½À€ðüô‘™¥¹…±I•ÍÕ±Ñlµ…©½É¥Ñå}±•Ù•°tüøð½‘¥Øø(€€€€€€€ñ‘¥ØûŠrL€ðüô‘™¥¹…±I•ÍÕ±Ñlµ…©½É¥Ñå}½Õ¹Ðtüø½˜€ðüõ½Õ¹Ð ‘©Õ‘•Ì¤üø©Õ‘•ÌÉ…¹­•Ñ¡¥Ì½ÕÁ±”¥¸Ñ¡”Q½À€ðüô‘™¥¹…±I•ÍÕ±Ñlµ…©½É¥Ñå}±•Ù•°tüøð½‘¥Øø(€€€€€€€ñ‘¥ØûŠrL	•ÍÐÁ±…•µ•¹ÐÍ½É”…µ½¹œÅÕ…±¥™å¥¹œ½ÕÁ±•Ìð½‘¥Øø(€€€€€€ðýÁ¡À•±Í”èüù9½Ð…±Õ±…Ñ•ðýÁ¡À•¹‘¥˜ìüø(€€€€€ð½Ñø(€€€€ð½ÑÈø(€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€ð½Ñ‰½‘äø(€€ð½Ñ…‰±”øð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•‰œµ±¥¡ÐÀ´Ìµˆ´Ìˆø(€€€ñ‘¥Ø±…ÍÌô‰™ÜµÍ•µ¥‰½±µˆ´Èˆù¥¹…°)Õ‘”-•äð½‘¥Øø(€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…À´ÌÍµ…±°ˆø(€€€€ðýÁ¡À™½É•…  ‘©Õ‘•Ì…Ì€‘©Õ‘•%¹‘•àôø‘©Õ‘”¤èüø(€€€€€ñÍÁ…¸øñÍÑÉ½¹œù(ðüô‘©Õ‘•%¹‘•à¬Äüøð½ÍÑÉ½¹œøƒ
+Ü€ðüõ” ‘©Õ‘•l©Õ‘•}¹…µ”t¤üøðüô¡¥¹Ð¤‘©Õ‘•l¥Í}¡¥•˜tüœƒŠb¡¥•˜)Õ‘”œèœœüøð½ÍÁ…¸ø(€€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€ð½‘¥Øø(€€ð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰…É‰½É‘•È´À‰œµ±¥¡Ðµˆ´Ìˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€€ñ Ì±…ÍÌô‰ Øµˆ´Ìˆù¥¹…°M½É¥¹œ]¥Ñ¹•ÍÍ•Ìð½ Ìø(€€€ñ‘¥Ø±…ÍÌô‰É½Üœ´Èˆø(€€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Äð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Äˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ätüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Èð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Èˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ètüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Ìð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Ìˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ìtüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùM½É¥¹œ‘µ¥¹¥ÍÑÉ…Ñ½Èð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Í½É¥¹}…‘µ¥¹¥ÍÑÉ…Ñ½Èˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÍ½É¥¹}…‘µ¥¹¥ÍÑÉ…Ñ½Ètüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰‘µ¥¹¥ÍÑÉ…Ñ½È¹…µ”ˆøð½‘¥Øø(€€€ð½‘¥Øø(€€ð½‘¥Øøð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…À´È…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í…Ù•}™¥¹…±}Í½É•ÌˆùM…Ù”¥¹…°É…™Ðð½‰ÕÑÑ½¸ø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍÕ•ÍÌˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…±Õ±…Ñ•}™¥¹…±}É…¹­¥¹œˆù…±Õ±…Ñ”€™…µÀìM½ÉÐ¥¹…°I…¹­¥¹œð½‰ÕÑÑ½¸ø(€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÁÉ¥µ…Éäˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÍÕ‰µ¥Ñ}™¥¹…±}Í½É•ÌˆùMÕ‰µ¥Ð¥¹…°M½É•Ìð½‰ÕÑÑ½¸ø(€€€ðýÁ¡À¥˜ ‘™¥¹…±I•ÍÕ±ÑÌ¤èüø(€€€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäˆÑ…É•Ðô‰}‰±…¹¬ˆ¡É•˜ô‰™¥¹…°µÉ•ÍÕ±Ð¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆùAÉ¥¹Ð¥¹…°M½É¥¹œM¡••Ðð½„ø(€€€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…¹•Èˆ¡É•˜ô‰ÁÕ‰±¥Í ¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆùI•Ù¥•Ü€™…µÀìAÕ‰±¥Í ½µÁ•Ñ¥Ñ¥½¸ð½„ø(€€€ðýÁ¡À•¹‘¥˜ìüø(€€ð½‘¥Øø(€ð½™½É´ø(ð½‘¥Øøð½‘¥Øø(ðýÁ¡À•±Í”èüø(ñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµÍ•½¹‘…Éäˆø(€ñÍÑÉ½¹œù9•áÐÍÑ•Àèð½ÍÑÉ½¹œø½¹™¥É´™¥á•½ÕÁ±•ÌÑ¼½Á•¸µ…¹Õ…°I•±…Ñ¥Ù”A±…•µ•¹ÐÍ½É¥¹œ¸(ð½‘¥Øø(ðýÁ¡À•¹‘¥˜ìüø(ðýÁ¡À•±Í”èüø(ðýÁ¡À(‘ÕÉÉ•¹ÑQ¥•Èô¡¥¹Ð¤‘É½Õ¹‘lå•Í}½Õ¹ÐtôôôÔüÄè ¡¥¹Ð¤‘É½Õ¹‘lå•Í}½Õ¹ÐtôôôÄÔüÌèÈ¤ì‘ÍÁ•¥…±M•ÑÑ¥¹ÌõMÁ•¥…±…Ñ•½ÉåM•ÉÙ¥”èé¥ÍMÁ•¥…° ¡ÍÑÉ¥¹œ¤‘É½Õ¹‘l‘¥Ù¥Í¥½¸t¤ì‘ÍÁ•¥…±MÕ•ÍÑ•‘e•Ìô¡¥¹Ð¤‘É½Õ¹‘lå•Í}½Õ¹Ðtí¥˜ ‘ÍÁ•¥…±M•ÑÑ¥¹Ì˜˜¡¥¹Ð¤‘É½Õ¹‘lÑ¥•É}µ…¹Õ…±}½Ù•ÉÉ¥‘”t„ôôÄ¥ì‘½Õ¹ÑMÑµÐô‘Á‘¼´ùÁÉ•Á…É” ‰M1P=1M¡5`¡Ñ½Ñ…°¤°À¤I=4€¡M1P=U9P ¨¤Ñ½Ñ…°I=4‰‘}Í½É¥¹}•¹ÑÉ¥•Ì]!IÉ½Õ¹‘}¥ôéÉ½Õ¹9•¹ÑÉå}ÍÑ…ÑÕÌô…Ñ¥Ù”œI=U@	d‘…¹•}É½±”¤É½±•}½Õ¹ÑÌˆ¤ì‘½Õ¹ÑMÑµÐ´ù•á•ÕÑ”¡lÉ½Õ¹œôø‘É½Õ¹‘%‘t¤ì‘±…É•ÍÐô¡¥¹Ð¤‘½Õ¹ÑMÑµÐ´ù™•Ñ¡½±Õµ¸ ¤ì‘ÍÁ•¥…±MÕ•ÍÑ•‘e•Ìô‘±…É•ÍÐðôÄÔüÔè ‘±…É•ÍÐðôÌÀüÄÀèÄÔ¤íô(üø(ñ‘¥Ø±…ÍÌô‰É½Üœ´Ìµˆ´Ðˆøñ‘¥Ø±…ÍÌô‰½°µ±œ´Ðˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´ ´ÄÀÀˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ È±…ÍÌô‰ Ôˆøðüõ”¡Õ™¥ÉÍÐ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”t¤¤üøM•ÑÑ¥¹Ìð½ Èø(ðýÁ¡À¥˜ ‘ÍÁ•¥…±M•ÑÑ¥¹Ì¤èüø(ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Ìˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùeLQ¥•ÈÁ•È)Õ‘”ð½±…‰•°øñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰ÍÁ•¥…±}å•Í}½Õ¹Ðˆ€ðüô ¡¥¹Ð¤‘É½Õ¹‘lÑ¥•É}µ…¹Õ…±}½Ù•ÉÉ¥‘”tôôôÄ¤ü‘¥Í…‰±•œèœœüøøñ½ÁÑ¥½¸Ù…±Õ”ôˆÔˆ€ðüô‘ÍÁ•¥…±MÕ•ÍÑ•‘e•ÌôôôÔüÍ•±•Ñ•œèœœüøùQ¥•È€Äƒ
+Ü€ÔeLð½½ÁÑ¥½¸øñ½ÁÑ¥½¸Ù…±Õ”ôˆÄÀˆ€ðüô‘ÍÁ•¥…±MÕ•ÍÑ•‘e•ÌôôôÄÀüÍ•±•Ñ•œèœœüøùQ¥•È€Èƒ
+Ü€ÄÀeLð½½ÁÑ¥½¸øñ½ÁÑ¥½¸Ù…±Õ”ôˆÄÔˆ€ðüô‘ÍÁ•¥…±MÕ•ÍÑ•‘e•ÌôôôÄÔüÍ•±•Ñ•œèœœüøùQ¥•È€Ìƒ
+Ü€ÄÔeLð½½ÁÑ¥½¸øð½Í•±•ÐøðýÁ¡À¥˜ ¡¥¹Ð¤‘É½Õ¹‘lÑ¥•É}µ…¹Õ…±}½Ù•ÉÉ¥‘”tôôôÄ¤èüøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰ÍÁ•¥…±}å•Í}½Õ¹ÐˆÙ…±Õ”ôˆðüô¡¥¹Ð¤‘É½Õ¹‘lå•Í}½Õ¹ÐtüøˆøðýÁ¡À•¹‘¥˜ìüøñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆùI•½µµ•¹‘•…ÕÑ½µ…Ñ¥…±±ä™É½´Ñ¡”±…É•È1•…‘•È½È½±±½Ý•È½Õ¹Ð¸e½Ôµ…ä…µ•¹¥Ð‰•™½É”±½­¥¹œ¸ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Ì‰œµ±¥¡Ðˆøñ‘¥Ø±…ÍÌô‰™ÜµÍ•µ¥‰½±µˆ´Èˆù±Ñ•É¹…Ñ•Ìƒ
+Ü1½­•ð½‘¥Øøñ‘¥Ø±…ÍÌô‰É½Üœ´ÈÑ•áÐµ•¹Ñ•Èˆøñ‘¥Ø±…ÍÌô‰½°´ÐˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Äð½Íµ…±°øñÍÑÉ½¹œøÐ¸Ôð½ÍÑÉ½¹œøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°´ÐˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Èð½Íµ…±°øñÍÑÉ½¹œøÐ¸Ìð½ÍÑÉ½¹œøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°´ÐˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Ìð½Íµ…±°øñÍÑÉ½¹œøÐ¸Èð½ÍÑÉ½¹œøð½‘¥Øøð½‘¥Øøð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøðýÁ¡À¥˜ ¡¥¹Ð¤‘É½Õ¹‘lÑ¥•É}µ…¹Õ…±}½Ù•ÉÉ¥‘”tôôôÄ¤èüøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÝ…É¹¥¹œ‰Ñ¸µÍ´ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÍÁ•¥…±}Í•ÑÑ¥¹Í}Õ¹±½¬ˆùU¹±½¬eL½Õ¹Ðð½‰ÕÑÑ½¸øðýÁ¡À•±Í”èüøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬‰Ñ¸µÍ´ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÍÁ•¥…±}Í•ÑÑ¥¹Í}±½¬ˆùM…Ù”€™…µÀì1½¬eL½Õ¹Ðð½‰ÕÑÑ½¸øðýÁ¡À•¹‘¥˜ìüøð½‘¥Øøð½™½É´ø(ðýÁ¡À•±Í”èüø(ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Ìˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í•ÑÑ¥¹Ìˆø(ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù½µÁ•Ñ¥Ñ¥½¸Q¥•Èð½±…‰•°ø(ñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰½µÁ•Ñ¥Ñ¥½¹}Ñ¥•Èˆ¥ô‰½µÁ•Ñ¥Ñ¥½¹Q¥•Èˆ½¹¡…¹”ô‰ÕÁ‘…Ñ•Q¥•ÉMÕµµ…Éä ¤ˆø(ñ½ÁÑ¥½¸Ù…±Õ”ôˆÄˆ€ðüô‘ÕÉÉ•¹ÑQ¥•ÈôôôÄüÍ•±•Ñ•œèœœüøùQ¥•È€Äƒ
+Ü€×ŠLÄÔ½µÁ•Ñ¥Ñ½ÉÌð½½ÁÑ¥½¸ø(ñ½ÁÑ¥½¸Ù…±Õ”ôˆÈˆ€ðüô‘ÕÉÉ•¹ÑQ¥•ÈôôôÈüÍ•±•Ñ•œèœœüøùQ¥•È€Èƒ
+Ü€ÄÛŠLÌÀ½µÁ•Ñ¥Ñ½ÉÌð½½ÁÑ¥½¸ø(ñ½ÁÑ¥½¸Ù…±Õ”ôˆÌˆ€ðüô‘ÕÉÉ•¹ÑQ¥•ÈôôôÌüÍ•±•Ñ•œèœœüøùQ¥•È€Ìƒ
+Ü€ÌÀ¬½µÁ•Ñ¥Ñ½ÉÌð½½ÁÑ¥½¸ø(ð½Í•±•Ðø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùeLÁ•È)Õ‘”ð½±…‰•°ø(ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¥ô‰Ñ¥•Ée•Í½Õ¹ÐˆÙ…±Õ”ôˆðüô‘É½Õ¹‘lå•Í}½Õ¹ÐtüøˆÉ•…‘½¹±äø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆø(ñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù±Ñ•É¹…Ñ•Ìð½±…‰•°ø(ñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆÙ…±Õ”ôˆÌˆÉ•…‘½¹±äø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆø(ñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Ì‰œµ±¥¡Ðˆø(ñ‘¥Ø±…ÍÌô‰™ÜµÍ•µ¥‰½±µˆ´Èˆù=™™¥¥…°	]•¥¡ÑÌƒ
+Ü1½­•ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰É½Üœ´ÈÑ•áÐµ•¹Ñ•Èˆø(ñ‘¥Ø±…ÍÌô‰½°´ÌˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆùeLð½Íµ…±°øñÍÑÉ½¹œøÄÀð½ÍÑÉ½¹œøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÌˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Äð½Íµ…±°øñÍÑÉ½¹œøÐ¸Ôð½ÍÑÉ½¹œøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÌˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Èð½Íµ…±°øñÍÑÉ½¹œøÐ¸Ìð½ÍÑÉ½¹œøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÌˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•µ‰±½¬ˆù1P€Ìð½Íµ…±°øñÍÑÉ½¹œøÐ¸Èð½ÍÑÉ½¹œøð½‘¥Øø(ð½‘¥Øø(ð½‘¥Øø(ð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñÍµ…±°±…ÍÌô‰Ñ•áÐµµÕÑ•ˆùÕÑ½µ…Ñ¥ŒÑ¥•ÈÕÍ•ÌÑ¡”±…É•È¥¹‘¥Ù¥‘Õ…°É½±”½Õ¹Ð°¹½Ð1•…‘•ÉÌ€¬½±±½Ý•ÉÌ½µ‰¥¹•¸Q¥•È€Äè€×ŠLÄÔ°Q¥•È€Èè€ÄÛŠLÌÀ°Q¥•È€Ìè€ÌÄ¬¸M…Ù¥¹œ¡•É”É•…Ñ•Ì„µ…¹Õ…°½Ù•ÉÉ¥‘”¸ð½Íµ…±°øð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´ÄÈˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬‰Ñ¸µÍ´ˆùM…Ù”Q¥•ÈM•ÑÑ¥¹Ìð½‰ÕÑÑ½¸øð½‘¥Øø(ð½™½É´ø(ðýÁ¡À•¹‘¥˜ìüø(ð½‘¥Øøð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´àˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´ ´ÄÀÀˆ¥ô‰©Õ‘”µÍ•ÑÕÀˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆøñ È±…ÍÌô‰ Ôˆù)Õ‘”M•ÑÕÀð½ Èøñ‘¥Ø±…ÍÌô‰Íµ…±°Ñ•áÐµµÕÑ•µˆ´Ìˆù•™…Õ±Ð¥Ì±°¸… É½±”Á…¹•°µÕÍÐ½¹Ñ…¥¸…Ð±•…ÍÐ€Ì©Õ‘•Ì¸ð½‘¥Øøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ¥ô‰©Õ‘•Í½É´ˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í…Ù•}©Õ‘•Ìˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ‘¥Ø¥ô‰©Õ‘•Í]É…ÀˆøðýÁ¡À€‘‘¥ÍÁ±…äô‘©Õ‘•Ìüéml©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÄ°Í½É¥¹}Í½Á”œôø…±°t±l©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÀ°Í½É¥¹}Í½Á”œôø…±°t±l©Õ‘•}¹…µ”œôøœœ°¥Í}¡¥•˜œôøÀ°Í½É¥¹}Í½Á”œôø…±°utí™½É•…  ‘‘¥ÍÁ±…ä…Ì€‘¤ôø‘¨¤èüøñ‘¥Ø±…ÍÌô‰É½Üœ´Èµˆ´È©Õ‘”µÉ½Ü…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆøñ‘¥Ø±…ÍÌô‰½°µµ´ÈˆøñÍÑÉ½¹œù)Õ‘”€ðüô‘¤¬Äüøð½ÍÑÉ½¹œøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´Ôˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰©Õ‘•}¹…µ•mtˆÙ…±Õ”ôˆðüõ” ‘©l©Õ‘•}¹…µ”t¤üøˆÁ±…•¡½±‘•Èô‰)Õ‘”¹…µ”ˆÉ•ÅÕ¥É•øð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´ÌˆøñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰©Õ‘•}Í½Á•mtˆøðýÁ¡À™½É•… ¡l…±°œôø±°œ°±•…‘•Èœôø1•…‘•ÉÌœ°™½±±½Ý•Èœôø½±±½Ý•ÉÌt…Ì€‘Í½Á•Y…±Õ”ôø‘Í½Á•1…‰•°¤èüøñ½ÁÑ¥½¸Ù…±Õ”ôˆðüô‘Í½Á•Y…±Õ”üøˆ€ðüô ‘©lÍ½É¥¹}Í½Á”tüü…±°œ¤ôôô‘Í½Á•Y…±Õ”üÍ•±•Ñ•œèœœüøøðüô‘Í½Á•1…‰•°üøð½½ÁÑ¥½¸øðýÁ¡À•¹‘™½É•… ìüøð½Í•±•Ðøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´Èˆøñ±…‰•°øñ¥¹ÁÕÐÑåÁ”ô‰É…‘¥¼ˆ¹…µ”ô‰¡¥•™}¥¹‘•àˆÙ…±Õ”ôˆðüô‘¤üøˆ€ðüô¡¥¹Ð¤‘©l¥Í}¡¥•˜tü¡•­•œèœœüøø¡¥•˜ð½±…‰•°øð½‘¥Øøð½‘¥ØøðýÁ¡À•¹‘™½É•… ìüøð½‘¥Øøñ‘¥Ø±…ÍÌô‰µ™±•à…À´È™±•àµÝÉ…Àˆøñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÍ•½¹‘…Éä‰Ñ¸µÍ´ˆ½¹±¥¬ô‰…‘‘)Õ‘” ¤ˆø¬)Õ‘”ð½‰ÕÑÑ½¸øñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬‰Ñ¸µÍ´ˆùMÕ‰µ¥Ð)Õ‘•Ìð½‰ÕÑÑ½¸øñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…Éä‰Ñ¸µÍ´ˆ¡É•˜ô‰ÁÉ¥¹Ð¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆÑ…É•Ðô‰}‰±…¹¬ˆù•¹•É…Ñ”)Õ‘”M¡••ÑÌð½„øð½‘¥Øøð½™½É´øð½‘¥Øøð½‘¥Øøð½‘¥Øøð½‘¥Øø(ñ‘…Ñ…±¥ÍÐ¥ô‰½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹ÌˆøðýÁ¡À™½É•…  ‘½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹Ì…Ì€‘ÍÕ•ÍÑ¥½¸¤èüøñ½ÁÑ¥½¸Ù…±Õ”ôˆðüõ” ‘ÍÕ•ÍÑ¥½¹l‰‘}¥t¤üøˆøðüõ” ‘ÍÕ•ÍÑ¥½¹l•á…Ñ}¹…µ”t¸œƒ
+Ü€œ¹Õ™¥ÉÍÐ ‘ÍÕ•ÍÑ¥½¹l‘…¹•}É½±”t¤¸ ‘ÍÕ•ÍÑ¥½¹lÍÑ…ÑÕÌtôôôÁ•¹‘¥¹œœüœƒ
+Ü•Ñ…¥±ÌÁ•¹‘¥¹œœèœœ¤¤üøð½½ÁÑ¥½¸øðýÁ¡À•¹‘™½É•… ìüøð½‘…Ñ…±¥ÍÐø(ñ‘¥Ø±…ÍÌô‰É½Üœ´Ìµˆ´Ðˆø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´Øˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´É½±”µ…Éˆøñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•È‰œµÁÉ¥µ…ÉäµÍÕ‰Ñ±”™ÜµÍ•µ¥‰½±ˆù1•…‘•ÉÌð½‘¥Øøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Èµˆ´Ìˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…‘‘}•¹ÑÉäˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘…¹•}É½±”ˆÙ…±Õ”ô‰±•…‘•Èˆø(ñ‘¥Ø±…ÍÌô‰½°´Ìˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆ¹…µ”ô‰‰¥‰}¹Õµ‰•ÈˆÙ…±Õ”ôˆðüô‘¹•áÑ	¥‰l±•…‘•Ètüøˆ…É¥„µ±…‰•°ô‰1•…‘•È‰¥ˆ¹Õµ‰•ÈˆÉ•ÅÕ¥É•øñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆù9•áÐÍÕ•ÍÑ•‰¥ˆ¸e½Ô…¸½Ù•ÉÝÉ¥Ñ”¥Ð¸ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´äˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰½µÁ•Ñ¥Ñ½É}Í•…É ˆ±¥ÍÐô‰½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹ÌˆÁ±…•¡½±‘•Èô‰QåÁ”½µÁ•Ñ¥Ñ½È¹…µ”½È	%ˆÉ•ÅÕ¥É•øñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆùM•±•Ð…¸•á¥ÍÑ¥¹œ	%°½ÈÑåÁ”„¹•Ü¹…µ”…¹ÕÍ”É•…Ñ”9…µ”€™…µÀì‘¸ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÁÉ¥µ…ÉäÜ´ÄÀÀˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰•á¥ÍÑ¥¹œˆù‘á¥ÍÑ¥¹œð½‰ÕÑÑ½¸øð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäÜ´ÄÀÀˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰É•…Ñ”ˆ½¹±¥¬ô‰É•ÑÕÉ¸½¹™¥É´ É•…Ñ”„ÁÉ½Ù¥Í¥½¹…°	½µÁ•Ñ¥Ñ½ÈÕÍ¥¹œ½¹±äÑ¡¥Ì¹…µ”üQ¡”½µÁ•Ñ¥Ñ½È…¸½µÁ±•Ñ”‘•Ñ…¥±Ì±…Ñ•È¸œ¤ˆùÉ•…Ñ”9…µ”€™…µÀì‘ð½‰ÕÑÑ½¸øð½‘¥Øø(ð½™½É´ø(ñÑ…‰±”±…ÍÌô‰Ñ…‰±”Ñ…‰±”µÍ´…±¥¸µµ¥‘‘±”ˆøñÑ¡•…øñÑÈøñÑ ÍÑå±”ô‰Ý¥‘Ñ èÄÔÁÁàˆù	¥ˆð½Ñ øñÑ ù½µÁ•Ñ¥Ñ½Èð½Ñ øñÑ ù	%ð½Ñ øñÑ ÍÑå±”ô‰Ý¥‘Ñ èÄÀÁÁàˆøð½Ñ øð½ÑÈøð½Ñ¡•…øñÑ‰½‘äøðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl±•…‘•Èt…Ì€‘à¤èüøñÑÈøñÑøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰µ™±•à…À´Äˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÕÁ‘…Ñ•}‰¥ˆˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°™½É´µ½¹ÑÉ½°µÍ´ˆÍÑå±”ô‰Ý¥‘Ñ èÜÙÁàˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆ¹…µ”ô‰‰¥‰}¹Õµ‰•ÈˆÙ…±Õ”ôˆðüô‘ál‰¥‰}¹Õµ‰•Ètüøˆ…É¥„µ±…‰•°ô‰‘¥Ð±•…‘•È‰¥ˆˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäˆùM…Ù”ð½‰ÕÑÑ½¸øð½™½É´øð½ÑøñÑøðüõ” ‘ál‘¥ÍÁ±…å}¹…µ”t¤üøðýÁ¡À¥˜ ‘ál½µÁ•Ñ¥Ñ½É}ÍÑ…ÑÕÌtôôôÁ•¹‘¥¹œœ¤èüø€ñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµÝ…É¹¥¹œˆù•Ñ…¥±ÌÁ•¹‘¥¹œð½ÍÁ…¸øðýÁ¡À•¹‘¥˜ìüøð½ÑøñÑøñ½‘”øðüõ” ‘ál‰‘}¥t¤üøð½½‘”øð½ÑøñÑøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•µ½Ù•}•¹ÑÉäˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•ÈˆùI•µ½Ù”ð½‰ÕÑÑ½¸øð½™½É´øð½Ñøð½ÑÈøðýÁ¡À•¹‘™½É•… ìüøð½Ñ‰½‘äøð½Ñ…‰±”ø(ð½‘¥Øøð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°µ±œ´Øˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´É½±”µ…Éˆøñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•È‰œµ‘…¹•ÈµÍÕ‰Ñ±”™ÜµÍ•µ¥‰½±ˆù½±±½Ý•ÉÌð½‘¥Øøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰É½Üœ´Èµˆ´Ìˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…‘‘}•¹ÑÉäˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰‘…¹•}É½±”ˆÙ…±Õ”ô‰™½±±½Ý•Èˆø(ñ‘¥Ø±…ÍÌô‰½°´Ìˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆ¹…µ”ô‰‰¥‰}¹Õµ‰•ÈˆÙ…±Õ”ôˆðüô‘¹•áÑ	¥‰l™½±±½Ý•Ètüøˆ…É¥„µ±…‰•°ô‰½±±½Ý•È‰¥ˆ¹Õµ‰•ÈˆÉ•ÅÕ¥É•øñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆù9•áÐÍÕ•ÍÑ•‰¥ˆ¸e½Ô…¸½Ù•ÉÝÉ¥Ñ”¥Ð¸ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´äˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰½µÁ•Ñ¥Ñ½É}Í•…É ˆ±¥ÍÐô‰½µÁ•Ñ¥Ñ½ÉMÕ•ÍÑ¥½¹ÌˆÁ±…•¡½±‘•Èô‰QåÁ”½µÁ•Ñ¥Ñ½È¹…µ”½È	%ˆÉ•ÅÕ¥É•øñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐˆùM•±•Ð…¸•á¥ÍÑ¥¹œ	%°½ÈÑåÁ”„¹•Ü¹…µ”…¹ÕÍ”É•…Ñ”9…µ”€™…µÀì‘¸ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…¹•ÈÜ´ÄÀÀˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰•á¥ÍÑ¥¹œˆù‘á¥ÍÑ¥¹œð½‰ÕÑÑ½¸øð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰½°´Øˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•ÈÜ´ÄÀÀˆ¹…µ”ô‰•¹ÑÉå}µ½‘”ˆÙ…±Õ”ô‰É•…Ñ”ˆ½¹±¥¬ô‰É•ÑÕÉ¸½¹™¥É´ É•…Ñ”„ÁÉ½Ù¥Í¥½¹…°	½µÁ•Ñ¥Ñ½ÈÕÍ¥¹œ½¹±äÑ¡¥Ì¹…µ”üQ¡”½µÁ•Ñ¥Ñ½È…¸½µÁ±•Ñ”‘•Ñ…¥±Ì±…Ñ•È¸œ¤ˆùÉ•…Ñ”9…µ”€™…µÀì‘ð½‰ÕÑÑ½¸øð½‘¥Øø(ð½™½É´ø(ñÑ…‰±”±…ÍÌô‰Ñ…‰±”Ñ…‰±”µÍ´…±¥¸µµ¥‘‘±”ˆøñÑ¡•…øñÑÈøñÑ ÍÑå±”ô‰Ý¥‘Ñ èÄÔÁÁàˆù	¥ˆð½Ñ øñÑ ù½µÁ•Ñ¥Ñ½Èð½Ñ øñÑ ù	%ð½Ñ øñÑ ÍÑå±”ô‰Ý¥‘Ñ èÄÀÁÁàˆøð½Ñ øð½ÑÈøð½Ñ¡•…øñÑ‰½‘äøðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl™½±±½Ý•Èt…Ì€‘à¤èüøñÑÈøñÑøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ±…ÍÌô‰µ™±•à…À´Äˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÕÁ‘…Ñ•}‰¥ˆˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°™½É´µ½¹ÑÉ½°µÍ´ˆÍÑå±”ô‰Ý¥‘Ñ èÜÙÁàˆÑåÁ”ô‰¹Õµ‰•Èˆµ¥¸ôˆÄˆ¹…µ”ô‰‰¥‰}¹Õµ‰•ÈˆÙ…±Õ”ôˆðüô‘ál‰¥‰}¹Õµ‰•Ètüøˆ…É¥„µ±…‰•°ô‰‘¥Ð™½±±½Ý•È‰¥ˆˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäˆùM…Ù”ð½‰ÕÑÑ½¸øð½™½É´øð½ÑøñÑøðüõ” ‘ál‘¥ÍÁ±…å}¹…µ”t¤üøðýÁ¡À¥˜ ‘ál½µÁ•Ñ¥Ñ½É}ÍÑ…ÑÕÌtôôôÁ•¹‘¥¹œœ¤èüø€ñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµÝ…É¹¥¹œˆù•Ñ…¥±ÌÁ•¹‘¥¹œð½ÍÁ…¸øðýÁ¡À•¹‘¥˜ìüøð½ÑøñÑøñ½‘”øðüõ” ‘ál‰‘}¥t¤üøð½½‘”øð½ÑøñÑøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•µ½Ù•}•¹ÑÉäˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘ál¥tüøˆøñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÍ´‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•ÈˆùI•µ½Ù”ð½‰ÕÑÑ½¸øð½™½É´øð½Ñøð½ÑÈøðýÁ¡À•¹‘™½É•… ìüøð½Ñ‰½‘äøð½Ñ…‰±”ø(ð½‘¥Øøð½‘¥Øøð½‘¥Øø(ð½‘¥Øøð½‘¥Øøð½‘¥Øø(ðýÁ¡À¥˜ ‘©Õ‘•Ì€˜˜€ ‘•¹ÑÉ¥•Íl±•…‘•Èuñð‘•¹ÑÉ¥•Íl™½±±½Ý•Èt¤¤è‘±•…‘•ÉA…¹•±½Õ¹Ðõ½Õ¹Ð¡…ÉÉ…å}™¥±Ñ•È ‘©Õ‘•Ì±™¸ ‘©Õ‘”¤ôù¥¹}…ÉÉ…ä ‘©Õ‘•lÍ½É¥¹}Í½Á”tüü…±°œ±l…±°œ°±•…‘•Èt±ÑÉÕ”¤¤¤ì‘™½±±½Ý•ÉA…¹•±½Õ¹Ðõ½Õ¹Ð¡…ÉÉ…å}™¥±Ñ•È ‘©Õ‘•Ì±™¸ ‘©Õ‘”¤ôù¥¹}…ÉÉ…ä ‘©Õ‘•lÍ½É¥¹}Í½Á”tüü…±°œ±l…±°œ°™½±±½Ý•Èt±ÑÉÕ”¤¤¤ìüøñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµ•¹Ñ•È™±•àµÝÉ…À…À´Èµˆ´Ìˆøñ‘¥ØøñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµÁÉ¥µ…Éäµ”´Èˆù1•…‘•ÈA…¹•°è€ðüô‘±•…‘•ÉA…¹•±½Õ¹Ðüø©Õ‘•Ìð½ÍÁ…¸øñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµ‘…¹•Èˆù½±±½Ý•ÈA…¹•°è€ðüô‘™½±±½Ý•ÉA…¹•±½Õ¹Ðüø©Õ‘•Ìð½ÍÁ…¸øð½‘¥Øøñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬‰Ñ¸µÍ´ˆ¡É•˜ôˆ©Õ‘”µÍ•ÑÕÀˆùI•Í•±•Ð)Õ‘•Ìð½„øð½‘¥Øøñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ¥ô‰¡•…ÑÍM½É•½É´ˆ‘…Ñ„µ…±±‰…¬µ½Õ¹Ðôˆðüô¡¥¹Ð¤‘É½Õ¹‘l…±±‰…­}½Õ¹Ðtüøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆøñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰Í½É•}Á…å±½…ˆ¥ô‰Í½É•A…å±½…ˆÙ…±Õ”ôˆˆøñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ðˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆøñ È±…ÍÌô‰ Ôˆù5…¹Õ…°€ðüõ”¡Õ™¥ÉÍÐ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”t¤¤üøM½É”¹ÑÉäð½ Èøñ‘¥Ø±…ÍÌô‰Ñ•áÐµµÕÑ•Íµ…±°µˆ´Èˆù¹Ñ•È€Ä½ÈeL™½È„eLµ…É¬¸¹Ñ•ÈÄ°È½ÈÌ™½È…±Ñ•É¹…Ñ•Ì¸Ù•ÉäÍ…Ù”É•Ñ…¥¹ÌÑ¡”ÍÉ••¸‘…Ñ„¸ð½‘¥Øøñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµ¥¹™¼Áä´Èµˆ´ÌˆøñÍÑÉ½¹œù1¥Ù”AÉ•Ù¥•Üèð½ÍÑÉ½¹œøÑ½Ñ…±Ì…¹ÁÉ½Ù¥Í¥½¹…°É…¹­ÌÕÁ‘…Ñ”¥µµ•‘¥…Ñ•±ä¸UÍ”…±Õ±…Ñ”€™…µÀìM½ÉÐÑ¼É•Ù¥•ÜÑ¡”Í•ÉÙ•ÈÉ•ÍÕ±Ð‰•™½É”MÕ‰µ¥ÐM½É•Ì¸ð½‘¥ØøðýÁ¡À™½É•… ¡l±•…‘•Èœôø1•…‘•ÉÌœ°™½±±½Ý•Èœôø½±±½Ý•ÉÌt…Ì€‘É½±”ôø‘±…‰•°¤èüøñ Ì±…ÍÌô‰ ØµÐ´Ðˆøðüô‘±…‰•°üøð½ Ìøñ‘¥Ø±…ÍÌô‰Ñ…‰±”µÉ•ÍÁ½¹Í¥Ù”ˆøñÑ…‰±”±…ÍÌô‰Ñ…‰±”Ñ…‰±”µ‰½É‘•É•Í½É”µÑ…‰±”ˆøñÑ¡•…øñÑÈøñÑ ù	¥ˆð½Ñ øñÑ ù9…µ”ð½Ñ øðýÁ¡À™½É•…  ‘©Õ‘•Ì…Ì€‘¨¤èüøñÑ øðüõ” ‘©l©Õ‘•}¹…µ”t¤üøðüô¡¥¹Ð¤‘©l¥Í}¡¥•˜tüœƒŠbœèœœüøð½Ñ øðýÁ¡À•¹‘™½É•… ìüøñÑ ùQ½Ñ…°ð½Ñ øñÑ ùI•ÍÕ±Ðð½Ñ øð½ÑÈøð½Ñ¡•…øñÑ‰½‘äøðýÁ¡À™½É•…  ‘•¹ÑÉ¥•Íl‘É½±•t…Ì€‘à¤è‘É•Ìô‘É•ÍÕ±ÑÍl‘ál¥utüý¹Õ±°ìüøñÑÈ±…ÍÌô‰Í½É”µÉ½Ü€ðüõ” ‘É•ÍlÉ•ÍÕ±Ñ}ÍÑ…ÑÕÌtüüœœ¤üøˆ‘…Ñ„µÉ½±”ôˆðüô‘É½±”üøˆ‘…Ñ„µ•¹ÑÉäµ¥ôˆðüô‘ál¥tüøˆøñÑøðüô‘ál‰¥‰}¹Õµ‰•Ètüøð½ÑøñÑøðüõ” ‘ál‘¥ÍÁ±…å}¹…µ”t¤üøð½ÑøðýÁ¡À™½É•…  ‘©Õ‘•Ì…Ì€‘¨¤è‘…ÍÍ¥¹•õ¥¹}…ÉÉ…ä ‘©lÍ½É¥¹}Í½Á”tüü…±°œ±l…±°œ°‘É½±•t±ÑÉÕ”¤ì‘´ô‘µ…É­Íl‘ál¥uul‘©l¥utüý¹Õ±°ì‘Ù…°ôœœí¥˜ ‘´¥ì‘Ù…°ô‘µlµ…É­}ÑåÁ”tôôôå•ÌœüœÄœè ‘µlµ…É­}ÑåÁ”tôôô…±Ðœüœ¸‘µl…±Ñ}É…¹¬tèœœ¤íôüøñÑøðýÁ¡À¥˜ ‘…ÍÍ¥¹•¤èüøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°™½É´µ½¹ÑÉ½°µÍ´Í½É”µ¥¹ÁÕÐˆ‘…Ñ„µ•¹ÑÉäµ¥ôˆðüô‘ál¥tüøˆ‘…Ñ„µ©Õ‘”µ¥ôˆðüô‘©l¥tüøˆ‘…Ñ„µ¡¥•˜ôˆðüô¡¥¹Ð¤‘©l¥Í}¡¥•˜tüøˆ¹…µ”ô‰µ…É­lðüô‘ál¥tüùulðüô‘©l¥tüùtˆÙ…±Õ”ôˆðüõ” ‘Ù…°¤üøˆøðýÁ¡À•±Í”èüøñÍÁ…¸±…ÍÌô‰‰…‘”Ñ•áÐµ‰œµ±¥¡Ð‰½É‘•ÈÑ•áÐµµÕÑ•ˆù9½ÐÍÍ¥¹•ð½ÍÁ…¸øðýÁ¡À•¹‘¥˜ìüøð½ÑøðýÁ¡À•¹‘™½É•… ìüøñÑøñÍÁ…¸±…ÍÌô‰±¥Ù”µÑ½Ñ…°ˆøðüõ¥ÍÍ•Ð ‘É•ÍlÑ½Ñ…±}Í½É”t¤ý¹Õµ‰•É}™½Éµ…Ð ¡™±½…Ð¤‘É•ÍlÑ½Ñ…±}Í½É”t°Ä¤èœÀ¸Àœüøð½ÍÁ…¸øñ‘¥Ø±…ÍÌô‰Íµ…±°Ñ•áÐµµÕÑ•ˆùeL€ñÍÁ…¸±…ÍÌô‰±¥Ù”µå•ÌˆøÀð½ÍÁ…¸øƒ
+Ü¡¥•˜€ñÍÁ…¸±…ÍÌô‰±¥Ù”µ¡¥•˜ˆøÀ¸Àð½ÍÁ…¸øð½‘¥Øøð½ÑøñÑøñÍÁ…¸±…ÍÌô‰±¥Ù”µÍÑ…ÑÕÌˆøðüõ” ‘É•ÍlÉ•ÍÕ±Ñ}ÍÑ…ÑÕÌtüü1¥Ù”ÁÉ•Ù¥•Üœ¤üøð½ÍÁ…¸ø€ñÍÁ…¸±…ÍÌô‰±¥Ù”µÉ…¹¬ˆøðüõ¥ÍÍ•Ð ‘É•ÍlÉ…¹­}¹Õµ‰•Èt¤üœŒœ¸‘É•ÍlÉ…¹­}¹Õµ‰•Ètèœœüøð½ÍÁ…¸øð½Ñøð½ÑÈøðýÁ¡À•¹‘™½É•… ìüøð½Ñ‰½‘äøð½Ñ…‰±”øð½‘¥ØøðýÁ¡À•¹‘™½É•… ìüøð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µˆ´Ìˆøñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€ñ È±…ÍÌô‰ Øµˆ´ÌˆùM½É¥¹œ]¥Ñ¹•ÍÍ•Ìð½ Èø(€ñ‘¥Ø±…ÍÌô‰É½Üœ´Èˆø(€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Äð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Äˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ätüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Èð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Èˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ètüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆù]¥Ñ¹•ÍÌ€Ìð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Ý¥Ñ¹•ÍÍ|Ìˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÝ¥Ñ¹•ÍÍ|Ìtüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰]¥Ñ¹•ÍÌ¹…µ”ˆøð½‘¥Øø(€€ñ‘¥Ø±…ÍÌô‰½°µµ´Ìˆøñ±…‰•°±…ÍÌô‰™½É´µ±…‰•°ˆùM½É¥¹œ‘µ¥¹¥ÍÑÉ…Ñ½Èð½±…‰•°øñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰Í½É¥¹}…‘µ¥¹¥ÍÑÉ…Ñ½Èˆµ…á±•¹Ñ ôˆÄäÀˆÙ…±Õ”ôˆðüõ” ¡ÍÑÉ¥¹œ¤ ‘É½Õ¹‘lÍ½É¥¹}…‘µ¥¹¥ÍÑÉ…Ñ½Ètüüœœ¤¤üøˆÁ±…•¡½±‘•Èô‰‘µ¥¹¥ÍÑÉ…Ñ½È¹…µ”ˆøð½‘¥Øø(€ð½‘¥Øø(€ñ‘¥Ø±…ÍÌô‰™½É´µÑ•áÐµÐ´Èˆù]¥Ñ¹•ÍÌ¹…µ•Ì…É”Í…Ù•Ý¥Ñ Ñ¡”Í½É¥¹œ‘É…™Ð…¹ÁÉ¥¹Ñ•½¸Ñ¡”½™™¥¥…°‘É…™ÐÉ•ÍÕ±Ð¸ð½‘¥Øø(ð½‘¥Øøð½‘¥Øø(ñ‘¥Ø±…ÍÌô‰ÍÑ¥­äµ…Ñ¥½¹Ìµ™±•à™±•àµÝÉ…À…À´È…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èˆø(€ñ‰ÕÑÑ½¸¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰Í…Ù•}Í½É•Ìˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬ˆùM…Ù”É…™Ðð½‰ÕÑÑ½¸ø(€ñ‰ÕÑÑ½¸¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…±Õ±…Ñ•}Í½É•Ìˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µÝ…É¹¥¹œˆù…±Õ±…Ñ”€™…µÀìM½ÉÐð½‰ÕÑÑ½¸ø(€ñ‰ÕÑÑ½¸¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰ÍÕ‰µ¥Ñ}Í½É•Ìˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µÁÉ¥µ…ÉäˆùMÕ‰µ¥ÐM½É•Ìð½‰ÕÑÑ½¸ø(€ñÍÁ…¸¥ô‰…ÕÑ½Í…Ù•MÑ…ÑÕÌˆ±…ÍÌô‰Íµ…±°Ñ•áÐµµÕÑ•µÌµ…ÕÑ¼ˆùÕÑ½Í…Ù”É•…‘äð½ÍÁ…¸ø(€ðýÁ¡À¥˜¡¥¹}…ÉÉ…ä ‘É½Õ¹‘lÍÑ…ÑÕÌt±l…Ý…¥Ñ¥¹}‘•¥Í¥½¸œ°Í½É•Í}ÍÕ‰µ¥ÑÑ•t±ÑÉÕ”¤¤èüø(€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäˆÑ…É•Ðô‰}‰±…¹¬ˆ¡É•˜ô‰É•ÍÕ±Ð¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆùAÉ•Ù¥•Ü€¼AÉ¥¹ÐÉ…™ÐI•ÍÕ±Ðð½„ø(€ðýÁ¡À•¹‘¥˜ìüø(ð½‘¥Øøð½™½É´ø((ðýÁ¡À¥˜¡¥¹}…ÉÉ…ä ‘É½Õ¹‘lÍÑ…ÑÕÌt±l…Ý…¥Ñ¥¹}‘•¥Í¥½¸œ°Í½É•Í}ÍÕ‰µ¥ÑÑ•t±ÑÉÕ”¤¤èüø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µÐ´Ìµˆ´Ð‰½É‘•ÈµÁÉ¥µ…Éäˆø(€ñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ñ‘¥Ø±…ÍÌô‰µ™±•à©ÕÍÑ¥™äµ½¹Ñ•¹Ðµ‰•ÑÝ••¸…±¥¸µ¥Ñ•µÌµÍÑ…ÉÐ…À´Ì™±•àµÝÉ…Àˆø(€€€ñ‘¥Øø(€€€€ñ È±…ÍÌô‰ Ôµˆ´Äˆù9•áÐI½Õ¹ð½ Èø(€€€€ñÀ±…ÍÌô‰Ñ•áÐµµÕÑ•µˆ´ÀˆùM½É•Ì…É”ÍÕ‰µ¥ÑÑ•…¹Í½ÉÑ•¸¡½½Í”Ñ¡”¹•áÐÉ½Õ¹™½ÈÑ¡”…±±‰…¬½µÁ•Ñ¥Ñ½ÉÌ¸ð½Àø(€€€ð½‘¥Øø(€€€ñ„±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µÁÉ¥µ…ÉäˆÑ…É•Ðô‰}‰±…¹¬ˆ¡É•˜ô‰É•ÍÕ±Ð¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøˆùAÉ¥¹ÐÕ±°É…™ÐI•ÍÕ±Ðð½„ø(€€ð½‘¥Øø((€€ðýÁ¡À¥˜ ‘Ñ¥•É½ÕÁÌ¤èüø(€€€ñ‘¥Ø±…ÍÌô‰…±•ÉÐ…±•ÉÐµÝ…É¹¥¹œµÐ´Ìµˆ´ÀˆùI•Í½±Ù”…±°…±±‰…¬Ñ¥•Ì…‰½Ù”‰•™½É”É•…Ñ¥¹œÑ¡”¹•áÐÉ½Õ¹¸ð½‘¥Øø(€€ðýÁ¡À•±Í”èüø(€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…À´ÈµÐ´Ìˆø(€€€€ðýÁ¡À¥˜ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”tôôô¡•…ÑÌœ¤èüø(€€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•…Ñ•}¹•áÑ}É½Õ¹ˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰¹•áÑ}É½Õ¹‘}ÑåÁ”ˆÙ…±Õ”ô‰Í•µ¥™¥¹…°ˆø(€€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÝ…É¹¥¹œˆù5½Ù”…±±‰…­ÌÑ¼M•µ¥™¥¹…°ð½‰ÕÑÑ½¸ø(€€€€€ð½™½É´ø(€€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•…Ñ•}¹•áÑ}É½Õ¹ˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰¹•áÑ}É½Õ¹‘}ÑåÁ”ˆÙ…±Õ”ô‰™¥¹…°ˆø(€€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬ˆù5½Ù”…±±‰…­Ì¥É•Ñ±äÑ¼¥¹…°ð½‰ÕÑÑ½¸ø(€€€€€ð½™½É´ø(€€€€ðýÁ¡À•±Í•¥˜ ‘É½Õ¹‘lÉ½Õ¹‘}ÑåÁ”tôôôÍ•µ¥™¥¹…°œ¤èüø(€€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•…Ñ•}¹•áÑ}É½Õ¹ˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰¹•áÑ}É½Õ¹‘}ÑåÁ”ˆÙ…±Õ”ô‰™¥¹…°ˆø(€€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ‘…É¬ˆù5½Ù”M•µ¥™¥¹…°…±±‰…­ÌÑ¼¥¹…°ð½‰ÕÑÑ½¸ø(€€€€€ð½™½É´ø(€€€€ðýÁ¡À•¹‘¥˜ìüø((€€€€ðýÁ¡À¥˜ ¡¥¹Ð¤‘É½Õ¹‘lÁ…É•¹Ñ}É½Õ¹‘}¥tøÀ¤èüø(€€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥É´ …¹•°Ñ¡¥ÌÉ½Õ¹‘É…™Ð…¹É•ÑÕÉ¸Ñ¼Ñ¡”ÁÉ•Ù¥½ÕÌÉ½Õ¹üœ¤ìˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰…¹•±}¡¥±‘}É½Õ¹ˆø(€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•Èˆù…¹•°Q¡¥ÌI½Õ¹€™…µÀì¼	…¬ð½‰ÕÑÑ½¸ø(€€€€€ð½™½É´ø(€€€€ðýÁ¡À•¹‘¥˜ìüø(€€€ð½‘¥Øø(€€ðýÁ¡À•¹‘¥˜ìüø(€ð½‘¥Øø(ð½‘¥Øø(ðýÁ¡À•¹‘¥˜ìüø((ðýÁ¡À¥˜ ‘Ñ¥•É½ÕÁÌ¤èüø(ñ‘¥Ø±…ÍÌô‰…ÉÍ¡…‘½ÜµÍ´µÐ´Ìµˆ´Ð‰½É‘•ÈµÝ…É¹¥¹œˆø(€ñ‘¥Ø±…ÍÌô‰…Éµ¡•…‘•È‰œµÝ…É¹¥¹œµÍÕ‰Ñ±”™ÜµÍ•µ¥‰½±ˆù¡¥•˜)Õ‘”Q¥”I•Í½±ÕÑ¥½¸ð½‘¥Øø(€ñ‘¥Ø±…ÍÌô‰…Éµ‰½‘äˆø(€€ñÀ±…ÍÌô‰µˆ´ÌˆùQ¡•Í”•á…ÐÑ¥•ÌÉ½ÍÌÑ¡”…±±‰…¬ÕÑ½™˜¸Q¡”¡¥•˜)Õ‘”µÕÍÐÍ•±•ÐÑ¡”½µÁ•Ñ¥Ñ½ÈÝ¡¼É••¥Ù•ÌÑ¡”…±±‰…¬Á±…”¸ð½Àø(€€ðýÁ¡À™½É•…  ‘Ñ¥•É½ÕÁÌ…Ì€‘Ñ¥•É½ÕÀ¤èüø(€€€ñ‘¥Ø±…ÍÌô‰‰½É‘•ÈÉ½Õ¹‘•À´Ìµˆ´Ìˆø(€€€€ñ‘¥Ø±…ÍÌô‰™ÜµÍ•µ¥‰½±µˆ´Èˆø(€€€€€ðüõ”¡Õ™¥ÉÍÐ ‘Ñ¥•É½ÕÁlÉ½±”t¤¤üøƒ
+Ü…±±‰…¬Á½Í¥Ñ¥½¸€Œðüô‘Ñ¥•É½ÕÁlÉ…¹¬tüøƒ
+Ü(€€€€Q½Ñ…°€ðüõ¹Õµ‰•É}™½Éµ…Ð ‘Ñ¥•É½ÕÁlÑ½Ñ…°t°Ä¤üøƒ
+Ü¡¥•˜)Õ‘”Í½É”€ðüõ¹Õµ‰•É}™½Éµ…Ð ‘Ñ¥•É½ÕÁl¡¥•˜t°Ä¤üø(€€€€ð½‘¥Øø(€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµÝÉ…À…À´Èˆø(€€€€€ðýÁ¡À™½É•…  ‘Ñ¥•É½ÕÁl½µÁ•Ñ¥Ñ½ÉÌt…Ì€‘…¹‘¥‘…Ñ”¤èüø(€€€€€€ñ™½É´µ•Ñ¡½ô‰Á½ÍÐˆ½¹ÍÕ‰µ¥Ðô‰É•ÑÕÉ¸½¹™¥É´ M•±•Ð€ðüõ”¡…‘‘Í±…Í¡•Ì ‘…¹‘¥‘…Ñ•l‘¥ÍÁ±…å}¹…µ”t¤¤üø…ÌÑ¡”…±±‰…¬Ý¥¹¹•È½˜Ñ¡¥ÌÑ¥”üœ¤ìˆø(€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰}ÍÉ˜ˆÙ…±Õ”ôˆðüõ” ‘ÍÉ˜¤üøˆø(€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰…Ñ¥½¸ˆÙ…±Õ”ô‰É•Í½±Ù•}…±±‰…­}Ñ¥”ˆø(€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰É½Õ¹‘}¥ˆÙ…±Õ”ôˆðüô‘É½Õ¹‘%üøˆø(€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰Í•±•Ñ•‘}•¹ÑÉå}¥ˆÙ…±Õ”ôˆðüô‘…¹‘¥‘…Ñ•l•¹ÑÉå}¥tüøˆø(€€€€€€€ñ‰ÕÑÑ½¸±…ÍÌô‰‰Ñ¸‰Ñ¸µÝ…É¹¥¹œˆø(€€€€€€€M•±•Ð	¥ˆ€ðüô‘…¹‘¥‘…Ñ•l‰¥‰}¹Õµ‰•Ètüøƒ
+Ü€ðüõ” ‘…¹‘¥‘…Ñ•l‘¥ÍÁ±…å}¹…µ”t¤üø(€€€€€€€ð½‰ÕÑÑ½¸ø(€€€€€€ð½™½É´ø(€€€€€ðýÁ¡À•¹‘™½É•… ìüø(€€€€ð½‘¥Øø(€€€ð½‘¥Øø(€€ðýÁ¡À•¹‘™½É•… ìüø(€€ñ‘¥Ø±…ÍÌô‰Íµ…±°Ñ•áÐµµÕÑ•ˆùQ¡”Í•±•Ñ•½µÁ•Ñ¥Ñ½È‰•½µ•Ì…±±‰…¬¸Q¡”É•µ…¥¹¥¹œÑ¥•½µÁ•Ñ¥Ñ½ÉÌ‰•½µ”±Ñ•É¹…Ñ•Ì¥¸½É‘•È°Ñ¡•¸±¥µ¥¹…Ñ•¥˜µ½É”Ñ¡…¸Ñ¡É•”É•µ…¥¸¸ð½‘¥Øø(€ð½‘¥Øø(ð½‘¥Øø(ðýÁ¡À•¹‘¥˜ìüø((ðýÁ¡À•¹‘¥˜ìüø(ðýÁ¡À•¹‘¥˜ìüøðýÁ¡À•¹‘¥˜ìüøð½‘¥ØøñÍÉ¥ÁÐø)™Õ¹Ñ¥½¸½¹™¥Éµ•±•Ñ•]½É­™±½Ü¡™½É´±•Ù•¹Ñ9…µ”±‘¥Ù¥Í¥½¸¥ì(½¹ÍÐ…¹ÍÝ•ÈõÝ¥¹‘½Ü¹ÁÉ½µÁÐ (€€•±•Ñ”10€œ­‘¥Ù¥Í¥½¸¬œÍ½É¥¹œÉ½Õ¹‘Ì™½È€œ­•Ù•¹Ñ9…µ”¬œýq¹q¸œ(€€¬Q¡¥ÌÉ•µ½Ù•Ì!•…ÑÌ°M•µ¥™¥¹…°°¥¹…°°©Õ‘•Ì°µ…É­Ì°Á…¥É¥¹Ì…¹…±Õ±…Ñ•É•ÍÕ±ÑÌ¹q¸œ(€€¬Q¡”•Ù•¹Ð…¹½µÁ•Ñ¥Ñ½ÈÉ•½É‘ÌÉ•µ…¥¸¹q¹q¸œ(€€¬QåÁ”1QÑ¼½¹Ñ¥¹Õ”¸œ(€¤ì(¥˜¡…¹ÍÝ•È„ôô1Qœ¥É•ÑÕÉ¸™…±Í”ì(™½É´¹ÅÕ•ÉåM•±•Ñ½È m¹…µ”ô‰‘•±•Ñ•}½¹™¥Éµ…Ñ¥½¸‰tœ¤¹Ù…±Õ”ô1Qœì(É•ÑÕÉ¸Ý¥¹‘½Ü¹½¹™¥É´ ¥¹…°½¹™¥Éµ…Ñ¥½¸èÁ•Éµ…¹•¹Ñ±ä‘•±•Ñ”Ñ¡¥Ì½µÁ±•Ñ”Ñ•ÍÐÍ½É¥¹œÝ½É­™±½Üüœ¤ì)ô)™Õ¹Ñ¥½¸ÕÁ‘…Ñ•Q¥•ÉMÕµµ…Éä ¥í½¹ÍÐÑ¥•Èõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ½µÁ•Ñ¥Ñ¥½¹Q¥•Èœ¤í½¹ÍÐ½ÕÐõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% Ñ¥•Ée•Í½Õ¹Ðœ¤í¥˜ …Ñ¥•Éñð…½ÕÐ¥É•ÑÕÉ¸í½ÕÐ¹Ù…±Õ”ô¡ìÄèÔ°ÈèÄÀ°ÌèÄÕô¥mÑ¥•È¹Ù…±Õ•uñðÄÀíõ±•Ð™¥¹…±)Õ‘•M•ÅÕ•¹”ôÄÀÀÀì)™Õ¹Ñ¥½¸É•¹Õµ‰•É¥¹…±)Õ‘•Ì ¥ì(½¹ÍÐÉ½ÝÌõ‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œ™¥¹…±)Õ‘•Í]É…Àm‘…Ñ„µ©Õ‘”µÉ½Ýtœ¤ì(É½ÝÌ¹™½É…  ¡É½Ü±¥¹‘•à¤ôùì(€½¹ÍÐ±…‰•°õÉ½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹™¥¹…°µ©Õ‘”µ¹Õµ‰•Èœ¤ì(€¥˜¡±…‰•°¥±…‰•°¹Ñ•áÑ½¹Ñ•¹Ðô)Õ‘”€œ¬¡¥¹‘•à¬Ä¤ì(ô¤ì)ô)™Õ¹Ñ¥½¸…‘‘¥¹…±)Õ‘” ¥ì(½¹ÍÐÜõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ™¥¹…±)Õ‘•Í]É…Àœ¤ì(¥˜ …Ü¥É•ÑÕÉ¸ì(½¹ÍÐ­•äô¹•Ý|œ¬¡™¥¹…±)Õ‘•M•ÅÕ•¹”¬¬¤ì(½¹ÍÐõ‘½Õµ•¹Ð¹É•…Ñ•±•µ•¹Ð ‘¥Øœ¤ì(¹±…ÍÍ9…µ”ô¥¹ÁÕÐµÉ½ÕÀµˆ´È©Õ‘”µÉ½Üœì(¹Í•ÑÑÑÉ¥‰ÕÑ” ‘…Ñ„µ©Õ‘”µÉ½Üœ°œœ¤ì(¹¥¹¹•É!Q50ôœñÍÁ…¸±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµÑ•áÐ™¥¹…°µ©Õ‘”µ¹Õµ‰•Èˆøð½ÍÁ…¸øœ(€€¬œñ¥¹ÁÕÐÑåÁ”ô‰¡¥‘‘•¸ˆ¹…µ”ô‰™¥¹…±}©Õ‘•Ílœ­­•ä¬um¥‘tˆÙ…±Õ”ôˆÀˆøœ(€€¬œñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰™¥¹…±}©Õ‘•Ílœ­­•ä¬um¹…µ•tˆÁ±…•¡½±‘•Èô‰¥¹…°©Õ‘”¹…µ”ˆÉ•ÅÕ¥É•øœ(€€¬œñÍÁ…¸±…ÍÌô‰¥¹ÁÕÐµÉ½ÕÀµÑ•áÐˆøñ¥¹ÁÕÐÑåÁ”ô‰É…‘¥¼ˆ¹…µ”ô‰™¥¹…±}¡¥•™}­•äˆÙ…±Õ”ôˆœ­­•ä¬œˆø¡¥•˜ð½ÍÁ…¸øœ(€€¬œñ‰ÕÑÑ½¸ÑåÁ”ô‰‰ÕÑÑ½¸ˆ±…ÍÌô‰‰Ñ¸‰Ñ¸µ½ÕÑ±¥¹”µ‘…¹•Èˆ½¹±¥¬ô‰É•µ½Ù•¥¹…±)Õ‘”¡Ñ¡¥Ì¤ˆùI•µ½Ù”ð½‰ÕÑÑ½¸øœì(Ü¹…ÁÁ•¹‘¡¥±¡¤ì(É•¹Õµ‰•É¥¹…±)Õ‘•Ì ¤ì)ô)™Õ¹Ñ¥½¸É•µ½Ù•¥¹…±)Õ‘”¡‰ÕÑÑ½¸¥ì(½¹ÍÐÉ½Üõ‰ÕÑÑ½¸¹±½Í•ÍÐ m‘…Ñ„µ©Õ‘”µÉ½Ýtœ¤ì(¥˜ …É½Ü¥É•ÑÕÉ¸ì(½¹ÍÐÉ½ÝÌõ‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œ™¥¹…±)Õ‘•Í]É…Àm‘…Ñ„µ©Õ‘”µÉ½Ýtœ¤ì(¥˜¡É½ÝÌ¹±•¹Ñ ðôÌ¥í…±•ÉÐ ¥¹…°É•ÅÕ¥É•Ì…Ð±•…ÍÐ€Ì©Õ‘•Ì¸œ¤íÉ•ÑÕÉ¸íô(É½Ü¹É•µ½Ù” ¤ì(É•¹Õµ‰•É¥¹…±)Õ‘•Ì ¤ì)õ™Õ¹Ñ¥½¸…‘‘)Õ‘” ¥í½¹ÍÐÜõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ©Õ‘•Í]É…Àœ¤í½¹ÍÐ¤õÜ¹ÅÕ•ÉåM•±•Ñ½É±° œ¹©Õ‘”µÉ½Üœ¤¹±•¹Ñ í½¹ÍÐõ‘½Õµ•¹Ð¹É•…Ñ•±•µ•¹Ð ‘¥Øœ¤í¹±…ÍÍ9…µ”ôÉ½Üœ´Èµˆ´È©Õ‘”µÉ½Ü…±¥¸µ¥Ñ•µÌµ•¹Ñ•Èœí¹¥¹¹•É!Q50ôœñ‘¥Ø±…ÍÌô‰½°µµ´ÈˆøñÍÑÉ½¹œù)Õ‘”€œ¬¡¤¬Ä¤¬œð½ÍÑÉ½¹œøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´Ôˆøñ¥¹ÁÕÐ±…ÍÌô‰™½É´µ½¹ÑÉ½°ˆ¹…µ”ô‰©Õ‘•}¹…µ•mtˆÁ±…•¡½±‘•Èô‰)Õ‘”¹…µ”ˆÉ•ÅÕ¥É•øð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´ÌˆøñÍ•±•Ð±…ÍÌô‰™½É´µÍ•±•Ðˆ¹…µ”ô‰©Õ‘•}Í½Á•mtˆøñ½ÁÑ¥½¸Ù…±Õ”ô‰…±°ˆù±°ð½½ÁÑ¥½¸øñ½ÁÑ¥½¸Ù…±Õ”ô‰±•…‘•Èˆù1•…‘•ÉÌð½½ÁÑ¥½¸øñ½ÁÑ¥½¸Ù…±Õ”ô‰™½±±½Ý•Èˆù½±±½Ý•ÉÌð½½ÁÑ¥½¸øð½Í•±•Ðøð½‘¥Øøñ‘¥Ø±…ÍÌô‰½°µµ´Èˆøñ±…‰•°øñ¥¹ÁÕÐÑåÁ”ô‰É…‘¥¼ˆ¹…µ”ô‰¡¥•™}¥¹‘•àˆÙ…±Õ”ôˆœ­¤¬œˆø¡¥•˜ð½±…‰•°øð½‘¥ØøœíÜ¹…ÁÁ•¹‘¡¥±¡¤íô)½¹ÍÐÍ½É•½É´õ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ¡•…ÑÍM½É•½É´œ¤ì)½¹ÍÐ…ÕÑ½Í…Ù•MÑ…ÑÕÌõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% …ÕÑ½Í…Ù•MÑ…ÑÕÌœ¤ì)½¹ÍÐÍ½É•]•¥¡ÑÌõìœÄœèÄÀ°eLœèÄÀ°dœèÄÀ°ÄœèÐ¸Ô°ÈœèÐ¸Ì°ÌœèÐ¸È°œÈœèÐ¸Ô°œÌœèÐ¸Ì°œÐœèÐ¸È°œœèÁôì)±•Ð…ÕÑ½Í…Ù•Q¥µ•ÉÌõ¹•Ü5…À ¤ì)±•ÐÕ¹Í…Ù•‘M½É•¡…¹•Ìõ™…±Í”ì)™Õ¹Ñ¥½¸¹½Éµ…±¥Í•M½É•Y…±Õ”¡É…Ü¥í½¹ÍÐÙ…±Õ”õMÑÉ¥¹œ¡É…Ýñðœœ¤¹ÑÉ¥´ ¤¹Ñ½UÁÁ•É…Í” ¤í¥˜¡Ù…±Õ”ôôôeLññÙ…±Õ”ôôôdññÙ…±Õ”ôôôœÄœ¥É•ÑÕÉ¸€œÄœí¥˜¡Ù…±Õ”ôôôÄññÙ…±Õ”ôôôœÈœ¥É•ÑÕÉ¸€Äœí¥˜¡Ù…±Õ”ôôôÈññÙ…±Õ”ôôôœÌœ¥É•ÑÕÉ¸€Èœí¥˜¡Ù…±Õ”ôôôÌññÙ…±Õ”ôôôœÐœ¥É•ÑÕÉ¸€ÌœíÉ•ÑÕÉ¸€œœíô)™Õ¹Ñ¥½¸Ý•¥¡Ñ½È¡É…Ü¥íÉ•ÑÕÉ¸Í½É•]•¥¡ÑÍm¹½Éµ…±¥Í•M½É•Y…±Õ”¡É…Ü¥uñðÀíô)™Õ¹Ñ¥½¸ÕÁ‘…Ñ•1¥Ù•M½É¥¹œ ¥ì(¥˜ …Í½É•½É´¥É•ÑÕÉ¸ì(½¹ÍÐ…±±‰…­½Õ¹ÐõÁ…ÉÍ•%¹Ð¡Í½É•½É´¹‘…Ñ…Í•Ð¹…±±‰…­½Õ¹ÑñðœÀœ°ÄÀ¤ì(l±•…‘•Èœ°™½±±½Ý•Èt¹™½É… ¡É½±”ôùì(€½¹ÍÐÉ½ÝÌõl¸¸¹Í½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° œ¹Í½É”µÉ½Ým‘…Ñ„µÉ½±”ôˆœ­É½±”¬œ‰tœ¥tì(€½¹ÍÐ…±Õ±…Ñ•õÉ½ÝÌ¹µ…À¡É½Üôùì(€€±•ÐÑ½Ñ…°ôÀ±å•ÌôÀ±¡¥•˜ôÀì(€€É½Ü¹ÅÕ•ÉåM•±•Ñ½É±° œ¹Í½É”µ¥¹ÁÕÐœ¤¹™½É… ¡¥¹ÁÕÐôùí½¹ÍÐÙ…±Õ”õ¹½Éµ…±¥Í•M½É•Y…±Õ”¡¥¹ÁÕÐ¹Ù…±Õ”¤í½¹ÍÐÝ•¥¡ÐõÝ•¥¡Ñ½È¡Ù…±Õ”¤íÑ½Ñ…°¬õÝ•¥¡Ðí¥˜¡Ù…±Õ”ôôôœÄœ¥å•Ì¬¬í¥˜¡¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹¡¥•˜ôôôœÄœ¥¡¥•˜õÝ•¥¡Ðíô¤ì(€€É½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹±¥Ù”µÑ½Ñ…°œ¤¹Ñ•áÑ½¹Ñ•¹ÐõÑ½Ñ…°¹Ñ½¥á• Ä¤ì(€€É½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹±¥Ù”µå•Ìœ¤¹Ñ•áÑ½¹Ñ•¹ÐõMÑÉ¥¹œ¡å•Ì¤ì(€€É½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹±¥Ù”µ¡¥•˜œ¤¹Ñ•áÑ½¹Ñ•¹Ðõ¡¥•˜¹Ñ½¥á• Ä¤ì(€€É•ÑÕÉ¸íÉ½Ü±Ñ½Ñ…°±¡¥•˜±å•Ì±•¹ÑÉäéÁ…ÉÍ•%¹Ð¡É½Ü¹‘…Ñ…Í•Ð¹•¹ÑÉå%‘ñðœÀœ°ÄÀ¥ôì(€ô¤ì(€…±Õ±…Ñ•¹Í½ÉÐ ¡„±ˆ¤ôùˆ¹Ñ½Ñ…°µ„¹Ñ½Ñ…±ññˆ¹¡¥•˜µ„¹¡¥•™ññˆ¹å•Ìµ„¹å•Íññ„¹•¹ÑÉäµˆ¹•¹ÑÉä¤ì(€…±Õ±…Ñ•¹™½É…  ¡¥Ñ•´±¥¹‘•à¤ôùí½¹ÍÐÉ…¹¬õ¥¹‘•à¬Äí½¹ÍÐÍÑ…ÑÕÌõÉ…¹¬ðõ…±±‰…­½Õ¹Ðü…±±‰…¬œè¡É…¹¬ðõ…±±‰…­½Õ¹Ð¬Ìü±Ñ•É¹…Ñ”œè±¥µ¥¹…Ñ•œ¤í¥Ñ•´¹É½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹±¥Ù”µÉ…¹¬œ¤¹Ñ•áÑ½¹Ñ•¹ÐôœŒœ­É…¹¬í¥Ñ•´¹É½Ü¹ÅÕ•ÉåM•±•Ñ½È œ¹±¥Ù”µÍÑ…ÑÕÌœ¤¹Ñ•áÑ½¹Ñ•¹ÐõÍÑ…ÑÕÌ¬œƒ
+Ü1¥Ù”œíô¤ì(ô¤ì)ô)™Õ¹Ñ¥½¸Í•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ¡Ñ•áÐ±±…ÍÍ9…µ”¥í¥˜ ……ÕÑ½Í…Ù•MÑ…ÑÕÌ¥É•ÑÕÉ¸í…ÕÑ½Í…Ù•MÑ…ÑÕÌ¹Ñ•áÑ½¹Ñ•¹ÐõÑ•áÐí…ÕÑ½Í…Ù•MÑ…ÑÕÌ¹±…ÍÍ9…µ”ôÍµ…±°µÌµ…ÕÑ¼€œ¬¡±…ÍÍ9…µ•ñðÑ•áÐµµÕÑ•œ¤íô)…Íå¹Œ™Õ¹Ñ¥½¸…ÕÑ½Í…Ù•M½É”¡¥¹ÁÕÐ¥ì(½¹ÍÐ­•äõ¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹•¹ÑÉå%¬œèœ­¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹©Õ‘•%ì(¥˜¡…ÕÑ½Í…Ù•Q¥µ•ÉÌ¹¡…Ì¡­•ä¤¥±•…ÉQ¥µ•½ÕÐ¡…ÕÑ½Í…Ù•Q¥µ•ÉÌ¹•Ð¡­•ä¤¤ì(…ÕÑ½Í…Ù•Q¥µ•ÉÌ¹Í•Ð¡­•ä±Í•ÑQ¥µ•½ÕÐ¡…Íå¹Œ ¤ôùì(€Í•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ M…Ù¥¹ŸŠ˜œ°Ñ•áÐµÁÉ¥µ…Éäœ¤ì(€ÑÉåì(€€½¹ÍÐ‰½‘äõ¹•ÜUI1M•…É¡A…É…µÌ ¤ì(€€‰½‘ä¹Í•Ð }ÍÉ˜œ±Í½É•½É´¹ÅÕ•ÉåM•±•Ñ½È m¹…µ”ô‰}ÍÉ˜‰tœ¤¹Ù…±Õ”¤ì(€€‰½‘ä¹Í•Ð É½Õ¹‘}¥œ±Í½É•½É´¹ÅÕ•ÉåM•±•Ñ½È m¹…µ”ô‰É½Õ¹‘}¥‰tœ¤¹Ù…±Õ”¤ì(€€‰½‘ä¹Í•Ð •¹ÑÉå}¥œ±¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹•¹ÑÉå%¤ì(€€‰½‘ä¹Í•Ð ©Õ‘•}¥œ±¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹©Õ‘•%¤ì(€€‰½‘ä¹Í•Ð Ù…±Õ”œ±¹½Éµ…±¥Í•M½É•Y…±Õ”¡¥¹ÁÕÐ¹Ù…±Õ”¤¤ì(€€½¹ÍÐÉ•ÍÁ½¹Í”õ…Ý…¥Ð™•Ñ  …ÕÑ½Í…Ù”¹Á¡Àœ±íµ•Ñ¡½èA=MPœ±¡•…‘•ÉÌéì`µI•ÅÕ•ÍÑ•µ]¥Ñ œèa51!ÑÑÁI•ÅÕ•ÍÐœ°½¹Ñ•¹ÐµQåÁ”œè…ÁÁ±¥…Ñ¥½¸½àµÝÝÜµ™½É´µÕÉ±•¹½‘•ô±‰½‘äé‰½‘ä¹Ñ½MÑÉ¥¹œ ¥ô¤ì(€€½¹ÍÐ‘…Ñ„õ…Ý…¥ÐÉ•ÍÁ½¹Í”¹©Í½¸ ¤ì(€€¥˜ …É•ÍÁ½¹Í”¹½­ñð…‘…Ñ„¹½¬¥Ñ¡É½Ü¹•ÜÉÉ½È¡‘…Ñ„¹•ÉÉ½ÉñðÕÑ½Í…Ù”™…¥±•œ¤ì(€€Õ¹Í…Ù•‘M½É•¡…¹•Ìõ™…±Í”ì(€€Í•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ M…Ù•…Ð€œ­¹•Ü…Ñ” ¤¹Ñ½1½…±•Q¥µ•MÑÉ¥¹œ ¤°Ñ•áÐµÍÕ•ÍÌœ¤ì(€õ…Ñ ¡•ÉÉ½È¥íÕ¹Í…Ù•‘M½É•¡…¹•ÌõÑÉÕ”íÍ•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ ÕÑ½Í…Ù”™…¥±•ƒ
+ÜÕÍ”M…Ù”É…™Ðœ°Ñ•áÐµ‘…¹•Èœ¤íô(ô°äÀÀ¤¤ì)ô)™Õ¹Ñ¥½¸‰Õ¥±‘M½É•A…å±½… ¥í½¹ÍÐÁ…å±½…õíôíÍ½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° œ¹Í½É”µ¥¹ÁÕÐœ¤¹™½É… ¡¥¹ÁÕÐôùí½¹ÍÐ•¹ÑÉäõ¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹•¹ÑÉå%±©Õ‘”õ¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹©Õ‘•%í¥˜ …Á…å±½…‘m•¹ÑÉåt¥Á…å±½…‘m•¹ÑÉåtõíôíÁ…å±½…‘m•¹ÑÉåum©Õ‘•tõ¹½Éµ…±¥Í•M½É•Y…±Õ”¡¥¹ÁÕÐ¹Ù…±Õ”¤íô¤íÉ•ÑÕÉ¸Á…å±½…íô)¥˜¡Í½É•½É´¥ì(½¹ÍÐ¡…¹‘±•M½É•¡…¹”õ¥¹ÁÕÐôùì(€¥˜ …¥¹ÁÕÑñð…¥¹ÁÕÐ¹±…ÍÍ1¥ÍÐ¹½¹Ñ…¥¹Ì Í½É”µ¥¹ÁÕÐœ¤¥É•ÑÕÉ¸ì(€¥¹ÁÕÐ¹Ù…±Õ”õ¹½Éµ…±¥Í•M½É•Y…±Õ”¡¥¹ÁÕÐ¹Ù…±Õ”¤ì(€Õ¹Í…Ù•‘M½É•¡…¹•ÌõÑÉÕ”ì(€Í•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ U¹Í…Ù•¡…¹•Ìœ°Ñ•áÐµÝ…É¹¥¹œœ¤ì(€ÕÁ‘…Ñ•1¥Ù•M½É¥¹œ ¤ì(€…ÕÑ½Í…Ù•M½É”¡¥¹ÁÕÐ¤ì(ôì(Í½É•½É´¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¥¹ÁÕÐœ±•Ù•¹Ðôù¡…¹‘±•M½É•¡…¹”¡•Ù•¹Ð¹Ñ…É•Ð¤¤ì(Í½É•½É´¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ¡…¹”œ±•Ù•¹Ðôù¡…¹‘±•M½É•¡…¹”¡•Ù•¹Ð¹Ñ…É•Ð¤¤ì(Í½É•½É´¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ­•åÕÀœ±•Ù•¹Ðôùì(€¥˜¡•Ù•¹Ð¹Ñ…É•Ð˜™•Ù•¹Ð¹Ñ…É•Ð¹±…ÍÍ1¥ÍÐ¹½¹Ñ…¥¹Ì Í½É”µ¥¹ÁÕÐœ¤¥ÕÁ‘…Ñ•1¥Ù•M½É¥¹œ ¤ì(ô¤ì(Í½É•½É´¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ÍÕ‰µ¥Ðœ±•Ù•¹Ðôùí¥˜¡•Ù•¹Ð¹ÍÕ‰µ¥ÑÑ•È˜™l…±Õ±…Ñ•}Í½É•Ìœ°ÍÕ‰µ¥Ñ}Í½É•Ìt¹¥¹±Õ‘•Ì¡•Ù•¹Ð¹ÍÕ‰µ¥ÑÑ•È¹Ù…±Õ”¤¥Í¡½ÝM½É¥¹AÉ½É•ÍÌ ¤ì(€‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% Í½É•A…å±½…œ¤¹Ù…±Õ”õ)M=8¹ÍÑÉ¥¹¥™ä¡‰Õ¥±‘M½É•A…å±½… ¤¤ì(€Í½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° œ¹Í½É”µ¥¹ÁÕÐœ¤¹™½É… ¡¥¹ÁÕÐôù¥¹ÁÕÐ¹É•µ½Ù•ÑÑÉ¥‰ÕÑ” ¹…µ”œ¤¤ì(€Í•ÑÕÑ½Í…Ù•MÑ…ÑÕÌ M…Ù¥¹œ™Õ±°‘É…™ÓŠ˜œ°Ñ•áÐµÁÉ¥µ…Éäœ¤ì(ô¤ì(É•ÅÕ•ÍÑ¹¥µ…Ñ¥½¹É…µ”¡ÕÁ‘…Ñ•1¥Ù•M½É¥¹œ¤ì)ô)Ý¥¹‘½Ü¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ‰•™½É•Õ¹±½…œ±•Ù•¹Ðôùí¥˜ …Õ¹Í…Ù•‘M½É•¡…¹•Ì¥É•ÑÕÉ¸í•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤í•Ù•¹Ð¹É•ÑÕÉ¹Y…±Õ”ôœœíô¤ì()½¹ÍÐÍ½É¥¹=Ù•É±…äõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% Í½É¥¹AÉ½É•ÍÍ=Ù•É±…äœ¤ì)½¹ÍÐÍ½É¥¹AÉ½É•ÍÍQ•áÐõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% Í½É¥¹AÉ½É•ÍÍQ•áÐœ¤ì)½¹ÍÐÍ½É¥¹AÉ½É•ÍÍ	…Èõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% Í½É¥¹AÉ½É•ÍÍ	…Èœ¤ì)™Õ¹Ñ¥½¸Í¡½ÝM½É¥¹AÉ½É•ÍÌ ¥ì(¥˜ …Í½É¥¹=Ù•É±…ä¥É•ÑÕÉ¸ì(Í½É¥¹=Ù•É±…ä¹ÍÑå±”¹‘¥ÍÁ±…äô™±•àœì(½¹ÍÐÍÑ…•ÌõmlM…Ù¥¹œÍ½É•ÏŠ˜œ°ÈÁt±l…±Õ±…Ñ¥¹œÑ½Ñ…±ÏŠ˜œ°ÐÉt±lM½ÉÑ¥¹œ½µÁ•Ñ¥Ñ½ÉÏŠ˜œ°ØÑt±lI•Í½±Ù¥¹œÑ¥•ÏŠ˜œ°àÉt±lI•¹‘•É¥¹œÉ•ÍÕ±ÑÏŠ˜œ°äÑutì(±•Ð¥¹‘•àôÀì(½¹ÍÐ…‘Ù…¹”ô ¤ôùí¥˜¡¥¹‘•àøõÍÑ…•Ì¹±•¹Ñ ¥É•ÑÕÉ¸íÍ½É¥¹AÉ½É•ÍÍQ•áÐ¹Ñ•áÑ½¹Ñ•¹ÐõÍÑ…•Ím¥¹‘•áulÁtíÍ½É¥¹AÉ½É•ÍÍ	…È¹ÍÑå±”¹Ý¥‘Ñ õÍÑ…•Ím¥¹‘•áulÅt¬œ”œí¥¹‘•à¬¬íÍ•ÑQ¥µ•½ÕÐ¡…‘Ù…¹”°ØÔÀ¤íôì(…‘Ù…¹” ¤ì)ô()½¹ÍÐ™¥¹…±M½É•½É´õ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ™¥¹…±M½É•½É´œ¤ì)¥˜¡™¥¹…±M½É•½É´¥ì(™¥¹…±M½É•½É´¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ÍÕ‰µ¥Ðœ±•Ù•¹Ðôùì(€½¹ÍÐÍÕ‰µ¥ÑÑ•Èõ•Ù•¹Ð¹ÍÕ‰µ¥ÑÑ•Èì(€¥˜¡ÍÕ‰µ¥ÑÑ•È˜™ÍÕ‰µ¥ÑÑ•È¹Ù…±Õ”ôôô•¹•É…Ñ•}Ñ•ÍÑ}™¥¹…±}Í½É•Ìœ¥É•ÑÕÉ¸ì((€½¹ÍÐÁ…å±½…õíôì(€½¹ÍÐ‰å)Õ‘”õíôì(€±•Ð¥¹Ù…±¥‘5•ÍÍ…”ôœœì(€™¥¹…±M½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° œ¹™¥¹…°µÉ…¹¬µ¥¹ÁÕÐœ¤¹™½É… ¡¥¹ÁÕÐôùì(€€½¹ÍÐÁ…¥Èõ¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹Á…¥É%ì(€€½¹ÍÐ©Õ‘”õ¥¹ÁÕÐ¹‘…Ñ…Í•Ð¹©Õ‘•%ì(€€½¹ÍÐÉ…¹¬õÁ…ÉÍ•%¹Ð¡¥¹ÁÕÐ¹Ù…±Õ•ñðœÀœ°ÄÀ¤ì(€€¥˜ …Á…å±½…‘mÁ…¥Ét¥Á…å±½…‘mÁ…¥Étõíôì(€€Á…å±½…‘mÁ…¥Éum©Õ‘•tõÉ…¹¬ì(€€¥˜ …‰å)Õ‘•m©Õ‘•t¥‰å)Õ‘•m©Õ‘•tõmtì(€€‰å)Õ‘•m©Õ‘•t¹ÁÕÍ ¡É…¹¬¤ì(€ô¤ì((€½¹ÍÐÁ…¥É½Õ¹Ðõ™¥¹…±M½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° Ñ‰½‘äÑÈœ¤¹±•¹Ñ ì(€=‰©•Ð¹•¹ÑÉ¥•Ì¡‰å)Õ‘”¤¹Í½µ” ¡m©Õ‘”±É…¹­Ít¤ôùì(€€¥˜¡É…¹­Ì¹±•¹Ñ „ôõÁ…¥É½Õ¹ÑññÉ…¹­Ì¹Í½µ”¡É…¹¬ôùÉ…¹¬ðÅññÉ…¹¬ùÁ…¥É½Õ¹Ð¤¥ì(€€€¥¹Ù…±¥‘5•ÍÍ…”ôÙ•Éä¥¹…°©Õ‘”µÕÍÐÉ…¹¬•Ù•Éä½ÕÁ±”™É½´€ÄÑ¼€œ­Á…¥É½Õ¹Ð¬œ¸œì(€€€É•ÑÕÉ¸ÑÉÕ”ì(€€ô(€€¥˜¡¹•ÜM•Ð¡É…¹­Ì¤¹Í¥é”„ôõÁ…¥É½Õ¹Ð¥ì(€€€¥¹Ù…±¥‘5•ÍÍ…”ô… ¥¹…°©Õ‘”µÕÍÐÕÍ”•Ù•ÉäÉ…¹¬•á…Ñ±ä½¹”¸ÕÁ±¥…Ñ”É…¹­ÌÝ•É”™½Õ¹¸œì(€€€É•ÑÕÉ¸ÑÉÕ”ì(€€ô(€€É•ÑÕÉ¸™…±Í”ì(€ô¤ì((€¥˜¡¥¹Ù…±¥‘5•ÍÍ…”¥ì(€€•Ù•¹Ð¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€…±•ÉÐ¡¥¹Ù…±¥‘5•ÍÍ…”¤ì(€€É•ÑÕÉ¸ì(€ô((€‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ™¥¹…±I…¹­A…å±½…œ¤¹Ù…±Õ”õ)M=8¹ÍÑÉ¥¹¥™ä¡Á…å±½…¤ì(€™¥¹…±M½É•½É´¹ÅÕ•ÉåM•±•Ñ½É±° œ¹™¥¹…°µÉ…¹¬µ¥¹ÁÕÐœ¤¹™½É… ¡¥¹ÁÕÐôù¥¹ÁÕÐ¹É•µ½Ù•ÑÑÉ¥‰ÕÑ” ¹…µ”œ¤¤ì(€¥˜¡ÑåÁ•½˜Í¡½ÝM½É¥¹AÉ½É•ÍÌôôô™Õ¹Ñ¥½¸œ¥Í¡½ÝM½É¥¹AÉ½É•ÍÌ ¤ì(ô¤ì)ô()‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œ¹™¥¹…°µ©Õ‘”µÁ…”µ‰ÕÑÑ½¸œ¤¹™½É… ¡‰ÕÑÑ½¸ôùì(‰ÕÑÑ½¸¹…‘‘Ù•¹Ñ1¥ÍÑ•¹•È ±¥¬œ° ¤ôùì(€½¹ÍÐÁ…”õ‰ÕÑÑ½¸¹‘…Ñ…Í•Ð¹Á…”ì(€‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œ¹™¥¹…°µ©Õ‘”µ½±Õµ¸œ¤¹™½É… ¡•±°ôùí•±°¹ÍÑå±”¹‘¥ÍÁ±…äõ•±°¹‘…Ñ…Í•Ð¹©Õ‘•A…”ôôõÁ…”üœœè¹½¹”œíô¤ì(€‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œ¹™¥¹…°µ©Õ‘”µÁ…”µ‰ÕÑÑ½¸œ¤¹™½É… ¡¥Ñ•´ôùì(€€¥Ñ•´¹±…ÍÍ1¥ÍÐ¹Ñ½±” ‰Ñ¸µ‘…É¬œ±¥Ñ•´ôôõ‰ÕÑÑ½¸¤ì(€€¥Ñ•´¹±…ÍÍ1¥ÍÐ¹Ñ½±” ‰Ñ¸µ½ÕÑ±¥¹”µ‘…É¬œ±¥Ñ•´„ôõ‰ÕÑÑ½¸¤ì(€ô¤ì(ô¤ì)ô¤ì()…Íå¹Œ™Õ¹Ñ¥½¸É•™É•Í¡I•¥ÍÑÉ…Ñ¥½¹•Í­Må¹Œ ¥ì(½¹ÍÐ‰½àõ‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ‘•Í­Må¹MÑ…ÑÌœ¤ì(¥˜ …‰½à¥É•ÑÕÉ¸ì(ÑÉåì(€½¹ÍÐÉ•ÍÁ½¹Í”õ…Ý…¥Ð™•Ñ  É•¥ÍÑÉ…Ñ¥½¸µÍå¹Œ¹Á¡ÀýÉ½Õ¹‘}¥ôðüô‘É½Õ¹‘%üøœ±í¡•…‘•ÉÌéì`µI•ÅÕ•ÍÑ•µ]¥Ñ œèa51!ÑÑÁI•ÅÕ•ÍÐõô¤ì(€½¹ÍÐ‘…Ñ„õ…Ý…¥ÐÉ•ÍÁ½¹Í”¹©Í½¸ ¤ì(€¥˜ …‘…Ñ„¹½¬¥É•ÑÕÉ¸ì(€‰½à¹ÅÕ•ÉåM•±•Ñ½È m‘…Ñ„µÍÑ…Ðô‰±•…‘•ÉÌ‰tœ¤¹Ñ•áÑ½¹Ñ•¹Ðõ‘…Ñ„¹±•…‘•ÉÍ}É•…‘ä¬œ€¼€œ­‘…Ñ„¹±•…‘•ÉÍ}Ñ½Ñ…°ì(€‰½à¹ÅÕ•ÉåM•±•Ñ½È m‘…Ñ„µÍÑ…Ðô‰™½±±½Ý•ÉÌ‰tœ¤¹Ñ•áÑ½¹Ñ•¹Ðõ‘…Ñ„¹™½±±½Ý•ÉÍ}É•…‘ä¬œ€¼€œ­‘…Ñ„¹™½±±½Ý•ÉÍ}Ñ½Ñ…°ì(€‰½à¹ÅÕ•ÉåM•±•Ñ½È m‘…Ñ„µÍÑ…Ðô‰µ¥ÍÍ¥¹œ‰tœ¤¹Ñ•áÑ½¹Ñ•¹Ðõ‘…Ñ„¹µ¥ÍÍ¥¹}‰¥‰Ìì(€‰½à¹ÅÕ•ÉåM•±•Ñ½È m‘…Ñ„µÍÑ…Ðô‰ÕÁ‘…Ñ•‰tœ¤¹Ñ•áÑ½¹Ñ•¹Ðõ‘…Ñ„¹±…ÍÑ}ÕÁ‘…Ñ•ñð9¼‘•Í¬¡…¹•Ìå•Ðœì(õ…Ñ ¡•ÉÉ½È¥íô)ô)É•™É•Í¡I•¥ÍÑÉ…Ñ¥½¹•Í­Må¹Œ ¤ì)Í•Ñ%¹Ñ•ÉÙ…°¡É•™É•Í¡I•¥ÍÑÉ…Ñ¥½¹•Í­Må¹Œ°ÌÀÀÀ¤ì(ð½ÍÉ¥ÁÐøð½‰½‘äøð½¡Ñµ°ø(

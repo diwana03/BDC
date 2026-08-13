@@ -1257,28 +1257,13 @@ try{
    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
   }elseif($action==='random_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
-   $leaders=$pdo->prepare("SELECT id FROM bdc_test_scoring_entries WHERE round_id=:r AND dance_role='leader' AND entry_status='active' ORDER BY bib_number");
-   $followers=$pdo->prepare("SELECT id FROM bdc_test_scoring_entries WHERE round_id=:r AND dance_role='follower' AND entry_status='active' ORDER BY bib_number");
-   $leaders->execute(['r'=>$roundId]);$followers->execute(['r'=>$roundId]);
-   $leaderIds=array_map('intval',$leaders->fetchAll(PDO::FETCH_COLUMN));
-   $followerIds=array_map('intval',$followers->fetchAll(PDO::FETCH_COLUMN));
-   shuffle($followerIds);
-   $pdo->beginTransaction();
-   try{
-    $pdo->prepare("DELETE FROM bdc_test_scoring_final_pairs WHERE round_id=:r")->execute(['r'=>$roundId]);
-    $ins=$pdo->prepare("INSERT INTO bdc_test_scoring_final_pairs(round_id,pair_number,leader_entry_id,follower_entry_id,pairing_status,created_by)
-      VALUES(:r,:n,:l,NULLIF(:f,0),'draft',:u)");
-    foreach($leaderIds as $i=>$leaderId)$ins->execute(['r'=>$roundId,'n'=>$i+1,'l'=>$leaderId,'f'=>$followerIds[$i]??0,'u'=>$userId?:null]);
-    auditScoring($pdo,$roundId,$userId,'final_pairing_randomized');
-    $pdo->commit();
-    $notice='Random Final pairing generated. Review before confirming.';
-   }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+   $random=App\Services\RandomPairingService::randomize($pdo,$roundId,true,$userId?:null);auditScoring($pdo,$roundId,$userId,'final_pairing_randomized',['algorithm'=>$random['algorithm'],'hash'=>$random['hash']]);$notice='Secure random Final pairing generated. Review before confirming.';
   }elseif($action==='confirm_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    $missing=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_final_pairs WHERE round_id=:r AND follower_entry_id IS NULL");
    $missing->execute(['r'=>$roundId]);
    if((int)$missing->fetchColumn()>0)throw new RuntimeException('Every Final Leader must have a Follower before confirming.');
-   $pdo->prepare("UPDATE bdc_test_scoring_final_pairs SET pairing_status='confirmed' WHERE round_id=:r")->execute(['r'=>$roundId]);
+   App\Services\RandomPairingService::confirm($pdo,$roundId,true);
    auditScoring($pdo,$roundId,$userId,'final_pairing_confirmed');
    $pdo->prepare("DELETE FROM bdc_test_scoring_final_results WHERE round_id=:r")->execute(['r'=>$roundId]);$notice='Final pairing confirmed. Relative Placement scoring is now available below.';
   }elseif($action==='generate_results'){$roundId=(int)$_POST['round_id'];$round=loadRound($pdo,$roundId);if(!$round)throw new RuntimeException('Round not found.');computeResults($pdo,$round,$userId);$notice='Results generated. Review before publishing or discarding.';
@@ -1646,7 +1631,7 @@ $csrf=Csrf::token();
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
    <button class="btn btn-warning">Random Match</button>
-  </form>
+  </form><a class="btn btn-outline-danger" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>&data_mode=test">Test Emcee Match Link</a>
  </div>
 
  <form method="post">

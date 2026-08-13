@@ -28,6 +28,8 @@ $bdcEnvironmentClass =
 ) ?>">Logout</a></div></header><aside class="admin-sidebar-v203"><nav><a class="active" href="<?= e(
     url("admin/"),
 ) ?>"><span>▦</span>Dashboard</a><a href="<?= e(
+    url("admin/live-screen/"),
+) ?>"><span>▣</span>Live Projection <em>TOP</em></a><a href="<?= e(
     url("admin/competitors/"),
 ) ?>"><span>♙</span>Competitors</a><?php if (
     App\Core\Auth::isSuperAdmin()

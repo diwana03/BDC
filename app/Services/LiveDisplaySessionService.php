@@ -45,6 +45,7 @@ final class LiveDisplaySessionService
             );
         } catch (\Throwable) {
         }
+        foreach(["ALTER TABLE bdc_live_display_sessions ADD COLUMN effect_type VARCHAR(24) NULL AFTER screen_type","ALTER TABLE bdc_live_display_sessions ADD COLUMN effect_version BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER effect_type"] as $sql){try{$pdo->exec($sql);}catch(\Throwable){}}
     }
     public static function generate(
         PDO $pdo,
@@ -131,6 +132,7 @@ final class LiveDisplaySessionService
             "final_results",
             "results",
             "winners",
+            "matching",
         ];
         if (!in_array($type, $allowed, true)) {
             $type = "holding";
@@ -211,5 +213,11 @@ final class LiveDisplaySessionService
             "m" => $test ? "test" : "real",
         ]);
         return self::forEvent($pdo, $eventId, $test) ?: [];
+    }
+    public static function effect(PDO $pdo,int $eventId,bool $test,string $effect,int $userId):array
+    {
+        self::ensure($pdo);if(!in_array($effect,['none','drumroll','fireworks','confetti'],true))throw new \RuntimeException('Invalid presentation effect.');
+        $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
+        return self::forEvent($pdo,$eventId,$test)?:[];
     }
 }
