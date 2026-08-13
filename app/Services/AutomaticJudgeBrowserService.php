@@ -109,6 +109,12 @@ final class AutomaticJudgeBrowserService
             "UPDATE bdc_scoring_judge_sessions SET status=CASE WHEN status='not_started' THEN 'scoring' ELSE status END,opened_at=COALESCE(opened_at,NOW()) WHERE id=:id",
         )->execute(["id" => $sessionId]);
     }
+    public static function acceptCriteria(PDO $pdo, int $sessionId): void
+    {
+        self::ensureExpiry($pdo);
+        $pdo->prepare("UPDATE bdc_scoring_judge_sessions SET criteria_version=:version,criteria_accepted_at=NOW() WHERE id=:id")
+            ->execute(['version'=>JudgingCriteriaService::VERSION,'id'=>$sessionId]);
+    }
     public static function markSaved(PDO $pdo, int $sessionId): void
     {
         $pdo->prepare(
@@ -136,7 +142,7 @@ final class AutomaticJudgeBrowserService
             );
         }
         $stmt = $pdo->prepare(
-            "UPDATE bdc_scoring_judge_sessions SET status='scoring',submitted_at=NULL,unlocked_at=NOW(),unlocked_by=:user,unlock_reason=:reason WHERE round_id=:round AND judge_id=:judge",
+            "UPDATE bdc_scoring_judge_sessions SET status='scoring',submitted_at=NULL,unlocked_at=NOW(),unlocked_by=:user,unlock_reason=:reason WHERE round_id=:round AND judge_id=:judge AND status='submitted'",
         );
         $stmt->execute([
             "user" => $userId,
@@ -294,7 +300,7 @@ final class AutomaticJudgeBrowserService
             $token,
         ];
     }
-    private static function ensureExpiry(PDO $pdo):void{try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}$pdo->exec("UPDATE bdc_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 12 HOUR) WHERE expires_at IS NULL");}
+    private static function ensureExpiry(PDO $pdo):void{try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}foreach(["criteria_version VARCHAR(32) NULL AFTER submitted_at","criteria_accepted_at DATETIME NULL AFTER criteria_version","unlocked_at DATETIME NULL AFTER criteria_accepted_at","unlocked_by BIGINT UNSIGNED NULL AFTER unlocked_at","unlock_reason VARCHAR(500) NULL AFTER unlocked_by"] as $definition){try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN ".$definition);}catch(\Throwable){}}$pdo->exec("UPDATE bdc_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 12 HOUR) WHERE expires_at IS NULL");}
     private static function sessionForJudge(PDO $pdo, int $judgeId): ?array
     {
         $stmt = $pdo->prepare(

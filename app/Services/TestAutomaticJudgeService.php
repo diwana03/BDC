@@ -29,6 +29,7 @@ final class TestAutomaticJudgeService
             KEY idx_test_judge_session_round(round_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         try{$pdo->exec("ALTER TABLE bdc_test_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}
+        foreach(["criteria_version VARCHAR(32) NULL AFTER submitted_at","criteria_accepted_at DATETIME NULL AFTER criteria_version","unlocked_at DATETIME NULL AFTER criteria_accepted_at","unlocked_by BIGINT UNSIGNED NULL AFTER unlocked_at","unlock_reason VARCHAR(500) NULL AFTER unlocked_by"] as $definition){try{$pdo->exec("ALTER TABLE bdc_test_scoring_judge_sessions ADD COLUMN ".$definition);}catch(\Throwable){}}
         $pdo->exec("UPDATE bdc_test_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 12 HOUR) WHERE expires_at IS NULL");
     }
 
@@ -110,6 +111,21 @@ final class TestAutomaticJudgeService
         $pdo->prepare(
             "UPDATE bdc_test_scoring_judge_sessions SET status='submitted',last_saved_at=NOW(),submitted_at=NOW() WHERE id=:id AND status<>'submitted'",
         )->execute(["id" => $sessionId]);
+    }
+
+    public static function acceptCriteria(PDO $pdo, int $sessionId): void
+    {
+        $pdo->prepare("UPDATE bdc_test_scoring_judge_sessions SET criteria_version=:version,criteria_accepted_at=NOW() WHERE id=:id")
+            ->execute(['version'=>JudgingCriteriaService::VERSION,'id'=>$sessionId]);
+    }
+
+    public static function unlock(PDO $pdo,int $roundId,int $judgeId,int $userId,string $reason):void
+    {
+        $reason=trim($reason);
+        if($reason==='')throw new RuntimeException('Enter a reason before reopening judge scoring.');
+        $stmt=$pdo->prepare("UPDATE bdc_test_scoring_judge_sessions SET status='scoring',submitted_at=NULL,unlocked_at=NOW(),unlocked_by=:user,unlock_reason=:reason WHERE round_id=:round AND judge_id=:judge AND status='submitted'");
+        $stmt->execute(['user'=>$userId?:null,'reason'=>$reason,'round'=>$roundId,'judge'=>$judgeId]);
+        if($stmt->rowCount()!==1)throw new RuntimeException('Submitted test judge session not found.');
     }
 
     public static function submitJudge(

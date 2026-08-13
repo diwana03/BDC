@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const cards=[...document.querySelectorAll('.score-row')];
  if(!cards.length)return;
+ const criteria=document.createElement('button');criteria.type='button';criteria.className='btn btn-outline-primary mb-3';criteria.textContent='View Criteria';criteria.onclick=()=>alert('JUDGING CRITERIA\n\nTiming 20%\nTechnique 20%\nConnection 20%\nMusicality 20%\nPresentation 10%\nDifficulty 10%\n\nHeats: use the configured YES quota and assign A1, A2 and A3 no more than once per role.\n\nJudge independently and keep all scoring confidential.');document.getElementById('reviewList')?.before(criteria);
  const limit=Number((document.querySelector('.counter')?.textContent.match(/YES\s+\d+\/(\d+)/i)||[])[1]||10);
  const roles=['leader','follower'];
  const state={leader:{yes:0,alt1:0,alt2:0,alt3:0},follower:{yes:0,alt1:0,alt2:0,alt3:0}};
@@ -42,4 +43,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(newKey)state[role][newKey]++;
   card.dataset.currentMark=newValue;update();
  })));update();
+});
+document.addEventListener('DOMContentLoaded',()=>{
+ if(!document.body.textContent.includes('Submitted.'))return;
+ const endpoint=new URL(location.href);endpoint.searchParams.set('status','1');
+ (function poll(){endpoint.searchParams.set('_',Date.now());fetch(endpoint,{cache:'no-store'}).then(r=>r.json()).then(data=>{if(data.status!=='submitted')location.reload()}).catch(()=>{}).finally(()=>setTimeout(poll,1000));})();
 });
