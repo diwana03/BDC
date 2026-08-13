@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev196",
-  "build": 2850,
+  "version": "2.3.3-dev197",
+  "build": 2860,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores the Manual and Automatic Testing selection screen",
-    "Routes Manual Testing to the clean direct panel entry",
-    "Routes Automatic Testing to the existing automatic scoring screen",
+    "Applies the Live-parity enhancement layer to the clean Manual Testing panel",
+    "Keeps the Testing mode badge, special categories and admin controls visible",
+    "Keeps Manual Testing redirects on the clean panel after every action",
     "Keeps Testing-only random generators out of Live",
-    "Retains Bluehost cache and compression protection"
+    "Retains the stable mode selection and Bluehost response protection"
   ]
 }

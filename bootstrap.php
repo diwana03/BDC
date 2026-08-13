@@ -55,7 +55,7 @@ function url(string $path = ''): string
 
 $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
-$bdcIsScoringTestIndex = preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#', $bdcBootstrapPath) === 1;
+$bdcIsScoringTestIndex = preg_match('#/admin/scoring-tests(?:/(?:index|panel)\.php)?/?$#', $bdcBootstrapPath) === 1;
 $bdcTestMode = (string)($_GET['test_mode'] ?? $_POST['test_mode'] ?? $_SESSION['bdc_test_scoring_mode'] ?? '');
 if (!in_array($bdcTestMode, ['manual','automated'], true)) {
     $bdcTestMode = '';
@@ -90,7 +90,7 @@ if (
         (int)(\App\Core\Auth::user()['id'] ?? 0)
     );
     $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
-    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&competitors_generated=1'.$modeQuery),true,303);
+    header('Location: '.url('admin/scoring-tests/panel.php?round_id='.$roundId.'&competitors_generated=1'.$modeQuery),true,303);
     exit;
 }
 
@@ -135,7 +135,7 @@ if (
         $roundId=(int)$pdo->lastInsertId();
     }
     $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
-    header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&special_created=1'.$modeQuery),true,303);
+    header('Location: '.url('admin/scoring-tests/panel.php?round_id='.$roundId.'&special_created=1'.$modeQuery),true,303);
     exit;
 }
 
@@ -161,7 +161,7 @@ if (
             $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:y,callback_count=:y,tier_manual_override=1 WHERE id=:r')
                 ->execute(['y'=>$yes,'r'=>$roundId]);
             $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
-            header('Location: '.url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&special_settings=1'.$modeQuery),true,303);
+            header('Location: '.url('admin/scoring-tests/panel.php?round_id='.$roundId.'&special_settings=1'.$modeQuery),true,303);
             exit;
         }
     }
@@ -194,7 +194,7 @@ if (
     );
     $modeQuery=$isTest && $bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
     $target=$isTest
-        ? url('admin/scoring-tests/index.php?legacy=1&round_id='.$roundId.'&shared_engine=1'.$modeQuery)
+        ? url('admin/scoring-tests/panel.php?round_id='.$roundId.'&shared_engine=1'.$modeQuery)
         : url('admin/scoring/?round_id='.$roundId.'&shared_engine=1');
     header('Location: '.$target,true,303);
     exit;
