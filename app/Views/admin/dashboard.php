@@ -10,7 +10,7 @@ $bdcEnvironmentClass =
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard | BDC Admin</title><link rel="stylesheet" href="<?= e(
     url("public/assets/css/app.css?v=204"),
 ) ?>"><link rel="stylesheet" href="<?= e(
-    url("public/assets/css/bdc-brand-theme.css?v=4"),
+    url("public/assets/css/bdc-brand-theme.css?v=5"),
 ) ?>"></head><body class="admin-v203 <?= e(
     $bdcEnvironmentClass,
 ) ?>"><div class="admin-environment-banner" style="padding:8px 12px;text-align:center;font-weight:800;letter-spacing:.08em;"><?= e(

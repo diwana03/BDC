@@ -79,5 +79,11 @@
 .admin-v203.admin-env-staging .admin-environment-banner{background:#f59e0b!important;color:#171717!important;border-bottom:5px solid #7a4e00}
 .admin-v203.admin-env-staging .admin-topbar-v203{background:linear-gradient(100deg,#3f2a00,#765000)}
 .admin-v203.admin-env-staging .admin-sidebar-v203{background:linear-gradient(180deg,#6a4700 0%,#3f2a00 100%)}
+.admin-v203.admin-env-staging .admin-nav-group-v203[open]{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.08)}
+.admin-v203.admin-env-staging .admin-nav-group-v203 summary{color:#fff}
+.admin-v203.admin-env-staging .admin-nav-group-v203 summary:before{color:#ffd166}
+.admin-v203.admin-env-staging .admin-nav-group-v203 summary:hover{background:rgba(255,255,255,.1);color:#fff}
+.admin-v203.admin-env-staging .admin-nav-group-links-v203 a{color:rgba(255,255,255,.9)}
+.admin-v203.admin-env-staging .admin-nav-group-links-v203 a>span{color:#ffe3a1}
 
 @media(max-width:575.98px){.portal-top-actions{gap:.35rem}.portal-top-actions .btn{padding-left:.65rem!important;padding-right:.65rem!important}.portal-brand span:last-child{max-width:175px;white-space:normal;line-height:1.1}}

@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev176",
-  "build": 2650,
+  "version": "2.3.3-dev177",
+  "build": 2660,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Renders collapsible admin categories directly on the server",
-    "Removes the dashboard sidebar dependency on inline JavaScript and browser storage",
-    "Keeps Release Manager reliably available under Testing & System",
-    "Organizes daily tools into five app-style categories",
-    "Preserves permissions, badges and notification counts"
+    "Restores high-contrast sidebar links inside Staging navigation folders",
+    "Uses a dark translucent folder surface on the amber Staging shell",
+    "Keeps folder titles, icons and links clearly readable",
+    "Bumps the brand stylesheet cache version",
+    "Preserves the server-rendered collapsible navigation"
   ]
 }
