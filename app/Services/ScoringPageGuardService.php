@@ -10,6 +10,7 @@ final class ScoringPageGuardService{
    'parent_round_id'=>'BIGINT UNSIGNED NULL AFTER event_id',
    'source_round_id'=>'BIGINT UNSIGNED NULL AFTER parent_round_id',
    'scoring_mode'=>"ENUM('manual','automated') NOT NULL DEFAULT 'manual' AFTER round_type",
+   'scheduled_at'=>'DATETIME NULL AFTER round_type',
    'dance_style'=>"ENUM('bachata','salsa') NOT NULL DEFAULT 'bachata' AFTER event_id",
    'tier_manual_override'=>'TINYINT(1) NOT NULL DEFAULT 0 AFTER callback_count',
    'witness_1'=>'VARCHAR(190) NULL AFTER source_round_id',

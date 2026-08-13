@@ -1296,7 +1296,7 @@ if($round && ($round['scoring_mode']??'manual')==='automated' && $round['round_t
  $resultStmt=$pdo->prepare("SELECT * FROM bdc_scoring_results WHERE round_id=:r ORDER BY rank_number,entry_id");$resultStmt->execute(['r'=>$roundId]);$automaticResults=[];foreach($resultStmt->fetchAll() as $r)$automaticResults[(int)$r['entry_id']]=$r;
  $roleCounts=['leader'=>0,'follower'=>0];foreach($automaticEntries as $entry)$roleCounts[$entry['dance_role']]++;
  $automaticCsrf=Csrf::token();$judgeRows=max(5,count($automaticJudges));
- ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Automatic Scoring | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-cell{width:82px}.callback{background:#d1e7dd}.alternate{background:#fff3cd}.tie_pending{background:#f8d7da}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:12px;z-index:5}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-outline-light btn-sm" href="?">Scoring Modes</a><a class="btn btn-warning btn-sm" href="../registration-desk/">Registration Desk</a></div></div></nav><main class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="text-uppercase text-primary fw-bold small">Automatic Scoring</div><h1 class="h2 mb-1"><?=e($round['event_name'])?></h1><p class="text-muted mb-0"><?=e($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])):'Date pending')?> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></p></div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$round['status'])))?></span></div>
+ ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Automatic Scoring | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-cell{width:82px}.callback{background:#d1e7dd}.alternate{background:#fff3cd}.tie_pending{background:#f8d7da}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:12px;z-index:5}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-outline-light btn-sm" href="?">Scoring Modes</a><a class="btn btn-warning btn-sm" href="../registration-desk/">Registration Desk</a></div></div></nav><main class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="text-uppercase text-primary fw-bold small">Automatic Scoring</div><h1 class="h2 mb-1"><?=e($round['event_name'])?></h1><p class="text-muted mb-0"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></p></div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$round['status'])))?></span></div>
  <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?>
  <div class="alert alert-info"><strong>Calculation order:</strong> valid judge average, judge majority for equal averages, then Chief Judge score. An unresolved tie crossing the callback line is held for Chief Judge review. Publishing always requires an authorized review action.</div>
  <div class="row g-3 mb-4"><div class="col-sm-4"><div class="card shadow-sm border-0"><div class="card-body"><div class="text-muted">Leaders</div><div class="display-6 fw-bold"><?=$roleCounts['leader']?></div></div></div></div><div class="col-sm-4"><div class="card shadow-sm border-0"><div class="card-body"><div class="text-muted">Followers</div><div class="display-6 fw-bold"><?=$roleCounts['follower']?></div></div></div></div><div class="col-sm-4"><div class="card shadow-sm border-0"><div class="card-body"><div class="text-muted">Callbacks per role</div><div class="display-6 fw-bold"><?=(int)$round['callback_count']?></div></div></div></div></div>
@@ -1563,7 +1563,7 @@ $csrf=Csrf::token();
 </td>
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])):'Date pending')?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['round_type']==='final'):?>
 <?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,function($suggestion)use($round){
  $check=DivisionProgressionService::eligibilityFor((string)$round['division'],(float)$suggestion['novice_points'],(float)$suggestion['intermediate_points'],(float)$suggestion['advanced_points'],(string)$suggestion['current_division'],!empty($suggestion['competed_intermediate']),!empty($suggestion['competed_advanced']),!empty($suggestion['competed_all_star']));
@@ -1954,6 +1954,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="semifinal">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Semifinal date and time">
       <button class="btn btn-warning">Move Callbacks to Semifinal</button>
      </form>
      <form method="post">
@@ -1961,6 +1962,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
       <button class="btn btn-dark">Move Callbacks Directly to Final</button>
      </form>
     <?php elseif($round['round_type']==='semifinal'):?>
@@ -1969,6 +1971,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
       <button class="btn btn-dark">Move Semifinal Callbacks to Final</button>
      </form>
     <?php endif;?>

@@ -11,7 +11,7 @@ final class SchemaUpdater
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_rounds(
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,
    parent_round_id BIGINT UNSIGNED NULL,source_round_id BIGINT UNSIGNED NULL,
-   round_type ENUM('heats','semifinal','final') NOT NULL,division ENUM('novice','intermediate','advanced','all_star') NOT NULL,
+   round_type ENUM('heats','semifinal','final') NOT NULL,scheduled_at DATETIME NULL,division ENUM('novice','intermediate','advanced','all_star') NOT NULL,
    yes_count INT UNSIGNED NOT NULL DEFAULT 10,callback_count INT UNSIGNED NOT NULL DEFAULT 10,
    tier_manual_override TINYINT(1) NOT NULL DEFAULT 0,yes_weight DECIMAL(5,2) NOT NULL DEFAULT 10.00,
    alt1_weight DECIMAL(5,2) NOT NULL DEFAULT 4.50,alt2_weight DECIMAL(5,2) NOT NULL DEFAULT 4.30,alt3_weight DECIMAL(5,2) NOT NULL DEFAULT 4.20,
@@ -147,6 +147,7 @@ final class SchemaUpdater
    self::addColumn($pdo,'bdc_scoring_rounds','witness_3','VARCHAR(190) NULL AFTER witness_2');
    // Allow the intermediate round in existing installations.
    try{$pdo->exec("ALTER TABLE bdc_scoring_rounds MODIFY round_type ENUM('heats','semifinal','final') NOT NULL");}catch(\Throwable $e){}
+   self::addColumn($pdo,'bdc_scoring_rounds','scheduled_at','DATETIME NULL AFTER round_type');
    self::addIndex($pdo,'bdc_scoring_rounds','idx_scoring_parent','(parent_round_id)');
   }
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_final_pairs(

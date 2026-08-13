@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev184",
-  "build": 2730,
+  "version": "2.3.3-dev185",
+  "build": 2740,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Shows the event date at the top of every open scoring round",
-    "Covers Heats, Semifinal, and Final scoring forms",
-    "Includes manual and automatic scoring workflows",
-    "Formats dates consistently and shows Date pending when missing",
-    "Provides matching event-date visibility on Testing and Live dashboards"
+    "Stores a separate date and time for every Heats, Semifinal, and Final round",
+    "Prompts for the next-round schedule when callbacks advance",
+    "Shows round schedules on scoring forms, Saved Rounds, and projector screens",
+    "Falls back safely to the overall event date for existing unscheduled rounds",
+    "Provides matching round scheduling on Testing and Live dashboards"
   ]
 }

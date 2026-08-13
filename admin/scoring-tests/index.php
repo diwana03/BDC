@@ -353,7 +353,7 @@ function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int 
     return $actual;
 }
 
-function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $userId):int{
+function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $userId,string $scheduledAt=''):int{
     if(!in_array($nextType,['semifinal','final'],true)) throw new RuntimeException('Invalid next round.');
     $pending=$pdo->prepare("
       SELECT COUNT(*) FROM (
@@ -374,6 +374,7 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     if($existingId>0){
         $pdo->beginTransaction();
         try{
+            if($scheduledAt!=='')$pdo->prepare('UPDATE bdc_test_scoring_rounds SET scheduled_at=:scheduled WHERE id=:id')->execute(['scheduled'=>$scheduledAt,'id'=>$existingId]);
             syncCallbacksToChildRound($pdo,$source,$existingId,$userId);
             $pdo->prepare("UPDATE bdc_test_scoring_rounds SET status='completed' WHERE id=:id")
                 ->execute(['id'=>$source['id']]);
@@ -392,12 +393,12 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     $pdo->beginTransaction();
     try{
         $insert=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(
-          event_id,parent_round_id,source_round_id,round_type,division,
+          event_id,parent_round_id,source_round_id,round_type,scheduled_at,division,
           yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,
           status,created_by
-        ) VALUES(:e,:p,:s,:t,:d,:yes,:cb,:yw,:a1,:a2,:a3,'draft',:u)");
+        ) VALUES(:e,:p,:s,:t,NULLIF(:scheduled,''),:d,:yes,:cb,:yw,:a1,:a2,:a3,'draft',:u)");
         $insert->execute([
-          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,
+          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,'scheduled'=>$scheduledAt,
           'd'=>$source['division'],'yes'=>$source['yes_count'],'cb'=>$source['callback_count'],
           'yw'=>$source['yes_weight'],'a1'=>$source['alt1_weight'],'a2'=>$source['alt2_weight'],
           'a3'=>$source['alt3_weight'],'u'=>$userId?:null
@@ -622,10 +623,13 @@ try{
    $eventId=(int)($_POST['event_id']??0);
    $newEventName=trim((string)($_POST['new_event_name']??''));
    $newEventDate=trim((string)($_POST['new_event_date']??''));
+   $roundSchedule=trim((string)($_POST['scheduled_at']??''));
    $division=(string)($_POST['division']??'novice');
    $roundType=(string)($_POST['round_type']??'heats');
    if(!in_array($division,['novice','intermediate','advanced','all_star'],true))throw new RuntimeException('Invalid division.');
    if(!in_array($roundType,['heats','final'],true))throw new RuntimeException('Invalid round type.');
+   if($roundSchedule!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/',$roundSchedule))throw new RuntimeException('Enter a valid round date and time.');
+   $roundSchedule=$roundSchedule===''?'':str_replace('T',' ',$roundSchedule).':00';
    if($eventId>0 && $newEventName!=='')throw new RuntimeException('Select an existing event or create a new event, not both.');
    if($eventId<1){
     if($newEventName==='')throw new RuntimeException('Select an existing event or enter a new event name.');
@@ -644,8 +648,8 @@ try{
    $existingId=(int)$existing->fetchColumn();
    if($existingId>0){$roundId=$existingId;$notice=ucfirst($roundType).' round already exists. Existing round opened.';}
    else{
-    $s=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:d,10,10,10.00,4.50,4.30,4.20,:u)");
-    $s->execute(['e'=>$eventId,'rt'=>$roundType,'d'=>$division,'u'=>$userId]);
+    $s=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,scheduled_at,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,NULLIF(:scheduled,''),:d,10,10,10.00,4.50,4.30,4.20,:u)");
+    $s->execute(['e'=>$eventId,'rt'=>$roundType,'scheduled'=>$roundSchedule,'d'=>$division,'u'=>$userId]);
     $roundId=(int)$pdo->lastInsertId();
     auditScoring($pdo,$roundId,$userId,'round_created',['round_type'=>$roundType,'new_event'=>$newEventName!=='']);
     $notice=ucfirst($roundType).' round created.';
@@ -956,10 +960,13 @@ try{
   }elseif($action==='create_next_round'){
    $roundId=(int)($_POST['round_id']??0);
    $nextType=(string)($_POST['next_round_type']??'');
+   $nextSchedule=trim((string)($_POST['next_scheduled_at']??''));
+   if($nextSchedule!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/',$nextSchedule))throw new RuntimeException('Enter a valid next-round date and time.');
+   $nextSchedule=$nextSchedule===''?'':str_replace('T',' ',$nextSchedule).':00';
    $source=loadRound($pdo,$roundId);
    if(!$source)throw new RuntimeException('Source round not found.');
    if(!in_array($source['status'],['awaiting_decision','scores_submitted'],true))throw new RuntimeException('Submit scores before proceeding.');
-   $roundId=createNextScoringRound($pdo,$source,$nextType,$userId);
+   $roundId=createNextScoringRound($pdo,$source,$nextType,$userId,$nextSchedule);
    $tierInfo=applyAutomaticTier($pdo,$roundId,true);
    $movedStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_test_scoring_entries WHERE round_id=:r AND entry_status='active' GROUP BY dance_role");
    $movedStmt->execute(['r'=>$roundId]);
@@ -1516,6 +1523,11 @@ $csrf=Csrf::token();
 <input class="form-control" type="date" name="new_event_date">
 <div class="form-text">Optional now. Complete or correct it later in Events &amp; Tickets.</div>
 </div>
+<div class="col-lg-4">
+<label class="form-label">Round Date &amp; Time</label>
+<input class="form-control" type="datetime-local" name="scheduled_at">
+<div class="form-text">Schedule for the selected Heats or Final.</div>
+</div>
 <div class="col-12 d-flex flex-wrap gap-2">
 <button class="btn btn-success" name="round_type" value="heats">Create Heats Round</button>
 <button class="btn btn-dark" name="round_type" value="final">Create Final Round</button>
@@ -1525,7 +1537,7 @@ $csrf=Csrf::token();
 </div></div>
 <div class="card shadow-sm"><div class="card-body">
 <h2 class="h5">Saved Rounds</h2>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Event Date</th><th>Dance</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Event Date</th><th>Round Schedule</th><th>Dance</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
 <tbody><?php foreach($rounds as $r):
  $status=(string)$r['status'];
  $label=match($status){
@@ -1550,6 +1562,7 @@ $csrf=Csrf::token();
 <tr>
 <td><?=e($r['event_name'])?></td>
 <td class="text-nowrap"><?=e($r['event_date']?date('d M Y',strtotime((string)$r['event_date'])):'Date pending')?></td>
+<td class="text-nowrap"><?=e(!empty($r['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$r['scheduled_at'])):'Not scheduled')?></td>
 <td><span class="badge text-bg-secondary"><?=e(ucfirst($r['dance_style']??'bachata'))?></span></td>
 <td><?=e(ucfirst($r['division']))?></td>
 <td><?=e(ucfirst($r['round_type']))?></td>
@@ -1575,7 +1588,7 @@ $csrf=Csrf::token();
 </td>
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="./" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])):'Date pending')?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<div class="mb-3"><a href="./" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['round_type']==='final'):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
@@ -1928,6 +1941,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="semifinal">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Semifinal date and time">
       <button class="btn btn-warning">Move Callbacks to Semifinal</button>
      </form>
      <form method="post">
@@ -1935,6 +1949,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
       <button class="btn btn-dark">Move Callbacks Directly to Final</button>
      </form>
     <?php elseif($round['round_type']==='semifinal'):?>
@@ -1943,6 +1958,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
+      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
       <button class="btn btn-dark">Move Semifinal Callbacks to Final</button>
      </form>
     <?php endif;?>
