@@ -60,7 +60,7 @@ $bdcEnvironmentClass =
 ): ?><i><?= count($pendingPointAdjustments) ?></i><?php endif; ?></a><?php if (
     App\Core\Auth::isSuperAdmin()
 ): ?><a href="<?= e(
-    url("admin/scoring-tests/select-mode.php"),
+    url("admin/scoring-tests/dashboard.php?test_mode=manual"),
 ) ?>"><span>⚗</span>Scoring Tests Dashboard <em>TEST</em></a><?php endif; ?><a href="<?= e(
     url("admin/results/"),
 ) ?>"><span>♕</span>Result Repository</a><a href="<?= e(

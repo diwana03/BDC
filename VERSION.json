@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev193",
-  "build": 2820,
+  "version": "2.3.3-dev194",
+  "build": 2830,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Disables PHP-side compression for the large Testing scoring response",
-    "Disables Bluehost caching and double compression for every Scoring Tests route",
-    "Routes admins through an uncached Testing dashboard URL",
-    "Prevents authenticated Testing pages from being retained by shared-hosting cache",
+    "Fixes the HTTP 500 on the Scoring Tests mode-selection route",
+    "Restores strict_types as the first executable PHP declaration",
+    "Points dashboard navigation directly to the clean uncached Testing dashboard",
+    "Retains the Bluehost cache and double-compression protection",
     "Does not change Testing or Live scoring calculations and data"
   ]
 }
