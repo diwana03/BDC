@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev182",
-  "build": 2710,
+  "version": "2.3.3-dev183",
+  "build": 2720,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Repairs draft-detail saving against legacy Registration Desk activity tables",
-    "Updates Registration Desk links by dance style and division without querying a missing activity column",
-    "Leaves historical Registration Desk activity unchanged because the legacy table has no dance-style identity",
-    "Preserves transactional rollback so failed edits cannot partially change a draft",
-    "Retains matching draft-edit controls and validation on Testing and Live dashboards"
+    "Shows the actual event date as a separate Saved Rounds column",
+    "Distinguishes the competition date from the system Updated timestamp",
+    "Formats event dates consistently for quick scanning",
+    "Shows Date pending when an event date has not been entered",
+    "Provides the same event-date visibility on Testing and Live dashboards"
   ]
 }
