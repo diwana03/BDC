@@ -1933,6 +1933,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
  <?php endif;?>
 </div></form>
 
+<script src="round-schedule-picker.js?v=187"></script>
 <?php if(in_array($round['status'],['awaiting_decision','scores_submitted'],true)):?>
 <div class="card shadow-sm mt-3 mb-4 border-primary">
  <div class="card-body">

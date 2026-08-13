@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev186",
-  "build": 2750,
+  "version": "2.3.3-dev187",
+  "build": 2760,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Production deployment compatibility for two legacy schema-wrapper migrations",
-    "Checksums the immutable migration wrappers without treating the evolving SchemaUpdater as historical migration content",
-    "Continues to reject unknown or modified migration checksums",
-    "Preserves existing Production migration history without database edits",
-    "Includes the per-round Heats, Semifinal, and Final scheduling feature from dev185"
+    "Adds a Saved Rounds column selector without changing table data or workflow",
+    "Remembers selected columns and provides Show All and Reset controls",
+    "Uses a cleaner default view while preserving access to every existing column",
+    "Replaces manual round time entry with a 15-minute time selector and date picker",
+    "Provides matching column and scheduling controls on Testing and Live dashboards"
   ]
 }

@@ -1418,7 +1418,7 @@ foreach(['leader','follower'] as $role){
 }
 $csrf=Csrf::token();
 ?>
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Tests Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}.presentation-card{border:2px solid #dc3545}.presentation-action{min-height:86px;text-align:left}.presentation-action strong{display:block;font-size:1rem}.presentation-action small{display:block;margin-top:3px;opacity:.82}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-danger btn-sm" href="../live-screen/test-index.php">Test Projection</a><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Tests Dashboard</h1><div class="text-muted">Manual Scoring Engine · Event Round Workflow</div></div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Tests Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><script defer src="../scoring/saved-round-columns.js?v=187"></script><script defer src="../scoring/round-schedule-picker.js?v=187"></script><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}.presentation-card{border:2px solid #dc3545}.presentation-action{min-height:86px;text-align:left}.presentation-action strong{display:block;font-size:1rem}.presentation-action small{display:block;margin-top:3px;opacity:.82}.column-picker{position:relative}.column-picker summary{list-style:none}.column-picker summary::-webkit-details-marker{display:none}.column-picker-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:230px;background:#fff;border:1px solid #dee2e6;border-radius:.5rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.15);padding:.75rem}.saved-rounds-table th{white-space:nowrap}.saved-rounds-table tbody tr:hover{background:#f8f9fa}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-danger btn-sm" href="../live-screen/test-index.php">Test Projection</a><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Tests Dashboard</h1><div class="text-muted">Manual Scoring Engine · Event Round Workflow</div></div>
 <div class="card shadow-sm mb-4 border-danger">
  <div class="card-header bg-danger-subtle d-flex justify-content-between align-items-center">
   <strong>Test Load &amp; Accuracy Generators</strong>
@@ -1536,8 +1536,8 @@ $csrf=Csrf::token();
 </form>
 </div></div>
 <div class="card shadow-sm"><div class="card-body">
-<h2 class="h5">Saved Rounds</h2>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Event Date</th><th>Round Schedule</th><th>Dance</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
+<div class="d-flex justify-content-between align-items-center gap-3 mb-2"><h2 class="h5 mb-0">Saved Rounds</h2><details class="column-picker"><summary class="btn btn-sm btn-outline-secondary">Columns ▾</summary><div class="column-picker-menu"><div class="small fw-semibold text-uppercase text-muted mb-2">Show columns</div><?php foreach(['event_date'=>'Event Date','round_schedule'=>'Round Schedule','dance'=>'Dance','division'=>'Division','round'=>'Round','status'=>'Status','updated'=>'Updated','actions'=>'Actions'] as $key=>$columnLabel):?><label class="form-check mb-2"><input class="form-check-input saved-column-toggle" type="checkbox" value="<?=e($key)?>"><span class="form-check-label"><?=e($columnLabel)?></span></label><?php endforeach;?><div class="d-flex gap-2 border-top pt-2 mt-2"><button type="button" class="btn btn-sm btn-outline-dark saved-columns-all">Show All</button><button type="button" class="btn btn-sm btn-link saved-columns-reset">Reset</button></div></div></details></div>
+<div class="table-responsive"><table class="table align-middle saved-rounds-table"><thead><tr><th data-col="event">Event</th><th data-col="event_date">Event Date</th><th data-col="round_schedule">Round Schedule</th><th data-col="dance">Dance</th><th data-col="division">Division</th><th data-col="round">Round</th><th data-col="status">Status</th><th data-col="updated">Updated</th><th data-col="actions" class="text-end">Actions</th></tr></thead>
 <tbody><?php foreach($rounds as $r):
  $status=(string)$r['status'];
  $label=match($status){
@@ -1560,15 +1560,15 @@ $csrf=Csrf::token();
  };
 ?>
 <tr>
-<td><?=e($r['event_name'])?></td>
-<td class="text-nowrap"><?=e($r['event_date']?date('d M Y',strtotime((string)$r['event_date'])):'Date pending')?></td>
-<td class="text-nowrap"><?=e(!empty($r['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$r['scheduled_at'])):'Not scheduled')?></td>
-<td><span class="badge text-bg-secondary"><?=e(ucfirst($r['dance_style']??'bachata'))?></span></td>
-<td><?=e(ucfirst($r['division']))?></td>
-<td><?=e(ucfirst($r['round_type']))?></td>
-<td><span class="badge <?=$badge?>"><?=e($label)?></span></td>
-<td><?=e($r['updated_at'])?></td>
-<td class="text-end">
+<td data-col="event"><?=e($r['event_name'])?></td>
+<td data-col="event_date" class="text-nowrap"><?=e($r['event_date']?date('d M Y',strtotime((string)$r['event_date'])):'Date pending')?></td>
+<td data-col="round_schedule" class="text-nowrap"><?=e(!empty($r['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$r['scheduled_at'])):'Not scheduled')?></td>
+<td data-col="dance"><span class="badge text-bg-secondary"><?=e(ucfirst($r['dance_style']??'bachata'))?></span></td>
+<td data-col="division"><?=e(ucfirst($r['division']))?></td>
+<td data-col="round"><?=e(ucfirst($r['round_type']))?></td>
+<td data-col="status"><span class="badge <?=$badge?>"><?=e($label)?></span></td>
+<td data-col="updated"><?=e($r['updated_at'])?></td>
+<td data-col="actions" class="text-end">
  <div class="d-inline-flex gap-2">
   <a class="btn btn-sm btn-outline-dark" href="?round_id=<?=$r['id']?>">Open</a>
   <?php if(in_array((string)$r['status'],['draft','discarded'],true) && (int)$r['mark_count']===0 && (int)$r['final_mark_count']===0):?>
