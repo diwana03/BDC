@@ -216,10 +216,17 @@ final class LiveDisplaySessionService
     }
     public static function effect(PDO $pdo,int $eventId,bool $test,string $effect,int $userId):array
     {
-        self::ensure($pdo);if(!in_array($effect,['none','drumroll','fireworks','confetti','gold_rain','laser_sweep','champion_impact'],true))throw new \RuntimeException('Invalid presentation effect.');
+        self::ensure($pdo);if(!in_array($effect,['none','drumroll','drumroll_1','drumroll_2','drumroll_3','drumroll_4','drumroll_5','fireworks','confetti','gold_rain','laser_sweep','champion_impact'],true))throw new \RuntimeException('Invalid presentation effect.');
         // Effects are an overlay channel. Do not increment state_version here:
         // reloading the underlying feed would hide or interrupt the overlay.
         $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
+        return self::forEvent($pdo,$eventId,$test)?:[];
+    }
+    public static function beginSelection(PDO $pdo,int $eventId,int $roundId,bool $test,int $userId):array
+    {
+        self::ensure($pdo);
+        $pdo->prepare("UPDATE bdc_live_display_sessions SET current_round_id=:r,screen_type='holding',effect_type=NULL,effect_version=effect_version+1,reveal_place=NULL,page_number=1,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")
+            ->execute(['r'=>$roundId,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
         return self::forEvent($pdo,$eventId,$test)?:[];
     }
 }
