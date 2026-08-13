@@ -102,7 +102,7 @@ if (
 (function(){
  const nav=document.currentScript.previousElementSibling;if(!nav)return;
  const links=[...nav.querySelectorAll(':scope > a')],labels=[...nav.querySelectorAll(':scope > .admin-sidebar-label-v203')];labels.forEach(x=>x.remove());
- const dashboard=links.shift();
+ const dashboard=links.shift(),fragment=document.createDocumentFragment();
  const readState=name=>{try{return localStorage.getItem('bdc-admin-nav-'+name)}catch(e){return null}};
  const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
@@ -112,16 +112,17 @@ if (
   'Testing & System':['Scoring Tests Dashboard','Backup & Recovery','Storage Usage','Release Manager'],
   'Super Admin':['AI Operations','Smart Result Import','Legacy & Bulk Import','Merge Duplicates','Users & Roles','SQL Console']
  };
- nav.replaceChildren(dashboard);
+ fragment.appendChild(dashboard.cloneNode(true));
  Object.entries(groups).forEach(([name,names],index)=>{
   const selected=links.filter(a=>names.some(n=>a.textContent.trim().startsWith(n)));if(!selected.length)return;
   const details=document.createElement('details');details.className='admin-nav-group-v203';details.dataset.group=name;
   const saved=readState(name);details.open=saved===null?index===0:saved==='1';
   const summary=document.createElement('summary');summary.textContent=name;
-  const box=document.createElement('div');box.className='admin-nav-group-links-v203';selected.forEach(a=>box.appendChild(a));
-  details.append(summary,box);details.addEventListener('toggle',()=>saveState(name,details.open?'1':'0'));nav.appendChild(details);
+  const box=document.createElement('div');box.className='admin-nav-group-links-v203';selected.forEach(a=>box.appendChild(a.cloneNode(true)));
+  details.append(summary,box);details.addEventListener('toggle',()=>saveState(name,details.open?'1':'0'));fragment.appendChild(details);
  });
- links.filter(a=>!a.parentElement.classList.contains('admin-nav-group-links-v203')).forEach(a=>nav.appendChild(a));
+ const grouped=new Set(Object.values(groups).flat());links.filter(a=>!grouped.some(n=>a.textContent.trim().startsWith(n))).forEach(a=>fragment.appendChild(a.cloneNode(true)));
+ nav.replaceChildren(fragment);
 })();
 </script><div class="admin-system-card-v203"><strong>ⓘ BDC System</strong><span>Version <?= e(
     (string) ($bdcVersion["version"] ?? ReleaseManagerService::VERSION),

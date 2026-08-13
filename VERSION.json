@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev174",
-  "build": 2630,
+  "version": "2.3.3-dev175",
+  "build": 2640,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Prevents blocked browser storage from hiding the admin navigation",
-    "Always renders all app-style sidebar categories",
-    "Keeps Live Operations expanded on first use",
-    "Retains category memory where browser storage is available",
+    "Builds the categorized sidebar atomically before replacing the original menu",
+    "Keeps the complete original navigation visible if category construction fails",
+    "Prevents Release Manager and administrative tools from disappearing",
+    "Retains collapsible app folders and category memory",
     "Preserves permissions, badges and notification counts"
   ]
 }
