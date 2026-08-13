@@ -247,7 +247,9 @@ $enhancement=<<<HTML
     const first=roleCards[0];
     const host=document.createElement('div');host.className='mb-2 d-flex justify-content-end';host.dataset.bdcDeleteAllCompetitors='1';
     host.appendChild(postButton('Delete All Competitors','delete_all_entries','btn btn-sm btn-outline-danger','Delete all competitors from this TEST round?'));
-    first.parentElement.insertBefore(host,first);
+    const testTools=document.getElementById('testToolsPanel')?.querySelector('.card-body');
+    if(testTools){host.className='mt-3 pt-3 border-top d-flex justify-content-end';testTools.appendChild(host);}
+    else first.parentElement.insertBefore(host,first);
   }
 
   function addJudgeControls(){
@@ -260,7 +262,9 @@ $enhancement=<<<HTML
     judgeList.forEach(j=>{row.appendChild(postButton('Delete '+j.judge_name,'delete_judge','btn btn-sm btn-outline-danger','Delete '+j.judge_name+' and this judge’s test marks?',{judge_id:j.id}));});
     row.appendChild(postButton('Delete All Judges','delete_all_judges','btn btn-sm btn-outline-danger','Delete all judges and their test marks?'));
     row.appendChild(postButton('Clear Entire Test Round','clear_round','btn btn-sm btn-danger','Clear judges, competitors, marks and results for this TEST round?'));
-    host.appendChild(row);wrap.parentElement.appendChild(host);
+    host.appendChild(row);
+    const testTools=document.getElementById('testToolsPanel')?.querySelector('.card-body');
+    if(testTools)testTools.appendChild(host);else wrap.parentElement.appendChild(host);
   }
 
   addCompetitorClearControl();

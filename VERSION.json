@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev190",
-  "build": 2790,
+  "version": "2.3.3-dev191",
+  "build": 2800,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Enforces each judge's tier-based YES quota during selection",
-    "Prevents duplicate A1, A2, and A3 selections separately for Leaders and Followers",
-    "Updates judge-browser quota counters immediately when a selection changes",
-    "Visually marks exhausted choices and displays a clear notification when tapped",
-    "Retains server-side validation and matching Testing and Live behavior"
+    "Aligns the Testing scoring dashboard with the Live dashboard layout",
+    "Moves all Testing-only random generators into a clearly marked TEST TOOLS panel",
+    "Moves destructive Testing reset controls out of the normal judge workflow",
+    "Keeps random data and score generators completely absent from Live",
+    "Retains isolated Testing data and shared scoring workflow behavior"
   ]
 }
