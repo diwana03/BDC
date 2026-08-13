@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 34987)
-Total output lines: 2167
+Warning: truncated output (original token count: 35146)
+Total output lines: 2173
 
 <?php
 declare(strict_types=1);
@@ -998,18 +998,7 @@ try{
    $sourceRoundId=(int)($finalRound['source_round_id']?:$finalRound['parent_round_id']);
    if($sourceRoundId<1)throw new RuntimeException('Previous round not found.');
 
-   $nextStmt=$pd…4987 tokens truncated…id']]??null;$rb=$results[$b['id']]??null;
-   $rankA=$ra?(int)$ra['rank_number']:PHP_INT_MAX;
-   $rankB=$rb?(int)$rb['rank_number']:PHP_INT_MAX;
-   if($rankA!==$rankB)return $rankA<=>$rankB;
-   $totalA=$ra?(float)$ra['total_score']:-1;
-   $totalB=$rb?(float)$rb['total_score']:-1;
-   if($totalA!==$totalB)return $totalB<=>$totalA;
-   return (int)$a['bib_number']<=>(int)$b['bib_number'];
-  });
- }
-}
-$s=$pdo->prepare("SELECT fp.*,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib FROM bdc_test_scoring_final_pairs fp JOIN bdc_test_scoring_entries le ON le.id=fp.leader_entry_id LEFT JOIN bdc_test_scoring_entries fe ON fe.id=fp.follower_entry_id WHERE fp.round_id=:r ORDER BY fp.pair_number");$s->execute(['r'=>$roundId]);$finalPairs=$s->fetchAll();
+   $nextStmt=$pd…5146 tokens truncated…ay_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib FROM bdc_test_scoring_final_pairs fp JOIN bdc_test_scoring_entries le ON le.id=fp.leader_entry_id LEFT JOIN bdc_test_scoring_entries fe ON fe.id=fp.follower_entry_id WHERE fp.round_id=:r ORDER BY fp.pair_number");$s->execute(['r'=>$roundId]);$finalPairs=$s->fetchAll();
 $s=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM bdc_test_scoring_final_marks WHERE round_id=:r");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $fm)$finalMarks[(int)$fm['pair_id']][(int)$fm['judge_id']]=(int)$fm['rank_value'];
 $s=$pdo->prepare("SELECT * FROM bdc_test_scoring_final_results WHERE round_id=:r ORDER BY final_rank");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $fr)$finalResults[(int)$fr['pair_id']]=$fr;
 if($finalResults){
@@ -1180,7 +1169,7 @@ $csrf=Csrf::token();
 </div></div>
 <div class="card shadow-sm"><div class="card-body">
 <h2 class="h5">Saved Rounds</h2>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Dance</th><th>Division</th><th>Round</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
 <tbody><?php foreach($rounds as $r):
  $status=(string)$r['status'];
  $label=match($status){
@@ -1204,6 +1193,7 @@ $csrf=Csrf::token();
 ?>
 <tr>
 <td><?=e($r['event_name'])?></td>
+<td><span class="badge text-bg-secondary"><?=e(ucfirst($r['dance_style']??'bachata'))?></span></td>
 <td><?=e(ucfirst($r['division']))?></td>
 <td><?=e(ucfirst($r['round_type']))?></td>
 <td><span class="badge <?=$badge?>"><?=e($label)?></span></td>
@@ -1211,6 +1201,9 @@ $csrf=Csrf::token();
 <td class="text-end">
  <div class="d-inline-flex gap-2">
   <a class="btn btn-sm btn-outline-dark" href="?round_id=<?=$r['id']?>">Open</a>
+  <?php if(in_array((string)$r['status'],['draft','discarded'],true) && (int)$r['mark_count']===0 && (int)$r['final_mark_count']===0):?>
+  <a class="btn btn-sm btn-outline-primary" href="edit-draft.php?mode=<?=e((string)($_GET['test_mode']??'manual'))?>&amp;round_id=<?=$r['id']?>">Edit Draft Details</a>
+  <?php endif;?>
   <?php if($r['status']!=='archived' && empty($r['locked_at'])):?>
   <form method="post" onsubmit="return confirmDeleteWorkflow(this,'<?=e(addslashes($r['event_name']))?>','<?=e(ucfirst($r['division']))?>');">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
