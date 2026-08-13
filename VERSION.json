@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev168",
-  "build": 2570,
+  "version": "2.3.3-dev169",
+  "build": 2580,
   "status": "development",
   "release_date": "2026-08-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds Test Live Presentation directly to the Test Scoreboard",
-    "Exposes Test projector, presentation control and judge progress from one panel",
-    "Exposes the expiring Emcee Random Match link from Test Finals",
-    "Adds drum roll, fireworks and confetti controls to Testing and Live projectors",
-    "Keeps Testing and Live presentation controls on the same shared implementation"
+    "Replaces emoji projector effects with a cinematic canvas particle engine",
+    "Adds multi-burst glowing fireworks with launch trails and gravity",
+    "Adds depth, rotation and natural movement to full-screen confetti",
+    "Adds a dramatic drum-roll light, shockwave and stage reveal effect",
+    "Removes the incorrect Random Match wording from general drum rolls"
   ]
 }
