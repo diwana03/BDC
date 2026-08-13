@@ -59,9 +59,16 @@ if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
         $roundStmt->execute(['id'=>$roundId]);
         $division=(string)$roundStmt->fetchColumn();
         if(SpecialCategoryService::isSpecial($division)){
-            $yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');
-            $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1 WHERE id=:id')
-                ->execute(['yes'=>$yes,'id'=>$roundId]);
+            $intent=(string)($_POST['special_settings_intent']??'lock');
+            $marks=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_marks WHERE round_id=:id AND (mark_type<>'blank' OR weighted_score>0)");$marks->execute(['id'=>$roundId]);
+            if((int)$marks->fetchColumn()>0)throw new RuntimeException('The YES tier cannot be changed after judging has started.');
+            if($intent==='unlock'){
+                $pdo->prepare('UPDATE bdc_test_scoring_rounds SET tier_manual_override=0 WHERE id=:id')->execute(['id'=>$roundId]);
+            }else{
+                $yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');
+                $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')
+                    ->execute(['yes'=>$yes,'id'=>$roundId]);
+            }
             bdcTestDashboardRedirect($mode,$roundId,['special_settings_saved'=>1]);
         }
     }
@@ -213,11 +220,9 @@ $enhancement=<<<HTML
       const holder=tier.closest('.col-12')||tier.parentElement;
       if(holder)holder.style.display='none';
       if(settingsForm&&!settingsForm.querySelector('[data-special-settings]')){
-        settingsForm.action='special-settings.php';
-        settingsForm.querySelector('input[name="action"]')?.remove();
         const oldButton=settingsForm.querySelector('button:not([type="button"])');if(oldButton)oldButton.remove();
         const block=document.createElement('div');block.className='col-12';block.dataset.specialSettings='1';
-        block.innerHTML='<div class="alert alert-info mb-3"><strong>'+specialCategories[currentDivision]+' fixed points:</strong> '+scheduleText(currentDivision)+'<br><span class="small">Participant-count point tiers are disabled.</span></div><label class="form-label">YES Tier per Judge</label><select class="form-select" name="special_yes_count" '+(currentYesLocked?'disabled':'')+'><option value="5" '+(currentRecommendedYes===5?'selected':'')+'>Tier 1 · 5 YES</option><option value="10" '+(currentRecommendedYes===10?'selected':'')+'>Tier 2 · 10 YES</option><option value="15" '+(currentRecommendedYes===15?'selected':'')+'>Tier 3 · 15 YES</option></select>'+(currentYesLocked?'<input type="hidden" name="special_yes_count" value="'+currentYes+'">':'')+'<div class="form-text">Recommended from the larger Leader or Follower count. You may amend it before locking.</div><div class="border rounded p-3 bg-light mt-3"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row text-center"><div class="col-4">ALT 1<br><strong>4.5</strong></div><div class="col-4">ALT 2<br><strong>4.3</strong></div><div class="col-4">ALT 3<br><strong>4.2</strong></div></div></div><div class="mt-3">'+(currentScoringStarted?'<span class="badge text-bg-secondary">Locked because judging has started</span>':(currentYesLocked?'<button class="btn btn-outline-warning btn-sm" name="action" value="special_settings_unlock">Unlock YES Count</button>':'<button class="btn btn-dark btn-sm" name="action" value="special_settings_lock">Save &amp; Lock YES Count</button>'))+'</div>';
+        block.innerHTML='<div class="alert alert-info mb-3"><strong>'+specialCategories[currentDivision]+' fixed points:</strong> '+scheduleText(currentDivision)+'<br><span class="small">Participant-count point tiers are disabled.</span></div><label class="form-label">YES Tier per Judge</label><select class="form-select" name="special_yes_count" '+(currentYesLocked?'disabled':'')+'><option value="5" '+(currentRecommendedYes===5?'selected':'')+'>Tier 1 · 5 YES</option><option value="10" '+(currentRecommendedYes===10?'selected':'')+'>Tier 2 · 10 YES</option><option value="15" '+(currentRecommendedYes===15?'selected':'')+'>Tier 3 · 15 YES</option></select>'+(currentYesLocked?'<input type="hidden" name="special_yes_count" value="'+currentYes+'">':'')+'<div class="form-text">Recommended from the larger Leader or Follower count. You may amend it before locking.</div><div class="border rounded p-3 bg-light mt-3"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row text-center"><div class="col-4">ALT 1<br><strong>4.5</strong></div><div class="col-4">ALT 2<br><strong>4.3</strong></div><div class="col-4">ALT 3<br><strong>4.2</strong></div></div></div><div class="mt-3">'+(currentScoringStarted?'<span class="badge text-bg-secondary">Locked because judging has started</span>':(currentYesLocked?'<button class="btn btn-outline-warning btn-sm" name="special_settings_intent" value="unlock">Unlock YES Count</button>':'<button class="btn btn-dark btn-sm" name="special_settings_intent" value="lock">Save &amp; Lock YES Count</button>'))+'</div>';
         settingsForm.querySelector('.row')?.appendChild(block);
       }
     }

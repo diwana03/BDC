@@ -29,8 +29,10 @@ if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
  if($action==='settings'&&$rid>0){
   $s=$pdo->prepare('SELECT division FROM bdc_test_scoring_rounds WHERE id=:r');$s->execute(['r'=>$rid]);$division=(string)$s->fetchColumn();
   if(SpecialCategoryService::isSpecial($division)){
-   $yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');
-   $pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:y,callback_count=:y,tier_manual_override=1 WHERE id=:r')->execute(['y'=>$yes,'r'=>$rid]);
+   $intent=(string)($_POST['special_settings_intent']??'lock');
+   $marks=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_marks WHERE round_id=:r AND (mark_type<>'blank' OR weighted_score>0)");$marks->execute(['r'=>$rid]);if((int)$marks->fetchColumn()>0)throw new RuntimeException('The YES tier cannot be changed after judging has started.');
+   if($intent==='unlock')$pdo->prepare('UPDATE bdc_test_scoring_rounds SET tier_manual_override=0 WHERE id=:r')->execute(['r'=>$rid]);
+   else{$yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');$pdo->prepare('UPDATE bdc_test_scoring_rounds SET yes_count=:y,callback_count=:y,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:r')->execute(['y'=>$yes,'r'=>$rid]);}
    header('Location: '.testWorkspaceUrl($testMode,$rid,['special_settings'=>1]),true,303);exit;
   }
  }
