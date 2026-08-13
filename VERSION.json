@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev191",
-  "build": 2800,
+  "version": "2.3.3-dev192",
+  "build": 2810,
   "status": "development",
   "release_date": "2026-08-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Aligns the Testing scoring dashboard with the Live dashboard layout",
-    "Moves all Testing-only random generators into a clearly marked TEST TOOLS panel",
-    "Moves destructive Testing reset controls out of the normal judge workflow",
-    "Keeps random data and score generators completely absent from Live",
-    "Retains isolated Testing data and shared scoring workflow behavior"
+    "Fixes unreadable compressed bytes on the Testing scoring dashboard",
+    "Uses the same safe HTML response headers already proven on Live scoring",
+    "Allows Bluehost to advertise the actual compression encoding",
+    "Prevents intermediary transformation and stale cached dashboard responses",
+    "Does not change Testing or Live scoring calculations and data"
   ]
 }
