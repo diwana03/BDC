@@ -1407,7 +1407,7 @@ foreach(['leader','follower'] as $role){
 }
 $csrf=Csrf::token();
 ?>
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Tests Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Tests Dashboard</h1><div class="text-muted">Manual Scoring Engine · Event Round Workflow</div></div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Tests Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}.presentation-card{border:2px solid #dc3545}.presentation-action{min-height:86px;text-align:left}.presentation-action strong{display:block;font-size:1rem}.presentation-action small{display:block;margin-top:3px;opacity:.82}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-danger btn-sm" href="../live-screen/test-index.php">Test Projection</a><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="d-flex justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Tests Dashboard</h1><div class="text-muted">Manual Scoring Engine · Event Round Workflow</div></div>
 <div class="card shadow-sm mb-4 border-danger">
  <div class="card-header bg-danger-subtle d-flex justify-content-between align-items-center">
   <strong>Test Load &amp; Accuracy Generators</strong>
@@ -1459,6 +1459,26 @@ $csrf=Csrf::token();
  </div>
 </div>
 <?php if($round):?><span class="badge text-bg-primary status-pill"><?=e(str_replace('_',' ',$round['status']))?></span><?php endif;?></div><?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?>
+<section class="card presentation-card shadow-sm mb-4" id="testLivePresentation">
+ <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div><strong>Test Live Presentation</strong><div class="small">Projector, live judge progress, results and show effects use TEST data only.</div></div>
+  <span class="badge text-bg-warning">TEST FIRST</span>
+ </div>
+ <div class="card-body">
+  <div class="row g-2">
+   <div class="col-md-6 col-xl-3"><a class="btn btn-dark w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/test-index.php"><strong>Open Test Projector</strong><small>Select any Test event, division and round.</small></a></div>
+   <?php if($round):?>
+    <div class="col-md-6 col-xl-3"><a class="btn btn-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/test-control.php?round_id=<?=$roundId?>"><strong>Presentation Control</strong><small>Holding screen, judge progress, result screens, loop and effects.</small></a></div>
+    <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100 presentation-action d-flex flex-column justify-content-center" href="#<?=($_GET['test_mode']??'manual')==='automated'?'automaticJudgeLivePanel':($round['round_type']==='final'?'finalScoreForm':'heatsScoreForm')?>"><strong>Judge Live Progress</strong><small>Watch Test judges and scoring update on this screen.</small></a></div>
+    <?php if($round['round_type']==='final'):?><div class="col-md-6 col-xl-3"><a class="btn btn-outline-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>&amp;data_mode=test"><strong>Emcee Random Match</strong><small>Create the independent 12-hour Test matching link.</small></a></div><?php else:?><div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Emcee Random Match</strong><small class="text-muted mt-1">Available when a Test Final round is open.</small></div></div><?php endif;?>
+   <?php else:?>
+    <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Presentation Control</strong><small class="text-muted mt-1">Open or create a Test round to activate its controls.</small></div></div>
+    <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Judge Live Progress</strong><small class="text-muted mt-1">Open an Automatic Test round to monitor judges.</small></div></div>
+    <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Emcee Random Match</strong><small class="text-muted mt-1">Available from a Test Final round.</small></div></div>
+   <?php endif;?>
+  </div>
+ </div>
+</section>
 <?php if(!$round):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <h2 class="h5">Create Scoring Round</h2>

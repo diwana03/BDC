@@ -42,6 +42,10 @@ Public registration accepts published events only, enforces event and ticket sal
 
 ## Testing
 
+### Mandatory scoring development order
+
+Every scoring change is coded on the Testing Scoreboard first and validated against isolated `bdc_test_*` data. The same validated behaviour is then implemented on the Live Scoring Dashboard, preferably through shared services and components. Testing and Live must be verified for parity and pushed together in one release. Test-only and Live-only scoring releases are prohibited. See `AGENTS.md` for the complete permanent rule.
+
 Run all PHP syntax checks and the Relative Placement test before deployment:
 
 ```sh
