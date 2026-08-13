@@ -9,20 +9,35 @@ use RuntimeException;
 final class MigrationRunner
 {
     /**
-     * Migration 20260803_2200 historically checksummed the shared SchemaUpdater.
-     * dev16 legitimately extended that updater, which changed the dependency hash
-     * for databases that had already applied the migration. Accept only exact
-     * known release checksums; every other mismatch must still fail closed.
+     * These legacy migrations are thin wrappers around the idempotent
+     * SchemaUpdater. The updater is expected to evolve in later releases, so
+     * hashing it as a dependency makes an already-applied migration appear to
+     * have been edited whenever a new column is added. The wrapper file itself
+     * remains checksummed and immutable.
+     */
+    private const FILE_ONLY_CHECKSUM_MIGRATIONS = [
+        '20260803_2200',
+        '20260806_1700',
+    ];
+
+    /**
+     * Historical installations recorded dependency-aware checksums for these
+     * wrappers. Accept only exact checksums produced by known releases plus the
+     * stable file-only checksum; every other mismatch still fails closed.
      */
     private const COMPATIBLE_APPLIED_CHECKSUMS = [
         '20260803_2200' => [
             'cfa863294a58e28726f9a778fddac0bfe7dc00a4b5a8005aaba337f632fd7d6e',
             '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
             'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
+            '1c710ae1c5c4accc1b5d245235d145aa12e6c4515e66022e6a5d269a5630db29',
+            'd948b9cc2c9ebde5f7cd36aa684627e7feb4b941d65f6663a22df2f620f77714',
         ],
         '20260806_1700' => [
             '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',
             'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
+            '1c710ae1c5c4accc1b5d245235d145aa12e6c4515e66022e6a5d269a5630db29',
+            'd948b9cc2c9ebde5f7cd36aa684627e7feb4b941d65f6663a22df2f620f77714',
         ],
     ];
 
@@ -63,7 +78,10 @@ final class MigrationRunner
                 throw new RuntimeException("Migration {$version} dependencies must be an array.");
             }
             $checksumParts = [hash_file('sha256', $file)];
-            foreach ($dependencies as $dependency) {
+            $checksumDependencies = in_array($version, self::FILE_ONLY_CHECKSUM_MIGRATIONS, true)
+                ? []
+                : $dependencies;
+            foreach ($checksumDependencies as $dependency) {
                 if (!is_string($dependency) || !is_file($dependency)) {
                     throw new RuntimeException("Migration {$version} has an invalid dependency.");
                 }
