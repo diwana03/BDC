@@ -1456,17 +1456,32 @@ $csrf=Csrf::token();
     <div class="col-xl-4">
      <form method="post" class="border rounded p-3 h-100">
       <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="generate_test_competitors"><input type="hidden" name="round_id" value="<?=$roundId?>">
-      <h3 class="h6">Random Competitors</h3>
-      <div class="row g-2"><div class="col-6"><label class="form-label">Leaders</label><input class="form-control" type="number" name="leader_count" min="0" max="500" value="10"></div><div class="col-6"><label class="form-label">Followers</label><input class="form-control" type="number" name="follower_count" min="0" max="500" value="10"></div></div>
-      <button class="btn btn-warning w-100 mt-3">Generate Competitors</button>
+      <?php if($round['round_type']==='final'):?>
+       <h3 class="h6">Random Finalists</h3>
+       <label class="form-label">Finalist couples</label>
+       <input class="form-control" type="number" name="finalist_couple_count" min="2" max="100" value="10">
+       <div class="form-text">Generates the same number of Leaders and Followers for Final pairing.</div>
+       <button class="btn btn-warning w-100 mt-3">Generate Finalists</button>
+      <?php else:?>
+       <h3 class="h6">Random Competitors</h3>
+       <div class="row g-2"><div class="col-6"><label class="form-label">Leaders</label><input class="form-control" type="number" name="leader_count" min="0" max="500" value="10"></div><div class="col-6"><label class="form-label">Followers</label><input class="form-control" type="number" name="follower_count" min="0" max="500" value="10"></div></div>
+       <button class="btn btn-warning w-100 mt-3">Generate Competitors</button>
+      <?php endif;?>
      </form>
     </div>
     <div class="col-xl-4">
      <form method="post" class="border rounded p-3 h-100">
       <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="generate_test_judges"><input type="hidden" name="round_id" value="<?=$roundId?>">
-      <h3 class="h6">Random Judges</h3>
-      <div class="row g-2"><div class="col-4"><label class="form-label">All</label><input class="form-control" type="number" name="all_judges" min="0" max="101" value="5"></div><div class="col-4"><label class="form-label">Leader</label><input class="form-control" type="number" name="leader_judges" min="0" max="101" value="0"></div><div class="col-4"><label class="form-label">Follower</label><input class="form-control" type="number" name="follower_judges" min="0" max="101" value="0"></div></div>
-      <button class="btn btn-warning w-100 mt-3">Generate Judges</button>
+      <h3 class="h6"><?=$round['round_type']==='final'?'Random Final Judges':'Random Judges'?></h3>
+      <?php if($round['round_type']==='final'):?>
+       <label class="form-label">Final judges</label>
+       <input class="form-control" type="number" name="all_judges" min="3" max="101" value="5">
+       <input type="hidden" name="leader_judges" value="0"><input type="hidden" name="follower_judges" value="0">
+       <div class="form-text">One panel ranks every finalist couple using Relative Placement.</div>
+      <?php else:?>
+       <div class="row g-2"><div class="col-4"><label class="form-label">All</label><input class="form-control" type="number" name="all_judges" min="0" max="101" value="5"></div><div class="col-4"><label class="form-label">Leader</label><input class="form-control" type="number" name="leader_judges" min="0" max="101" value="0"></div><div class="col-4"><label class="form-label">Follower</label><input class="form-control" type="number" name="follower_judges" min="0" max="101" value="0"></div></div>
+      <?php endif;?>
+      <button class="btn btn-warning w-100 mt-3"><?=$round['round_type']==='final'?'Generate Final Judges':'Generate Judges'?></button>
      </form>
     </div>
     <div class="col-xl-4">

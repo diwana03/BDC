@@ -82,11 +82,14 @@ if (
         exit('Invalid security token.');
     }
     $roundId=(int)($_POST['round_id'] ?? 0);
+    $finalistCoupleCount=max(0,(int)($_POST['finalist_couple_count'] ?? 0));
+    $leaderCount=$finalistCoupleCount>0?$finalistCoupleCount:(int)($_POST['leader_count'] ?? 10);
+    $followerCount=$finalistCoupleCount>0?$finalistCoupleCount:(int)($_POST['follower_count'] ?? 10);
     \App\Services\TestCompetitorGeneratorService::generate(
         \App\Core\Database::connection(),
         $roundId,
-        (int)($_POST['leader_count'] ?? 10),
-        (int)($_POST['follower_count'] ?? 10),
+        $leaderCount,
+        $followerCount,
         (int)(\App\Core\Auth::user()['id'] ?? 0)
     );
     $modeQuery=$bdcTestMode!==''?'&test_mode='.rawurlencode($bdcTestMode):'';
