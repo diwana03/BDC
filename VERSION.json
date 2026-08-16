@@ -1,15 +1,15 @@
 {
-  "version": "2.3.3-dev200",
-  "build": 2890,
+  "version": "2.3.3-dev201",
+  "build": 2900,
   "status": "development",
-  "release_date": "2026-08-14",
+  "release_date": "2026-08-16",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Loads secure judge browser links for automated Test Finals",
-    "Supports Final forms in both Automatic Testing entry paths",
-    "Shows secure judge links and live progress inside automated Live Finals",
-    "Keeps manual Final rank entry hidden when Testing is automated",
+    "Makes public registration identity and contact fields optional",
+    "Makes public profile-update identity and contact fields optional",
+    "Preserves existing profile values when an update field is left blank",
+    "Validates email only when the public user supplies one",
     "Keeps Testing-only random generators out of Live",
     "Retains the stable mode selection and Bluehost response protection"
   ]
