@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev225",
-  "build": 2931,
+  "version": "2.3.3-dev226",
+  "build": 2932,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds an automated Test, Live and projector parity release gate",
-    "Aligns automatic score labels and print output across Test and Live",
-    "Shows one country flag per contestant on the shared winner podium",
-    "Documents the candidate-to-Staging runtime validation workflow"
+    "Restores the missing card wrapper on projected individual competitors",
+    "Keeps each photo, name, bib and country together in one grid cell",
+    "Applies the projector repair to both Test and Live data modes",
+    "Adds competitor card structure to the scoring parity gate"
   ]
 }

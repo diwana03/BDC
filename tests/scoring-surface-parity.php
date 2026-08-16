@@ -99,6 +99,7 @@ $sharedProjector = [
     'final results' => '"final_results"',
     'winner podium' => '$type === "winners"',
     'cute animal fallback' => 'projection-animals/rabbit.png',
+    'single competitor card wrapper' => '<div class="item"><img class="photo"',
     'one country display per contestant' => 'foreach ($people as $person)',
 ];
 $requireMarkers('Shared projector', 'live-display/feed.php', $sharedProjector);

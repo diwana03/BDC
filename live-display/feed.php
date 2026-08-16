@@ -356,7 +356,7 @@ else:
     $displayPhoto = !empty($x["photo_url"])
         ? (string) $x["photo_url"]
         : $fallbackPhoto;
-    ?><img class="photo" src="<?= e(
+    ?><div class="item"><img class="photo" src="<?= e(
     $displayPhoto,
 ) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'"><div class="name"><?= e(
     $x["display_name"],
