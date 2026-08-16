@@ -370,6 +370,20 @@ function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int 
     return $actual;
 }
 
+function nextRoundScheduleFromPost():string{
+    $date=trim((string)($_POST['next_schedule_date']??''));
+    $hour=(int)($_POST['next_schedule_hour']??0);
+    $minute=(int)($_POST['next_schedule_minute']??-1);
+    $period=strtoupper(trim((string)($_POST['next_schedule_period']??'')));
+    $parsed=DateTime::createFromFormat('!Y-m-d',$date);
+    if(!$parsed||$parsed->format('Y-m-d')!==$date||$hour<1||$hour>12||$minute<0||$minute>59||!in_array($period,['AM','PM'],true)){
+        throw new RuntimeException('Select a valid next-round date and time.');
+    }
+    $hour24=$hour%12;
+    if($period==='PM')$hour24+=12;
+    return sprintf('%s %02d:%02d:00',$date,$hour24,$minute);
+}
+
 function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $userId,string $scheduledAt=''):int{
     if(!in_array($nextType,['semifinal','final'],true)) throw new RuntimeException('Invalid next round.');
     $pending=$pdo->prepare("
@@ -979,9 +993,7 @@ try{
   }elseif($action==='create_next_round'){
    $roundId=(int)($_POST['round_id']??0);
    $nextType=(string)($_POST['next_round_type']??'');
-   $nextSchedule=trim((string)($_POST['next_scheduled_at']??''));
-   if($nextSchedule!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/',$nextSchedule))throw new RuntimeException('Enter a valid next-round date and time.');
-   $nextSchedule=$nextSchedule===''?'':str_replace('T',' ',$nextSchedule).':00';
+   $nextSchedule=nextRoundScheduleFromPost();
    $source=loadRound($pdo,$roundId);
    if(!$source)throw new RuntimeException('Source round not found.');
    if(!in_array($source['status'],['awaiting_decision','scores_submitted'],true))throw new RuntimeException('Submit scores before proceeding.');
@@ -1975,7 +1987,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="semifinal">
-      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Semifinal date and time">
+      <div class="border rounded p-2 mb-2" style="min-width:340px"><div class="small fw-bold mb-2">Next-round schedule</div><div class="row g-2"><div class="col-12"><label class="form-label small mb-1">Date</label><input class="form-control form-control-sm" type="date" name="next_schedule_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="col-4"><label class="form-label small mb-1">Hour</label><select class="form-select form-select-sm" name="next_schedule_hour" required><?php for($scheduleHour=1;$scheduleHour<=12;$scheduleHour++):?><option value="<?=$scheduleHour?>"><?=$scheduleHour?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">Minute</label><select class="form-select form-select-sm" name="next_schedule_minute" required><?php for($scheduleMinute=0;$scheduleMinute<60;$scheduleMinute+=5):$scheduleMinuteLabel=str_pad((string)$scheduleMinute,2,'0',STR_PAD_LEFT);?><option value="<?=$scheduleMinute?>"><?=$scheduleMinuteLabel?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">AM / PM</label><select class="form-select form-select-sm" name="next_schedule_period" required><option value="AM">AM</option><option value="PM">PM</option></select></div></div></div>
       <button class="btn btn-warning">Move Callbacks to Semifinal</button>
      </form>
      <form method="post">
@@ -1983,7 +1995,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
-      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
+      <div class="border rounded p-2 mb-2" style="min-width:340px"><div class="small fw-bold mb-2">Next-round schedule</div><div class="row g-2"><div class="col-12"><label class="form-label small mb-1">Date</label><input class="form-control form-control-sm" type="date" name="next_schedule_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="col-4"><label class="form-label small mb-1">Hour</label><select class="form-select form-select-sm" name="next_schedule_hour" required><?php for($scheduleHour=1;$scheduleHour<=12;$scheduleHour++):?><option value="<?=$scheduleHour?>"><?=$scheduleHour?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">Minute</label><select class="form-select form-select-sm" name="next_schedule_minute" required><?php for($scheduleMinute=0;$scheduleMinute<60;$scheduleMinute+=5):$scheduleMinuteLabel=str_pad((string)$scheduleMinute,2,'0',STR_PAD_LEFT);?><option value="<?=$scheduleMinute?>"><?=$scheduleMinuteLabel?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">AM / PM</label><select class="form-select form-select-sm" name="next_schedule_period" required><option value="AM">AM</option><option value="PM">PM</option></select></div></div></div>
       <button class="btn btn-dark">Move Callbacks Directly to Final</button>
      </form>
     <?php elseif($round['round_type']==='semifinal'):?>
@@ -1992,7 +2004,7 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
       <input type="hidden" name="action" value="create_next_round">
       <input type="hidden" name="round_id" value="<?=$roundId?>">
       <input type="hidden" name="next_round_type" value="final">
-      <input class="form-control mb-2" type="datetime-local" name="next_scheduled_at" aria-label="Final date and time">
+      <div class="border rounded p-2 mb-2" style="min-width:340px"><div class="small fw-bold mb-2">Next-round schedule</div><div class="row g-2"><div class="col-12"><label class="form-label small mb-1">Date</label><input class="form-control form-control-sm" type="date" name="next_schedule_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="col-4"><label class="form-label small mb-1">Hour</label><select class="form-select form-select-sm" name="next_schedule_hour" required><?php for($scheduleHour=1;$scheduleHour<=12;$scheduleHour++):?><option value="<?=$scheduleHour?>"><?=$scheduleHour?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">Minute</label><select class="form-select form-select-sm" name="next_schedule_minute" required><?php for($scheduleMinute=0;$scheduleMinute<60;$scheduleMinute+=5):$scheduleMinuteLabel=str_pad((string)$scheduleMinute,2,'0',STR_PAD_LEFT);?><option value="<?=$scheduleMinute?>"><?=$scheduleMinuteLabel?></option><?php endfor;?></select></div><div class="col-4"><label class="form-label small mb-1">AM / PM</label><select class="form-select form-select-sm" name="next_schedule_period" required><option value="AM">AM</option><option value="PM">PM</option></select></div></div></div>
       <button class="btn btn-dark">Move Semifinal Callbacks to Final</button>
      </form>
     <?php endif;?>

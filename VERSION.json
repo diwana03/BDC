@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev233",
-  "build": 2939,
+  "version": "2.3.3-dev234",
+  "build": 2940,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores post-submit Callback, Semifinal and Final controls in Automatic Scoring",
-    "Shows Chief Judge tie-resolution choices directly in Test and Live Automatic dashboards",
-    "Locks next-round creation until callback-boundary ties are resolved",
-    "Routes Test Automatic workflow actions through the real Test scoring engine"
+    "Replaces browser datetime-local controls with manual Date, Hour, Minute and AM/PM selectors",
+    "Saves the selected next-round schedule in both Test and Live",
+    "Uses consistent five-minute scheduling choices for Semifinal and Final",
+    "Preserves dev230-dev233 Automatic scoring, tie and callback repairs"
   ]
 }
