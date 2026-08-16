@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev232",
-  "build": 2938,
+  "version": "2.3.3-dev233",
+  "build": 2939,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Protects every global bootstrap helper against duplicate declaration",
-    "Prevents country_flag_url redeclaration from stopping Automatic Scoring",
-    "Retains one-time loading for Test Automatic Scoring endpoints",
-    "Preserves dev230 and dev231 scoring and bootstrap repairs"
+    "Restores post-submit Callback, Semifinal and Final controls in Automatic Scoring",
+    "Shows Chief Judge tie-resolution choices directly in Test and Live Automatic dashboards",
+    "Locks next-round creation until callback-boundary ties are resolved",
+    "Routes Test Automatic workflow actions through the real Test scoring engine"
   ]
 }
