@@ -276,19 +276,21 @@ if (
 endforeach; ?></div><div class="podium-name"><?= e(
     implode(" & ", array_column($people, "name")),
 ) ?></div><div class="podium-country"><?php
-$parts = [];
+$countries = [];
 foreach ($people as $person) {
     if (!empty($person["country"])) {
-        $v =
-            CountryFlagService::emoji($person["country"]) .
-            " " .
-            $person["country"];
-        if (!in_array($v, $parts, true)) {
-            $parts[] = $v;
+        $country = (string) $person["country"];
+        if (!in_array($country, $countries, true)) {
+            $countries[] = $country;
         }
     }
 }
-echo e(implode(" · ", $parts));
+foreach ($countries as $index => $country) {
+    echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.08em;margin:0 .32em;vertical-align:middle">';
+    echo '<span class="podium-flag" style="font-size:clamp(34px,3.2vw,76px);line-height:1;filter:drop-shadow(0 .08em .12em rgba(0,0,0,.7))">' . e(CountryFlagService::emoji($country)) . '</span>';
+    echo '<span class="podium-country-name" style="font-size:clamp(8px,.62vw,15px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">' . e($country) . '</span>';
+    echo '</span>';
+}
 ?></div></div><div class="block p<?= $rank ?>"><?= $rank ?></div><?php
 endif; ?></div><?php
 endforeach; ?></div><?php else: ?><div class="list"><?php if (
