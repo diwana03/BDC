@@ -5,6 +5,7 @@ require dirname(__DIR__).'/bootstrap.php';
 
 use App\Services\AutomaticScoringEngine;
 use App\Services\ScoringRulesService;
+use App\Services\CallbackTieResolutionService;
 
 $normalized=ScoringRulesService::normalizeNormalRoundTier(13,20,5,7,true);
 if (($normalized['tier']??0)!==2 || ($normalized['yes_count']??0)!==10 || ($normalized['callback_count']??0)!==10) {
@@ -43,6 +44,14 @@ $marks[2]=[11=>90,12=>80,13=>70];
 $tied=AutomaticScoringEngine::calculateHeats(array_slice($entries,0,2),$judges,$marks,1);
 if (($tied[0]['status']??'')!=='tie_pending' || ($tied[1]['status']??'')!=='tie_pending') {
     throw new RuntimeException('Unresolved callback-boundary tie was not escalated.');
+}
+
+$serviceSource=file_get_contents(dirname(__DIR__).'/app/Services/CallbackTieResolutionService.php');
+if(!str_contains((string)$serviceSource,"count(\$selected)!==\$required")){
+    throw new RuntimeException('Tie resolver does not enforce the exact remaining callback quantity.');
+}
+if(!str_contains((string)$serviceSource,"available_alternate_ranks")){
+    throw new RuntimeException('Tie resolver does not preserve A1-A3 assignment.');
 }
 
 echo "Automatic scoring tests passed.\n";

@@ -860,108 +860,17 @@ try{
    }
   }elseif($action==='resolve_callback_tie'){
    $roundId=(int)($_POST['round_id']??0);
-   $selectedEntryId=(int)($_POST['selected_entry_id']??0);
-   if($roundId<1||$selectedEntryId<1)throw new RuntimeException('Select a tied competitor.');
-
-   $selectedStmt=$pdo->prepare("
-    SELECT sr.*,se.dance_role,se.display_name,se.bib_number
-    FROM bdc_scoring_results sr
-    JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-    WHERE sr.round_id=:r AND sr.entry_id=:e AND sr.result_status='tie_pending'
-    LIMIT 1
-   ");
-   $selectedStmt->execute(['r'=>$roundId,'e'=>$selectedEntryId]);
-   $selected=$selectedStmt->fetch();
-   if(!$selected)throw new RuntimeException('This competitor is no longer in an unresolved callback tie.');
-
-   $groupStmt=$pdo->prepare("
-    SELECT sr.*,se.display_name,se.bib_number
-    FROM bdc_scoring_results sr
-    JOIN bdc_scoring_entries se ON se.id=sr.entry_id
-    WHERE sr.round_id=:r
-      AND se.dance_role=:role
-      AND sr.result_status='tie_pending'
-      AND sr.rank_number=:rank
-      AND ABS(sr.total_score-:total)<0.0001
-      AND ABS(sr.chief_score-:chief)<0.0001
-    ORDER BY se.bib_number,se.id
-   ");
-   $groupStmt->execute([
-    'r'=>$roundId,
-    'role'=>$selected['dance_role'],
-    'rank'=>$selected['rank_number'],
-    'total'=>$selected['total_score'],
-    'chief'=>$selected['chief_score']
+   $anchorEntryId=(int)($_POST['tie_anchor_entry_id']??0);
+   $selectedEntryIds=is_array($_POST['selected_entry_ids']??null)?$_POST['selected_entry_ids']:[];
+   $alternateOrder=is_array($_POST['alternate_order']??null)?$_POST['alternate_order']:[];
+   if($roundId<1||$anchorEntryId<1)throw new RuntimeException('Select the tied competitors.');
+   $tieResult=\App\Services\CallbackTieResolutionService::resolve(
+    $pdo,$roundId,false,$anchorEntryId,$selectedEntryIds,$alternateOrder,$userId
+   );
+   auditScoring($pdo,$roundId,$userId,'callback_tie_decision_confirmed',[
+    'role'=>$tieResult['role'],'selected'=>$tieResult['selected'],'quota'=>$tieResult['quota']
    ]);
-   $group=$groupStmt->fetchAll();
-   if(count($group)<2)throw new RuntimeException('The unresolved tie group could not be found.');
-
-   $roundForTie=loadRound($pdo,$roundId);
-   if(!$roundForTie)throw new RuntimeException('Round not found.');
-   $callbackLimit=(int)$roundForTie['callback_count'];
-
-   $pdo->beginTransaction();
-   try{
-    $update=$pdo->prepare("
-     UPDATE bdc_scoring_results
-     SET result_status=:status,
-         rank_number=:rank,
-         alternate_rank=:alternate_rank,
-         updated_at=NOW()
-     WHERE round_id=:round_id AND entry_id=:entry_id
-    ");
-
-    // Chief Judge-selected competitor receives the final callback place.
-    $update->execute([
-     'status'=>'callback',
-     'rank'=>$callbackLimit,
-     'alternate_rank'=>null,
-     'round_id'=>$roundId,
-     'entry_id'=>$selectedEntryId
-    ]);
-
-    // Remaining tied competitors become ALT 1-3, then eliminated.
-    $alternateRank=1;
-    $displayRank=$callbackLimit+1;
-    foreach($group as $candidate){
-     if((int)$candidate['entry_id']===$selectedEntryId)continue;
-     if($alternateRank<=3){
-      $update->execute([
-       'status'=>'alternate',
-       'rank'=>$displayRank++,
-       'alternate_rank'=>$alternateRank++,
-       'round_id'=>$roundId,
-       'entry_id'=>(int)$candidate['entry_id']
-      ]);
-     }else{
-      $update->execute([
-       'status'=>'eliminated',
-       'rank'=>$displayRank++,
-       'alternate_rank'=>null,
-       'round_id'=>$roundId,
-       'entry_id'=>(int)$candidate['entry_id']
-      ]);
-     }
-    }
-
-    auditScoring($pdo,$roundId,$userId,'callback_tie_resolved',[
-     'role'=>$selected['dance_role'],
-     'selected_entry_id'=>$selectedEntryId,
-     'selected_name'=>$selected['display_name'],
-     'selected_bib'=>(int)$selected['bib_number'],
-     'tie_rank'=>(int)$selected['rank_number']
-    ]);
-    $remainingTie=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_results WHERE round_id=:r AND result_status='tie_pending'");
-    $remainingTie->execute(['r'=>$roundId]);
-    if((int)$remainingTie->fetchColumn()===0 && ($roundForTie['scoring_mode']??'manual')==='automated'){
-     $pdo->prepare("UPDATE bdc_scoring_rounds SET status='awaiting_decision' WHERE id=:r")->execute(['r'=>$roundId]);
-    }
-    $pdo->commit();
-    $notice='Tie resolved. '.$selected['display_name'].' was selected by the Chief Judge as the callback.';
-   }catch(Throwable $e){
-    if($pdo->inTransaction())$pdo->rollBack();
-    throw $e;
-   }
+   $notice='Tie resolved. '.$tieResult['selected'].' '.ucfirst((string)$tieResult['role']).' callbacks confirmed.';
   }elseif($action==='create_next_round'){
    $roundId=(int)($_POST['round_id']??0);
    $nextType=(string)($_POST['next_round_type']??'');
@@ -1986,36 +1895,12 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
 </div>
 <?php endif;?>
 
-<?php if($tieGroups):?>
-<div class="card shadow-sm mt-3 mb-4 border-warning">
- <div class="card-header bg-warning-subtle fw-semibold">Chief Judge Tie Resolution</div>
- <div class="card-body">
-  <p class="mb-3">These exact ties cross the callback cutoff. The Chief Judge must select the competitor who receives the callback place.</p>
-  <?php foreach($tieGroups as $tieGroup):?>
-   <div class="border rounded p-3 mb-3">
-    <div class="fw-semibold mb-2">
-     <?=e(ucfirst($tieGroup['role']))?> · Callback position #<?=$tieGroup['rank']?> ·
-     Total <?=number_format($tieGroup['total'],1)?> · Chief Judge score <?=number_format($tieGroup['chief'],1)?>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-     <?php foreach($tieGroup['competitors'] as $candidate):?>
-      <form method="post" onsubmit="return confirm('Select <?=e(addslashes($candidate['display_name']))?> as the callback winner of this tie?');">
-       <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-       <input type="hidden" name="action" value="resolve_callback_tie">
-       <input type="hidden" name="round_id" value="<?=$roundId?>">
-       <input type="hidden" name="selected_entry_id" value="<?=$candidate['entry_id']?>">
-       <button class="btn btn-warning">
-        Select Bib <?=$candidate['bib_number']?> · <?=e($candidate['display_name'])?>
-       </button>
-      </form>
-     <?php endforeach;?>
-    </div>
-   </div>
-  <?php endforeach;?>
-  <div class="small text-muted">The selected competitor becomes Callback. The remaining tied competitors become Alternates in order, then Eliminated if more than three remain.</div>
- </div>
-</div>
-<?php endif;?>
+<?php
+$tiePanelTest=false;
+$tiePanelAction='';
+$tiePanelAttributes='';
+require dirname(__DIR__).'/scoring/tie-resolution-panel.php';
+?>
 
 <?php endif;?>
 <?php endif;?><?php endif;?></div><script>
