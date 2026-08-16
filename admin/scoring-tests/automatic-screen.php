@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/bootstrap.php'
 \App\Core\Auth::requireAdmin();
 $_SESSION['bdc_test_scoring_mode'] = 'automated';
 $roundId = (int) ($_GET['round_id'] ?? 0);

@@ -42,15 +42,19 @@ session_set_cookie_params([
 ]);
 session_start();
 
-function e(?string $value): string
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+if (!function_exists('e')) {
+    function e(?string $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
 }
 
-function url(string $path = ''): string
-{
-    $base = rtrim((string) \App\Core\Config::get('app.base_path', '/portal'), '/');
-    return $base . '/' . ltrim($path, '/');
+if (!function_exists('url')) {
+    function url(string $path = ''): string
+    {
+        $base = rtrim((string) \App\Core\Config::get('app.base_path', '/portal'), '/');
+        return $base . '/' . ltrim($path, '/');
+    }
 }
 
 $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
