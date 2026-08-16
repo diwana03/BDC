@@ -311,23 +311,17 @@ if (
 endforeach; ?></div><div class="podium-name"><?= e(
     implode(" & ", array_column($people, "name")),
 ) ?></div><div class="podium-country"><?php
-$countries = [];
 foreach ($people as $person) {
     if (!empty($person["country"])) {
         $country = (string) $person["country"];
-        if (!in_array($country, $countries, true)) {
-            $countries[] = $country;
+        echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;margin:0 .32em;vertical-align:middle">';
+        $flagUrl = country_flag_url($country);
+        if ($flagUrl) {
+            echo '<img src="' . e($flagUrl) . '" alt="' . e($country) . ' flag" style="width:clamp(52px,4vw,96px);height:clamp(35px,2.67vw,64px);object-fit:cover;border:2px solid rgba(255,255,255,.75);border-radius:5px;box-shadow:0 3px 12px rgba(0,0,0,.55)">';
         }
+        echo '<span class="podium-country-name" style="font-size:clamp(8px,.62vw,15px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">' . e($country) . '</span>';
+        echo '</span>';
     }
-}
-foreach ($countries as $index => $country) {
-    echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;margin:0 .32em;vertical-align:middle">';
-    $flagUrl = country_flag_url($country);
-    if ($flagUrl) {
-        echo '<img src="' . e($flagUrl) . '" alt="' . e($country) . ' flag" style="width:clamp(52px,4vw,96px);height:clamp(35px,2.67vw,64px);object-fit:cover;border:2px solid rgba(255,255,255,.75);border-radius:5px;box-shadow:0 3px 12px rgba(0,0,0,.55)">';
-    }
-    echo '<span class="podium-country-name" style="font-size:clamp(8px,.62vw,15px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">' . e($country) . '</span>';
-    echo '</span>';
 }
 ?></div></div><div class="block p<?= $rank ?>"><?= $rank ?></div><?php
 endif; ?></div><?php

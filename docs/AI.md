@@ -26,7 +26,7 @@ Read `PROJECT.md` and this file before changing the repository.
 - Do not release a workflow change when only Test or only Live contains the intended behavior, unless it is explicitly an isolated Test repair and Live already has the approved equivalent.
 - Treat “R&D” as conditional on the parity gate. It is not permission to push a partial implementation.
 - For projector-related scoring changes, Test/Live parity also includes the public Live Scoreboard feed and refresh state.
-- If any parity check fails or cannot be performed, stop before commit/push and tell the user exactly which surface is incomplete. Do not defer the missing counterpart silently.
+- If any candidate/static parity check fails, stop before pushing to `develop` and tell the user exactly which surface is incomplete. After the complete candidate is pushed and the user deploys that exact commit to Staging, run the runtime parity checks there. A Staging failure blocks Production approval, not creation of the `develop` candidate.
 - Each scoring release note must identify the paired Test, Live, and projector files reviewed and state any intentionally Test-only tools.
 
 Version 2.2.0 is a stabilization and security release. Do not consolidate or redesign scoring behavior in this release. That work belongs to 2.3.0 and must retain golden fixtures from real competitions.

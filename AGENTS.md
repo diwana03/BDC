@@ -18,7 +18,7 @@ Testing-first describes the internal coding order. It does not permit a Test-onl
 
 “R&D” means prepare the release and push it to the `develop` release line. It never overrides the Test/Live parity rule.
 
-Before any scoring R&D commit or push, the contributor must verify and report all three surfaces:
+Before any scoring R&D candidate is pushed to `develop`, the contributor must statically verify and report all three surfaces:
 
 1. Testing Score Dashboard and its isolated `bdc_test_*` workflow.
 2. Live Scoring Dashboard and its real-data workflow.
@@ -26,12 +26,17 @@ Before any scoring R&D commit or push, the contributor must verify and report al
 
 The parity check must cover the complete chain: setup, competitor and judge assignment, judge links, draft saving, calculation, submission, completed state, callback/tie handling, next-round creation, print preview, final workflow, labels, validation, and error behavior.
 
-**Release-blocking rule:** if any required surface is missing, different, unverified, or fails, do not commit or push the release. Stop and inform the user immediately with:
+The release gate has two stages:
+
+1. **Candidate gate:** complete the Test, Live, and projector changes together; run all locally available syntax, static, and automated checks; then push the versioned candidate to `develop`.
+2. **Runtime gate:** the user deploys that exact `develop` commit to Staging. Verify Staging health and the complete browser workflow before the release can be promoted to Production.
+
+**Release-blocking rule:** if any required static check fails, do not push the candidate. If a runtime check fails or cannot be verified on Staging, do not approve or promote the release. Stop and inform the user immediately with:
 
 - what passed;
 - what failed or could not be verified;
 - which Test, Live, or projector files remain incomplete;
-- whether the previous `develop` release remains unchanged.
+- whether `develop` or the Staging-tested release remains unchanged.
 
 Never silently omit a counterpart, defer it to a later release, or describe a partial scoring change as complete.
 
@@ -42,4 +47,4 @@ Never silently omit a counterpart, defer it to a later release, or describe a pa
 - Push source changes only after validation. The user deploys `develop` to Staging through Release Manager.
 - Never deploy to or modify Production. Production promotion belongs to the user after Staging approval.
 - Every release must increment the application version/build and include release notes, validation results, migration status, and deployment status.
-- Every scoring release note must include a **Parity Gate** section naming the Test dashboard, Live dashboard, and projector files checked. R&D is blocked when that section cannot truthfully be completed.
+- Every scoring release note must include a **Parity Gate** section naming the Test dashboard, Live dashboard, and projector files checked. It must distinguish candidate/static validation from Staging/runtime validation. Production promotion is blocked until both can truthfully be completed.

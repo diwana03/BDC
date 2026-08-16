@@ -53,7 +53,8 @@ $markStmt->execute(['r'=>$roundId]);
 $marks=[];
 foreach($markStmt->fetchAll() as $mark)$marks[(int)$mark['entry_id']][(int)$mark['judge_id']]=$mark;
 
-function markLabel(?array $mark):string{
+function markLabel(?array $mark,bool $automatic=false):string{
+ if($automatic)return $mark===null?'':number_format((float)$mark['weighted_score'],2);
  if(!$mark||$mark['mark_type']==='blank')return '';
  if($mark['mark_type']==='yes')return '1';
  if($mark['mark_type']==='alt')return 'A'.(int)$mark['alt_rank'];
@@ -68,6 +69,7 @@ function resultLabel(array $entry):string{
  return '';
 }
 $logo=url('public/assets/img/bdc-logo-header.png');
+$isAutomatic=($round['scoring_mode']??'manual')==='automated';
 $witnesses=array_values(array_filter([
  trim((string)($round['witness_1']??'')),
  trim((string)($round['witness_2']??'')),
@@ -135,7 +137,7 @@ th.result,td.result{width:16mm;font-weight:700}
 <div class="fit-shell"><div class="page fit-page">
  <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e(strtoupper($label))?></h2></div><div class="meta"><strong>Judges:</strong> <?=count($judges)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
  <div class="page-label"><?=e($label)?> · All Judges</div>
- <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total">Total</th><th class="result">Result</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;?><td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
+ <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;?><td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
  <div class="judge-key"><strong>Judge Key</strong><?php foreach($judges as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
 </div></div>
 <?php endforeach;?>
@@ -180,7 +182,7 @@ th.result,td.result{width:16mm;font-weight:700}
      <th class="bib">Bib</th>
      <th class="name">Competitor</th>
      <?php if(!$summaryOnly):foreach($judges as $judge):?><th>J<?= (int)$judge['judge_order'] ?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;endif;?>
-     <th class="total">Total</th>
+     <th class="total"><?=$isAutomatic?'Average':'Total'?></th>
      <th class="result">Result</th>
     </tr></thead>
     <tbody>
@@ -188,7 +190,7 @@ th.result,td.result{width:16mm;font-weight:700}
      <tr class="<?=e((string)($entry['result_status']??''))?>">
       <td class="bib"><?= (int)$entry['bib_number'] ?></td>
       <td class="name"><?=e($entry['display_name'])?></td>
-      <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;endif;?>
+      <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;endif;?>
       <td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td>
       <td class="result"><?=e(resultLabel($entry))?></td>
      </tr>

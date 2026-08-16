@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev224",
-  "build": 2930,
+  "version": "2.3.3-dev225",
+  "build": 2931,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Makes Test, Live and projector parity a release-blocking requirement",
-    "Prevents R&D from overriding the scoring parity gate",
-    "Requires immediate disclosure when any counterpart fails or remains unverified",
-    "Requires every scoring release note to document its parity check"
+    "Adds an automated Test, Live and projector parity release gate",
+    "Aligns automatic score labels and print output across Test and Live",
+    "Shows one country flag per contestant on the shared winner podium",
+    "Documents the candidate-to-Staging runtime validation workflow"
   ]
 }
