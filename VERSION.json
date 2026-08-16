@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3-dev241",
-  "build": 2947,
+  "version": "2.3.3-dev242",
+  "build": 2948,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
@@ -10,5 +10,8 @@
     "Shows Heats and Semifinal judge marks in Leader and Follower split tables",
     "Shows Final couples with each judge's Relative Placement",
     "Resolves boundary ties using the exact remaining callback quantity"
+  ],
+  "highlights": [
+    "Repairs stale next-round finalists and restores Super Admin draft deletion"
   ]
 }

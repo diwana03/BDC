@@ -55,3 +55,19 @@ if(!str_contains((string)$serviceSource,"available_alternate_ranks")){
 }
 
 echo "Automatic scoring tests passed.\n";
+
+$testDashboard=file_get_contents(dirname(__DIR__).'/admin/scoring-tests/index.php');
+$liveCore=file_get_contents(dirname(__DIR__).'/admin/scoring/core.php');
+$disciplineActions=file_get_contents(dirname(__DIR__).'/admin/scoring/discipline-actions.php');
+foreach(['Test'=>$testDashboard,'Live'=>$liveCore] as $surface=>$source){
+    if(!str_contains((string)$source,"stale_entries_withdrawn"))throw new RuntimeException($surface.' callback sync does not withdraw stale transferred entries.');
+    if(!str_contains((string)$source,"Auth::isSuperAdmin()"))throw new RuntimeException($surface.' workflow deletion is not restricted to Super Admin.');
+}
+if(!str_contains((string)$disciplineActions,"bdc_scoring_judge_sessions"))throw new RuntimeException('Live workflow deletion does not clean automatic judge sessions.');
+if(!str_contains((string)$disciplineActions,"bdc_scoring_publication_documents"))throw new RuntimeException('Live workflow deletion does not clean publication documents.');
+
+$activeDashboard=file_get_contents(dirname(__DIR__).'/admin/scoring/active-dashboard.php');
+$deleteDraft=file_get_contents(dirname(__DIR__).'/admin/scoring/delete-draft.php');
+if(!str_contains((string)$activeDashboard,"\$draft&&Auth::isSuperAdmin()"))throw new RuntimeException('Active dashboard does not restrict draft deletion to Super Admin.');
+if(!str_contains((string)$deleteDraft,"Only the Super Admin can delete a complete draft workflow."))throw new RuntimeException('Draft deletion endpoint does not enforce Super Admin.');
+if(str_contains((string)$deleteDraft,"progressed beyond Draft"))throw new RuntimeException('Draft workflow deletion still blocks completed parent rounds.');

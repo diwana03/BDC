@@ -343,6 +343,60 @@ function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int 
     $expected=(int)$callbackCount->fetchColumn();
     if($expected<1) throw new RuntimeException('No callback competitors were found in the submitted result.');
 
+    // Existing child rounds must mirror the current callback result. Withdraw
+    // previously transferred non-callbacks, while preserving explicit manual additions.
+    $staleStmt=$pdo->prepare("
+      SELECT child.id
+      FROM bdc_scoring_entries child
+      WHERE child.round_id=:child_round
+        AND child.entry_status='active'
+        AND EXISTS(
+          SELECT 1 FROM bdc_scoring_entries source_entry
+          WHERE source_entry.round_id=:source_round
+            AND source_entry.competitor_id=child.competitor_id
+            AND source_entry.dance_role=child.dance_role
+        )
+        AND NOT EXISTS(
+          SELECT 1
+          FROM bdc_scoring_entries source_entry
+          JOIN bdc_scoring_results source_result
+            ON source_result.entry_id=source_entry.id
+           AND source_result.round_id=source_entry.round_id
+          WHERE source_entry.round_id=:source_round_callback
+            AND source_entry.competitor_id=child.competitor_id
+            AND source_entry.dance_role=child.dance_role
+            AND source_entry.entry_status='active'
+            AND source_result.result_status='callback'
+        )
+        AND NOT EXISTS(
+          SELECT 1 FROM bdc_scoring_audit manual_audit
+          WHERE manual_audit.round_id=:child_round_audit
+            AND manual_audit.action IN('entry_added','extra_finalist_added')
+            AND JSON_VALID(manual_audit.details_json)
+            AND CAST(JSON_UNQUOTE(JSON_EXTRACT(manual_audit.details_json,'$.competitor_id')) AS UNSIGNED)=child.competitor_id
+        )
+    ");
+    $staleStmt->execute([
+      'child_round'=>$childRoundId,
+      'source_round'=>$source['id'],
+      'source_round_callback'=>$source['id'],
+      'child_round_audit'=>$childRoundId
+    ]);
+    $staleIds=array_map('intval',$staleStmt->fetchAll(PDO::FETCH_COLUMN));
+    if($staleIds){
+      $stalePlaceholders=implode(',',array_fill(0,count($staleIds),'?'));
+      $pairStmt=$pdo->prepare("SELECT id FROM bdc_scoring_final_pairs WHERE round_id=? AND (leader_entry_id IN ($stalePlaceholders) OR follower_entry_id IN ($stalePlaceholders))");
+      $pairStmt->execute(array_merge([$childRoundId],$staleIds,$staleIds));
+      $stalePairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
+      if($stalePairIds){
+        $pairPlaceholders=implode(',',array_fill(0,count($stalePairIds),'?'));
+        $pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE pair_id IN ($pairPlaceholders)")->execute($stalePairIds);
+        $pdo->prepare("DELETE FROM bdc_scoring_final_results WHERE pair_id IN ($pairPlaceholders)")->execute($stalePairIds);
+        $pdo->prepare("DELETE FROM bdc_scoring_final_pairs WHERE id IN ($pairPlaceholders)")->execute($stalePairIds);
+      }
+      $pdo->prepare("UPDATE bdc_scoring_entries SET entry_status='withdrawn' WHERE id IN ($stalePlaceholders)")->execute($staleIds);
+    }
+
     $copyEntries=$pdo->prepare("
       INSERT INTO bdc_scoring_entries(
         round_id,competitor_id,dance_role,bib_number,display_name,entry_status
@@ -413,6 +467,7 @@ function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int 
     auditScoring($pdo,$childRoundId,$userId,'callbacks_synced',[
       'source_round_id'=>(int)$source['id'],
       'expected_callbacks'=>$expected,
+      'stale_entries_withdrawn'=>count($staleIds),
       'active_child_entries'=>$actual
     ]);
 
@@ -617,6 +672,7 @@ try{
     $pdo->commit();
    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
   }elseif($action==='delete_scoring_workflow'){
+   if(!Auth::isSuperAdmin())throw new RuntimeException('Only the Super Admin can delete a complete scoring workflow.');
    $eventId=(int)($_POST['event_id']??0);
    $division=(string)($_POST['division']??'');
    $confirmation=trim((string)($_POST['delete_confirmation']??''));
@@ -1441,14 +1497,15 @@ $csrf=Csrf::token();
 <td class="text-end">
  <div class="d-inline-flex gap-2">
   <a class="btn btn-sm btn-outline-dark" href="?round_id=<?=$r['id']?>">Open</a>
-  <?php if($r['status']!=='archived' && empty($r['locked_at'])):?>
+  <?php if(Auth::isSuperAdmin() && $r['status']!=='archived'):?>
   <form method="post" onsubmit="return confirmDeleteWorkflow(this,'<?=e(addslashes($r['event_name']))?>','<?=e(ucfirst($r['division']))?>');">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="delete_scoring_workflow">
    <input type="hidden" name="event_id" value="<?=$r['event_id']?>">
    <input type="hidden" name="division" value="<?=e($r['division'])?>">
+   <input type="hidden" name="dance_style" value="<?=e((string)($r['dance_style']??'bachata'))?>">
    <input type="hidden" name="delete_confirmation" value="">
-   <button class="btn btn-sm btn-outline-danger">Delete All Test Scoring</button>
+   <button class="btn btn-sm btn-outline-danger">Delete Complete Scoring Workflow</button>
   </form>
   <?php endif;?>
  </div>
