@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev220",
-  "build": 2926,
+  "version": "2.3.3-dev221",
+  "build": 2927,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Shows a cute animal portrait when a projected competitor has no photo",
-    "Uses stable rabbit, baby elephant and panda placeholders across refreshes",
-    "Falls back to the animal portrait when a stored photo cannot load",
-    "Keeps competitor photo, name and BIB rows aligned in test and live projection"
+    "Shows all active competitors on the Heats Full Scores projection during judging",
+    "Calculates current live totals directly from saved judge marks",
+    "Refreshes the projected score table whenever judges save new marks",
+    "Shows cute animal fallbacks in the actual public competitor and couple feed"
   ]
 }

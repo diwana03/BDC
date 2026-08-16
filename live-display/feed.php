@@ -43,6 +43,7 @@ $roundTable = $test ? "bdc_test_scoring_rounds" : "bdc_scoring_rounds";
 $entryTable = $test ? "bdc_test_scoring_entries" : "bdc_scoring_entries";
 $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
 $resultTable = $test ? "bdc_test_scoring_results" : "bdc_scoring_results";
+$markTable = $test ? "bdc_test_scoring_marks" : "bdc_scoring_marks";
 $finalResultTable = $test
     ? "bdc_test_scoring_final_results"
     : "bdc_scoring_final_results";
@@ -123,10 +124,25 @@ if ($type === "matching") {
 } elseif ($type === "heats_scores") {
     $title = "HEATS FULL SCORES";
     $q = $pdo->prepare(
-        "SELECT sr.rank_number,sr.total_score,sr.result_status,se.bib_number,se.display_name,se.dance_role FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r ORDER BY se.dance_role,sr.rank_number,se.bib_number,se.display_name",
+        "SELECT sr.rank_number AS official_rank,COALESCE(SUM(m.weighted_score),sr.total_score,0) total_score,COALESCE(sr.result_status,'provisional') result_status,se.bib_number,se.display_name,se.dance_role
+         FROM {$entryTable} se
+         LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id
+         LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id
+         WHERE se.round_id=:r AND se.entry_status='active'
+         GROUP BY sr.rank_number,sr.total_score,sr.result_status,se.id,se.bib_number,se.display_name,se.dance_role
+         ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name",
     );
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
+    $roleRanks = [];
+    foreach ($items as &$item) {
+        $role = (string) $item["dance_role"];
+        $roleRanks[$role] = ($roleRanks[$role] ?? 0) + 1;
+        $item["rank_number"] = !empty($item["official_rank"])
+            ? (int) $item["official_rank"]
+            : $roleRanks[$role];
+    }
+    unset($item);
 } elseif (in_array($type, ["final_results", "results", "winners"], true)) {
     $title = $type === "winners" ? "WINNER PODIUM" : "FINAL FULL RESULTS";
     try {
@@ -185,6 +201,15 @@ if ($type === "matching") {
         $items = [["total" => 0, "submitted" => 0]];
     }
 }
+$animalPlaceholders = [
+    url("public/assets/img/projection-animals/rabbit.png"),
+    url("public/assets/img/projection-animals/baby-elephant.png"),
+    url("public/assets/img/projection-animals/panda.png"),
+];
+$animalPhoto = static function (string $key) use ($animalPlaceholders): string {
+    $index = abs((int) crc32($key)) % count($animalPlaceholders);
+    return $animalPlaceholders[$index];
+};
 $layout = ProjectionLayoutService::resolve(
     (string) $settings["screen_format"],
     max(1, count($items)),
@@ -276,9 +301,13 @@ if (
     $people
     as $person
 ):
-    if (!empty($person["photo"])): ?><img class="podium-photo" src="<?= e(
-    $person["photo"],
-) ?>" onerror="this.outerHTML='<span class=&quot;podium-photo blank&quot;></span>'"><?php else: ?><span class="podium-photo blank"></span><?php endif;
+    $fallbackPhoto = $animalPhoto((string) $person["name"]);
+    $displayPhoto = !empty($person["photo"])
+        ? (string) $person["photo"]
+        : $fallbackPhoto;
+    ?><img class="podium-photo" src="<?= e(
+    $displayPhoto,
+) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'"><?php
 endforeach; ?></div><div class="podium-name"><?= e(
     implode(" & ", array_column($people, "name")),
 ) ?></div><div class="podium-country"><?php
@@ -326,11 +355,16 @@ e($x["full_name"] ?: $x["judge_name"])
     endforeach;
 else:
     foreach ($items as $x):
-        if (array_key_exists("leader_name", $x)): ?><div class="item"><div class="small" style="font-weight:900;letter-spacing:.08em">COUPLE <?= (int) $x["pair_number"] ?></div><div style="display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.5vw,34px);width:100%;margin:.35em 0"><?php foreach ([["name" => $x["leader_name"], "bib" => $x["leader_bib"], "photo" => $x["leader_photo"], "country" => $x["leader_country"]], ["name" => $x["follower_name"], "bib" => $x["follower_bib"], "photo" => $x["follower_photo"], "country" => $x["follower_country"]]] as $person): ?><div style="display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%"><?php if (!empty($person["photo"])): ?><img class="photo" src="<?= e($person["photo"]) ?>" onerror="this.remove()" style="margin-bottom:.25em"><?php endif; ?><div class="name" style="font-size:.86em"><?= e($person["name"] ?: "Partner pending") ?></div><div class="small">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div><?php if (!empty($person["country"])): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.3em"><?php if ($flagUrl = country_flag_url($person["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag" style="width:clamp(30px,2.25vw,56px);height:clamp(20px,1.5vw,37px);object-fit:cover;border:1px solid rgba(255,255,255,.7);border-radius:4px"><?php endif; ?><?= e($person["country"]) ?></div><?php endif; ?></div><?php endforeach; ?></div></div><?php else: ?><div class="item"><?php if (
-    !empty($x["photo_url"])
-): ?><img class="photo" src="<?= e(
-    $x["photo_url"],
-) ?>" onerror="this.remove()"><?php endif; ?><div class="name"><?= e(
+        if (array_key_exists("leader_name", $x)): ?><div class="item"><div class="small" style="font-weight:900;letter-spacing:.08em">COUPLE <?= (int) $x["pair_number"] ?></div><div style="display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.5vw,34px);width:100%;margin:.35em 0"><?php foreach ([["name" => $x["leader_name"], "bib" => $x["leader_bib"], "photo" => $x["leader_photo"], "country" => $x["leader_country"]], ["name" => $x["follower_name"], "bib" => $x["follower_bib"], "photo" => $x["follower_photo"], "country" => $x["follower_country"]]] as $person): $fallbackPhoto = $animalPhoto((string) (($person["bib"] ?? "") . "|" . ($person["name"] ?? ""))); $displayPhoto = !empty($person["photo"]) ? (string) $person["photo"] : $fallbackPhoto; ?><div style="display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%"><img class="photo" src="<?= e($displayPhoto) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'" style="margin-bottom:.25em"><div class="name" style="font-size:.86em"><?= e($person["name"] ?: "Partner pending") ?></div><div class="small">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div><?php if (!empty($person["country"])): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.3em"><?php if ($flagUrl = country_flag_url($person["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag" style="width:clamp(30px,2.25vw,56px);height:clamp(20px,1.5vw,37px);object-fit:cover;border:1px solid rgba(255,255,255,.7);border-radius:4px"><?php endif; ?><?= e($person["country"]) ?></div><?php endif; ?></div><?php endforeach; ?></div></div><?php else:
+    $fallbackPhoto = $animalPhoto(
+        (string) (($x["bib_number"] ?? "") . "|" . ($x["display_name"] ?? "")),
+    );
+    $displayPhoto = !empty($x["photo_url"])
+        ? (string) $x["photo_url"]
+        : $fallbackPhoto;
+    ?><img class="photo" src="<?= e(
+    $displayPhoto,
+) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'"><div class="name"><?= e(
     $x["display_name"],
 ) ?></div><div class="small"><?=
 !empty($x["bib_number"]) ? "BIB " . (int) $x["bib_number"] : "BIB UNASSIGNED"

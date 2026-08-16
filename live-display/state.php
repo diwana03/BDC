@@ -113,7 +113,10 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
         $q->execute(["r" => $roundId]);
         $dataVersion = (string) $q->fetchColumn();
     } catch (Throwable) { $dataVersion = (string) time(); }
-} elseif ($roundId && ($s["screen_type"] ?? "") === "scoring") {
+} elseif (
+    $roundId &&
+    in_array(($s["screen_type"] ?? ""), ["scoring", "heats_scores"], true)
+) {
     try {
         $sessionTable = $test
             ? "bdc_test_scoring_judge_sessions"
@@ -126,6 +129,16 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
         foreach ([$sessionTable, $markTable, $finalMarkTable] as $table) {
             $q = $pdo->prepare(
                 "SELECT CONCAT(COALESCE(UNIX_TIMESTAMP(MAX(updated_at)),0),'-',COUNT(*)) FROM {$table} WHERE round_id=:r",
+            );
+            $q->execute(["r" => $roundId]);
+            $parts[] = (string) $q->fetchColumn();
+        }
+        if (($s["screen_type"] ?? "") === "heats_scores") {
+            $resultTable = $test
+                ? "bdc_test_scoring_results"
+                : "bdc_scoring_results";
+            $q = $pdo->prepare(
+                "SELECT CONCAT(COALESCE(UNIX_TIMESTAMP(MAX(updated_at)),0),'-',COUNT(*)) FROM {$resultTable} WHERE round_id=:r",
             );
             $q->execute(["r" => $roundId]);
             $parts[] = (string) $q->fetchColumn();
