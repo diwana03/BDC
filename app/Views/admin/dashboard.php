@@ -107,7 +107,7 @@ if (
  const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
   'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard'],
-  'People':['Competitors','Identity Matches','Profile Requests'],
+  'People':['Competitors','Judge Database','Identity Matches','Profile Requests'],
   'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],
   'Testing & System':['Scoring Tests Dashboard','Backup & Recovery','Storage Usage','Release Manager'],
   'Super Admin':['AI Operations','Smart Result Import','Legacy & Bulk Import','Merge Duplicates','Users & Roles','SQL Console']
