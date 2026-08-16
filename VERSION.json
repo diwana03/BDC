@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev219",
-  "build": 2925,
+  "version": "2.3.3-dev220",
+  "build": 2926,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Keeps judge Submit disabled until every tier requirement is complete",
-    "Turns Submit green only when the judge is ready to submit",
-    "Requires the tier YES total plus A1, A2 and A3 on every assigned role",
-    "Enforces identical readiness rules in both the browser and server"
+    "Shows a cute animal portrait when a projected competitor has no photo",
+    "Uses stable rabbit, baby elephant and panda placeholders across refreshes",
+    "Falls back to the animal portrait when a stored photo cannot load",
+    "Keeps competitor photo, name and BIB rows aligned in test and live projection"
   ]
 }
