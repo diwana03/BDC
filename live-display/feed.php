@@ -84,7 +84,7 @@ $scoringComplete =
     );
 if ($type === "matching") {
     $title = "RANDOM FINAL MATCH";
-    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,f.bib_number follower_bib,f.display_name follower_name FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
+    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
 } elseif ($type === "judges") {
@@ -202,7 +202,7 @@ if (
 }
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
     $title,
-) ?></title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
+) ?></title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
     (string) $ratio,
 ) ?>;width:min(100vw,calc(100vh * <?= e(
     (string) $ratio,
@@ -214,7 +214,7 @@ if (
     strtoupper(str_replace("_", " ", $r["division"])),
 ) ?> · <?= e(strtoupper($r["round_type"])) ?></div><div class="title"><?= e(
     $title,
-) ?></div><?php if ($type === "matching"): ?><div class="list"><?php foreach ($items as $x): ?><div class="item"><div class="small">COUPLE <?= (int) $x["pair_number"] ?></div><div class="name">BIB <?= (int) $x["leader_bib"] ?> · <?= e($x["leader_name"]) ?></div><div style="font-size:clamp(24px,3vw,65px);color:#ffcf45">＋</div><div class="name">BIB <?= (int) $x["follower_bib"] ?> · <?= e($x["follower_name"]) ?></div></div><?php endforeach; ?></div><?php elseif (
+) ?></div><?php if ($type === "matching"): ?><div class="list"><?php foreach ($items as $x): ?><div class="item"><div class="small">COUPLE <?= (int) $x["pair_number"] ?></div><div class="name">BIB <?= (int) $x["leader_bib"] ?> · <?= e(CountryFlagService::emoji($x["leader_country"] ?? null)) ?> <?= e($x["leader_name"]) ?></div><div style="font-size:clamp(24px,3vw,65px);color:#ffcf45">＋</div><div class="name">BIB <?= (int) $x["follower_bib"] ?> · <?= e(CountryFlagService::emoji($x["follower_country"] ?? null)) ?> <?= e($x["follower_name"]) ?></div></div><?php endforeach; ?></div><?php elseif (
     in_array($type, ["heats_scores", "final_results", "results"], true)
 ): ?><table class="score-table"><thead><tr><th>Place</th><th>Bib</th><th>Competitor / Couple</th><th>Role / Status</th><th>Score</th></tr></thead><tbody><?php foreach (
     $items
@@ -303,16 +303,17 @@ endforeach; ?></div><?php else: ?><div class="list"><?php if (
      0) ?></div><div class="small">JUDGES SUBMITTED</div></div><?php endif;
 elseif ($type === "judges"):
     foreach ($items as $x):
-        $country = $x["country"] ?? ""; ?><div class="item"><?php if (
+        $country = trim((string) ($x["country"] ?? ""));
+        $countryCode = trim((string) ($x["country_code"] ?? "")); ?><div class="item"><?php if (
     !empty($x["photo_url"])
 ): ?><img class="photo" src="<?= e(
     $x["photo_url"],
 ) ?>" onerror="this.remove()"><?php endif; ?><div class="name"><?=
 e($x["full_name"] ?: $x["judge_name"])
 ?><?= (int) $x["is_chief"] ? " ★" : ""
-?></div><?php if ($country): ?><div class="small"><?= e(
-    CountryFlagService::emoji($x["country_code"] ?: $country),
-) ?> <?= e($country) ?></div><?php endif; ?></div><?php
+?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small"><?= e(
+    CountryFlagService::emoji($countryCode !== "" ? $countryCode : $country),
+) ?><?= $country !== "" ? " " . e($country) : "" ?></div><?php endif; ?></div><?php
     endforeach;
 else:
     foreach ($items as $x): ?><div class="item"><?php if (

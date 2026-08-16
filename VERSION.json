@@ -1,12 +1,15 @@
 {
-  "version": "2.3.3-dev204",
-  "build": 2912,
+  "version": "2.3.3-dev205",
+  "build": 2913,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds assignable View Judge Database and Edit Judge Profiles and Photos permissions",
+    "Makes Edit User and Role jump directly to the populated editor",
+    "Clearly identifies and highlights the administrator being edited",
+    "Adds judge country selection and flag display",
+    "Shows judge and competitor flags across Test and Live projector screens",
     "Enforces judge viewing and editing permissions across the Judge Database",
     "Keeps judge photo upload removal crop zoom and reposition controls",
     "Preserves original judge photos for future readjustment",
