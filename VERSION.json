@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev214",
-  "build": 2920,
+  "version": "2.3.3-dev215",
+  "build": 2921,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Moves Automatic competitor mutations to a dedicated lightweight endpoint",
-    "Eliminates the legacy compressed-page response after adding a competitor",
-    "Adds or reactivates competitors before a clean redirect to the dashboard",
-    "Handles tier saving, bib updates and removals through the same safe endpoint"
+    "Separates Leader and Follower competitor search suggestions",
+    "Shows only Leader BDC IDs in Leader entry boxes and only Follower IDs in Follower boxes",
+    "Rejects manually typed wrong-role BDC IDs on the Automatic dashboard",
+    "Applies role-strict search to both Manual and Automatic competitor entry"
   ]
 }
