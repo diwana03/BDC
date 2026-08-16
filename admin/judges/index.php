@@ -2,8 +2,10 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;
+Auth::requirePermission('judges.view');$canEdit=Auth::can('judges.edit');
 Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);$notice='';$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
+ if(!$canEdit){http_response_code(403);exit('You do not have permission to edit judge profiles.');}
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token. Refresh and try again.';
  else try{
   $action=(string)($_POST['action']??'create');

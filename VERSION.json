@@ -1,13 +1,14 @@
 {
-  "version": "2.3.3-dev203",
-  "build": 2911,
+  "version": "2.3.3-dev204",
+  "build": 2912,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds complete administrator editing for Judge Database profiles",
-    "Adds judge photo upload removal crop zoom and reposition controls",
+    "Adds assignable View Judge Database and Edit Judge Profiles and Photos permissions",
+    "Enforces judge viewing and editing permissions across the Judge Database",
+    "Keeps judge photo upload removal crop zoom and reposition controls",
     "Preserves original judge photos for future readjustment",
     "Keeps Testing-only random generators out of Live",
     "Retains the stable mode selection and Bluehost response protection"

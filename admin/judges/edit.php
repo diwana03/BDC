@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;
+Auth::requirePermission('judges.edit');
 Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);$id=(int)($_GET['id']??$_POST['id']??0);$s=$pdo->prepare('SELECT * FROM bdc_judges WHERE id=:id');$s->execute(['id'=>$id]);$judge=$s->fetch();if(!$judge){http_response_code(404);exit('Judge not found.');}$error='';$success='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token.';else{
