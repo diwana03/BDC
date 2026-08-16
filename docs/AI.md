@@ -24,6 +24,10 @@ Read `PROJECT.md` and this file before changing the repository.
 - Verify the complete Test phone, administration, calculation, and end-to-end workflow before applying the approved behavior to Live.
 - A final release must keep Test and Live dashboards synchronized for labels, controls, validation, calculation inputs, statuses, and user-visible behavior.
 - Do not release a workflow change when only Test or only Live contains the intended behavior, unless it is explicitly an isolated Test repair and Live already has the approved equivalent.
+- Treat “R&D” as conditional on the parity gate. It is not permission to push a partial implementation.
+- For projector-related scoring changes, Test/Live parity also includes the public Live Scoreboard feed and refresh state.
+- If any parity check fails or cannot be performed, stop before commit/push and tell the user exactly which surface is incomplete. Do not defer the missing counterpart silently.
+- Each scoring release note must identify the paired Test, Live, and projector files reviewed and state any intentionally Test-only tools.
 
 Version 2.2.0 is a stabilization and security release. Do not consolidate or redesign scoring behavior in this release. That work belongs to 2.3.0 and must retain golden fixtures from real competitions.
 
