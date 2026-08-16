@@ -71,3 +71,9 @@ $deleteDraft=file_get_contents(dirname(__DIR__).'/admin/scoring/delete-draft.php
 if(!str_contains((string)$activeDashboard,"\$draft&&Auth::isSuperAdmin()"))throw new RuntimeException('Active dashboard does not restrict draft deletion to Super Admin.');
 if(!str_contains((string)$deleteDraft,"Only the Super Admin can delete a complete draft workflow."))throw new RuntimeException('Draft deletion endpoint does not enforce Super Admin.');
 if(str_contains((string)$deleteDraft,"progressed beyond Draft"))throw new RuntimeException('Draft workflow deletion still blocks completed parent rounds.');
+
+foreach(['Test'=>file_get_contents(dirname(__DIR__).'/admin/scoring-tests/index.php'),'Live'=>file_get_contents(dirname(__DIR__).'/admin/scoring/core.php')] as $surface=>$source){
+    if(!str_contains((string)$source,'BDC callback-derived Finals accept confirmed callbacks only.'))throw new RuntimeException($surface.' does not block direct additions to callback-derived Finals.');
+    if(str_contains((string)$source,'Add Next Ranked Leader')||str_contains((string)$source,'Add Next Ranked Follower'))throw new RuntimeException($surface.' still exposes direct alternate promotion controls.');
+}
+if(!str_contains((string)file_get_contents(dirname(__DIR__).'/admin/scoring/core.php'),"source_round_id']??0)===0"))throw new RuntimeException('Live direct-Final panel is not limited to direct-start Finals.');

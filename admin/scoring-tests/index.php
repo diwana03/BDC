@@ -841,6 +841,7 @@ try{
    $roundId=(int)$_POST['round_id'];$role=(string)$_POST['dance_role'];$bib=(int)$_POST['bib_number'];$term=trim((string)$_POST['competitor_search']);$entryMode=(string)($_POST['entry_mode']??'existing');
    if(!in_array($role,['leader','follower'],true)||$bib<1||$term==='')throw new RuntimeException('Choose role, bib and competitor name.');
    $roundForEntry=loadRound($pdo,$roundId);if(!$roundForEntry)throw new RuntimeException('Round not found.');
+   if((string)$roundForEntry['round_type']==='final' && ((int)($roundForEntry['parent_round_id']??0)>0 || (int)($roundForEntry['source_round_id']??0)>0))throw new RuntimeException('BDC callback-derived Finals accept confirmed callbacks only. Direct finalist additions are not permitted.');
    $bibCheck=$pdo->prepare("SELECT se.id,se.display_name FROM bdc_test_scoring_entries se WHERE se.round_id=:r AND se.dance_role=:role AND se.bib_number=:bib AND se.entry_status='active' LIMIT 1");
    $bibCheck->execute(['r'=>$roundId,'role'=>$role,'bib'=>$bib]);$bibTaken=$bibCheck->fetch();
    if($bibTaken)throw new RuntimeException('Bib '.$bib.' is already assigned to '.$bibTaken['display_name'].' on the '.ucfirst($role).' side.');
@@ -1008,6 +1009,9 @@ try{
   }elseif($action==='add_next_finalist'){
    $roundId=(int)($_POST['round_id']??0);
    $role=(string)($_POST['dance_role']??'');
+   $finalRoundGuard=loadRound($pdo,$roundId);
+   if(!$finalRoundGuard||$finalRoundGuard['round_type']!=='final')throw new RuntimeException('Final round not found.');
+   if((int)($finalRoundGuard['parent_round_id']??0)>0 || (int)($finalRoundGuard['source_round_id']??0)>0)throw new RuntimeException('BDC callback-derived Finals cannot promote additional competitors directly.');
    if(!in_array($role,['leader','follower'],true))throw new RuntimeException('Invalid finalist role.');
    $finalRound=loadRound($pdo,$roundId);
    if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Final round not found.');
@@ -1642,13 +1646,7 @@ $csrf=Csrf::token();
  <div class="col-lg-6"><div class="card shadow-sm h-100">
   <div class="card-header fw-semibold bg-primary-subtle d-flex justify-content-between align-items-center">
    <span>Finalist Leaders</span>
-   <form method="post">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-    <input type="hidden" name="action" value="add_next_finalist">
-    <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="dance_role" value="leader">
-    <button class="btn btn-sm btn-primary">Add Next Ranked Leader</button>
-   </form>
+
   </div>
   <div class="card-body">
   <?php if(!$entries['leader']):?><div class="text-muted">No finalist Leaders yet.</div><?php endif;?>
@@ -1670,13 +1668,7 @@ $csrf=Csrf::token();
  <div class="col-lg-6"><div class="card shadow-sm h-100">
   <div class="card-header fw-semibold bg-danger-subtle d-flex justify-content-between align-items-center">
    <span>Finalist Followers</span>
-   <form method="post">
-    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-    <input type="hidden" name="action" value="add_next_finalist">
-    <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="dance_role" value="follower">
-    <button class="btn btn-sm btn-danger">Add Next Ranked Follower</button>
-   </form>
+
   </div>
   <div class="card-body">
   <?php if(!$entries['follower']):?><div class="text-muted">No finalist Followers yet.</div><?php endif;?>

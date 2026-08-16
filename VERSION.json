@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3-dev242",
-  "build": 2948,
+  "version": "2.3.3-dev243",
+  "build": 2949,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
@@ -12,6 +12,7 @@
     "Resolves boundary ties using the exact remaining callback quantity"
   ],
   "highlights": [
-    "Repairs stale next-round finalists and restores Super Admin draft deletion"
+    "Repairs stale next-round finalists and restores Super Admin draft deletion",
+    "Enforces callback-only membership for BDC progression Finals"
   ]
 }
