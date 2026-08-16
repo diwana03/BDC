@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev231",
-  "build": 2937,
+  "version": "2.3.3-dev232",
+  "build": 2938,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Prevents duplicate bootstrap loading from stopping Automatic Scoring",
-    "Protects shared e and url helpers against redeclaration",
-    "Uses one-time bootstrap loading on Test Automatic Scoring endpoints",
-    "Preserves the dev230 existing-score calculation repair for Test and Live"
+    "Protects every global bootstrap helper against duplicate declaration",
+    "Prevents country_flag_url redeclaration from stopping Automatic Scoring",
+    "Retains one-time loading for Test Automatic Scoring endpoints",
+    "Preserves dev230 and dev231 scoring and bootstrap repairs"
   ]
 }

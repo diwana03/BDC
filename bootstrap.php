@@ -347,25 +347,27 @@ HTML;
     });
 }
 
+if (!function_exists('country_flag_url')) {
 function country_flag_url(?string $country): ?string
-{
-    $country = trim((string) $country);
-    if ($country === '') return null;
-    $aliases = ['usa'=>'us','united states of america'=>'us','uk'=>'gb','united kingdom'=>'gb','south korea'=>'kr','korea'=>'kr','north korea'=>'kp','russia'=>'ru','mainland china'=>'cn','china mainland'=>'cn','hong kong'=>'hk','taiwan'=>'tw','uae'=>'ae','vietnam'=>'vn','viet nam'=>'vn','czech republic'=>'cz'];
-    $key = mb_strtolower($country);
-    $code = $aliases[$key] ?? null;
-    if ($code === null && preg_match('/^[a-z]{2}$/i', $country)) $code = strtolower($country);
-    static $countries = null;
-    if ($code === null) {
-        if ($countries === null) {
-            $countries = [];
-            $json = @file_get_contents(__DIR__ . '/public/assets/flags/countries.json');
-            foreach ((json_decode((string) $json, true) ?: []) as $item) {
-                if (!empty($item['name']) && !empty($item['code'])) $countries[mb_strtolower((string) $item['name'])] = strtolower((string) $item['code']);
+    {
+        $country = trim((string) $country);
+        if ($country === '') return null;
+        $aliases = ['usa'=>'us','united states of america'=>'us','uk'=>'gb','united kingdom'=>'gb','south korea'=>'kr','korea'=>'kr','north korea'=>'kp','russia'=>'ru','mainland china'=>'cn','china mainland'=>'cn','hong kong'=>'hk','taiwan'=>'tw','uae'=>'ae','vietnam'=>'vn','viet nam'=>'vn','czech republic'=>'cz'];
+        $key = mb_strtolower($country);
+        $code = $aliases[$key] ?? null;
+        if ($code === null && preg_match('/^[a-z]{2}$/i', $country)) $code = strtolower($country);
+        static $countries = null;
+        if ($code === null) {
+            if ($countries === null) {
+                $countries = [];
+                $json = @file_get_contents(__DIR__ . '/public/assets/flags/countries.json');
+                foreach ((json_decode((string) $json, true) ?: []) as $item) {
+                    if (!empty($item['name']) && !empty($item['code'])) $countries[mb_strtolower((string) $item['name'])] = strtolower((string) $item['code']);
+                }
             }
+            $code = $countries[$key] ?? null;
         }
-        $code = $countries[$key] ?? null;
+        if ($code === null || !is_file(__DIR__ . '/public/assets/flags/' . $code . '.svg')) return null;
+        return url('public/assets/flags/' . $code . '.svg');
     }
-    if ($code === null || !is_file(__DIR__ . '/public/assets/flags/' . $code . '.svg')) return null;
-    return url('public/assets/flags/' . $code . '.svg');
 }
