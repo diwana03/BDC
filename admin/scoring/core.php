@@ -824,13 +824,15 @@ try{
    foreach($postedMarks as $entryId=>$marks){$entryRoleStmt->execute(['id'=>(int)$entryId,'round'=>$roundId]);$entryRole=(string)$entryRoleStmt->fetchColumn();foreach($marks as $judgeId=>$raw){if(!in_array((int)$judgeId,array_map('intval',$validJudge),true))continue;$scope=(string)(($judgeById[(int)$judgeId]['scoring_scope']??'all'));if($scope!=='all'&&$scope!==$entryRole)continue;$raw=trim((string)$raw);$type='blank';$alt=null;$weight=0.0;if($raw==='1'||strtolower($raw)==='y'||strtolower($raw)==='yes'){$type='yes';$weight=(float)$round['yes_weight'];}elseif(in_array($raw,['A1','a1','2'],true)){$type='alt';$alt=1;$weight=(float)$round['alt1_weight'];}elseif(in_array($raw,['A2','a2','3'],true)){$type='alt';$alt=2;$weight=(float)$round['alt2_weight'];}elseif(in_array($raw,['A3','a3','4'],true)){$type='alt';$alt=3;$weight=(float)$round['alt3_weight'];}$up->execute(['r'=>$roundId,'e'=>(int)$entryId,'j'=>(int)$judgeId,'t'=>$type,'a'=>$alt,'w'=>$weight,'u'=>$userId]);}}
    if($action==='submit_scores'){
     $calcStarted=microtime(true);$memoryBefore=memory_get_usage(true);
-    computeResults($pdo,$round,$userId);
+    if(($round['scoring_mode']??'manual')==='automated')App\Services\ScoringCalculationService::calculateHeats($pdo,$roundId,App\Services\ScoringCalculationService::PRODUCTION,$userId);
+    else computeResults($pdo,$round,$userId);
     $calcMs=(int)round((microtime(true)-$calcStarted)*1000);$calcMemory=max(0,memory_get_peak_usage(true)-$memoryBefore);
     $pdo->prepare("UPDATE bdc_scoring_rounds SET last_calculation_ms=:ms,last_calculation_memory_bytes=:memory WHERE id=:round")->execute(['ms'=>$calcMs,'memory'=>$calcMemory,'round'=>$roundId]);
     $notice='Scores submitted in '.$calcMs.' ms. Callback results are saved. Choose Semifinal or Final below.';
    }elseif($action==='calculate_scores'){
     $calcStarted=microtime(true);$memoryBefore=memory_get_usage(true);
-    computeResults($pdo,$round,$userId);
+    if(($round['scoring_mode']??'manual')==='automated')App\Services\ScoringCalculationService::calculateHeats($pdo,$roundId,App\Services\ScoringCalculationService::PRODUCTION,$userId);
+    else computeResults($pdo,$round,$userId);
     $calcMs=(int)round((microtime(true)-$calcStarted)*1000);$calcMemory=max(0,memory_get_peak_usage(true)-$memoryBefore);
     $pdo->prepare("UPDATE bdc_scoring_rounds SET last_calculation_ms=:ms,last_calculation_memory_bytes=:memory WHERE id=:round")->execute(['ms'=>$calcMs,'memory'=>$calcMemory,'round'=>$roundId]);
     $pdo->prepare("UPDATE bdc_scoring_rounds SET status='draft' WHERE id=:r")->execute(['r'=>$roundId]);

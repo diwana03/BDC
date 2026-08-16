@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev229",
-  "build": 2935,
+  "version": "2.3.3-dev230",
+  "build": 2936,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Recovers Automatic Calculate and Submit from fatal PHP failures",
-    "Returns fatal diagnostics to the signed-in Automatic dashboard",
-    "Preserves saved scores and round data during failure recovery",
-    "Leaves Manual scoring and projector behavior unchanged"
+    "Recalculates Automatic rounds safely when drafts or prior results already exist",
+    "Uses the same shared calculation engine for Test and Live Automatic scoring",
+    "Rebuilds calculated result rows while preserving judge marks and drafts",
+    "Keeps Manual scoring and projector behavior unchanged"
   ]
 }
