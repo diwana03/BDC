@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev222",
-  "build": 2928,
+  "version": "2.3.3-dev223",
+  "build": 2929,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Shows Leaders and Followers in separate side-by-side live score tables",
-    "Maintains independent place rankings for each dance role",
-    "Refreshes contestant totals whenever judges save new marks",
-    "Keeps the public projection readable in landscape format"
+    "Restores Test and Live automatic-round Save, Calculate, Submit and Print controls",
+    "Shows a clear Scoring Completed state after score submission",
+    "Places callback and next-round actions directly below completion",
+    "Keeps matching split Leader and Follower matrices in Test and Live"
   ]
 }
