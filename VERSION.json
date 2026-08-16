@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3-dev239",
-  "build": 2945,
+  "version": "2.3.3-dev240",
+  "build": 2946,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
@@ -9,6 +9,6 @@
     "Adds a round-aware Live Score Matrix to Test and Live projector controls",
     "Shows Heats and Semifinal judge marks in Leader and Follower split tables",
     "Shows Final couples with each judge's Relative Placement",
-    "Preserves scoring mode and keeps completed parent rounds accessible"
+    "Enforces official 5, 10 or 15 callback quotas for normal tiers"
   ]
 }

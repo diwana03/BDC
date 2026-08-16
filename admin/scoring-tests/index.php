@@ -99,18 +99,26 @@ function automaticTierFromRoleCounts(PDO $pdo,int $roundId):array{
 }
 function applyAutomaticTier(PDO $pdo,int $roundId,bool $force=false):array{
     $info=automaticTierFromRoleCounts($pdo,$roundId);
-    $stmt=$pdo->prepare("SELECT tier_manual_override FROM bdc_test_scoring_rounds WHERE id=:round");
+    $stmt=$pdo->prepare("SELECT tier_manual_override,yes_count,callback_count FROM bdc_test_scoring_rounds WHERE id=:round");
     $stmt->execute(['round'=>$roundId]);
-    $manual=(int)$stmt->fetchColumn()===1;
-    if($force||!$manual){
-        $pdo->prepare("UPDATE bdc_test_scoring_rounds SET yes_count=:yes_count,callback_count=:callback_count WHERE id=:round")
-            ->execute([
-                'yes_count'=>$info['yes'],
-                'callback_count'=>$info['yes'],
-                'round'=>$roundId
-            ]);
-    }
-    $info['manual']=$manual;
+    $stored=$stmt->fetch()?:[];
+    $manual=(int)($stored['tier_manual_override']??0)===1;
+    $normalized=\App\Services\ScoringRulesService::normalizeNormalRoundTier(
+        $info['leaders'],
+        $info['followers'],
+        (int)($stored['yes_count']??0),
+        (int)($stored['callback_count']??0),
+        $force?false:$manual
+    );
+    $pdo->prepare("UPDATE bdc_test_scoring_rounds SET yes_count=:yes_count,callback_count=:callback_count WHERE id=:round")
+        ->execute([
+            'yes_count'=>$normalized['yes_count'],
+            'callback_count'=>$normalized['callback_count'],
+            'round'=>$roundId
+        ]);
+    $info['tier']=$normalized['tier'];
+    $info['yes']=$normalized['yes_count'];
+    $info['manual']=$manual&&!$force;
     return $info;
 }
 
@@ -1321,6 +1329,10 @@ try{
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_test_events ORDER BY event_date DESC,name")->fetchAll();
 $competitorSuggestions=$pdo->query("SELECT bdc_id,exact_name,dance_role,status FROM bdc_test_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
 $round=$roundId?loadRound($pdo,$roundId):null;
+if($round && in_array((string)$round['round_type'],['heats','semifinal'],true) && !\App\Services\SpecialCategoryService::isSpecial((string)$round['division'])){
+ applyAutomaticTier($pdo,$roundId,false);
+ $round=loadRound($pdo,$roundId);
+}
 if($round){
  $orphanTieStmt=$pdo->prepare("
   SELECT sr.entry_id,sr.rank_number,se.dance_role

@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Services\SpecialCategoryService;
 use App\Services\ScoringJudgeAssignmentService;
 use App\Services\AutomaticJudgeBrowserService;
+use App\Services\ScoringRulesService;
 
 function bdcRenderAutomaticCommonSetup(int $roundId):string
 {
@@ -70,6 +71,21 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         else $deskUrl=$path;
     }
 
+    if(!$special){
+        $tierInfo=ScoringRulesService::normalizeNormalRoundTier(
+            count($entries['leader']),
+            count($entries['follower']),
+            (int)$round['yes_count'],
+            (int)$round['callback_count'],
+            (int)$round['tier_manual_override']===1
+        );
+        if($tierInfo['corrected']){
+            $pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:yes,callback_count=:callbacks WHERE id=:round')
+                ->execute(['yes'=>$tierInfo['yes_count'],'callbacks'=>$tierInfo['callback_count'],'round'=>$roundId]);
+            $round['yes_count']=$tierInfo['yes_count'];
+            $round['callback_count']=$tierInfo['callback_count'];
+        }
+    }
     $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
     $e=static fn(string $value):string=>htmlspecialchars($value,ENT_QUOTES,'UTF-8');
     $html='<div id="automatic-common-setup">';

@@ -4,6 +4,16 @@ declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
 
 use App\Services\AutomaticScoringEngine;
+use App\Services\ScoringRulesService;
+
+$normalized=ScoringRulesService::normalizeNormalRoundTier(13,20,5,7,true);
+if (($normalized['tier']??0)!==2 || ($normalized['yes_count']??0)!==10 || ($normalized['callback_count']??0)!==10) {
+    throw new RuntimeException('Larger Follower role did not enforce Tier 2 and ten callbacks for both roles.');
+}
+$automatic=ScoringRulesService::normalizeNormalRoundTier(8,12,7,7,false);
+if (($automatic['tier']??0)!==1 || ($automatic['callback_count']??0)!==5) {
+    throw new RuntimeException('Automatic role-count tier did not enforce five callbacks.');
+}
 
 $entries = [
     ['id'=>1,'dance_role'=>'leader'],

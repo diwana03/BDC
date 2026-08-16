@@ -49,12 +49,18 @@ final class ScoringCalculationService
         $callbackCount=(int)$round['callback_count'];
         $division=(string)($round['division']??'');
         $manualOverride=(int)($round['tier_manual_override']??0)===1;
-        if(!SpecialCategoryService::isSpecial($division) && !$manualOverride){
-            $tierInfo=ScoringRulesService::tierFromRoleCounts($roleCounts['leader'],$roleCounts['follower']);
+        if(!SpecialCategoryService::isSpecial($division)){
+            $tierInfo=ScoringRulesService::normalizeNormalRoundTier(
+                $roleCounts['leader'],
+                $roleCounts['follower'],
+                (int)$round['yes_count'],
+                (int)$round['callback_count'],
+                $manualOverride
+            );
             $tier=(int)$tierInfo['tier'];
-            $callbackCount=(int)$tierInfo['yes_count'];
+            $callbackCount=(int)$tierInfo['callback_count'];
             $pdo->prepare("UPDATE {$tables['rounds']} SET yes_count=:yes,callback_count=:callbacks WHERE id=:r")
-                ->execute(['yes'=>$callbackCount,'callbacks'=>$callbackCount,'r'=>$roundId]);
+                ->execute(['yes'=>(int)$tierInfo['yes_count'],'callbacks'=>$callbackCount,'r'=>$roundId]);
         }
 
         $markStmt=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank,weighted_score FROM {$tables['marks']} WHERE round_id=:r");

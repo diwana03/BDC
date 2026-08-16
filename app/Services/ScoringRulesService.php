@@ -54,6 +54,21 @@ final class ScoringRulesService
         ];
     }
 
+    public static function normalizeNormalRoundTier(
+        int $leaders,
+        int $followers,
+        int $storedYesCount,
+        int $storedCallbackCount,
+        bool $manualOverride
+    ): array {
+        $automatic = self::tierFromRoleCounts($leaders, $followers);
+        $yesCount = (int) $automatic['yes_count'];
+        return array_merge($automatic, [
+            'callback_count' => $yesCount,
+            'corrected' => $storedYesCount !== $yesCount || $storedCallbackCount !== $yesCount,
+        ]);
+    }
+
     public static function markWeight(string $markType, ?int $alternateRank = null): float
     {
         $markType = strtolower(trim($markType));
