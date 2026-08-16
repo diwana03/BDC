@@ -59,6 +59,7 @@ $types =
             "judges" => "Judges",
             "competitors" => "Competitors",
             "scoring" => "Scoring Status",
+            "score_matrix" => "Live Score Matrix · Provisional",
             "callbacks" => "Callback Reveal",
             "heats_scores" => "Heats Full Scores · Landscape",
         ]
@@ -67,12 +68,14 @@ $types =
                 "judges" => "Judges",
                 "competitors" => "Semifinal Competitors",
                 "scoring" => "Scoring Status",
+                "score_matrix" => "Live Score Matrix · Provisional",
                 "finalists" => "Finalists Reveal",
             ]
             : [
                 "judges" => "Judges",
                 "competitors" => "Finalists / Couples",
                 "scoring" => "Scoring Status",
+                "score_matrix" => "Live Relative Placement Matrix · Provisional",
                 "winners" => "Winner Podium",
                 "final_results" => "Final Full Results · Landscape",
             ]);
@@ -218,7 +221,7 @@ endforeach; ?></div><div class="border rounded p-3 mb-3"><div class="fw-bold">Pr
     as $d
 ): ?><option value="<?= $d ?>" <?= ($session["page_delay_seconds"] ?? 30) === $d
     ? "selected"
-    : "" ?>><?= $d ?> seconds</option><?php endforeach; ?></select></div></div><div class="small text-muted mt-2">Auto Page defaults to 30 seconds and applies to multi-page Competitors, Callbacks and Finalists.</div></div></div></main><script>(()=>{'use strict';const eventId=<?= $eventId ?>,roundId=<?= $roundId ?>;const csrfEl=document.getElementById('csrf'),msg=document.getElementById('remoteMessage'),liveState=document.getElementById('liveState'),pageNumber=document.getElementById('pageNumber'),autoPage=document.getElementById('autoPage'),pageDelay=document.getElementById('pageDelay'),formatEl=document.getElementById('format'),cwEl=document.getElementById('cw'),chEl=document.getElementById('ch'),copyBtn=document.getElementById('copyLiveUrl'),liveUrl=document.getElementById('liveUrl'),loopDelay=document.getElementById('loopDelay'),startLoop=document.getElementById('startLoop'),stopLoop=document.getElementById('stopLoop');if(!csrfEl||!msg||!pageNumber||!autoPage||!pageDelay){console.error('BDC projector controls missing required DOM elements');return;}const csrf=csrfEl.value;const loopTypes={holding:'Holding Screen',judges:'Judges',competitors:'Competitors / Couples',scoring:'Scoring Status',callbacks:'Callbacks',finalists:'Finalists',heats_scores:'Heats Full Scores · Landscape',winners:'Winner Podium',final_results:'Final Full Results · Landscape'};const allowedHere=[...document.querySelectorAll('.feed')].map(b=>b.dataset.screen);document.getElementById('loopChoices').innerHTML=Object.entries(loopTypes).filter(([v])=>v==='holding'||allowedHere.includes(v)).map(([v,l])=>'<label class="form-check"><input class="form-check-input loop-screen" type="checkbox" value="'+v+'"> <span class="form-check-label">'+l+'</span></label>').join('');const savedLoop=<?= json_encode(
+    : "" ?>><?= $d ?> seconds</option><?php endforeach; ?></select></div></div><div class="small text-muted mt-2">Auto Page defaults to 30 seconds and applies to multi-page Competitors, Callbacks and Finalists.</div></div></div></main><script>(()=>{'use strict';const eventId=<?= $eventId ?>,roundId=<?= $roundId ?>;const csrfEl=document.getElementById('csrf'),msg=document.getElementById('remoteMessage'),liveState=document.getElementById('liveState'),pageNumber=document.getElementById('pageNumber'),autoPage=document.getElementById('autoPage'),pageDelay=document.getElementById('pageDelay'),formatEl=document.getElementById('format'),cwEl=document.getElementById('cw'),chEl=document.getElementById('ch'),copyBtn=document.getElementById('copyLiveUrl'),liveUrl=document.getElementById('liveUrl'),loopDelay=document.getElementById('loopDelay'),startLoop=document.getElementById('startLoop'),stopLoop=document.getElementById('stopLoop');if(!csrfEl||!msg||!pageNumber||!autoPage||!pageDelay){console.error('BDC projector controls missing required DOM elements');return;}const csrf=csrfEl.value;const loopTypes={holding:'Holding Screen',judges:'Judges',competitors:'Competitors / Couples',scoring:'Scoring Status',callbacks:'Callbacks',finalists:'Finalists',score_matrix:'Live Score Matrix · Provisional',heats_scores:'Heats Full Scores · Landscape',winners:'Winner Podium',final_results:'Final Full Results · Landscape'};const allowedHere=[...document.querySelectorAll('.feed')].map(b=>b.dataset.screen);document.getElementById('loopChoices').innerHTML=Object.entries(loopTypes).filter(([v])=>v==='holding'||allowedHere.includes(v)).map(([v,l])=>'<label class="form-check"><input class="form-check-input loop-screen" type="checkbox" value="'+v+'"> <span class="form-check-label">'+l+'</span></label>').join('');const savedLoop=<?= json_encode(
     array_values(
         array_filter(explode(",", (string) ($session["loop_screens"] ?? ""))),
     ),

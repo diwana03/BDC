@@ -31,6 +31,7 @@ if (!empty($s["loop_enabled"])) {
             "scoring",
             "callbacks",
             "finalists",
+            "score_matrix",
             "heats_scores",
             "final_results",
             "results",
@@ -80,9 +81,11 @@ if (
 ) {
     $count = 0;
     $roleCounts=["leader"=>0,"follower"=>0];
-    if ($s["screen_type"] === "competitors") {
+    if (in_array($s["screen_type"],["competitors","callbacks","finalists"],true)) {
         $q = $pdo->prepare(
-            "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role",
+            $s["screen_type"]==="competitors"
+              ? "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role"
+              : "SELECT se.dance_role,COUNT(*) total FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') GROUP BY se.dance_role",
         );
         $q->execute(["r" => $roundId]);
         foreach($q->fetchAll() as $roleCountRow){
@@ -108,7 +111,7 @@ if (
         $set["custom_width"] ?: null,
         $set["custom_height"] ?: null,
     );
-    if($s["screen_type"]==="competitors"){
+    if(in_array($s["screen_type"],["competitors","callbacks","finalists"],true)){
         $roleColumns=max(1,(int)floor((int)$layout["columns"]/2));
         $roleCapacity=max(1,(int)$layout["rows"]*$roleColumns);
         $total=max(1,(int)ceil(max($roleCounts)/$roleCapacity));
@@ -126,7 +129,7 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
     } catch (Throwable) { $dataVersion = (string) time(); }
 } elseif (
     $roundId &&
-    in_array(($s["screen_type"] ?? ""), ["scoring", "heats_scores"], true)
+    in_array(($s["screen_type"] ?? ""), ["scoring", "score_matrix", "heats_scores"], true)
 ) {
     try {
         $sessionTable = $test
@@ -144,7 +147,7 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
             $q->execute(["r" => $roundId]);
             $parts[] = (string) $q->fetchColumn();
         }
-        if (($s["screen_type"] ?? "") === "heats_scores") {
+        if (in_array(($s["screen_type"] ?? ""),["score_matrix","heats_scores"],true)) {
             $resultTable = $test
                 ? "bdc_test_scoring_results"
                 : "bdc_scoring_results";

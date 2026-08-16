@@ -128,6 +128,7 @@ final class LiveDisplaySessionService
             "scoring",
             "callbacks",
             "finalists",
+            "score_matrix",
             "heats_scores",
             "final_results",
             "results",

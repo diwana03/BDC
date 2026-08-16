@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev235",
-  "build": 2941,
+  "version": "2.3.3-dev236",
+  "build": 2942,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Splits the Competitors projector into Leaders and Followers panels",
-    "Keeps both roles visible simultaneously with independent role grids",
-    "Pages each role by the same synchronized projector page",
-    "Applies through the shared Test and Live projector feed"
+    "Adds a round-aware Live Score Matrix to Test and Live projector controls",
+    "Shows Heats and Semifinal judge marks in Leader and Follower split tables",
+    "Shows Final couples with each judge's Relative Placement",
+    "Splits Callback and Finalist reveals by role and hides invalid round options"
   ]
 }
