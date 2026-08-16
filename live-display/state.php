@@ -70,6 +70,9 @@ if (!empty($s["loop_enabled"])) {
 $test = $s["data_mode"] === "test";
 $eventTable = $test ? "bdc_test_events" : "bdc_events";
 $entryTable = $test ? "bdc_test_scoring_entries" : "bdc_scoring_entries";
+$resultTable = $test
+    ? "bdc_test_scoring_results"
+    : "bdc_scoring_results";
 $e = $pdo->prepare("SELECT name FROM {$eventTable} WHERE id=:id");
 $e->execute(["id" => $s["event_id"]]);
 $eventName = (string) ($e->fetchColumn() ?: "BDC Event");
