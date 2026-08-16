@@ -42,7 +42,11 @@ final class AutomaticJudgeBrowserService
         foreach ($judges as $judge) {
             $session = self::sessionForJudge($pdo, (int) $judge["id"]);
             $plain = "";
-            if (!$session) {
+            $expired = $session && (empty($session['expires_at']) || strtotime((string) $session['expires_at']) <= time());
+            if ($expired) {
+                $plain = self::regenerate($pdo, $roundId, (int) $judge['id']);
+                $session = self::sessionForJudge($pdo, (int) $judge['id']);
+            } elseif (!$session) {
                 [$session, $plain] = self::createSession(
                     $pdo,
                     $roundId,

@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev217",
-  "build": 2923,
+  "version": "2.3.3-dev218",
+  "build": 2924,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Enforces role-specific BDC searches when adding competitors directly to Final",
-    "Routes every Final category through the correct publication gate",
-    "Blocks Automatic qualifier and Final calculation until every judge submits",
-    "Restores Automatic and special-tier success and error feedback"
+    "Makes BIB numbers the primary large identifier on judge scoring cards",
+    "Keeps competitor names smaller as secondary judge reference",
+    "Displays YES, A1, A2 and A3 totals in distinct high-contrast colours",
+    "Automatically replaces expired judge sessions with fresh 12-hour links"
   ]
 }
