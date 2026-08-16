@@ -31,6 +31,9 @@ $pdo=Database::connection();
 set_exception_handler(static function(\Throwable $exception):void{\App\Services\ScoringPageGuardService::renderFailure($exception,true);});
 
 $userId=(int)(Auth::user()['id']??0);
+$testMode=(string)($_GET['test_mode']??$_POST['test_mode']??$_SESSION['bdc_test_scoring_mode']??'manual');
+if(!in_array($testMode,['manual','automated'],true))$testMode='manual';
+$_SESSION['bdc_test_scoring_mode']=$testMode;
 $error=''; $notice='';
 
 
@@ -1526,7 +1529,7 @@ $csrf=Csrf::token();
    <div class="col-md-6 col-xl-3"><a class="btn btn-dark w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/test-index.php"><strong>Open Test Projector</strong><small>Select any Test event, division and round.</small></a></div>
    <?php if($round):?>
     <div class="col-md-6 col-xl-3"><a class="btn btn-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/test-control.php?round_id=<?=$roundId?>"><strong>Presentation Control</strong><small>Holding screen, judge progress, result screens, loop and effects.</small></a></div>
-    <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100 presentation-action d-flex flex-column justify-content-center" href="#<?=($_GET['test_mode']??'manual')==='automated'?'automaticJudgeLivePanel':($round['round_type']==='final'?'finalScoreForm':'heatsScoreForm')?>"><strong>Judge Live Progress</strong><small>Watch Test judges and scoring update on this screen.</small></a></div>
+    <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100 presentation-action d-flex flex-column justify-content-center" href="#<?=$testMode==='automated'?'automaticJudgeLivePanel':($round['round_type']==='final'?'finalScoreForm':'heatsScoreForm')?>"><strong>Judge Live Progress</strong><small>Watch Test judges and scoring update on this screen.</small></a></div>
     <?php if($round['round_type']==='final'):?><div class="col-md-6 col-xl-3"><a class="btn btn-outline-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>&amp;data_mode=test"><strong>Emcee Random Match</strong><small>Create the independent 12-hour Test matching link.</small></a></div><?php else:?><div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Emcee Random Match</strong><small class="text-muted mt-1">Available when a Test Final round is open.</small></div></div><?php endif;?>
    <?php else:?>
     <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Presentation Control</strong><small class="text-muted mt-1">Open or create a Test round to activate its controls.</small></div></div>
@@ -1616,9 +1619,9 @@ $csrf=Csrf::token();
 <td data-col="updated"><?=e($r['updated_at'])?></td>
 <td data-col="actions" class="text-end">
  <div class="d-inline-flex gap-2">
-  <a class="btn btn-sm btn-outline-dark" href="?round_id=<?=$r['id']?>">Open</a>
+  <a class="btn btn-sm btn-outline-dark" href="?legacy=1&amp;test_mode=<?=e($testMode)?>&amp;round_id=<?=$r['id']?>">Open</a>
   <?php if(in_array((string)$r['status'],['draft','discarded'],true) && (int)$r['mark_count']===0 && (int)$r['final_mark_count']===0):?>
-  <a class="btn btn-sm btn-outline-primary" href="edit-draft.php?mode=<?=e((string)($_GET['test_mode']??'manual'))?>&amp;round_id=<?=$r['id']?>">Edit Draft Details</a>
+  <a class="btn btn-sm btn-outline-primary" href="edit-draft.php?mode=<?=e($testMode)?>&amp;round_id=<?=$r['id']?>">Edit Draft Details</a>
   <?php endif;?>
   <?php if($r['status']!=='archived' && empty($r['locked_at'])):?>
   <form method="post" onsubmit="return confirmDeleteWorkflow(this,'<?=e(addslashes($r['event_name']))?>','<?=e(ucfirst($r['division']))?>');">
@@ -1634,7 +1637,7 @@ $csrf=Csrf::token();
 </td>
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="./" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<div class="mb-3"><a href="?legacy=1&amp;test_mode=<?=e($testMode)?>" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['round_type']==='final'):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">

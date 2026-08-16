@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once dirname(__DIR__, 2) . '/bootstrap.php'
+require_once dirname(__DIR__, 2) . '/bootstrap.php';
 \App\Core\Auth::requireAdmin();
 $_SESSION['bdc_test_scoring_mode'] = 'automated';
 $roundId = (int) ($_GET['round_id'] ?? 0);
@@ -12,7 +12,7 @@ $panel = url('admin/scoring-tests/automatic-inline.php');
 const frame=document.getElementById('bdcAutoFrame'),panelBase=<?= json_encode($panel) ?>,screenBase=<?= json_encode(url('admin/scoring-tests/automatic-screen.php')) ?>,liveBase=<?= json_encode(url('admin/live-screen/test-control.php')) ?>,errorBox=document.getElementById('bdcAutoError');
 function fail(message){errorBox.textContent=message;errorBox.style.display='block'}
 function rid(doc){const rendered=Number(doc.querySelector('input[name="round_id"]')?.value||0);if(rendered>0)return rendered;const query=new URL(frame.contentWindow.location.href).searchParams.get('round_id');return Number(query)||0}
-function links(doc){doc.querySelectorAll('a[href]').forEach(anchor=>{try{const link=new URL(anchor.href,frame.contentWindow.location.href);if(!/\/admin\/scoring-tests\/(?:index\.php)?$/.test(link.pathname))return;const round=Number(link.searchParams.get('round_id')||0);if(round>0){anchor.href=screenBase+'?round_id='+round;anchor.target='_top'}}catch(error){}})}
+function links(doc){doc.querySelectorAll('a[href]').forEach(anchor=>{try{const link=new URL(anchor.href,frame.contentWindow.location.href);if(!/\/admin\/scoring-tests\/(?:index\.php)?$/.test(link.pathname))return;const round=Number(link.searchParams.get('round_id')||0);anchor.href=screenBase+(round>0?'?round_id='+round:'');anchor.target='_top'}catch(error){}})}
 function executeScripts(doc,host){host.querySelectorAll('script').forEach(oldScript=>{const script=doc.createElement('script');Array.from(oldScript.attributes).forEach(attribute=>script.setAttribute(attribute.name,attribute.value));script.textContent=oldScript.textContent;oldScript.replaceWith(script)})}
 async function install(){
 errorBox.style.display='none';let doc;try{doc=frame.contentDocument}catch(error){fail('Automatic Test could not access the dashboard screen.');return}if(!doc)return;
