@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev210",
-  "build": 2916,
+  "version": "2.3.3-dev211",
+  "build": 2917,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Fixes Manual Scoring events failing to open after Judge Database integration",
-    "Keeps saved rounds accessible if the optional Judge Directory lookup is unavailable",
-    "Adds an explicit migration for Judge Database links on Live and Test scoring assignments",
-    "Retains the shared judge assignment workflow for Manual, Automatic and Final scoring"
+    "Fixes Automatic dashboard competitor buttons that previously submitted without being handled",
+    "Restores Add Existing, Create Name and Add, bib updates, removals and tier saving",
+    "Returns organisers to the same live dashboard with visible success or error feedback",
+    "Keeps Automatic scoring accessible if the optional Judge Directory lookup is unavailable"
   ]
 }
