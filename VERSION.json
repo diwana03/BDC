@@ -1,15 +1,14 @@
 {
-  "version": "2.3.3-dev202",
-  "build": 2910,
+  "version": "2.3.3-dev203",
+  "build": 2911,
   "status": "development",
-  "release_date": "2026-08-16",
+  "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a reusable Judge Database with generated Judge IDs",
-    "Adds an unlisted public judge-profile registration link",
-    "Keeps judge email phone and WhatsApp optional and private",
-    "Adds organiser approval editing and qualification management",
+    "Adds complete administrator editing for Judge Database profiles",
+    "Adds judge photo upload removal crop zoom and reposition controls",
+    "Preserves original judge photos for future readjustment",
     "Keeps Testing-only random generators out of Live",
     "Retains the stable mode selection and Bluehost response protection"
   ]
