@@ -7,6 +7,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SpecialCategoryService;
 use App\Services\ScoringJudgeAssignmentService;
+use App\Services\AutomaticJudgeBrowserService;
 
 function bdcRenderAutomaticCommonSetup(int $roundId):string
 {
@@ -133,6 +134,12 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         $html.='<form method="post" class="d-flex align-items-center gap-2"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="regenerate_registration_desk_link"><input type="hidden" name="round_id" value="'.$roundId.'"><span class="small text-muted">Secure desk link needs to be reissued for this admin session.</span><button class="btn btn-warning btn-sm" onclick="return confirm(\'Regenerate the Registration Desk link? The previous desk link will stop working.\')">Regenerate Registration Link</button></form>';
     }
     $html.='</div></div></div></div>';
+    try{
+        foreach(AutomaticJudgeBrowserService::syncRound($pdo,$roundId) as $syncedJudge){
+            if((string)($syncedJudge['plain_token']??'')!=='')$_SESSION['automatic_judge_tokens'][(int)$syncedJudge['id']]=(string)$syncedJudge['plain_token'];
+        }
+    }catch(Throwable $judgeLinkError){error_log('BDC automatic judge-link sync unavailable: '.$judgeLinkError->getMessage());}
+    $html.='<div class="card shadow-sm mb-4"><div class="card-header d-flex justify-content-between align-items-center gap-2"><div><strong>Judge Live Links</strong><div class="small text-muted">Copy or send each secure browser-scoring link and monitor submissions.</div></div><a class="btn btn-outline-primary btn-sm" href="judge-control.php?round_id='.$roundId.'" target="_blank" rel="noopener">Open Full Judge Control</a></div><div class="card-body"><iframe title="Automatic Judge Live Links" src="judge-control.php?round_id='.$roundId.'" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe></div></div>';
     $html.='<script>window.addJudge=window.addJudge||function(){const wrap=document.getElementById("judgesWrap");if(!wrap)return;const index=wrap.querySelectorAll(".judge-row").length;const row=document.createElement("div");row.className="row g-2 mb-2 judge-row align-items-center";row.innerHTML=`<div class="col-md-2"><strong>Judge ${index+1}</strong><input type="hidden" name="judge_assignment_id[]" value="0"><input type="hidden" name="judge_directory_id[]" value="0"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="${index}"> Chief</label></div>`;wrap.appendChild(row);};</script>';
     return $html;
 }

@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev215",
-  "build": 2921,
+  "version": "2.3.3-dev216",
+  "build": 2922,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Separates Leader and Follower competitor search suggestions",
-    "Shows only Leader BDC IDs in Leader entry boxes and only Follower IDs in Follower boxes",
-    "Rejects manually typed wrong-role BDC IDs on the Automatic dashboard",
-    "Applies role-strict search to both Manual and Automatic competitor entry"
+    "Restores the full Judge Live Links panel on the Automatic dashboard",
+    "Displays Copy, Open, WhatsApp, email, regenerate and reopen controls",
+    "Retains newly generated secure judge tokens in the organiser session",
+    "Keeps live judge progress visible below the link controls"
   ]
 }
