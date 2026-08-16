@@ -286,8 +286,11 @@ foreach ($people as $person) {
     }
 }
 foreach ($countries as $index => $country) {
-    echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.08em;margin:0 .32em;vertical-align:middle">';
-    echo '<span class="podium-flag" style="font-size:clamp(34px,3.2vw,76px);line-height:1;filter:drop-shadow(0 .08em .12em rgba(0,0,0,.7))">' . e(CountryFlagService::emoji($country)) . '</span>';
+    echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;margin:0 .32em;vertical-align:middle">';
+    $flagUrl = country_flag_url($country);
+    if ($flagUrl) {
+        echo '<img src="' . e($flagUrl) . '" alt="' . e($country) . ' flag" style="width:clamp(52px,4vw,96px);height:clamp(35px,2.67vw,64px);object-fit:cover;border:2px solid rgba(255,255,255,.75);border-radius:5px;box-shadow:0 3px 12px rgba(0,0,0,.55)">';
+    }
     echo '<span class="podium-country-name" style="font-size:clamp(8px,.62vw,15px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">' . e($country) . '</span>';
     echo '</span>';
 }
@@ -313,9 +316,7 @@ elseif ($type === "judges"):
 ) ?>" onerror="this.remove()"><?php endif; ?><div class="name"><?=
 e($x["full_name"] ?: $x["judge_name"])
 ?><?= (int) $x["is_chief"] ? " ★" : ""
-?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small"><?= e(
-    CountryFlagService::emoji($countryCode !== "" ? $countryCode : $country),
-) ?><?= $country !== "" ? " " . e($country) : "" ?></div><?php endif; ?></div><?php
+?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.45em;min-height:clamp(30px,2.5vw,64px)"><?php if ($flagUrl = country_flag_url($countryCode !== "" ? $countryCode : $country)): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($country ?: $countryCode) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45)"><?php endif; ?><?= $country !== "" ? e($country) : "" ?></div><?php endif; ?></div><?php
     endforeach;
 else:
     foreach ($items as $x): ?><div class="item"><?php if (
@@ -326,8 +327,6 @@ else:
     $x["display_name"],
 ) ?></div><div class="small"><?=
 !empty($x["bib_number"]) ? "BIB " . (int) $x["bib_number"] : "BIB UNASSIGNED"
-?><?php if (!empty($x["country"])): ?> · <?= e(
-     CountryFlagService::emoji($x["country"]),
- ) ?> <?= e($x["country"]) ?><?php endif;
+?><?php if (!empty($x["country"])): ?> · <?php if ($flagUrl = country_flag_url($x["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($x["country"]) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45);vertical-align:middle;margin:0 .35em"><?php endif; ?><?= e($x["country"]) ?><?php endif;
 ?></div></div><?php endforeach;
 endif; ?></div><?php endif; ?></div></div></body></html>
