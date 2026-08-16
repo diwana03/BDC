@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev226",
-  "build": 2932,
+  "version": "2.3.3-dev227",
+  "build": 2933,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Restores the missing card wrapper on projected individual competitors",
-    "Keeps each photo, name, bib and country together in one grid cell",
-    "Applies the projector repair to both Test and Live data modes",
-    "Adds competitor card structure to the scoring parity gate"
+    "Returns Automatic Calculate and Submit safely to the Automatic dashboard",
+    "Prevents successful Automatic actions from entering the legacy dashboard renderer",
+    "Preserves Automatic calculation notices and validation errors across the redirect",
+    "Adds the Automatic POST-return contract to the scoring parity gate"
   ]
 }

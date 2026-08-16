@@ -1213,7 +1213,10 @@ try{
 if(
  $_SERVER['REQUEST_METHOD']==='POST'
  && $roundId>0
- && in_array($action,['settings','add_entry','update_bib','remove_entry'],true)
+ && in_array($action,[
+  'settings','add_entry','update_bib','remove_entry',
+  'save_scores','calculate_scores','submit_scores','resolve_callback_tie'
+ ],true)
 ){
  $modeStmt=$pdo->prepare('SELECT scoring_mode FROM bdc_scoring_rounds WHERE id=:round');
  $modeStmt->execute(['round'=>$roundId]);

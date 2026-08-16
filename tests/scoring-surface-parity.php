@@ -69,6 +69,12 @@ $automaticWorkflow = [
 ];
 $requireMarkers('Test automatic', 'admin/scoring-tests/automatic-inline.php', $automaticWorkflow);
 $requireMarkers('Live automatic', 'admin/scoring/automatic-round.php', $automaticWorkflow);
+$requireMarkers('Live automatic POST return', 'admin/scoring/core.php', [
+    'calculate redirect action' => "'calculate_scores'",
+    'submit redirect action' => "'submit_scores'",
+    'automatic notice handoff' => "\$_SESSION['automatic_scoring_notice']",
+    '303 automatic dashboard redirect' => "header('Location: automatic-round.php?round_id='.\$roundId,true,303)",
+]);
 
 $commonSetup = [
     'tier settings' => 'Save Tier Settings',
