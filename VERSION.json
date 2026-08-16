@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev227",
-  "build": 2933,
+  "version": "2.3.3-dev228",
+  "build": 2934,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Returns Automatic Calculate and Submit safely to the Automatic dashboard",
-    "Prevents successful Automatic actions from entering the legacy dashboard renderer",
-    "Preserves Automatic calculation notices and validation errors across the redirect",
-    "Adds the Automatic POST-return contract to the scoring parity gate"
+    "Keeps unexpected Automatic POST failures inside the Automatic dashboard",
+    "Shows the exact server-side calculation error to the signed-in administrator",
+    "Preserves saved scores when Automatic calculation fails",
+    "Leaves Manual scoring and projector behavior unchanged"
   ]
 }

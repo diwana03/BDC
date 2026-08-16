@@ -16,4 +16,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'&&$mode==='automated'&&$roundId>0&&in_arra
  exit;
 }
 ob_start(static function(string $html):string{if(preg_match('/round_id=(\d+)/',$html,$m)){$id=(int)$m[1];$html=str_replace('href="publish.php?round_id='.$id.'"','href="publish-gate.php?round_id='.$id.'"',$html);if(!str_contains($html,'Live Screen / Projection Control')){$button='<a class="btn btn-danger btn-sm" href="../live-screen/control.php?round_id='.$id.'">Live Screen / Projection Control</a>';$html=str_replace('<a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a>',$button.'<a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a>',$html);}}return$html;});
-try{require __DIR__.'/core.php';}catch(Throwable $e){while(ob_get_level()>0)ob_end_clean();App\Services\ScoringPageGuardService::renderFailure($e,false);}
+try{require __DIR__.'/core.php';}catch(Throwable $e){
+ while(ob_get_level()>0)ob_end_clean();
+ if($_SERVER['REQUEST_METHOD']==='POST'&&$mode==='automated'&&$roundId>0){
+  $_SESSION['automatic_scoring_error']=$e->getMessage();
+  header('Location: automatic-round.php?round_id='.$roundId,true,303);
+  exit;
+ }
+ App\Services\ScoringPageGuardService::renderFailure($e,false);
+}
