@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev218",
-  "build": 2924,
+  "version": "2.3.3-dev219",
+  "build": 2925,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Makes BIB numbers the primary large identifier on judge scoring cards",
-    "Keeps competitor names smaller as secondary judge reference",
-    "Displays YES, A1, A2 and A3 totals in distinct high-contrast colours",
-    "Automatically replaces expired judge sessions with fresh 12-hour links"
+    "Keeps judge Submit disabled until every tier requirement is complete",
+    "Turns Submit green only when the judge is ready to submit",
+    "Requires the tier YES total plus A1, A2 and A3 on every assigned role",
+    "Enforces identical readiness rules in both the browser and server"
   ]
 }
