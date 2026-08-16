@@ -100,11 +100,17 @@ if ($type === "matching") {
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
 } elseif ($type === "competitors") {
-    $title =
-        $r["round_type"] === "final" ? "FINALISTS / COUPLES" : "COMPETITORS";
-    $q = $pdo->prepare(
-        "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
-    );
+    $isFinalRound = $r["round_type"] === "final";
+    $title = $isFinalRound ? "FINALIST COUPLES" : "COMPETITORS";
+    if ($isFinalRound) {
+        $q = $pdo->prepare(
+            "SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,lc.photo_url leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,fc.photo_url follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number",
+        );
+    } else {
+        $q = $pdo->prepare(
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
+        );
+    }
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
 } elseif (in_array($type, ["callbacks", "finalists"], true)) {
@@ -319,7 +325,8 @@ e($x["full_name"] ?: $x["judge_name"])
 ?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.45em;min-height:clamp(30px,2.5vw,64px)"><?php if ($flagUrl = country_flag_url($countryCode !== "" ? $countryCode : $country)): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($country ?: $countryCode) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45)"><?php endif; ?><?= $country !== "" ? e($country) : "" ?></div><?php endif; ?></div><?php
     endforeach;
 else:
-    foreach ($items as $x): ?><div class="item"><?php if (
+    foreach ($items as $x):
+        if (array_key_exists("leader_name", $x)): ?><div class="item"><div class="small" style="font-weight:900;letter-spacing:.08em">COUPLE <?= (int) $x["pair_number"] ?></div><div style="display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.5vw,34px);width:100%;margin:.35em 0"><?php foreach ([["name" => $x["leader_name"], "bib" => $x["leader_bib"], "photo" => $x["leader_photo"], "country" => $x["leader_country"]], ["name" => $x["follower_name"], "bib" => $x["follower_bib"], "photo" => $x["follower_photo"], "country" => $x["follower_country"]]] as $person): ?><div style="display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%"><?php if (!empty($person["photo"])): ?><img class="photo" src="<?= e($person["photo"]) ?>" onerror="this.remove()" style="margin-bottom:.25em"><?php endif; ?><div class="name" style="font-size:.86em"><?= e($person["name"] ?: "Partner pending") ?></div><div class="small">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div><?php if (!empty($person["country"])): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.3em"><?php if ($flagUrl = country_flag_url($person["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag" style="width:clamp(30px,2.25vw,56px);height:clamp(20px,1.5vw,37px);object-fit:cover;border:1px solid rgba(255,255,255,.7);border-radius:4px"><?php endif; ?><?= e($person["country"]) ?></div><?php endif; ?></div><?php endforeach; ?></div></div><?php else: ?><div class="item"><?php if (
     !empty($x["photo_url"])
 ): ?><img class="photo" src="<?= e(
     $x["photo_url"],
@@ -328,5 +335,5 @@ else:
 ) ?></div><div class="small"><?=
 !empty($x["bib_number"]) ? "BIB " . (int) $x["bib_number"] : "BIB UNASSIGNED"
 ?><?php if (!empty($x["country"])): ?> · <?php if ($flagUrl = country_flag_url($x["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($x["country"]) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45);vertical-align:middle;margin:0 .35em"><?php endif; ?><?= e($x["country"]) ?><?php endif;
-?></div></div><?php endforeach;
+?></div></div><?php endif; endforeach;
 endif; ?></div><?php endif; ?></div></div></body></html>
