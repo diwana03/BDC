@@ -19,6 +19,7 @@ use App\Services\SchemaUpdater;
 use App\Services\ResultStorageService;
 use App\Services\SpecialCategoryService;
 use App\Services\ScoringPageGuardService;
+use App\Services\ScoringJudgeAssignmentService;
 
 Auth::requireAdmin();
 
@@ -380,8 +381,8 @@ function syncCallbacksToChildRound(PDO $pdo,array $source,int $childRoundId,int 
     $judgeCount->execute(['r'=>$childRoundId]);
     if((int)$judgeCount->fetchColumn()===0){
       $copyJudges=$pdo->prepare("
-        INSERT INTO bdc_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope)
-        SELECT :new_round,judge_name,judge_order,is_chief,scoring_scope
+        INSERT INTO bdc_scoring_judges(judge_id,round_id,judge_name,judge_order,is_chief,scoring_scope)
+        SELECT judge_id,:new_round,judge_name,judge_order,is_chief,scoring_scope
         FROM bdc_scoring_judges
         WHERE round_id=:source_round
         ORDER BY judge_order
@@ -778,20 +779,11 @@ try{
   }elseif($action==='remove_entry'){
    $roundId=(int)$_POST['round_id'];$id=(int)$_POST['entry_id'];$pdo->prepare("UPDATE bdc_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id]);$notice='Entry removed.';
   }elseif($action==='save_judges'){
-   $roundId=(int)$_POST['round_id'];$rawNames=$_POST['judge_name']??[];$rawScopes=$_POST['judge_scope']??[];$chief=(int)($_POST['chief_index']??-1);$rows=[];
-   foreach($rawNames as $index=>$rawName){$name=trim((string)$rawName);if($name==='')continue;$scope=(string)($rawScopes[$index]??'all');if(!in_array($scope,['all','leader','follower'],true))$scope='all';$rows[]=['name'=>$name,'scope'=>$scope,'original_index'=>(int)$index];}
-   if(count($rows)<3)throw new RuntimeException('Minimum 3 judges required.');
-   if(count($rows)!==count(array_unique(array_map(fn($row)=>mb_strtolower($row['name']),$rows))))throw new RuntimeException('Judge names must be unique.');
-   $chiefRowIndex=null;foreach($rows as $rowIndex=>$row){if($row['original_index']===$chief){$chiefRowIndex=$rowIndex;break;}}if($chiefRowIndex===null)throw new RuntimeException('Select one Chief Judge.');
-   foreach(['leader','follower'] as $role){$panelCount=count(array_filter($rows,fn($row)=>in_array($row['scope'],['all',$role],true)));if($panelCount<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');}
-   $existingStmt=$pdo->prepare("SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");$existingStmt->execute(['r'=>$roundId]);$existing=$existingStmt->fetchAll();$existingByName=[];foreach($existing as $judge)$existingByName[mb_strtolower(trim((string)$judge['judge_name']))]=$judge;
-   $pdo->beginTransaction();
-   try{
-    $usedIds=[];$chiefId=0;$update=$pdo->prepare("UPDATE bdc_scoring_judges SET judge_name=:name,judge_order=:order_no,is_chief=:chief,scoring_scope=:scope WHERE id=:id AND round_id=:round");$insert=$pdo->prepare("INSERT INTO bdc_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:round,:name,:order_no,:chief,:scope)");
-    foreach($rows as $index=>$row){$key=mb_strtolower($row['name']);$isChief=$index===$chiefRowIndex?1:0;if(isset($existingByName[$key])){$id=(int)$existingByName[$key]['id'];$update->execute(['name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope'],'id'=>$id,'round'=>$roundId]);}else{$insert->execute(['round'=>$roundId,'name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope']]);$id=(int)$pdo->lastInsertId();}$usedIds[]=$id;if($isChief)$chiefId=$id;}
-    if($usedIds){$ph=implode(',',array_fill(0,count($usedIds),'?'));$pdo->prepare("DELETE FROM bdc_scoring_judges WHERE round_id=? AND id NOT IN ($ph)")->execute(array_merge([$roundId],$usedIds));}
-    $pdo->prepare('UPDATE bdc_scoring_rounds SET chief_judge_id=:chief WHERE id=:round')->execute(['chief'=>$chiefId,'round'=>$roundId]);auditScoring($pdo,$roundId,$userId,'judges_saved',['count'=>count($rows),'chief'=>$rows[$chiefRowIndex]['name'],'scopes'=>array_count_values(array_column($rows,'scope'))]);$pdo->commit();$notice='Judges saved. Existing scores for unchanged judges were preserved.';
-   }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+   $roundId=(int)$_POST['round_id'];$rawNames=$_POST['judge_name']??[];$rawScopes=$_POST['judge_scope']??[];$rawAssignments=$_POST['judge_assignment_id']??[];$rawDirectory=$_POST['judge_directory_id']??[];$chief=(int)($_POST['chief_index']??-1);$rows=[];
+   foreach($rawNames as $index=>$rawName)$rows[(string)$index]=['name'=>(string)$rawName,'scope'=>(string)($rawScopes[$index]??'all'),'assignment_id'=>(int)($rawAssignments[$index]??0),'directory_id'=>(int)($rawDirectory[$index]??0),'original_index'=>(int)$index];
+   $saved=ScoringJudgeAssignmentService::save($pdo,$roundId,$rows,$chief);
+   auditScoring($pdo,$roundId,$userId,'judges_saved',['count'=>$saved['count'],'chief'=>$saved['chief_name'],'judge_profiles_created'=>$saved['created_directory_count']]);
+   $notice='Judges saved and linked to the Judge Database. Existing scores for unchanged assignments were preserved.';
   }elseif($action==='save_round_officials'){
    $roundId=(int)($_POST['round_id']??0);
    $roundForOfficials=loadRound($pdo,$roundId);
@@ -1056,72 +1048,11 @@ try{
    $roundId=(int)($_POST['round_id']??0);
    $finalRound=loadRound($pdo,$roundId);
    if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Final round not found.');
-
-   $rows=$_POST['final_judges']??[];
-   $chiefKey=(string)($_POST['final_chief_key']??'');
-   $clean=[];
-   foreach($rows as $key=>$row){
-    $name=trim((string)($row['name']??''));
-    if($name==='')continue;
-    $id=(int)($row['id']??0);
-    $clean[(string)$key]=['id'=>$id,'name'=>$name];
-   }
-   if(count($clean)<3)throw new RuntimeException('Minimum 3 Final judges required.');
-   $lower=array_map(fn($row)=>mb_strtolower($row['name']),array_values($clean));
-   if(count($lower)!==count(array_unique($lower)))throw new RuntimeException('Final judge names must be unique.');
-   if(!isset($clean[$chiefKey]))throw new RuntimeException('Select one Final Chief Judge.');
-
-   $existingStmt=$pdo->prepare("SELECT id FROM bdc_scoring_judges WHERE round_id=:r");
-   $existingStmt->execute(['r'=>$roundId]);
-   $existingIds=array_map('intval',$existingStmt->fetchAll(PDO::FETCH_COLUMN));
-
-   $pdo->beginTransaction();
-   try{
-    $keptIds=[];
-    $chiefId=0;
-    $order=1;
-
-    $update=$pdo->prepare("UPDATE bdc_scoring_judges SET judge_name=:name,judge_order=:ord,is_chief=:chief,scoring_scope='all' WHERE id=:id AND round_id=:r");
-    $insert=$pdo->prepare("INSERT INTO bdc_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:r,:name,:ord,:chief,'all')");
-
-    foreach($clean as $key=>$row){
-     $isChief=$key===$chiefKey?1:0;
-     if($row['id']>0 && in_array($row['id'],$existingIds,true)){
-      $update->execute(['name'=>$row['name'],'ord'=>$order,'chief'=>$isChief,'id'=>$row['id'],'r'=>$roundId]);
-      $judgeId=$row['id'];
-     }else{
-      $insert->execute(['r'=>$roundId,'name'=>$row['name'],'ord'=>$order,'chief'=>$isChief]);
-      $judgeId=(int)$pdo->lastInsertId();
-     }
-     $keptIds[]=$judgeId;
-     if($isChief)$chiefId=$judgeId;
-     $order++;
-    }
-
-    $removeIds=array_values(array_diff($existingIds,$keptIds));
-    if($removeIds){
-     $placeholders=implode(',',array_fill(0,count($removeIds),'?'));
-     $pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE round_id=? AND judge_id IN ($placeholders)")
-         ->execute(array_merge([$roundId],$removeIds));
-     $pdo->prepare("DELETE FROM bdc_scoring_judges WHERE round_id=? AND id IN ($placeholders)")
-         ->execute(array_merge([$roundId],$removeIds));
-     $pdo->prepare("DELETE FROM bdc_scoring_final_results WHERE round_id=:r")->execute(['r'=>$roundId]);
-    }
-
-    $pdo->prepare("UPDATE bdc_scoring_rounds SET chief_judge_id=:chief WHERE id=:r")
-        ->execute(['chief'=>$chiefId,'r'=>$roundId]);
-
-    auditScoring($pdo,$roundId,$userId,'final_judges_saved',[
-      'count'=>count($clean),
-      'chief_judge_id'=>$chiefId,
-      'removed_judge_ids'=>$removeIds
-    ]);
-    $pdo->commit();
-    $notice='Final judges saved. Existing judges were updated and new judges were appended.';
-   }catch(Throwable $e){
-    if($pdo->inTransaction())$pdo->rollBack();
-    throw $e;
-   }
+   $posted=$_POST['final_judges']??[];$rows=[];
+   foreach($posted as $key=>$row)$rows[(string)$key]=['name'=>(string)($row['name']??''),'scope'=>'all','assignment_id'=>(int)($row['id']??0),'directory_id'=>(int)($row['directory_id']??0),'original_index'=>(string)$key];
+   $saved=ScoringJudgeAssignmentService::save($pdo,$roundId,$rows,(string)($_POST['final_chief_key']??''));
+   auditScoring($pdo,$roundId,$userId,'final_judges_saved',['count'=>$saved['count'],'chief_judge_id'=>$saved['chief_id'],'judge_profiles_created'=>$saved['created_directory_count']]);
+   $notice='Final judges saved and linked to the Judge Database.';
 
   }elseif($action==='save_final_scores' || $action==='submit_final_scores'){
    @set_time_limit(180);
@@ -1372,6 +1303,7 @@ $rounds=$pdo->query("
  LIMIT 30
 ")->fetchAll();
 $judges=[];$entries=['leader'=>[],'follower'=>[]];$marks=[];$results=[];$finalPairs=[];$finalMarks=[];$finalResults=[];
+$judgeDirectory=ScoringJudgeAssignmentService::directory($pdo);
 if($round){$s=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
 if($results){
  foreach(['leader','follower'] as $sortRole){
@@ -1739,6 +1671,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
     <div class="text-muted small">The Final can use a different judging panel. Edit existing judges, append new judges, remove judges and select one Final Chief Judge.</div>
    </div>
   </div>
+  <datalist id="judgeDirectorySuggestions"><?php foreach($judgeDirectory as $directoryJudge):$directoryName=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);?><option value="<?=e($directoryName)?>"><?=e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:''))?></option><?php endforeach;?></datalist>
   <form method="post" id="finalJudgesForm">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="save_final_judges">
@@ -1756,7 +1689,8 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
     <div class="input-group mb-2 judge-row" data-judge-row>
      <span class="input-group-text final-judge-number">Judge <?=$i+1?></span>
      <input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>">
-     <input class="form-control" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Final judge name" required>
+     <input type="hidden" name="final_judges[<?=$judgeKey?>][directory_id]" value="<?=(int)($judge['judge_id']??0)?>">
+     <input class="form-control" list="judgeDirectorySuggestions" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Search or type a new judge" required>
      <span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span>
      <button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button>
     </div>
@@ -1899,7 +1833,8 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
 </form>
 <?php endif;?>
 </div></div></div>
-<div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Default is All. Each role panel must contain at least 3 judges.</div><form method="post" id="judgesForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div id="judgesWrap"><?php $display=$judges?:[['judge_name'=>'','is_chief'=>1,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all']];foreach($display as $i=>$j):?><div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge <?=$i+1?></strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" value="<?=e($j['judge_name'])?>" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><?php foreach(['all'=>'All','leader'=>'Leaders','follower'=>'Followers'] as $scopeValue=>$scopeLabel):?><option value="<?=$scopeValue?>" <?=($j['scoring_scope']??'all')===$scopeValue?'selected':''?>><?=$scopeLabel?></option><?php endforeach;?></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="<?=$i?>" <?=(int)$j['is_chief']?'checked':''?>> Chief</label></div></div><?php endforeach;?></div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addJudge()">+ Judge</button><button class="btn btn-dark btn-sm">Submit Judges</button><a class="btn btn-outline-primary btn-sm" href="print.php?round_id=<?=$roundId?>" target="_blank">Generate Judge Sheets</a></div></form></div></div></div></div>
+<div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Search the Judge Database or type a new name. New names automatically receive a Judge ID. Each role panel must contain at least 3 judges.</div><form method="post" id="judgesForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div id="judgesWrap"><?php $display=$judges?:[['id'=>0,'judge_id'=>0,'judge_name'=>'','is_chief'=>1,'scoring_scope'=>'all'],['id'=>0,'judge_id'=>0,'judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all'],['id'=>0,'judge_id'=>0,'judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all']];foreach($display as $i=>$j):?><div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge <?=$i+1?></strong><input type="hidden" name="judge_assignment_id[]" value="<?=(int)($j['id']??0)?>"><input type="hidden" name="judge_directory_id[]" value="<?=(int)($j['judge_id']??0)?>"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" value="<?=e($j['judge_name'])?>" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><?php foreach(['all'=>'All','leader'=>'Leaders','follower'=>'Followers'] as $scopeValue=>$scopeLabel):?><option value="<?=$scopeValue?>" <?=($j['scoring_scope']??'all')===$scopeValue?'selected':''?>><?=$scopeLabel?></option><?php endforeach;?></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="<?=$i?>" <?=(int)$j['is_chief']?'checked':''?>> Chief</label></div></div><?php endforeach;?></div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addJudge()">+ Judge</button><button class="btn btn-dark btn-sm">Submit Judges</button><a class="btn btn-outline-primary btn-sm" href="print.php?round_id=<?=$roundId?>" target="_blank">Generate Judge Sheets</a></div></form></div></div></div></div>
+<datalist id="judgeDirectorySuggestions"><?php foreach($judgeDirectory as $directoryJudge):$directoryName=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);?><option value="<?=e($directoryName)?>"><?=e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:''))?></option><?php endforeach;?></datalist>
 <datalist id="competitorSuggestions"><?php foreach($competitorSuggestions as $suggestion):?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' · '.ucfirst($suggestion['dance_role']).($suggestion['status']==='pending'?' · Details pending':''))?></option><?php endforeach;?></datalist>
 <div class="row g-3 mb-4">
 <div class="col-lg-6"><div class="card shadow-sm role-card"><div class="card-header bg-primary-subtle fw-semibold">Leaders</div><div class="card-body">
@@ -2061,7 +1996,8 @@ function addFinalJudge(){
  d.setAttribute('data-judge-row','');
  d.innerHTML='<span class="input-group-text final-judge-number"></span>'
   +'<input type="hidden" name="final_judges['+key+'][id]" value="0">'
-  +'<input class="form-control" name="final_judges['+key+'][name]" placeholder="Final judge name" required>'
+  +'<input type="hidden" name="final_judges['+key+'][directory_id]" value="0">'
+  +'<input class="form-control" list="judgeDirectorySuggestions" name="final_judges['+key+'][name]" placeholder="Search or type a new judge" required>'
   +'<span class="input-group-text"><input type="radio" name="final_chief_key" value="'+key+'"> Chief</span>'
   +'<button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button>';
  w.appendChild(d);
@@ -2074,7 +2010,7 @@ function removeFinalJudge(button){
  if(rows.length<=3){alert('Final requires at least 3 judges.');return;}
  row.remove();
  renumberFinalJudges();
-}function addJudge(){const w=document.getElementById('judgesWrap');const i=w.querySelectorAll('.judge-row').length;const d=document.createElement('div');d.className='row g-2 mb-2 judge-row align-items-center';d.innerHTML='<div class="col-md-2"><strong>Judge '+(i+1)+'</strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="'+i+'"> Chief</label></div>';w.appendChild(d);}
+}function addJudge(){const w=document.getElementById('judgesWrap');const i=w.querySelectorAll('.judge-row').length;const d=document.createElement('div');d.className='row g-2 mb-2 judge-row align-items-center';d.innerHTML='<div class="col-md-2"><strong>Judge '+(i+1)+'</strong><input type="hidden" name="judge_assignment_id[]" value="0"><input type="hidden" name="judge_directory_id[]" value="0"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="'+i+'"> Chief</label></div>';w.appendChild(d);}
 const scoreForm=document.getElementById('heatsScoreForm');
 const autosaveStatus=document.getElementById('autosaveStatus');
 const scoreWeights={'1':10,'YES':10,'Y':10,'A1':4.5,'A2':4.3,'A3':4.2,'2':4.5,'3':4.3,'4':4.2,'':0};

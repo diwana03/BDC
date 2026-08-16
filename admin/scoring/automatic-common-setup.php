@@ -6,6 +6,7 @@ use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SpecialCategoryService;
+use App\Services\ScoringJudgeAssignmentService;
 
 function bdcRenderAutomaticCommonSetup(int $roundId):string
 {
@@ -18,6 +19,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $judgeStmt=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:round ORDER BY judge_order');
     $judgeStmt->execute(['round'=>$roundId]);
     $judges=$judgeStmt->fetchAll();
+    $judgeDirectory=ScoringJudgeAssignmentService::directory($pdo);
 
     $entryStmt=$pdo->prepare("SELECT se.*,c.bdc_id,c.status competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:round AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");
     $entryStmt->execute(['round'=>$roundId]);
@@ -88,13 +90,16 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $html.='</div></div></div>';
 
     $display=$judges?:[['judge_name'=>'','is_chief'=>1,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all']];
-    $html.='<div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Same setup as Manual Heats. Minimum 3 judges. Default scope is All.</div><form method="post"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="'.$roundId.'"><div id="judgesWrap">';
+    $html.='<div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Search the Judge Database or type a new name. New names automatically receive a Judge ID.</div><form method="post" action="save-judges.php"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="'.$roundId.'"><div id="judgesWrap">';
     foreach($display as $i=>$judge){
-        $html.='<div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge '.($i+1).'</strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" value="'.$e((string)$judge['judge_name']).'" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]">';
+        $html.='<div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge '.($i+1).'</strong><input type="hidden" name="judge_assignment_id[]" value="'.(int)($judge['id']??0).'"><input type="hidden" name="judge_directory_id[]" value="'.(int)($judge['judge_id']??0).'"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" value="'.$e((string)$judge['judge_name']).'" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]">';
         foreach(['all'=>'All','leader'=>'Leaders','follower'=>'Followers'] as $value=>$label)$html.='<option value="'.$value.'" '.(($judge['scoring_scope']??'all')===$value?'selected':'').'>'.$label.'</option>';
         $html.='</select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="'.$i.'" '.((int)$judge['is_chief']?'checked':'').'> Chief</label></div></div>';
     }
     $html.='</div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addJudge()">+ Judge</button><button class="btn btn-dark btn-sm">Submit Judges</button></div></form></div></div></div></div>';
+    $html.='<datalist id="judgeDirectorySuggestions">';
+    foreach($judgeDirectory as $directoryJudge){$name=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);$html.='<option value="'.$e($name).'">'.$e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:'')).'</option>';}
+    $html.='</datalist>';
 
     $html.='<datalist id="competitorSuggestions">';
     foreach($suggestions as $suggestion)$html.='<option value="'.$e((string)$suggestion['bdc_id']).'">'.$e((string)$suggestion['exact_name'].' · '.ucfirst((string)$suggestion['dance_role']).((string)$suggestion['status']==='pending'?' · Details pending':'')).'</option>';
@@ -117,5 +122,6 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         $html.='<form method="post" class="d-flex align-items-center gap-2"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="regenerate_registration_desk_link"><input type="hidden" name="round_id" value="'.$roundId.'"><span class="small text-muted">Secure desk link needs to be reissued for this admin session.</span><button class="btn btn-warning btn-sm" onclick="return confirm(\'Regenerate the Registration Desk link? The previous desk link will stop working.\')">Regenerate Registration Link</button></form>';
     }
     $html.='</div></div></div></div>';
+    $html.='<script>window.addJudge=window.addJudge||function(){const wrap=document.getElementById("judgesWrap");if(!wrap)return;const index=wrap.querySelectorAll(".judge-row").length;const row=document.createElement("div");row.className="row g-2 mb-2 judge-row align-items-center";row.innerHTML=`<div class="col-md-2"><strong>Judge ${index+1}</strong><input type="hidden" name="judge_assignment_id[]" value="0"><input type="hidden" name="judge_directory_id[]" value="0"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="${index}"> Chief</label></div>`;wrap.appendChild(row);};</script>';
     return $html;
 }
