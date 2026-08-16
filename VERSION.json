@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev221",
-  "build": 2927,
+  "version": "2.3.3-dev222",
+  "build": 2928,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Shows all active competitors on the Heats Full Scores projection during judging",
-    "Calculates current live totals directly from saved judge marks",
-    "Refreshes the projected score table whenever judges save new marks",
-    "Shows cute animal fallbacks in the actual public competitor and couple feed"
+    "Shows Leaders and Followers in separate side-by-side live score tables",
+    "Maintains independent place rankings for each dance role",
+    "Refreshes contestant totals whenever judges save new marks",
+    "Keeps the public projection readable in landscape format"
   ]
 }

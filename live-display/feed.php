@@ -122,7 +122,7 @@ if ($type === "matching") {
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
 } elseif ($type === "heats_scores") {
-    $title = "HEATS FULL SCORES";
+    $title = "LIVE CONTESTANT SCORES";
     $q = $pdo->prepare(
         "SELECT sr.rank_number AS official_rank,COALESCE(SUM(m.weighted_score),sr.total_score,0) total_score,COALESCE(sr.result_status,'provisional') result_status,se.bib_number,se.display_name,se.dance_role
          FROM {$entryTable} se
@@ -245,9 +245,9 @@ if (
     strtoupper(str_replace("_", " ", $r["division"])),
 ) ?> · <?= e(strtoupper($r["round_type"])) ?></div><div class="title"><?= e(
     $title,
-) ?></div><?php if ($type === "matching"): ?><div class="list"><?php foreach ($items as $x): ?><div class="item"><div class="small">COUPLE <?= (int) $x["pair_number"] ?></div><div class="name">BIB <?= (int) $x["leader_bib"] ?> · <?= e(CountryFlagService::emoji($x["leader_country"] ?? null)) ?> <?= e($x["leader_name"]) ?></div><div style="font-size:clamp(24px,3vw,65px);color:#ffcf45">＋</div><div class="name">BIB <?= (int) $x["follower_bib"] ?> · <?= e(CountryFlagService::emoji($x["follower_country"] ?? null)) ?> <?= e($x["follower_name"]) ?></div></div><?php endforeach; ?></div><?php elseif (
-    in_array($type, ["heats_scores", "final_results", "results"], true)
-): ?><table class="score-table"><thead><tr><th>Place</th><th>Bib</th><th>Competitor / Couple</th><th>Role / Status</th><th>Score</th></tr></thead><tbody><?php foreach (
+) ?></div><?php if ($type === "matching"): ?><div class="list"><?php foreach ($items as $x): ?><div class="item"><div class="small">COUPLE <?= (int) $x["pair_number"] ?></div><div class="name">BIB <?= (int) $x["leader_bib"] ?> · <?= e(CountryFlagService::emoji($x["leader_country"] ?? null)) ?> <?= e($x["leader_name"]) ?></div><div style="font-size:clamp(24px,3vw,65px);color:#ffcf45">＋</div><div class="name">BIB <?= (int) $x["follower_bib"] ?> · <?= e(CountryFlagService::emoji($x["follower_country"] ?? null)) ?> <?= e($x["follower_name"]) ?></div></div><?php endforeach; ?></div><?php elseif ($type === "heats_scores"): ?><style>.score-split{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1%}.score-panel{min-width:0;overflow:hidden}.score-role{background:#111827;border:1px solid rgba(255,255,255,.35);padding:.35em;font-size:clamp(13px,1.15vw,26px);font-weight:900;letter-spacing:.08em}.score-table.live-role{font-size:clamp(8px,.78vw,17px);table-layout:fixed}.score-table.live-role th,.score-table.live-role td{padding:.28em .42em}.score-table.live-role th:nth-child(1){width:12%}.score-table.live-role th:nth-child(2){width:15%}.score-table.live-role th:nth-child(4){width:18%}</style><div class="score-split"><?php foreach (["leader" => "LEADERS", "follower" => "FOLLOWERS"] as $role => $roleLabel): ?><section class="score-panel"><div class="score-role"><?= e($roleLabel) ?></div><table class="score-table live-role"><thead><tr><th>Place</th><th>Bib</th><th>Contestant</th><th>Score</th></tr></thead><tbody><?php foreach ($items as $x): if (($x["dance_role"] ?? "") !== $role) continue; ?><tr><td class="num"><?= (int) $x["rank_number"] ?></td><td class="num"><?= !empty($x["bib_number"]) ? (int) $x["bib_number"] : "—" ?></td><td><?= e((string) $x["display_name"]) ?></td><td class="num"><?= e((string) ($x["total_score"] ?? "0.00")) ?></td></tr><?php endforeach; ?></tbody></table></section><?php endforeach; ?></div><?php elseif (
+    in_array($type, ["final_results", "results"], true)
+): ?><table class="score-table"><thead><tr><th>Place</th><th>Bib</th><th>Competitor / Couple</th><th>Status</th><th>Score</th></tr></thead><tbody><?php foreach (
     $items
     as $x
 ): ?><tr><td class="num"><?= (int) ($x["rank_number"] ??
