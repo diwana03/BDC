@@ -79,12 +79,17 @@ if (
     in_array($s["screen_type"], ["competitors", "callbacks", "finalists"], true)
 ) {
     $count = 0;
+    $roleCounts=["leader"=>0,"follower"=>0];
     if ($s["screen_type"] === "competitors") {
         $q = $pdo->prepare(
-            "SELECT COUNT(*) FROM {$entryTable} WHERE round_id=:r AND entry_status='active'",
+            "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role",
         );
         $q->execute(["r" => $roundId]);
-        $count = (int) $q->fetchColumn();
+        foreach($q->fetchAll() as $roleCountRow){
+            $role=(string)($roleCountRow["dance_role"]??"");
+            if(isset($roleCounts[$role]))$roleCounts[$role]=(int)$roleCountRow["total"];
+        }
+        $count=array_sum($roleCounts);
     } else {
         $resultTable = $test
             ? "bdc_test_scoring_results"
@@ -103,7 +108,13 @@ if (
         $set["custom_width"] ?: null,
         $set["custom_height"] ?: null,
     );
-    $total = max(1, (int) $layout["pages"]);
+    if($s["screen_type"]==="competitors"){
+        $roleColumns=max(1,(int)floor((int)$layout["columns"]/2));
+        $roleCapacity=max(1,(int)$layout["rows"]*$roleColumns);
+        $total=max(1,(int)ceil(max($roleCounts)/$roleCapacity));
+    }else{
+        $total=max(1,(int)$layout["pages"]);
+    }
 }
 $dataVersion = "0";
 if ($roundId && ($s["screen_type"] ?? "") === "matching") {

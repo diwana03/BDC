@@ -1,14 +1,14 @@
 {
-  "version": "2.3.3-dev234",
-  "build": 2940,
+  "version": "2.3.3-dev235",
+  "build": 2941,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Replaces browser datetime-local controls with manual Date, Hour, Minute and AM/PM selectors",
-    "Saves the selected next-round schedule in both Test and Live",
-    "Uses consistent five-minute scheduling choices for Semifinal and Final",
-    "Preserves dev230-dev233 Automatic scoring, tie and callback repairs"
+    "Splits the Competitors projector into Leaders and Followers panels",
+    "Keeps both roles visible simultaneously with independent role grids",
+    "Pages each role by the same synchronized projector page",
+    "Applies through the shared Test and Live projector feed"
   ]
 }
