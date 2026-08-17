@@ -281,7 +281,7 @@ $csrf=Csrf::token();
 $label=isset($round)?SpecialCategoryService::label((string)$round['division']):'Special Category';
 ?>
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Special Category Publication | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Special Category Publication | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="../../public/css/scoring-premium.css?v=274" rel="stylesheet"></head>
 <body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="?mode=special">BDC Special Scoring</a><a class="btn btn-outline-light btn-sm" href="index.php?mode=special&amp;round_id=<?=$roundId?>">Back to Final</a></div></nav>
 <main class="container py-4" style="max-width:1200px">
 <div class="mb-4"><div class="text-uppercase text-primary fw-bold small">Fixed Special Category Points</div><h1 class="h2"><?=e((string)($round['event_name']??''))?></h1><p class="text-muted"><?=e($label)?> · Final Publication Review</p></div>
