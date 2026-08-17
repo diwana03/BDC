@@ -24,6 +24,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\ResultStorageService;
+use App\Services\NextRankedFinalistService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -1018,48 +1019,8 @@ try{
   }elseif($action==='add_next_finalist'){
    $roundId=(int)($_POST['round_id']??0);
    $role=(string)($_POST['dance_role']??'');
-   $finalRoundGuard=loadRound($pdo,$roundId);
-   if(!$finalRoundGuard||$finalRoundGuard['round_type']!=='final')throw new RuntimeException('Final round not found.');
-   if((int)($finalRoundGuard['parent_round_id']??0)>0 || (int)($finalRoundGuard['source_round_id']??0)>0)throw new RuntimeException('BDC callback-derived Finals cannot promote additional competitors directly.');
-   if(!in_array($role,['leader','follower'],true))throw new RuntimeException('Invalid finalist role.');
-   $finalRound=loadRound($pdo,$roundId);
-   if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Final round not found.');
-   $sourceRoundId=(int)($finalRound['source_round_id']?:$finalRound['parent_round_id']);
-   if($sourceRoundId<1)throw new RuntimeException('Previous round not found.');
-
-   $nextStmt=$pdo->prepare("
-    SELECT se.competitor_id,se.dance_role,se.bib_number,se.display_name,sr.rank_number,sr.total_score
-    FROM bdc_test_scoring_entries se
-    JOIN bdc_test_scoring_results sr ON sr.round_id=se.round_id AND sr.entry_id=se.id
-    WHERE se.round_id=:source_round
-      AND se.dance_role=:role
-      AND se.entry_status='active'
-      AND NOT EXISTS(
-       SELECT 1 FROM bdc_test_scoring_entries final_entry
-       WHERE final_entry.round_id=:final_round
-         AND final_entry.competitor_id=se.competitor_id
-         AND final_entry.dance_role=se.dance_role
-         AND final_entry.entry_status='active'
-      )
-    ORDER BY sr.rank_number ASC,sr.total_score DESC,se.bib_number ASC
-    LIMIT 1
-   ");
-   $nextStmt->execute(['source_round'=>$sourceRoundId,'role'=>$role,'final_round'=>$roundId]);
-   $candidate=$nextStmt->fetch();
-   if(!$candidate)throw new RuntimeException('No additional ranked '.ucfirst($role).' is available.');
-
-   $pdo->prepare("
-    INSERT INTO bdc_test_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name,entry_status)
-    VALUES(:r,:c,:role,:bib,:name,'active')
-   ")->execute([
-    'r'=>$roundId,'c'=>$candidate['competitor_id'],'role'=>$candidate['dance_role'],
-    'bib'=>$candidate['bib_number'],'name'=>$candidate['display_name']
-   ]);
-   auditScoring($pdo,$roundId,$userId,'extra_finalist_added',[
-    'role'=>$role,'competitor_id'=>(int)$candidate['competitor_id'],
-    'source_rank'=>(int)$candidate['rank_number']
-   ]);
-   $notice='Added next ranked '.ucfirst($role).': '.$candidate['display_name'].'.';
+   $promotion=NextRankedFinalistService::promote($pdo,$roundId,$role,$userId,true);
+   $notice='Promoted next ranked '.ucfirst($role).': '.$promotion['candidate']['display_name'].'.'.($promotion['pairing_reset']?' Unscored Final pairing was reset.':'');
 
   }elseif($action==='remove_finalist'){
    $roundId=(int)($_POST['round_id']??0);
@@ -1636,6 +1597,7 @@ $csrf=Csrf::token();
 <div class="mb-3"><a href="?legacy=1&amp;test_mode=<?=e($testMode)?>" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
 <?php if($round['status']==='completed'):?><div class="alert alert-warning"><strong>Completed test round locked.</strong> Scores stay visible but cannot be changed.<?php if(Auth::canOverrideCompletedScores()):?><form method="post" class="d-flex gap-2 flex-wrap mt-2 completed-round-reopen" onsubmit="return confirm('Unlock this completed test round for correction and resubmission?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="reopen_completed_round"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control form-control-sm" style="max-width:180px" name="resubmit_confirmation" placeholder="Type RESUBMIT" required><button class="btn btn-sm btn-warning">Unlock for Resubmission</button></form><?php endif;?></div><script>addEventListener('DOMContentLoaded',()=>document.querySelectorAll('form:not(.completed-round-reopen)').forEach(form=>form.querySelectorAll('button,input:not([type=hidden]),select,textarea').forEach(control=>control.disabled=true)));</script><?php endif;?>
 <?php if($round['round_type']==='final'):?>
+<?php $nextRankedState=NextRankedFinalistService::state($pdo,$roundId,true);?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
  <div>
@@ -1652,6 +1614,22 @@ $csrf=Csrf::token();
  <?php endif;?>
 </div>
 </div></div>
+
+<?php if(!empty($nextRankedState['callback_derived'])):?>
+<div class="card shadow-sm mb-4"><div class="card-body">
+ <h2 class="h5 mb-1">Promote Next Ranked Competitor</h2>
+ <p class="text-muted mb-3">Optional BDC progression override. You may add the next ranked Leader or Follower even when role counts are balanced. Final scoring must not have started.</p>
+ <div class="row g-3">
+ <?php foreach(['leader'=>'primary','follower'=>'danger'] as $promotionRole=>$promotionColour):$promotionRoleState=$nextRankedState['roles'][$promotionRole];$promotionCandidate=$promotionRoleState['candidate'];?>
+  <div class="col-lg-6"><div class="border rounded p-3 h-100 d-flex justify-content-between align-items-center gap-3">
+   <div><strong><?=e(ucfirst($promotionRole))?>s: <?=$promotionRoleState['current']?></strong><?php if($promotionCandidate):?><div class="small text-muted">Next: Rank <?=$promotionCandidate['rank_number']?> · Bib <?=$promotionCandidate['bib_number']?> · <?=e($promotionCandidate['display_name'])?></div><?php else:?><div class="small text-muted">No additional ranked competitor available.</div><?php endif;?></div>
+   <?php if($promotionRoleState['can_promote']):?><form method="post" onsubmit="return confirm('Promote the next ranked <?=e(ucfirst($promotionRole))?>? This increases the role count from <?=$promotionRoleState['current']?> to <?=$promotionRoleState['current']+1?>. Any unscored Final pairing will be reset.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="add_next_finalist"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="dance_role" value="<?=$promotionRole?>"><button class="btn btn-<?=e($promotionColour)?> btn-sm">Promote Next Ranked <?=e(ucfirst($promotionRole))?></button></form><?php endif;?>
+  </div></div>
+ <?php endforeach;?>
+ </div>
+ <?php if($nextRankedState['scoring_started']):?><div class="alert alert-warning mt-3 mb-0">Final scoring has started, so finalist promotion is locked.</div><?php endif;?>
+</div></div>
+<?php endif;?>
 
 <div class="row g-3 mb-4">
  <div class="col-lg-6"><div class="card shadow-sm h-100">
