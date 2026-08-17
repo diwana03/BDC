@@ -1,12 +1,14 @@
 {
-  "version": "2.3.3-dev253",
-  "build": 2959,
+  "version": "2.3.3-dev254",
+  "build": 2960,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Adds a protected 30-second drum-roll delay before random Final matches are revealed",
+    "Moves projector sound selection out of the audience display and into Projection Control",
+    "Expands incomplete Final couple rows evenly across the full projector width",
+    "Adds a protected 5-4-3-2-1 projector countdown and blast before random Final matches are revealed",
     "Prioritises large bib numbers and fuller screen usage in projected Final couples",
     "Integrates restricted Emcee matching into the event projection controller",
     "Shows country flags for Final couples and live random matches",
@@ -29,6 +31,8 @@
     "Restores audited next-ranked Leader and Follower promotion for callback-derived Finals"
   ],
   "highlights": [
+    "Removes the visible Enable Sound button from all public projection screens",
+    "Prevents large bib numbers from being clipped by restoring a maximum five-card row",
     "Keeps newly randomized pairings hidden on the holding screen until the timed reveal",
     "Prevents the Emcee from restarting matching while a reveal countdown is active",
     "Uses one event Live Display link for projector tabs, Emcee matching and effects",
