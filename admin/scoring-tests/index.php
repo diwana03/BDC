@@ -1487,7 +1487,7 @@ $csrf=Csrf::token();
    <?php if($round):?>
     <div class="col-md-6 col-xl-3"><a class="btn btn-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/test-control.php?round_id=<?=$roundId?>"><strong>Presentation Control</strong><small>Holding screen, judge progress, result screens, loop and effects.</small></a></div>
     <div class="col-md-6 col-xl-3"><a class="btn btn-outline-primary w-100 presentation-action d-flex flex-column justify-content-center" href="#<?=$testMode==='automated'?'automaticJudgeLivePanel':($round['round_type']==='final'?'finalScoreForm':'heatsScoreForm')?>"><strong>Judge Live Progress</strong><small>Watch Test judges and scoring update on this screen.</small></a></div>
-    <?php if($round['round_type']==='final'):?><div class="col-md-6 col-xl-3"><a class="btn btn-outline-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>&amp;data_mode=test"><strong>Emcee Random Match</strong><small>Create the independent 12-hour Test matching link.</small></a></div><?php else:?><div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Emcee Random Match</strong><small class="text-muted mt-1">Available when a Test Final round is open.</small></div></div><?php endif;?>
+    <?php if($round['round_type']==='final'):?><div class="col-md-6 col-xl-3"><a class="btn btn-outline-danger w-100 presentation-action d-flex flex-column justify-content-center" href="../live-screen/control.php?round_id=<?=$roundId?>&amp;data_mode=test#emcee-match"><strong>Event Projection &amp; Emcee Match</strong><small>Manage the Test projector and restricted Emcee matching together.</small></a></div><?php else:?><div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Emcee Random Match</strong><small class="text-muted mt-1">Available when a Test Final round is open.</small></div></div><?php endif;?>
    <?php else:?>
     <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Presentation Control</strong><small class="text-muted mt-1">Open or create a Test round to activate its controls.</small></div></div>
     <div class="col-md-6 col-xl-3"><div class="border rounded p-3 h-100 d-flex flex-column justify-content-center bg-light"><strong>Judge Live Progress</strong><small class="text-muted mt-1">Open an Automatic Test round to monitor judges.</small></div></div>
@@ -1685,7 +1685,7 @@ $csrf=Csrf::token();
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
    <button class="btn btn-warning">Random Match</button>
-  </form><a class="btn btn-outline-danger" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>&data_mode=test">Test Emcee Match Link</a>
+  </form><a class="btn btn-outline-danger" href="../live-screen/control.php?round_id=<?=$roundId?>&amp;data_mode=test#emcee-match">Test Event Projection &amp; Emcee Match</a>
  </div>
 
  <form method="post">
