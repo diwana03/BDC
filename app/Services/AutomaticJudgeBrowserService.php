@@ -159,6 +159,36 @@ final class AutomaticJudgeBrowserService
         }
     }
 
+    public static function unlockAllSubmitted(
+        PDO $pdo,
+        int $roundId,
+        int $userId,
+        string $reason,
+    ): array {
+        $reason = trim($reason);
+        if ($reason === "") {
+            throw new RuntimeException("Enter an emergency reason before unlocking all judge scores.");
+        }
+        $submitted = $pdo->prepare(
+            "SELECT s.id,s.judge_id FROM bdc_scoring_judge_sessions s JOIN bdc_scoring_judges j ON j.id=s.judge_id WHERE j.round_id=:round AND s.id=(SELECT MAX(s2.id) FROM bdc_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) AND s.status='submitted' ORDER BY j.judge_order",
+        );
+        $submitted->execute(["round" => $roundId]);
+        $sessions = $submitted->fetchAll();
+        if (!$sessions) {
+            throw new RuntimeException("There are no locked judge scores to unlock.");
+        }
+        $ids = array_map(static fn(array $row): int => (int) $row["id"], $sessions);
+        $placeholders = implode(",", array_fill(0, count($ids), "?"));
+        $stmt = $pdo->prepare(
+            "UPDATE bdc_scoring_judge_sessions SET status='scoring',submitted_at=NULL,unlocked_at=NOW(),unlocked_by=?,unlock_reason=? WHERE id IN ($placeholders) AND status='submitted'",
+        );
+        $stmt->execute(array_merge([$userId, $reason], $ids));
+        return [
+            "count" => $stmt->rowCount(),
+            "judge_ids" => array_map(static fn(array $row): int => (int) $row["judge_id"], $sessions),
+        ];
+    }
+
     public static function progress(PDO $pdo, int $roundId): array
     {
         $round = self::round($pdo, $roundId);

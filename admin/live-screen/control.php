@@ -93,7 +93,7 @@ $formats = [
 ];
 $displayUrl = !empty($session["token_value"])
     ? url(
-        "live-display/?token=" . rawurlencode((string) $session["token_value"]),
+        "live-display/launch.php?token=" . rawurlencode((string) $session["token_value"]),
     )
     : "";
 $soundDisplayUrl = $displayUrl !== "" ? $displayUrl . "&sound=1" : "";
@@ -126,7 +126,7 @@ if (
     $displayUrl,
 ) ?>"><button type="button" id="copyLiveUrl" class="btn btn-outline-primary">Copy Link</button><a target="_blank" class="btn btn-primary" href="<?= e(
     $displayUrl,
-) ?>">Open Muted</a><a target="_blank" class="btn btn-success" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Choose sound here before the audience sees the projector. The public screen has no sound controls. If the browser blocks first-time audio, click once anywhere on the projector screen.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
+) ?>">Open Muted</a><a target="_blank" class="btn btn-success projector-open" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Every Open action first switches the audience display to the Holding Screen. Choose sound here before the audience sees the projector. The public screen has no sound controls.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
 ) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"

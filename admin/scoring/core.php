@@ -595,6 +595,16 @@ try{
    $pdo->prepare("UPDATE bdc_scoring_rounds SET status='draft',locked_at=NULL,locked_by=NULL WHERE id=:id")->execute(['id'=>$roundId]);
    auditScoring($pdo,$roundId,$userId,'completed_round_reopened_for_resubmission',['confirmation'=>'RESUBMIT','child_rounds_preserved'=>true]);
    $notice='Completed round unlocked for correction. Submit the scores again when finished.';
+  }elseif($action==='unlock_all_final_judges'){
+   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can use the emergency unlock.');
+   $roundId=(int)($_POST['round_id']??0);$reason=trim((string)($_POST['unlock_all_reason']??''));$confirmation=strtoupper(trim((string)($_POST['unlock_all_confirmation']??'')));
+   $finalRound=loadRound($pdo,$roundId);
+   if(!$finalRound||$finalRound['round_type']!=='final'||($finalRound['scoring_mode']??'manual')!=='automated')throw new RuntimeException('Automatic Final round not found.');
+   if($confirmation!=='UNLOCK ALL')throw new RuntimeException('Type UNLOCK ALL to confirm the emergency override.');
+   $unlocked=AutomaticJudgeBrowserService::unlockAllSubmitted($pdo,$roundId,$userId,$reason);
+   $pdo->prepare("UPDATE bdc_scoring_rounds SET status=CASE WHEN status='scores_submitted' THEN 'draft' ELSE status END WHERE id=:id")->execute(['id'=>$roundId]);
+   auditScoring($pdo,$roundId,$userId,'all_final_judge_scores_emergency_unlocked',['reason'=>$reason,'affected_count'=>$unlocked['count'],'judge_ids'=>$unlocked['judge_ids']]);
+   $notice=$unlocked['count'].' locked judge score columns reopened. Existing placements were preserved and must be resubmitted.';
   }elseif($action==='create_round'){
    $createMode=(string)($_POST['scoring_mode']??'manual');if(!in_array($createMode,['manual','automated'],true))$createMode='manual';
    $eventId=(int)($_POST['event_id']??0);
@@ -1804,6 +1814,10 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
    <?php endif;?>
   </div>
  </form>
+ <?php $lockedFinalJudgeCount=count(array_filter($judges,fn(array $judge):bool=>($judgeSessionStatus[(int)$judge['id']]??'')==='submitted'));?>
+ <?php if(($round['scoring_mode']??'manual')==='automated'&&$lockedFinalJudgeCount>0&&Auth::canOverrideCompletedScores()):?>
+ <section class="border border-danger rounded p-3 mt-3"><div class="fw-bold text-danger">Emergency Scoring Control</div><div class="small text-muted mb-2">Reopens all <?=$lockedFinalJudgeCount?> submitted judge columns together. Existing placements are preserved and every affected judge must resubmit.</div><form method="post" class="row g-2 align-items-end" onsubmit="return confirm('Emergency unlock all <?=$lockedFinalJudgeCount?> submitted judge score columns? Existing placements stay saved, but every affected judge must resubmit.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="unlock_all_final_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-lg-6"><label class="form-label small fw-semibold">Required emergency reason</label><input class="form-control" name="unlock_all_reason" maxlength="500" required></div><div class="col-lg-3"><label class="form-label small fw-semibold">Type UNLOCK ALL</label><input class="form-control" name="unlock_all_confirmation" autocomplete="off" required></div><div class="col-lg-3"><button class="btn btn-danger w-100">Unlock All Locked Scores (<?=$lockedFinalJudgeCount?>)</button></div></form></section>
+ <?php endif;?>
 </div></div>
 <?php else:?>
 <div class="alert alert-secondary">
