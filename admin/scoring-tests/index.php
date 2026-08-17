@@ -1845,7 +1845,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
 </div></div>
 <?php else:?>
 <div class="alert alert-secondary">
- <strong>Next step:</strong> confirm fixed couples to open manual Relative Placement scoring.
+ <strong>Next step:</strong> confirm fixed couples to open <?=($round['scoring_mode']??'manual')==='automated'?'Automatic Final Judge Scoring':'manual Relative Placement scoring'?>.
 </div>
 <?php endif;?>
 <?php else:?>
