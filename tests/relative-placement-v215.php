@@ -54,3 +54,21 @@ try{
 }
 
 echo "PASS: complex Relative Placement safeguards\n";
+
+$partial=RelativePlacementCalculator::calculate(
+ [1,2,3,4,5],
+ [1,2,3],
+ 1,
+ [
+  1=>[1=>1,2=>1,3=>2],
+  2=>[1=>2,2=>3,3=>1],
+  3=>[1=>3,2=>2,3=>3],
+  4=>[],
+  5=>[],
+ ],
+ 3
+);
+if(count($partial)!==3||array_column($partial,'final_rank')!==[1,2,3]){
+ throw new RuntimeException('Top-N Relative Placement did not return exactly the selected ranking depth.');
+}
+echo "PASS: Top-N Final ranking leaves remaining couples unranked\n";

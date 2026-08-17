@@ -177,6 +177,7 @@ final class AutomaticJudgeBrowserService
                 );
                 $totalStmt->execute(["round" => $roundId]);
                 $total = (int) $totalStmt->fetchColumn();
+                $total = min($total, max(1, (int) ($round["callback_count"] ?? $total)));
                 $doneStmt = $pdo->prepare(
                     "SELECT COUNT(*) FROM bdc_scoring_final_marks WHERE round_id=:round AND judge_id=:judge AND rank_value IS NOT NULL",
                 );

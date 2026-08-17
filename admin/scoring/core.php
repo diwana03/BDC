@@ -263,6 +263,7 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
 
 
 function calculateRelativePlacement(PDO $pdo,int $roundId,int $userId):array{
+    $limitStmt=$pdo->prepare("SELECT callback_count FROM bdc_scoring_rounds WHERE id=:r");$limitStmt->execute(['r'=>$roundId]);$rankLimit=max(1,(int)$limitStmt->fetchColumn());
     $judgeStmt=$pdo->prepare("SELECT id,judge_order,is_chief,judge_name FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
     $judgeStmt->execute(['r'=>$roundId]);
     $judges=$judgeStmt->fetchAll();
@@ -289,7 +290,8 @@ function calculateRelativePlacement(PDO $pdo,int $roundId,int $userId):array{
         $pairIds,
         $judgeIds,
         $chiefId,
-        $marks
+        $marks,
+        min(count($pairIds), $rankLimit)
     );
 
     $pdo->beginTransaction();
@@ -1017,6 +1019,12 @@ try{
    auditScoring($pdo,$roundId,$userId,'final_judges_saved',['count'=>$saved['count'],'chief_judge_id'=>$saved['chief_id'],'judge_profiles_created'=>$saved['created_directory_count']]);
    $notice='Final judges saved and linked to the Judge Database.';
 
+  }elseif($action==='save_final_rank_count'){
+   $roundId=(int)($_POST['round_id']??0);$roundForFinal=loadRound($pdo,$roundId);if(!$roundForFinal||$roundForFinal['round_type']!=='final')throw new RuntimeException('Final round not found.');
+   $pairCountStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_final_pairs WHERE round_id=:r AND pairing_status='confirmed'");$pairCountStmt->execute(['r'=>$roundId]);$pairCount=(int)$pairCountStmt->fetchColumn();
+   $rankCount=(int)($_POST['final_rank_count']??0);$maximum=min(20,$pairCount);if($rankCount<min(3,$maximum)||$rankCount>$maximum)throw new RuntimeException('Select between '.min(3,$maximum).' and '.$maximum.' Final placements.');
+   $started=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_final_marks WHERE round_id=:r");$started->execute(['r'=>$roundId]);if((int)$started->fetchColumn()>0)throw new RuntimeException('Final ranking depth is locked because judging has started. Clear or rescore the Final before changing it.');
+   $pdo->prepare("UPDATE bdc_scoring_rounds SET callback_count=:count WHERE id=:r")->execute(['count'=>$rankCount,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'final_rank_count_saved',['rank_count'=>$rankCount]);$notice='Final judges will rank exactly the Top '.$rankCount.' couples.';
   }elseif($action==='save_final_scores' || $action==='submit_final_scores'){
    @set_time_limit(180);
    $postedFinalRanks=$_POST['final_rank']??[];
@@ -1043,6 +1051,7 @@ try{
    $pairStmt->execute(['r'=>$roundId]);
    $pairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
    if(!$pairIds)throw new RuntimeException('Confirm Final pairing before entering rankings.');
+   $finalRankLimit=min(count($pairIds),max(1,(int)$roundForFinal['callback_count']));
 
    $judgeStmt=$pdo->prepare("SELECT id FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
    $judgeStmt->execute(['r'=>$roundId]);
@@ -1060,8 +1069,8 @@ try{
     foreach($judgeRanks as $judgeId=>$rankValue){
      $judgeId=(int)$judgeId;
      if(!in_array($judgeId,$judgeIds,true))continue;
-     $rankValue=(int)$rankValue;
-     if($rankValue<1||$rankValue>count($pairIds))throw new RuntimeException('Final ranks must be between 1 and '.count($pairIds).'.');
+     if($rankValue===''){$pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE round_id=:r AND pair_id=:p AND judge_id=:j")->execute(['r'=>$roundId,'p'=>$pairId,'j'=>$judgeId]);continue;}$rankValue=(int)$rankValue;
+     if($rankValue<1||$rankValue>$finalRankLimit)throw new RuntimeException('Final ranks must be between 1 and '.$finalRankLimit.'.');
      $upsert->execute(['r'=>$roundId,'p'=>$pairId,'j'=>$judgeId,'rank'=>$rankValue,'u'=>$userId?:null]);
     }
    }
@@ -1092,6 +1101,7 @@ try{
    $pairStmt->execute(['r'=>$roundId]);
    $pairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
    if(!$pairIds)throw new RuntimeException('Confirm Final pairing before calculating rankings.');
+   $finalRankLimit=min(count($pairIds),max(1,(int)$roundForFinal['callback_count']));
 
    $judgeStmt=$pdo->prepare("SELECT id FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
    $judgeStmt->execute(['r'=>$roundId]);
@@ -1109,9 +1119,9 @@ try{
     foreach($judgeRanks as $judgeId=>$rankValue){
      $judgeId=(int)$judgeId;
      if(!in_array($judgeId,$judgeIds,true))continue;
-     $rankValue=(int)$rankValue;
-     if($rankValue<1||$rankValue>count($pairIds)){
-      throw new RuntimeException('Final ranks must be between 1 and '.count($pairIds).'.');
+     if($rankValue===''){$pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE round_id=:r AND pair_id=:p AND judge_id=:j")->execute(['r'=>$roundId,'p'=>$pairId,'j'=>$judgeId]);continue;}$rankValue=(int)$rankValue;
+     if($rankValue<1||$rankValue>$finalRankLimit){
+      throw new RuntimeException('Final ranks must be between 1 and '.$finalRankLimit.'.');
      }
      $upsert->execute([
       'r'=>$roundId,'p'=>$pairId,'j'=>$judgeId,
@@ -1652,11 +1662,12 @@ $csrf=Csrf::token();
 $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair['pairing_status']==='confirmed'))===count($finalPairs);
 ?>
 <?php if($pairingConfirmed):?>
+<?php $finalRankMaximum=min(20,count($finalPairs));$finalRankMinimum=min(3,$finalRankMaximum);$finalRankCount=min($finalRankMaximum,max($finalRankMinimum,(int)$round['callback_count']));$finalRankSettingLocked=!empty($finalMarks);?>
 <div class="card shadow-sm mb-4"><div class="card-body">
  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
   <div>
    <h2 class="h5 mb-1">Final Relative Placement Scoring</h2>
-   <p class="text-muted mb-0">Each judge must rank every fixed couple once, from 1 to <?=count($finalPairs)?>. Duplicate ranks in one judge column are not allowed.</p>
+   <p class="text-muted mb-0">Each judge ranks the selected Top <?=$finalRankCount?> couples. Every rank from 1 to <?=$finalRankCount?> must be used once; all other couples remain unranked.</p>
   </div>
   <a class="btn btn-outline-primary" href="print.php?round_id=<?=$roundId?>" target="_blank">Print Final Judge Sheets</a>
  </div>
@@ -1668,6 +1679,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
     <div class="text-muted small">The Final can use a different judging panel. Edit existing judges, append new judges, remove judges and select one Final Chief Judge.</div>
    </div>
   </div>
+  <form method="post" class="d-flex align-items-end gap-2 flex-wrap mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_final_rank_count"><input type="hidden" name="round_id" value="<?=$roundId?>"><div><label class="form-label fw-semibold">Placements each judge must rank</label><select class="form-select" name="final_rank_count" <?=$finalRankSettingLocked?'disabled':''?>><?php for($rankOption=$finalRankMinimum;$rankOption<=$finalRankMaximum;$rankOption++):?><option value="<?=$rankOption?>" <?=$rankOption===$finalRankCount?'selected':''?>>Top <?=$rankOption?></option><?php endfor;?></select></div><?php if($finalRankSettingLocked):?><span class="badge text-bg-secondary mb-2">Locked because judging has started</span><?php else:?><button class="btn btn-dark mb-0">Save Final Ranking Depth</button><?php endif;?></form>
   <datalist id="judgeDirectorySuggestions"><?php foreach($judgeDirectory as $directoryJudge):$directoryName=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);?><option value="<?=e($directoryName)?>"><?=e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:''))?></option><?php endforeach;?></datalist>
   <form method="post" id="finalJudgesForm">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
@@ -1735,7 +1747,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
      <td><strong>Bib <?=$pair['leader_bib']?></strong><br><?=e($pair['leader_name'])?></td>
      <td><strong>Bib <?=$pair['follower_bib']?></strong><br><?=e($pair['follower_name'])?></td>
      <?php foreach($judges as $judgeIndex=>$judge):?>
-      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input" type="number" min="1" max="<?=count($finalPairs)?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" required></td>
+      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>"></td>
      <?php endforeach;?>
      <td>
       <?php if($finalResult):?>
@@ -2077,17 +2089,18 @@ if(finalScoreForm){
   finalScoreForm.querySelectorAll('.final-rank-input').forEach(input=>{
    const pair=input.dataset.pairId;
    const judge=input.dataset.judgeId;
-   const rank=parseInt(input.value||'0',10);
+   const rank=input.value===''?'':parseInt(input.value,10);
    if(!payload[pair])payload[pair]={};
    payload[pair][judge]=rank;
    if(!byJudge[judge])byJudge[judge]=[];
-   byJudge[judge].push(rank);
+   byJudge[judge].push(rank===''?0:rank);
   });
 
-  const pairCount=finalScoreForm.querySelectorAll('tbody tr').length;
+  const pairCount=<?=isset($finalRankCount)?(int)$finalRankCount:0?>;
   Object.entries(byJudge).some(([judge,ranks])=>{
+   ranks=ranks.filter(rank=>rank>0);
    if(ranks.length!==pairCount||ranks.some(rank=>rank<1||rank>pairCount)){
-    invalidMessage='Every Final judge must rank every couple from 1 to '+pairCount+'.';
+    invalidMessage='Every Final judge must assign exactly the Top '+pairCount+' ranks.';
     return true;
    }
    if(new Set(ranks).size!==pairCount){
@@ -2108,6 +2121,7 @@ if(finalScoreForm){
   if(typeof showScoringProgress==='function')showScoringProgress();
  });
 }
+if(finalScoreForm)finalScoreForm.querySelectorAll('.final-rank-input').forEach(input=>input.addEventListener('change',()=>{if(input.value==='')return;const duplicate=[...finalScoreForm.querySelectorAll('.final-rank-input')].find(other=>other!==input&&other.dataset.judgeId===input.dataset.judgeId&&other.value===input.value);if(duplicate){alert('Rank '+input.value+' is already assigned for this judge. Choose another rank or clear the existing one.');input.value='';input.focus();}}));
 
 document.querySelectorAll('.final-judge-page-button').forEach(button=>{
  button.addEventListener('click',()=>{

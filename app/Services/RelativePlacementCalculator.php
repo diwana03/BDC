@@ -17,12 +17,14 @@ final class RelativePlacementCalculator
         array $pairIds,
         array $judgeIds,
         int $chiefJudgeId,
-        array $marks
+        array $marks,
+        ?int $rankLimit = null
     ): array {
         $pairIds = array_values(array_map('intval', $pairIds));
         $judgeIds = array_values(array_map('intval', $judgeIds));
         $pairCount = count($pairIds);
         $judgeCount = count($judgeIds);
+        $rankLimit = min($pairCount, max(1, $rankLimit ?? $pairCount));
 
         if ($pairCount < 1) {
             throw new RuntimeException('At least one confirmed Final couple is required.');
@@ -35,9 +37,12 @@ final class RelativePlacementCalculator
             $used = [];
             foreach ($pairIds as $pairId) {
                 $rank = (int)($marks[$pairId][$judgeId] ?? 0);
-                if ($rank < 1 || $rank > $pairCount) {
+                if ($rank === 0) {
+                    continue;
+                }
+                if ($rank < 1 || $rank > $rankLimit) {
                     throw new RuntimeException(
-                        'Every judge must rank every couple from 1 to ' . $pairCount . '.'
+                        'Every judge must use ranks 1 to ' . $rankLimit . ' only.'
                     );
                 }
                 if (isset($used[$rank])) {
@@ -46,6 +51,11 @@ final class RelativePlacementCalculator
                     );
                 }
                 $used[$rank] = true;
+            }
+            $usedRanks = array_keys($used);
+            sort($usedRanks, SORT_NUMERIC);
+            if ($usedRanks !== range(1, $rankLimit)) {
+                throw new RuntimeException('Every judge must use each rank from 1 to ' . $rankLimit . ' exactly once. Other couples remain unranked.');
             }
         }
 
@@ -60,24 +70,24 @@ final class RelativePlacementCalculator
                 $profile = [
                     'pair_id' => $pairId,
                     'levels' => [],
-                    'initial_level' => $pairCount + 1,
+                    'initial_level' => $rankLimit + 1,
                     'chief_rank' => $chiefJudgeId > 0
-                        ? (int)($marks[$pairId][$chiefJudgeId] ?? $pairCount)
-                        : $pairCount,
+                        ? (int)($marks[$pairId][$chiefJudgeId] ?? ($rankLimit + 1))
+                        : ($rankLimit + 1),
                     'total_sum' => 0,
                 ];
 
                 foreach ($judgeIds as $judgeId) {
-                    $profile['total_sum'] += (int)$marks[$pairId][$judgeId];
+                    $profile['total_sum'] += (int)($marks[$pairId][$judgeId] ?? ($rankLimit + 1));
                 }
 
-                for ($level = 1; $level <= $pairCount; $level++) {
+                for ($level = 1; $level <= $rankLimit + 1; $level++) {
                     $count = 0;
                     $sum = 0;
                     $included = [];
 
                     foreach ($judgeIds as $judgeId) {
-                        $rank = (int)$marks[$pairId][$judgeId];
+                        $rank = (int)($marks[$pairId][$judgeId] ?? ($rankLimit + 1));
                         if ($rank <= $level) {
                             $count++;
                             $sum += $rank;
@@ -96,7 +106,7 @@ final class RelativePlacementCalculator
                     ];
 
                     if (
-                        $profile['initial_level'] === $pairCount + 1
+                        $profile['initial_level'] === $rankLimit + 1
                         && $count >= $majority
                     ) {
                         $profile['initial_level'] = $level;
@@ -129,7 +139,7 @@ final class RelativePlacementCalculator
             // through Top N until the tie is broken.
             for (
                 $level = $earliestLevel;
-                $level <= $pairCount && count($candidateIds) > 1;
+                $level <= $rankLimit + 1 && count($candidateIds) > 1;
                 $level++
             ) {
                 $bestCount = max(array_map(
@@ -183,8 +193,8 @@ final class RelativePlacementCalculator
                         $leftVotes = 0;
                         $rightVotes = 0;
                         foreach ($judgeIds as $judgeId) {
-                            $leftRank = (int)$marks[$leftId][$judgeId];
-                            $rightRank = (int)$marks[$rightId][$judgeId];
+                            $leftRank = (int)($marks[$leftId][$judgeId] ?? ($rankLimit + 1));
+                            $rightRank = (int)($marks[$rightId][$judgeId] ?? ($rankLimit + 1));
                             if ($leftRank < $rightRank) $leftVotes++;
                             elseif ($rightRank < $leftRank) $rightVotes++;
                         }
@@ -259,6 +269,9 @@ final class RelativePlacementCalculator
                 $remaining,
                 fn(int $pairId): bool => $pairId !== $winnerId
             ));
+            if ($place > $rankLimit) {
+                break;
+            }
         }
 
         return $final;

@@ -197,7 +197,10 @@ final class TestAutomaticJudgeService
                 if (!$pairs) {
                     throw new RuntimeException("Confirm Final pairing first.");
                 }
-                $ranks = range(1, count($pairs));
+                shuffle($pairs);
+                $rankLimit = min(count($pairs), max(1, (int) ($round["callback_count"] ?? count($pairs))));
+                $pairs = array_slice($pairs, 0, $rankLimit);
+                $ranks = range(1, $rankLimit);
                 shuffle($ranks);
                 $pdo->prepare(
                     "DELETE FROM bdc_test_scoring_final_marks WHERE round_id=:round AND judge_id=:judge",
@@ -284,7 +287,7 @@ final class TestAutomaticJudgeService
     {
         self::ensureSchema($pdo);
         $roundStmt = $pdo->prepare(
-            "SELECT round_type,yes_count FROM bdc_test_scoring_rounds WHERE id=:round",
+            "SELECT round_type,yes_count,callback_count FROM bdc_test_scoring_rounds WHERE id=:round",
         );
         $roundStmt->execute(["round" => $roundId]);
         $round = $roundStmt->fetch() ?: [
@@ -306,6 +309,7 @@ final class TestAutomaticJudgeService
                 );
                 $totalStmt->execute(["round" => $roundId]);
                 $total = (int) $totalStmt->fetchColumn();
+                $total = min($total, max(1, (int) ($round["callback_count"] ?? $total)));
                 $doneStmt = $pdo->prepare(
                     "SELECT COUNT(*) FROM bdc_test_scoring_final_marks WHERE round_id=:round AND judge_id=:judge AND rank_value IS NOT NULL",
                 );

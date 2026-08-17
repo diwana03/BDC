@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev254",
-  "build": 2960,
+  "version": "2.3.3-dev255",
+  "build": 2961,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Lets Final scoring boards require a flexible Top 3 to Top 20 ranking capped by confirmed couples",
+    "Leaves non-placed Final couples unranked while preserving Relative Placement for the selected Top N",
+    "Adds large Final bibs, duplicate-rank warnings and a private judge draft-ranking scratchpad",
     "Moves projector sound selection out of the audience display and into Projection Control",
     "Expands incomplete Final couple rows evenly across the full projector width",
     "Adds a protected 5-4-3-2-1 projector countdown and blast before random Final matches are revealed",
