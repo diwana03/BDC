@@ -1609,7 +1609,7 @@ $csrf=Csrf::token();
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
    <button class="btn btn-warning">Random Match</button>
-  </form><a class="btn btn-outline-danger" href="../live-screen/pairing-link.php?round_id=<?=$roundId?>">Emcee Match Link</a>
+  </form><a class="btn btn-outline-danger" href="../live-screen/control.php?round_id=<?=$roundId?>#emcee-match">Event Projection &amp; Emcee Match</a>
  </div>
 
  <form method="post">
