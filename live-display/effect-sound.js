@@ -28,7 +28,7 @@
     oscillator.stop(start + duration + 0.03);
   };
   const play = (effect) => {
-    if (effect === 'drumroll') for (let i = 0; i < 18; i++) tone(72 + i * 2, .12, 'triangle', .055, i * .12);
+    if (effect === 'drumroll') for (let i = 0; i < 180; i++) tone(72 + Math.min(90, i * .5), .11, 'triangle', .032, i * .16);
     else if (effect === 'fireworks') for (let i = 0; i < 6; i++) tone(95 + Math.random() * 180, .48, 'sawtooth', .04, i * .34);
     else if (effect === 'confetti' || effect === 'gold_rain') [523, 659, 784, 1047].forEach((f, i) => tone(f, .38, 'sine', .045, i * .1));
     else if (effect === 'laser_sweep') [880, 660, 440, 990].forEach((f, i) => tone(f, .22, 'sawtooth', .035, i * .11));
