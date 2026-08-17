@@ -1,5 +1,12 @@
 <?php
-declare(strict_types=1);require dirname(__DIR__,2).'/bootstrap.php';
-use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\RandomPairingService;use App\Services\LiveDisplaySessionService;
-Auth::requireAdmin();$p=Database::connection();$round=(int)($_GET['round_id']??$_POST['round_id']??0);$test=($_GET['data_mode']??$_POST['data_mode']??'real')==='test';$pre=$test?'bdc_test_':'bdc_';$s=$p->prepare("SELECT r.*,e.name event_name FROM {$pre}scoring_rounds r JOIN {$pre}events e ON e.id=r.event_id WHERE r.id=:r AND r.round_type='final'");$s->execute(['r'=>$round]);$r=$s->fetch();if(!$r){http_response_code(404);exit('Final round not found.');}$token='';if($_SERVER['REQUEST_METHOD']==='POST'){if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}$token=RandomPairingService::generateLink($p,$round,$test,(int)(Auth::user()['id']??0));if(!LiveDisplaySessionService::forEvent($p,(int)$r['event_id'],$test))LiveDisplaySessionService::generate($p,(int)$r['event_id'],$test,(int)(Auth::user()['id']??0));}$url=$token?RandomPairingService::url($token):'';
-?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emcee Match Link</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head><body class="bg-light"><main class="container py-5" style="max-width:850px"><div class="card shadow-sm"><div class="card-body p-4"><div class="text-danger fw-bold"><?=$test?'TESTING · ':''?>PRESENTATION ACCESS</div><h1 class="h3">Emcee Random Match Link</h1><p><strong><?=e($r['event_name'])?></strong> · <?=e(ucwords(str_replace('_',' ',$r['division'])))?> · Final</p><div class="alert alert-info">This independent link can only randomize and present Final matches. It cannot see scores, judge votes, results or admin controls. It expires after 12 hours and closes when pairing is confirmed.</div><?php if($url):?><label class="form-label fw-bold">New Emcee Link</label><div class="input-group mb-3"><input id="u" class="form-control" readonly value="<?=e($url)?>"><button class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(u.value)">Copy</button><a class="btn btn-primary" target="_blank" href="<?=e($url)?>">Open</a></div><?php endif;?><form method="post"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="round_id" value="<?=$round?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><button class="btn btn-dark">Generate / Regenerate Emcee Link</button> <a class="btn btn-outline-secondary" href="control.php?round_id=<?=$round?>&data_mode=<?=$test?'test':'real'?>">Projection Control</a></form></div></div></main></body></html>
+declare(strict_types=1);
+require dirname(__DIR__, 2) . '/bootstrap.php';
+
+use App\Core\Auth;
+
+Auth::requireAdmin();
+$roundId = (int) ($_GET['round_id'] ?? $_POST['round_id'] ?? 0);
+$test = ($_GET['data_mode'] ?? $_POST['data_mode'] ?? 'real') === 'test';
+$query = http_build_query(['round_id' => $roundId, 'data_mode' => $test ? 'test' : 'real']);
+header('Location: control.php?' . $query . '#emcee-match', true, 302);
+exit;
