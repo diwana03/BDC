@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev266",
-  "build": 2972,
+  "version": "2.3.3-dev267",
+  "build": 2973,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Moves the compact Top-N reminder beside each Final competitor comment label",
     "Shows the configured Top-N best-couple instruction on the pre-scoring criteria acceptance screen",
     "Shows dynamic Top-N best-couple instructions in Final judge criteria and scoring screens",
     "Adds concise dynamic Top-N Final judge guidance with explicit NO RANK instructions",
