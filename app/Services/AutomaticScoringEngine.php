@@ -60,17 +60,12 @@ final class AutomaticScoringEngine
                 foreach($left['scores'] as $judgeId=>$leftScore){$rightScore=$right['scores'][$judgeId]??null;if($rightScore===null)continue;if($leftScore>$rightScore)$leftVotes++;elseif($rightScore>$leftScore)$rightVotes++;}
                 if($leftVotes>$rightVotes)$rows[$leftIndex]['majority_wins']++;elseif($rightVotes>$leftVotes)$rows[$rightIndex]['majority_wins']++;
             }}
-            usort($rows,static function(array $a,array $b):int{
-                if(abs($a['average_score']-$b['average_score'])>0.0001)return $b['average_score']<=>$a['average_score'];
-                if($a['majority_wins']!==$b['majority_wins'])return $b['majority_wins']<=>$a['majority_wins'];
-                $chiefA=$a['chief_score']??-1;$chiefB=$b['chief_score']??-1;if(abs($chiefA-$chiefB)>0.0001)return $chiefB<=>$chiefA;
-                return $a['entry_id']<=>$b['entry_id'];
-            });
+            usort($rows,static fn(array $a,array $b):int=>$b['average_score']<=>$a['average_score']);
             foreach($rows as $index=>&$row){$row['rank']=$index+1;$row['status']=$row['rank']<=$callbackCount?'callback':($row['rank']<=$callbackCount+3?'alternate':'eliminated');$row['alternate_rank']=$row['status']==='alternate'?$row['rank']-$callbackCount:null;$row['role']=$role;}unset($row);
             if(isset($rows[$callbackCount-1],$rows[$callbackCount])){
                 $lastCallback=$rows[$callbackCount-1];$firstOutside=$rows[$callbackCount];
-                $unresolved=abs($lastCallback['average_score']-$firstOutside['average_score'])<0.0001&&$lastCallback['majority_wins']===$firstOutside['majority_wins']&&abs((float)$lastCallback['chief_score']-(float)$firstOutside['chief_score'])<0.0001;
-                if($unresolved){foreach($rows as &$row){if(abs($row['average_score']-$lastCallback['average_score'])<0.0001&&$row['majority_wins']===$lastCallback['majority_wins']&&abs((float)$row['chief_score']-(float)$lastCallback['chief_score'])<0.0001){$row['status']='tie_pending';$row['rank']=$callbackCount;$row['alternate_rank']=null;}}unset($row);}
+                $unresolved=abs($lastCallback['average_score']-$firstOutside['average_score'])<0.0001;
+                if($unresolved){foreach($rows as &$row){if(abs($row['average_score']-$lastCallback['average_score'])<0.0001){$row['status']='tie_pending';$row['rank']=$callbackCount;$row['alternate_rank']=null;}}unset($row);}
             }
             $results=array_merge($results,$rows);
         }

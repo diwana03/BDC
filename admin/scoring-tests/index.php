@@ -158,10 +158,7 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
         $up=$pdo->prepare("INSERT INTO bdc_test_scoring_results(round_id,entry_id,total_score,chief_score,rank_number,result_status,alternate_rank,generated_version) VALUES(:r,:e,:t,:c,:rank,:st,:alt,:v) ON DUPLICATE KEY UPDATE total_score=VALUES(total_score),chief_score=VALUES(chief_score),rank_number=VALUES(rank_number),result_status=VALUES(result_status),alternate_rank=VALUES(alternate_rank),generated_version=VALUES(generated_version),updated_at=NOW()");
         foreach(['leader','follower'] as $role){
             $list=$rows[$role]??[];
-            usort($list,function($a,$b){
-                $totalOrder=$b['total']<=>$a['total'];
-                return $totalOrder!==0?$totalOrder:($b['chief']<=>$a['chief']);
-            });
+            usort($list,fn($a,$b)=>$b['total']<=>$a['total']);
 
             $callbackLimit=min((int)$round['callback_count'],count($list));
             $alternateLimit=min($callbackLimit+3,count($list));
@@ -170,12 +167,9 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
             while($i<count($list)){
                 $groupStart=$i;
                 $groupTotal=$list[$i]['total'];
-                $groupChief=$list[$i]['chief'];
-
                 while(
                     $i+1<count($list)
                     && $list[$i+1]['total']===$groupTotal
-                    && $list[$i+1]['chief']===$groupChief
                 ){
                     $i++;
                 }
@@ -187,12 +181,15 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
 
                 $crossesCallbackCutoff=$startPosition<=$callbackLimit && $endPosition>$callbackLimit;
                 $crossesAlternateCutoff=$startPosition<=$alternateLimit && $endPosition>$alternateLimit;
+                $needsAlternateOrder=$groupEnd>$groupStart
+                    && $startPosition>$callbackLimit
+                    && $endPosition<=$alternateLimit;
 
                 for($j=$groupStart;$j<=$groupEnd;$j++){
                     $status='eliminated';
                     $alt=null;
 
-                    if($crossesCallbackCutoff || $crossesAlternateCutoff){
+                    if($crossesCallbackCutoff || $crossesAlternateCutoff || $needsAlternateOrder){
                         $status='tie_pending';
                     }elseif($endPosition<=$callbackLimit){
                         // An exact tie entirely inside the callback zone is still a callback.
@@ -454,11 +451,11 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     if(!in_array($nextType,['semifinal','final'],true)) throw new RuntimeException('Invalid next round.');
     $pending=$pdo->prepare("
       SELECT COUNT(*) FROM (
-       SELECT se.dance_role,sr.rank_number,sr.total_score,sr.chief_score
+       SELECT se.dance_role,sr.rank_number,sr.total_score
        FROM bdc_test_scoring_results sr
        JOIN bdc_test_scoring_entries se ON se.id=sr.entry_id
        WHERE sr.round_id=:r AND sr.result_status='tie_pending'
-       GROUP BY se.dance_role,sr.rank_number,sr.total_score,sr.chief_score
+       GROUP BY se.dance_role,sr.rank_number,sr.total_score
        HAVING COUNT(*)>1
       ) unresolved_ties
     ");
@@ -1325,15 +1322,14 @@ if($round){
   FROM bdc_test_scoring_results sr
   JOIN bdc_test_scoring_entries se ON se.id=sr.entry_id
   LEFT JOIN (
-   SELECT se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score,COUNT(*) AS tied_count
+   SELECT se2.dance_role,sr2.rank_number,sr2.total_score,COUNT(*) AS tied_count
    FROM bdc_test_scoring_results sr2
    JOIN bdc_test_scoring_entries se2 ON se2.id=sr2.entry_id
    WHERE sr2.round_id=:round_id_1 AND sr2.result_status='tie_pending'
-   GROUP BY se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score
+   GROUP BY se2.dance_role,sr2.rank_number,sr2.total_score
   ) g ON g.dance_role=se.dance_role
       AND g.rank_number=sr.rank_number
       AND ABS(g.total_score-sr.total_score)<0.0001
-      AND ABS(g.chief_score-sr.chief_score)<0.0001
   WHERE sr.round_id=:round_id_2
     AND sr.result_status='tie_pending'
     AND COALESCE(g.tied_count,0)<2
@@ -1415,24 +1411,23 @@ if($round){
   FROM bdc_test_scoring_results sr
   JOIN bdc_test_scoring_entries se ON se.id=sr.entry_id
   JOIN (
-   SELECT se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score
+   SELECT se2.dance_role,sr2.rank_number,sr2.total_score
    FROM bdc_test_scoring_results sr2
    JOIN bdc_test_scoring_entries se2 ON se2.id=sr2.entry_id
    WHERE sr2.round_id=:round_id_1 AND sr2.result_status='tie_pending'
-   GROUP BY se2.dance_role,sr2.rank_number,sr2.total_score,sr2.chief_score
+   GROUP BY se2.dance_role,sr2.rank_number,sr2.total_score
    HAVING COUNT(*)>1
   ) valid_tie
     ON valid_tie.dance_role=se.dance_role
    AND valid_tie.rank_number=sr.rank_number
    AND ABS(valid_tie.total_score-sr.total_score)<0.0001
-   AND ABS(valid_tie.chief_score-sr.chief_score)<0.0001
   WHERE sr.round_id=:round_id_2
     AND sr.result_status='tie_pending'
   ORDER BY se.dance_role,sr.rank_number,se.bib_number
  ");
  $tieStmt->execute(['round_id_1'=>$roundId,'round_id_2'=>$roundId]);
  foreach($tieStmt->fetchAll() as $tieRow){
-  $key=$tieRow['dance_role'].'|'.$tieRow['rank_number'].'|'.$tieRow['total_score'].'|'.$tieRow['chief_score'];
+  $key=$tieRow['dance_role'].'|'.$tieRow['rank_number'].'|'.$tieRow['total_score'];
   if(!isset($tieGroups[$key])){
    $tieGroups[$key]=[
     'role'=>$tieRow['dance_role'],

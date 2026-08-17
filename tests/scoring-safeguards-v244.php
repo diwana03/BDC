@@ -21,11 +21,11 @@ $marks=[
 $result=HeatsScoringEngine::calculate($judges,$entries,$marks,1);
 foreach(['leader','follower'] as $role){
  $rows=$result[$role];
- if((float)$rows[0]['total_score']!==10.0||(float)$rows[1]['total_score']!==10.0){
-  throw new RuntimeException('Chief mark leaked into the '.$role.' base callback total.');
+ if((float)$rows[0]['total_score']!==20.0||(float)$rows[1]['total_score']!==10.0){
+  throw new RuntimeException('Chief mark was not included in the '.$role.' BDC total.');
  }
  if((int)$rows[0]['entry_id']!==($role==='leader'?10:20)||$rows[0]['result_status']!=='callback'){
-  throw new RuntimeException('Chief boundary tie-break did not select the expected '.$role.'.');
+  throw new RuntimeException('Chief-inclusive total did not select the expected '.$role.'.');
  }
 }
 

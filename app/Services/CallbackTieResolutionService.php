@@ -35,7 +35,10 @@ final class CallbackTieResolutionService
         $stmt->execute(['r'=>$roundId]);
         $groups=[];
         foreach($stmt->fetchAll() as $row){
-            $key=$row['dance_role'].'|'.$row['rank_number'].'|'.$row['total_score'].'|'.$row['chief_score'];
+            // Chief is already included in total_score under BDC rules. All
+            // identical totals belong to one decision group even when the
+            // Chief's individual mark differs.
+            $key=$row['dance_role'].'|'.$row['rank_number'].'|'.$row['total_score'];
             if(!isset($groups[$key]))$groups[$key]=[
                 'role'=>(string)$row['dance_role'],'rank'=>(int)$row['rank_number'],
                 'total'=>(float)$row['total_score'],'chief'=>(float)$row['chief_score'],

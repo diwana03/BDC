@@ -26,7 +26,7 @@ $sharedTieGroups=\App\Services\CallbackTieResolutionService::groups($pdo,$roundI
     <div class="col-md-6 col-xl-4"><div class="border rounded p-2 h-100">
      <label class="d-flex gap-2 align-items-start mb-2">
       <input class="form-check-input tie-callback-choice" type="checkbox" name="selected_entry_ids[]" value="<?=$entryId?>">
-      <span><strong>Bib <?=(int)$candidate['bib_number']?> · <?=e((string)$candidate['display_name'])?></strong><br><small>Score <?=number_format((float)$candidate['total_score'],1)?> · Chief <?=number_format((float)$candidate['chief_score'],1)?></small></span>
+      <span><strong>Bib <?=(int)$candidate['bib_number']?> · <?=e((string)$candidate['display_name'])?></strong><br><small>Total <?=number_format((float)$candidate['total_score'],1)?> (Chief included) · Chief mark <?=number_format((float)$candidate['chief_score'],1)?></small></span>
      </label>
      <?php if($alts):?><label class="small">If not Callback</label><select class="form-select form-select-sm tie-alt-order" name="alternate_order[<?=$entryId?>]"><option value="0">Eliminated</option><?php foreach($alts as $alt):?><option value="<?=(int)$alt?>">Alternate A<?=(int)$alt?></option><?php endforeach;?></select><?php endif;?>
     </div></div>
@@ -38,7 +38,7 @@ $sharedTieGroups=\App\Services\CallbackTieResolutionService::groups($pdo,$roundI
    </div>
   </form>
   <?php endforeach;?>
-  <div class="small text-muted">The server verifies the exact callback quantity and unique A1–A3 assignments before saving.</div>
+  <div class="small text-muted">The Chief mark is already included in the total. The Chief Judge makes this explicit decision only because the totals remain tied. The server verifies the exact callback quantity and unique A1–A3 assignments before saving.</div>
  </div>
 </div>
 <script>

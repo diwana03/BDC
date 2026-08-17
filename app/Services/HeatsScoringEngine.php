@@ -52,9 +52,9 @@ final class HeatsScoringEngine
                 if(in_array($jid,$assigned,true)){$chiefId=$jid;break;}
             }
             $entryId=(int)($entry['id']??0);
-            // The Chief Judge is a boundary tie-breaker, not an extra panel
-            // vote. Keep that mark separate so it cannot influence every
-            // competitor's base callback total and then be counted again.
+            // BDC rule: the Chief Judge scores as a full panel member, so the
+            // mark is always included in the total. Keep a copy only for the
+            // audit/UI; it must not be reused as an automatic second score.
             $total=0.0;$chiefScore=0.0;
             foreach(($marksByEntry[$entryId]??[]) as $judgeId=>$score){
                 $judgeId=(int)$judgeId;
@@ -62,7 +62,6 @@ final class HeatsScoringEngine
                 $value=(float)$score;
                 if($judgeId===$chiefId){
                     $chiefScore=$value;
-                    continue;
                 }
                 $total+=$value;
             }
@@ -92,10 +91,7 @@ final class HeatsScoringEngine
      */
     private static function rankRole(array $list,int $callbackCount):array
     {
-        usort($list,static function(array $a,array $b):int{
-            $totalOrder=((float)$b['total'])<=>((float)$a['total']);
-            return $totalOrder!==0?$totalOrder:(((float)$b['chief'])<=>((float)$a['chief']));
-        });
+        usort($list,static fn(array $a,array $b):int=>((float)$b['total'])<=>((float)$a['total']));
 
         $callbackLimit=min($callbackCount,count($list));
         $alternateLimit=min($callbackLimit+ScoringRulesService::ALTERNATE_COUNT,count($list));
@@ -103,10 +99,8 @@ final class HeatsScoringEngine
         while($i<count($list)){
             $groupStart=$i;
             $groupTotal=(float)$list[$i]['total'];
-            $groupChief=(float)$list[$i]['chief'];
             while($i+1<count($list)
-                && (float)$list[$i+1]['total']===$groupTotal
-                && (float)$list[$i+1]['chief']===$groupChief){$i++;}
+                && (float)$list[$i+1]['total']===$groupTotal){$i++;}
 
             $groupEnd=$i;
             $startPosition=$groupStart+1;
@@ -114,10 +108,13 @@ final class HeatsScoringEngine
             $rank=$startPosition;
             $crossesCallback=$startPosition<=$callbackLimit&&$endPosition>$callbackLimit;
             $crossesAlternate=$startPosition<=$alternateLimit&&$endPosition>$alternateLimit;
+            $needsAlternateOrder=$groupEnd>$groupStart
+                && $startPosition>$callbackLimit
+                && $endPosition<=$alternateLimit;
 
             for($j=$groupStart;$j<=$groupEnd;$j++){
                 $status='eliminated';$alternateRank=null;
-                if($crossesCallback||$crossesAlternate)$status='tie_pending';
+                if($crossesCallback||$crossesAlternate||$needsAlternateOrder)$status='tie_pending';
                 elseif($endPosition<=$callbackLimit)$status='callback';
                 elseif($startPosition>$callbackLimit&&$endPosition<=$alternateLimit){
                     $status='alternate';$alternateRank=$j-$callbackLimit+1;
