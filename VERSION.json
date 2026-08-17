@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3-dev244",
-  "build": 2950,
+  "version": "2.3.3-dev246",
+  "build": 2952,
   "status": "development",
   "release_date": "2026-08-17",
   "minimum_php": "8.1",
@@ -11,11 +11,16 @@
     "Shows Final couples with each judge's Relative Placement",
     "Resolves boundary ties using the exact remaining callback quantity",
     "Separates Chief Judge callback marks from the ordinary panel total",
-    "Completes Final ties with head-to-head Relative Placement before Chief fallback"
+    "Completes Final ties with head-to-head Relative Placement before Chief fallback",
+    "Hides zero-point placements from public participant results and competitor histories",
+    "Preserves completed Heats and Semifinals as visible locked rounds",
+    "Keeps every child round in its parent Manual or Automatic scoring workflow"
   ],
   "highlights": [
     "Repairs stale next-round finalists and restores Super Admin draft deletion",
     "Enforces callback-only membership for BDC progression Finals",
-    "Keeps BDC tiers and 5/10/15 callback rules unchanged"
+    "Keeps BDC tiers and 5/10/15 callback rules unchanged",
+    "Keeps complete Final rankings internally while publishing only point-earning participant rows",
+    "Allows Scorer, Master Scorer and Super Admin to confirm completed-round resubmission"
   ]
 }

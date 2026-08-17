@@ -6,7 +6,7 @@ Auth::requireAdmin();$pdo=Database::connection();$roundId=(int)($_POST['round_id
 try{
  if($_SERVER['REQUEST_METHOD']!=='POST'||!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid request. Refresh the dashboard and try again.');
  $s=$pdo->prepare("SELECT * FROM bdc_scoring_rounds WHERE id=:id AND scoring_mode='automated' LIMIT 1");$s->execute(['id'=>$roundId]);$round=$s->fetch();if(!$round)throw new RuntimeException('Automatic scoring round not found.');
- if(in_array((string)$round['status'],['pending_approval','archived'],true))throw new RuntimeException('This scoring round is read-only.');
+ if(in_array((string)$round['status'],['completed','pending_approval','archived'],true))throw new RuntimeException('This scoring round is read-only. Completed rounds require a Scorer or Super Admin RESUBMIT override.');
  $action=(string)($_POST['action']??'');$userId=(int)(Auth::user()['id']??0);
  if($action==='settings'){
   $tier=(int)($_POST['competition_tier']??0);$yes=[1=>5,2=>10,3=>15][$tier]??0;if(!$yes)throw new RuntimeException('Select a valid competition tier.');

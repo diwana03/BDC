@@ -22,6 +22,7 @@ if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){
  if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}
  $action=(string)($_POST['action']??'');
  try{
+  if($round['status']==='completed')throw new RuntimeException('Completed test round is locked. Use the Scorer or Super Admin RESUBMIT override first.');
 	  if($action==='regenerate_link'){
 	   $judgeId=(int)($_POST['judge_id']??0);$token=TestAutomaticJudgeService::regenerate($pdo,$roundId,$judgeId);$_SESSION['bdc_test_auto_urls'][$roundId][$judgeId]=TestAutomaticJudgeService::publicUrl($token);
 	  }elseif($action==='reopen_judge'){

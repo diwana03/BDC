@@ -465,13 +465,13 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     $pending->execute(['r'=>$source['id']]);
     if((int)$pending->fetchColumn()>0) throw new RuntimeException('Resolve all callback ties before proceeding.');
 
-    $existing=$pdo->prepare("SELECT id FROM bdc_test_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND status<>'archived' ORDER BY id DESC LIMIT 1");
-    $existing->execute(['e'=>$source['event_id'],'d'=>$source['division'],'t'=>$nextType]);
+    $existing=$pdo->prepare("SELECT id FROM bdc_test_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND (parent_round_id=:parent OR source_round_id=:source) AND status<>'archived' ORDER BY id DESC LIMIT 1");
+    $existing->execute(['e'=>$source['event_id'],'d'=>$source['division'],'t'=>$nextType,'parent'=>$source['id'],'source'=>$source['id']]);
     $existingId=(int)$existing->fetchColumn();
     if($existingId>0){
         $pdo->beginTransaction();
         try{
-            if($scheduledAt!=='')$pdo->prepare('UPDATE bdc_test_scoring_rounds SET scheduled_at=:scheduled WHERE id=:id')->execute(['scheduled'=>$scheduledAt,'id'=>$existingId]);
+            $pdo->prepare("UPDATE bdc_test_scoring_rounds SET scoring_mode=:mode,scheduled_at=COALESCE(NULLIF(:scheduled,''),scheduled_at) WHERE id=:id")->execute(['mode'=>$source['scoring_mode']??'manual','scheduled'=>$scheduledAt,'id'=>$existingId]);
             syncCallbacksToChildRound($pdo,$source,$existingId,$userId);
             $pdo->prepare("UPDATE bdc_test_scoring_rounds SET status='completed' WHERE id=:id")
                 ->execute(['id'=>$source['id']]);
@@ -490,12 +490,12 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     $pdo->beginTransaction();
     try{
         $insert=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(
-          event_id,parent_round_id,source_round_id,round_type,scheduled_at,division,
+          event_id,parent_round_id,source_round_id,round_type,scoring_mode,scheduled_at,division,
           yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,
           status,created_by
-        ) VALUES(:e,:p,:s,:t,NULLIF(:scheduled,''),:d,:yes,:cb,:yw,:a1,:a2,:a3,'draft',:u)");
+        ) VALUES(:e,:p,:s,:t,:mode,NULLIF(:scheduled,''),:d,:yes,:cb,:yw,:a1,:a2,:a3,'draft',:u)");
         $insert->execute([
-          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,'scheduled'=>$scheduledAt,
+          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,'mode'=>$source['scoring_mode']??'manual','scheduled'=>$scheduledAt,
           'd'=>$source['division'],'yes'=>$source['yes_count'],'cb'=>$source['callback_count'],
           'yw'=>$source['yes_weight'],'a1'=>$source['alt1_weight'],'a2'=>$source['alt2_weight'],
           'a3'=>$source['alt3_weight'],'u'=>$userId?:null
@@ -541,14 +541,26 @@ try{
   $action=(string)($_POST['action']??'');
   if($action!=='create_round' && !empty($_POST['round_id'])){
    $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['pending_approval','archived'],true)){
-    $message=$lockedRound['status']==='pending_approval'
+   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && $action!=='reopen_completed_round'){
+    $message=$lockedRound['status']==='completed'
+      ? 'This completed test round is locked. Only a Scorer, Master Scorer or Super Admin can confirm a resubmission override.'
+      : ($lockedRound['status']==='pending_approval'
       ? 'This competition is pending Super Admin approval and is temporarily read-only.'
-      : 'This competition is archived and read-only. Only Super Admin rollback can reopen it.';
+      : 'This competition is archived and read-only. Only Super Admin rollback can reopen it.');
     throw new RuntimeException($message);
    }
   }
-  if($action==='generate_test_event'){
+  if($action==='reopen_completed_round'){
+   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can reopen a completed test round.');
+   $roundId=(int)($_POST['round_id']??0);
+   $confirmation=strtoupper(trim((string)($_POST['resubmit_confirmation']??'')));
+   $completed=loadRound($pdo,$roundId);
+   if(!$completed||$completed['status']!=='completed')throw new RuntimeException('Completed test round not found.');
+   if($confirmation!=='RESUBMIT')throw new RuntimeException('Type RESUBMIT to confirm the scoring override.');
+   $pdo->prepare("UPDATE bdc_test_scoring_rounds SET status='draft',locked_at=NULL,locked_by=NULL WHERE id=:id")->execute(['id'=>$roundId]);
+   auditScoring($pdo,$roundId,$userId,'completed_round_reopened_for_resubmission',['confirmation'=>'RESUBMIT','child_rounds_preserved'=>true]);
+   $notice='Completed test round unlocked for correction and resubmission.';
+  }elseif($action==='generate_test_event'){
    $division=(string)($_POST['division']??'novice');
    $roundType=(string)($_POST['round_type']??'heats');
    $tier=(int)($_POST['competition_tier']??2);
@@ -563,8 +575,8 @@ try{
    $eventId=(int)$pdo->lastInsertId();
 
    $yes=[1=>5,2=>10,3=>15][$tier];
-   $pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:event,:type,:division,:yes,:callbacks,10.00,4.50,4.30,4.20,:user)")
-       ->execute(['event'=>$eventId,'type'=>$roundType,'division'=>$division,'yes'=>$yes,'callbacks'=>$yes,'user'=>$userId]);
+   $pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:event,:type,:mode,:division,:yes,:callbacks,10.00,4.50,4.30,4.20,:user)")
+       ->execute(['event'=>$eventId,'type'=>$roundType,'mode'=>$testMode,'division'=>$division,'yes'=>$yes,'callbacks'=>$yes,'user'=>$userId]);
    $roundId=(int)$pdo->lastInsertId();
    auditScoring($pdo,$roundId,$userId,'test_event_generated',['tier'=>$tier]);
    $notice='Random test event and scoring round generated.';
@@ -740,13 +752,13 @@ try{
     $eventInsert->execute(['name'=>$newEventName,'normalised'=>strtolower($newEventName),'slug'=>$slug,'event_date'=>$newEventDate]);
     $eventId=(int)$pdo->lastInsertId();
    }
-   $existing=$pdo->prepare("SELECT id FROM bdc_test_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:rt AND status<>'archived' ORDER BY id DESC LIMIT 1");
-   $existing->execute(['e'=>$eventId,'d'=>$division,'rt'=>$roundType]);
+   $existing=$pdo->prepare("SELECT id FROM bdc_test_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:rt AND scoring_mode=:mode AND status<>'archived' ORDER BY id DESC LIMIT 1");
+   $existing->execute(['e'=>$eventId,'d'=>$division,'rt'=>$roundType,'mode'=>$testMode]);
    $existingId=(int)$existing->fetchColumn();
    if($existingId>0){$roundId=$existingId;$notice=ucfirst($roundType).' round already exists. Existing round opened.';}
    else{
-    $s=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,scheduled_at,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,NULLIF(:scheduled,''),:d,10,10,10.00,4.50,4.30,4.20,:u)");
-    $s->execute(['e'=>$eventId,'rt'=>$roundType,'scheduled'=>$roundSchedule,'d'=>$division,'u'=>$userId]);
+    $s=$pdo->prepare("INSERT INTO bdc_test_scoring_rounds(event_id,round_type,scoring_mode,scheduled_at,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:mode,NULLIF(:scheduled,''),:d,10,10,10.00,4.50,4.30,4.20,:u)");
+    $s->execute(['e'=>$eventId,'rt'=>$roundType,'mode'=>$testMode,'scheduled'=>$roundSchedule,'d'=>$division,'u'=>$userId]);
     $roundId=(int)$pdo->lastInsertId();
     auditScoring($pdo,$roundId,$userId,'round_created',['round_type'=>$roundType,'new_event'=>$newEventName!=='']);
     $notice=ucfirst($roundType).' round created.';
@@ -1355,16 +1367,19 @@ if($round){
   }
  }
 }
-$rounds=$pdo->query("
+$roundsStmt=$pdo->prepare("
  SELECT r.*,e.name event_name,e.event_date,
         EXISTS(SELECT 1 FROM bdc_test_scoring_rounds child WHERE child.parent_round_id=r.id) AS has_child_round,
         (SELECT COUNT(*) FROM bdc_test_scoring_marks m WHERE m.round_id=r.id) AS mark_count,
         (SELECT COUNT(*) FROM bdc_test_scoring_final_marks fm WHERE fm.round_id=r.id) AS final_mark_count
  FROM bdc_test_scoring_rounds r
  JOIN bdc_test_events e ON e.id=r.event_id
+ WHERE r.scoring_mode=:mode
  ORDER BY r.updated_at DESC
  LIMIT 30
-")->fetchAll();
+");
+$roundsStmt->execute(['mode'=>$testMode]);
+$rounds=$roundsStmt->fetchAll();
 $judges=[];$entries=['leader'=>[],'follower'=>[]];$marks=[];$results=[];$finalPairs=[];$finalMarks=[];$finalResults=[];
 if($round){$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_test_scoring_entries se JOIN bdc_test_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
 if($results){
@@ -1624,6 +1639,7 @@ $csrf=Csrf::token();
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
 <div class="mb-3"><a href="?legacy=1&amp;test_mode=<?=e($testMode)?>" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<?php if($round['status']==='completed'):?><div class="alert alert-warning"><strong>Completed test round locked.</strong> Scores stay visible but cannot be changed.<?php if(Auth::canOverrideCompletedScores()):?><form method="post" class="d-flex gap-2 flex-wrap mt-2 completed-round-reopen" onsubmit="return confirm('Unlock this completed test round for correction and resubmission?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="reopen_completed_round"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control form-control-sm" style="max-width:180px" name="resubmit_confirmation" placeholder="Type RESUBMIT" required><button class="btn btn-sm btn-warning">Unlock for Resubmission</button></form><?php endif;?></div><script>addEventListener('DOMContentLoaded',()=>document.querySelectorAll('form:not(.completed-round-reopen)').forEach(form=>form.querySelectorAll('button,input:not([type=hidden]),select,textarea').forEach(control=>control.disabled=true)));</script><?php endif;?>
 <?php if($round['round_type']==='final'):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">

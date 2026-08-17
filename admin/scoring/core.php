@@ -503,13 +503,13 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     $pending->execute(['r'=>$source['id']]);
     if((int)$pending->fetchColumn()>0) throw new RuntimeException('Resolve all callback ties before proceeding.');
 
-    $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND status<>'archived' ORDER BY id DESC LIMIT 1");
-    $existing->execute(['e'=>$source['event_id'],'d'=>$source['division'],'t'=>$nextType]);
+    $existing=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d AND round_type=:t AND (parent_round_id=:parent OR source_round_id=:source) AND status<>'archived' ORDER BY id DESC LIMIT 1");
+    $existing->execute(['e'=>$source['event_id'],'d'=>$source['division'],'t'=>$nextType,'parent'=>$source['id'],'source'=>$source['id']]);
     $existingId=(int)$existing->fetchColumn();
     if($existingId>0){
         $pdo->beginTransaction();
         try{
-            if($scheduledAt!=='')$pdo->prepare('UPDATE bdc_scoring_rounds SET scheduled_at=:scheduled WHERE id=:id')->execute(['scheduled'=>$scheduledAt,'id'=>$existingId]);
+            $pdo->prepare("UPDATE bdc_scoring_rounds SET scoring_mode=:mode,scheduled_at=COALESCE(NULLIF(:scheduled,''),scheduled_at) WHERE id=:id")->execute(['mode'=>$source['scoring_mode']??'manual','scheduled'=>$scheduledAt,'id'=>$existingId]);
             syncCallbacksToChildRound($pdo,$source,$existingId,$userId);
             $pdo->prepare("UPDATE bdc_scoring_rounds SET status='completed' WHERE id=:id")
                 ->execute(['id'=>$source['id']]);
@@ -528,12 +528,12 @@ function createNextScoringRound(PDO $pdo,array $source,string $nextType,int $use
     $pdo->beginTransaction();
     try{
         $insert=$pdo->prepare("INSERT INTO bdc_scoring_rounds(
-          event_id,parent_round_id,source_round_id,round_type,division,
+          event_id,parent_round_id,source_round_id,round_type,scoring_mode,division,
           yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,
           scheduled_at,status,created_by
-        ) VALUES(:e,:p,:s,:t,:d,:yes,:cb,:yw,:a1,:a2,:a3,:scheduled,'draft',:u)");
+        ) VALUES(:e,:p,:s,:t,:mode,:d,:yes,:cb,:yw,:a1,:a2,:a3,:scheduled,'draft',:u)");
         $insert->execute([
-          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,
+          'e'=>$source['event_id'],'p'=>$source['id'],'s'=>$source['id'],'t'=>$nextType,'mode'=>$source['scoring_mode']??'manual',
           'd'=>$source['division'],'yes'=>$source['yes_count'],'cb'=>$source['callback_count'],
           'yw'=>$source['yes_weight'],'a1'=>$source['alt1_weight'],'a2'=>$source['alt2_weight'],
           'a3'=>$source['alt3_weight'],'scheduled'=>$scheduledAt!==''?$scheduledAt:null,'u'=>$userId?:null
@@ -576,14 +576,26 @@ try{
   $action=(string)($_POST['action']??'');
   if($action!=='create_round' && !empty($_POST['round_id'])){
    $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['pending_approval','archived'],true)){
-    $message=$lockedRound['status']==='pending_approval'
+   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && $action!=='reopen_completed_round'){
+    $message=$lockedRound['status']==='completed'
+      ? 'This completed round is locked. Only a Scorer, Master Scorer or Super Admin can confirm a resubmission override.'
+      : ($lockedRound['status']==='pending_approval'
       ? 'This competition is pending Super Admin approval and is temporarily read-only.'
-      : 'This competition is archived and read-only. Only Super Admin rollback can reopen it.';
+      : 'This competition is archived and read-only. Only Super Admin rollback can reopen it.');
     throw new RuntimeException($message);
    }
   }
-  if($action==='create_round'){
+  if($action==='reopen_completed_round'){
+   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can reopen a completed round.');
+   $roundId=(int)($_POST['round_id']??0);
+   $confirmation=strtoupper(trim((string)($_POST['resubmit_confirmation']??'')));
+   $completed=loadRound($pdo,$roundId);
+   if(!$completed||$completed['status']!=='completed')throw new RuntimeException('Completed round not found.');
+   if($confirmation!=='RESUBMIT')throw new RuntimeException('Type RESUBMIT to confirm the scoring override.');
+   $pdo->prepare("UPDATE bdc_scoring_rounds SET status='draft',locked_at=NULL,locked_by=NULL WHERE id=:id")->execute(['id'=>$roundId]);
+   auditScoring($pdo,$roundId,$userId,'completed_round_reopened_for_resubmission',['confirmation'=>'RESUBMIT','child_rounds_preserved'=>true]);
+   $notice='Completed round unlocked for correction. Submit the scores again when finished.';
+  }elseif($action==='create_round'){
    $createMode=(string)($_POST['scoring_mode']??'manual');if(!in_array($createMode,['manual','automated'],true))$createMode='manual';
    $eventId=(int)($_POST['event_id']??0);
    $newEventName=trim((string)($_POST['new_event_name']??''));
@@ -1311,7 +1323,7 @@ $rounds=$pdo->query("
         EXISTS(SELECT 1 FROM bdc_scoring_rounds child WHERE child.parent_round_id=r.id) AS has_child_round
  FROM bdc_scoring_rounds r
  JOIN bdc_events e ON e.id=r.event_id
- WHERE r.status NOT IN ('completed','archived')
+ WHERE r.status<>'archived'
  ORDER BY r.updated_at DESC
  LIMIT 30
 ")->fetchAll();
@@ -1516,7 +1528,8 @@ $csrf=Csrf::token();
 </td>
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
-<div class="mb-3"><a href="?mode=manual" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<div class="mb-3"><a href="?mode=<?=e($round['scoring_mode']??'manual')?>" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
+<?php if($round['status']==='completed'):?><div class="alert alert-warning"><strong>Completed round locked.</strong> Scores and callbacks remain visible, but changes and resubmission are blocked.<?php if(Auth::canOverrideCompletedScores()):?><form method="post" class="d-flex gap-2 flex-wrap mt-2 completed-round-reopen" onsubmit="return confirm('Unlock this completed round and allow its scores to be corrected and resubmitted? Existing child rounds will be preserved and resynchronised after resubmission.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="reopen_completed_round"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control form-control-sm" style="max-width:180px" name="resubmit_confirmation" placeholder="Type RESUBMIT" required><button class="btn btn-sm btn-warning">Unlock for Resubmission</button></form><?php endif;?></div><script>addEventListener('DOMContentLoaded',()=>document.querySelectorAll('form:not(.completed-round-reopen)').forEach(form=>form.querySelectorAll('button,input:not([type=hidden]),select,textarea').forEach(control=>control.disabled=true)));</script><?php endif;?>
 <?php if($round['round_type']==='final'):?>
 <?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,function($suggestion)use($round){
  $check=DivisionProgressionService::eligibilityFor((string)$round['division'],(float)$suggestion['novice_points'],(float)$suggestion['intermediate_points'],(float)$suggestion['advanced_points'],(string)$suggestion['current_division'],!empty($suggestion['competed_intermediate']),!empty($suggestion['competed_advanced']),!empty($suggestion['competed_all_star']));
