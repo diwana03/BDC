@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev267",
-  "build": 2973,
+  "version": "2.3.3-dev268",
+  "build": 2974,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Color-codes Final placement buttons and highlights NO RANK in red",
+    "Removes the private draft wording from Final competitor comments",
     "Moves the compact Top-N reminder beside each Final competitor comment label",
     "Shows the configured Top-N best-couple instruction on the pre-scoring criteria acceptance screen",
     "Shows dynamic Top-N best-couple instructions in Final judge criteria and scoring screens",
