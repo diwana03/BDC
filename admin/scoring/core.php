@@ -1056,6 +1056,10 @@ try{
    $judgeStmt=$pdo->prepare("SELECT id FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
    $judgeStmt->execute(['r'=>$roundId]);
    $judgeIds=array_map('intval',$judgeStmt->fetchAll(PDO::FETCH_COLUMN));
+   if(($roundForFinal['scoring_mode']??'manual')==='automated'){
+    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted'");$lockedStmt->execute(['r'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
+    foreach($postedFinalRanks as $pairKey=>&$judgeRanks)foreach($lockedJudgeIds as $lockedJudgeId)unset($judgeRanks[$lockedJudgeId],$judgeRanks[(string)$lockedJudgeId]);unset($judgeRanks);
+   }
 
    $upsert=$pdo->prepare("
     INSERT INTO bdc_scoring_final_marks(round_id,pair_id,judge_id,rank_value,updated_by)
@@ -1106,6 +1110,10 @@ try{
    $judgeStmt=$pdo->prepare("SELECT id FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
    $judgeStmt->execute(['r'=>$roundId]);
    $judgeIds=array_map('intval',$judgeStmt->fetchAll(PDO::FETCH_COLUMN));
+   if(($roundForFinal['scoring_mode']??'manual')==='automated'){
+    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted'");$lockedStmt->execute(['r'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
+    foreach($postedFinalRanks as $pairKey=>&$judgeRanks)foreach($lockedJudgeIds as $lockedJudgeId)unset($judgeRanks[$lockedJudgeId],$judgeRanks[(string)$lockedJudgeId]);unset($judgeRanks);
+   }
 
    $upsert=$pdo->prepare("
     INSERT INTO bdc_scoring_final_marks(round_id,pair_id,judge_id,rank_value,updated_by)
@@ -1294,7 +1302,7 @@ $rounds=$pdo->query("
  ORDER BY r.updated_at DESC
  LIMIT 30
 ")->fetchAll();
-$judges=[];$entries=['leader'=>[],'follower'=>[]];$marks=[];$results=[];$finalPairs=[];$finalMarks=[];$finalResults=[];
+$judges=[];$judgeSessionStatus=[];$entries=['leader'=>[],'follower'=>[]];$marks=[];$results=[];$finalPairs=[];$finalMarks=[];$finalResults=[];
 $judgeDirectory=[];
 try{
  $judgeDirectory=ScoringJudgeAssignmentService::directory($pdo);
@@ -1303,7 +1311,7 @@ try{
  // unavailable Judge Directory must not prevent an organiser opening saved scores.
  error_log('BDC scoring judge directory unavailable: '.$judgeDirectoryError->getMessage());
 }
-if($round){$s=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
+if($round){$s=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT judge_id,status FROM bdc_scoring_judge_sessions WHERE round_id=:r");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $session)$judgeSessionStatus[(int)$session['judge_id']]=(string)$session['status'];$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
 if($results){
  foreach(['leader','follower'] as $sortRole){
   usort($entries[$sortRole],function($a,$b)use($results){
@@ -1744,7 +1752,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
   <div class="table-responsive"><table class="table table-bordered align-middle final-scoring-table">
    <thead><tr>
     <th>Final Rank</th><th>Couple</th><th>Leader</th><th>Follower</th>
-    <?php foreach($judges as $judgeIndex=>$judge):?><th class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?></th><?php endforeach;?>
+    <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?><th class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?><?=$judgeLocked?' 🔒':''?></th><?php endforeach;?>
     <th>Relative Placement</th>
    </tr></thead>
    <tbody>
@@ -1754,8 +1762,8 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
      <td>Couple <?=$pair['pair_number']?></td>
      <td><strong>Bib <?=$pair['leader_bib']?></strong><br><?=e($pair['leader_name'])?></td>
      <td><strong>Bib <?=$pair['follower_bib']?></strong><br><?=e($pair['follower_name'])?></td>
-     <?php foreach($judges as $judgeIndex=>$judge):?>
-      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>"></td>
+     <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?>
+      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input <?=$judgeLocked?'bg-light':''?>" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" <?=$judgeLocked?'readonly aria-label="Submitted judge placement locked" title="Submitted placement locked. Use the audited RESUBMIT control to reopen this judge."':''?>></td>
      <?php endforeach;?>
      <td>
       <?php if($finalResult):?>
