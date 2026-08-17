@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev251",
-  "build": 2957,
+  "version": "2.3.3-dev252",
+  "build": 2958,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Integrates restricted Emcee matching into the event projection controller",
+    "Shows country flags for Final couples and live random matches",
+    "Adds opt-in synchronized sounds for projector presentation effects",
     "Keeps Automatic Final pairing prompts in the Automatic Judge Scoring workflow",
     "Optimises projector fireworks with bounded particles and adaptive rendering",
     "Adds projector-safe sustained fireworks limits for lower-powered display computers",
@@ -24,6 +27,9 @@
     "Restores audited next-ranked Leader and Follower promotion for callback-derived Finals"
   ],
   "highlights": [
+    "Uses one event Live Display link for projector tabs, Emcee matching and effects",
+    "Preserves old Emcee-link bookmarks by redirecting them into Event Projection",
+    "Keeps projector audio muted until the operator explicitly enables it",
     "Removes the incorrect manual-scoring instruction from Automatic Finals",
     "Reduces fireworks canvas resolution, frame rate, trails and launch density for smoother projection",
     "Caps sustained fireworks at 260 particles, two rockets and 24 FPS",
