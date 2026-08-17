@@ -1376,12 +1376,19 @@ $csrf=Csrf::token();
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}@media(max-width:575.98px){.navbar .container-fluid{align-items:flex-start}.navbar-brand{margin-bottom:.5rem}.dashboard-heading{gap:.75rem}.dashboard-heading .text-muted{font-size:1rem}.modal-dialog{margin:.5rem}.modal-content{max-height:calc(100dvh - 1rem)}.modal-body{overflow-y:auto}.modal-footer{flex-wrap:wrap}.modal-footer form,.modal-footer form .btn{width:100%}}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="dashboard-heading d-flex flex-wrap justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Dashboard</h1><div class="text-muted"><?=($round && ($round['scoring_mode']??'manual')==='automated')?'Automatic Relative Placement Final':'Manual Scoring Engine · Event Round Workflow'?></div></div><?php if($round):?><span class="badge text-bg-primary status-pill"><?=e(str_replace('_',' ',$round['status']))?></span><?php endif;?></div>
 <?php if($round):?>
-<div class="card shadow-sm mb-4 border-primary" id="registration-desk-sync">
+<?php $registrationDeskInherited=(int)($round['parent_round_id']??0)>0;?>
+<div class="card shadow-sm mb-4 <?=$registrationDeskInherited?'border-secondary bg-light text-secondary':'border-primary'?>" <?=$registrationDeskInherited?'aria-disabled="true"':''?> id="<?=$registrationDeskInherited?'registration-desk-inherited':'registration-desk-sync'?>">
  <div class="card-header d-flex justify-content-between align-items-center">
   <strong>Registration Desk</strong>
-  <span class="badge text-bg-primary">LIVE SYNC</span>
+  <span class="badge <?=$registrationDeskInherited?'text-bg-secondary':'text-bg-primary'?>"><?=$registrationDeskInherited?'INHERITED ROUND':'LIVE SYNC'?></span>
  </div>
  <div class="card-body">
+  <?php if($registrationDeskInherited):?>
+   <div class="d-flex align-items-start gap-3 opacity-75">
+    <div class="fs-3" aria-hidden="true">🔒</div>
+    <div><strong>Registration Desk is disabled for this <?=e(ucfirst((string)$round['round_type']))?>.</strong><div class="small mt-1">Competitors were promoted from the previous <?=e(ucfirst((string)($round['parent_round_type']??'qualification round')))?>. Manage registration and bibs in the original Heats round; this round keeps its inherited competitor list.</div></div>
+   </div>
+  <?php else:?>
   <?php if($registrationDeskUrl):?>
    <div class="input-group mb-3">
     <input class="form-control" id="registrationDeskUrl" value="<?=e($registrationDeskUrl)?>" readonly>
@@ -1397,6 +1404,7 @@ $csrf=Csrf::token();
    <div class="col-md-3"><div class="border rounded p-3"><strong>Missing Bibs</strong><div class="fs-4" data-stat="missing">—</div></div></div>
    <div class="col-md-3"><div class="border rounded p-3"><strong>Last Update</strong><div class="fs-6" data-stat="updated">—</div></div></div>
   </div>
+  <?php endif;?>
  </div>
 </div>
 <?php endif;?>
