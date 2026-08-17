@@ -96,6 +96,7 @@ $displayUrl = !empty($session["token_value"])
         "live-display/?token=" . rawurlencode((string) $session["token_value"]),
     )
     : "";
+$soundDisplayUrl = $displayUrl !== "" ? $displayUrl . "&sound=1" : "";
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Live Screen Control | BDC</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>body{background:<?= $embed
     ? "transparent"
     : "#f4f6f9" ?>}.card{border:0;border-radius:15px}.settings{border-left:5px solid #dc3545}.embed-main{padding:0!important}.locked{opacity:.55}.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#198754;margin-right:6px}.reveal-panel{border:1px solid #f0c36d;background:#fff9e8;border-radius:10px;padding:12px}.live-state{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#111827;color:#fff;border-radius:8px;padding:8px 10px}</style></head><body><?php if (
@@ -125,7 +126,7 @@ if (
     $displayUrl,
 ) ?>"><button type="button" id="copyLiveUrl" class="btn btn-outline-primary">Copy Link</button><a target="_blank" class="btn btn-primary" href="<?= e(
     $displayUrl,
-) ?>">Open Preview</a></div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
+) ?>">Open Muted</a><a target="_blank" class="btn btn-success" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Choose sound here before the audience sees the projector. The public screen has no sound controls. If the browser blocks first-time audio, click once anywhere on the projector screen.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
 ) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"
