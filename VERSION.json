@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev270",
-  "build": 2976,
+  "version": "2.3.3-dev271",
+  "build": 2977,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes Final judge placement status unmistakable with full-card states, large placement badges, progress and missing-rank guidance",
     "Locks submitted Automatic Final judge placements until an audited scorer or Super Admin RESUBMIT reopen",
     "Upgrades Final placement controls with premium jewel-tone gradients and selected-state depth",
     "Color-codes Final placement buttons and highlights NO RANK in red",
