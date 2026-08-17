@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev256",
-  "build": 2962,
+  "version": "2.3.3-dev257",
+  "build": 2963,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces Final judge rank dropdowns with mobile-friendly one-tap rank buttons and NO RANK",
     "Locks and greys out Registration Desk controls on inherited Semifinal and Final rounds",
     "Lets Final scoring boards require a flexible Top 3 to Top 20 ranking capped by confirmed couples",
     "Leaves non-placed Final couples unranked while preserving Relative Placement for the selected Top N",
