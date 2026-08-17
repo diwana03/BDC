@@ -6,6 +6,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\ProjectionSettingsService;
 use App\Services\LiveDisplaySessionService;
+use App\Services\RandomPairingService;
 Auth::requireAdmin();
 $test = ($_GET["data_mode"] ?? ($_POST["data_mode"] ?? "real")) === "test";
 $embed = ($_GET["embed"] ?? ($_POST["embed"] ?? "")) === "1";
@@ -26,21 +27,21 @@ $eventId = (int) $round["event_id"];
 $settings = ProjectionSettingsService::get($pdo, $roundId, $test);
 $notice = $_SESSION["projection_settings_notice"] ?? "";
 unset($_SESSION["projection_settings_notice"]);
-if (
-    $_SERVER["REQUEST_METHOD"] === "POST" &&
-    Csrf::verify($_POST["_csrf"] ?? null) &&
-    ($_POST["action"] ?? "") === "generate_live"
-) {
-    LiveDisplaySessionService::generate(
-        $pdo,
-        $eventId,
-        $test,
-        (int) (Auth::user()["id"] ?? 0),
-    );
-    $notice =
-        "Live Display link generated. Give this one link to the projector operator.";
+if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? null)) {
+    $action = (string) ($_POST["action"] ?? "");
+    if ($action === "generate_live") {
+        LiveDisplaySessionService::generate($pdo, $eventId, $test, (int) (Auth::user()["id"] ?? 0));
+        $notice = "Live Display link generated. Give this one link to the projector operator.";
+    } elseif ($action === "generate_emcee" && $round["round_type"] === "final") {
+        if (!LiveDisplaySessionService::forEvent($pdo, $eventId, $test)) {
+            LiveDisplaySessionService::generate($pdo, $eventId, $test, (int) (Auth::user()["id"] ?? 0));
+        }
+        RandomPairingService::generateLink($pdo, $roundId, $test, (int) (Auth::user()["id"] ?? 0));
+        $notice = "Emcee access generated for this event projector. Matching will appear on the same Live Display link.";
+    }
 }
 $session = LiveDisplaySessionService::forEvent($pdo, $eventId, $test);
+$emceeLink = $round["round_type"] === "final" ? RandomPairingService::activeLink($pdo, $roundId, $test) : null;
 $selection = ($_GET["selection"] ?? "") === "1" || $embed;
 if ($selection && $session) {
     $session = LiveDisplaySessionService::beginSelection(
@@ -76,6 +77,7 @@ $types =
                 "competitors" => "Finalists / Couples",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Relative Placement Matrix · Provisional",
+                "matching" => "Emcee Live Matching",
                 "winners" => "Winner Podium",
                 "final_results" => "Final Full Results · Landscape",
             ]);
@@ -129,7 +131,7 @@ if (
     ? "test"
     : "real" ?>"><input type="hidden" name="embed" value="<?= $embed
     ? "1"
-    : "0" ?>"><button class="btn btn-dark" name="action" value="generate_live">Generate / Regenerate Live Display Link</button></form></div></div><form class="card settings shadow-sm mb-4" method="post" action="settings.php"><div class="card-body"><input type="hidden" name="_csrf" value="<?= e(
+    : "0" ?>"><button class="btn btn-dark" name="action" value="generate_live">Generate / Regenerate Live Display Link</button></form></div></div><?php if ($round["round_type"] === "final"): ?><div id="emcee-match" class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Emcee Matching · Event Projection</h2><p class="text-muted mb-2">Restricted Emcee access controls the matching view on this event's existing Live Display. There is no second projector link.</p><?php if ($emceeLink): ?><div class="input-group mb-2"><input id="emceeUrl" class="form-control" readonly value="<?= e((string) $emceeLink["url"]) ?>"><button type="button" class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('emceeUrl').value)">Copy Emcee Access</button><a target="_blank" class="btn btn-danger" href="<?= e((string) $emceeLink["url"]) ?>">Open Emcee Control</a></div><div class="small text-muted">Access expires <?= e((string) $emceeLink["expires_at"]) ?>.</div><?php else: ?><p class="text-muted">Generate restricted Emcee access when the host is ready to randomize the Final couples.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(Csrf::token()) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test ? "test" : "real" ?>"><input type="hidden" name="embed" value="<?= $embed ? "1" : "0" ?>"><button class="btn btn-outline-danger" name="action" value="generate_emcee"><?= $emceeLink ? "Regenerate" : "Generate" ?> Emcee Access</button></form></div></div><?php endif; ?><form class="card settings shadow-sm mb-4" method="post" action="settings.php"><div class="card-body"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
 ) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"
