@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev259",
-  "build": 2965,
+  "version": "2.3.3-dev260",
+  "build": 2966,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds concise dynamic Top-N guidance above Final judge comment and ranking cards",
     "Adds an optional used-rank highlighter and available-placement summary for Final judges",
     "Adds private per-couple judge comments and notification-based Final rank moving",
     "Replaces Final judge rank dropdowns with mobile-friendly one-tap rank buttons and NO RANK",
