@@ -1,8 +1,8 @@
 {
-  "version": "2.3.3-dev248",
-  "build": 2954,
+  "version": "2.3.3-dev249",
+  "build": 2955,
   "status": "development",
-  "release_date": "2026-08-17",
+  "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
@@ -17,7 +17,8 @@
     "Keeps every child round in its parent Manual or Automatic scoring workflow",
     "Places the completed-round RESUBMIT override directly on Automatic Scoring",
     "Includes the Chief Judge mark in every BDC Heats and Semifinal total",
-    "Escalates every unresolved callback or alternate tie for an explicit Chief decision"
+    "Escalates every unresolved callback or alternate tie for an explicit Chief decision",
+    "Restores audited next-ranked Leader and Follower promotion for callback-derived Finals"
   ],
   "highlights": [
     "Repairs stale next-round finalists and restores Super Admin draft deletion",
@@ -26,6 +27,7 @@
     "Keeps complete Final rankings internally while publishing only point-earning participant rows",
     "Allows Scorer, Master Scorer and Super Admin to confirm completed-round resubmission",
     "Keeps completed Automatic controls disabled until the authorised override succeeds",
-    "Never splits equal BDC totals using Chief marks, bib numbers or database order"
+    "Never splits equal BDC totals using Chief marks, bib numbers or database order",
+    "Allows optional Final expansion while blocking duplicate promotion and changes after scoring starts"
   ]
 }
