@@ -47,5 +47,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 document.addEventListener('DOMContentLoaded',()=>{
  if(!document.body.textContent.includes('Submitted.'))return;
  const endpoint=new URL(location.href);endpoint.searchParams.set('status','1');
- (function poll(){endpoint.searchParams.set('_',Date.now());fetch(endpoint,{cache:'no-store'}).then(r=>r.json()).then(data=>{if(data.status!=='submitted')location.reload()}).catch(()=>{}).finally(()=>setTimeout(poll,1000));})();
+ (function poll(){if(document.hidden){setTimeout(poll,10000);return;}endpoint.searchParams.set('_',Date.now());fetch(endpoint,{cache:'no-store'}).then(r=>r.status===429?null:r.json()).then(data=>{if(data&&data.status!=='submitted')location.reload()}).catch(()=>{}).finally(()=>setTimeout(poll,10000));})();
 });
