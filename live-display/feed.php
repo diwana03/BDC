@@ -249,9 +249,9 @@ $ratio = in_array($type, ["score_matrix", "heats_scores", "final_results", "resu
     ? 16 / 9
     : $layout["ratio"];
 $cols = $layout["columns"];
-if (in_array($type, ["final_couples", "matching_couples"], true)) {
-    $cols = count($items) > 10 ? 4 : min(5, max(1, count($items)));
-}
+$coupleProjection = in_array($type, ["final_couples", "matching_couples"], true);
+$coupleColumns = min(5, max(1, count($items)));
+$coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
 $competitorRoleCols=max(1,(int)floor($cols/2));
 $competitorRoleCapacity=max(1,(int)$layout["rows"]*$competitorRoleCols);
@@ -408,4 +408,4 @@ else:
 !empty($x["bib_number"]) ? "BIB " . (int) $x["bib_number"] : "BIB UNASSIGNED"
 ?><?php if (!empty($x["country"])): ?> · <?php if ($flagUrl = country_flag_url($x["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($x["country"]) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45);vertical-align:middle;margin:0 .35em"><?php endif; ?><?= e($x["country"]) ?><?php endif;
 ?></div></div><?php endif; endforeach;
-endif; ?></div><?php endif; ?><?php if(in_array($type,["final_couples","matching_couples"],true)):?><style>.list{gap:.8%;padding-bottom:.55%}.list .item{padding:1.4%;justify-content:space-evenly}.list .item>.small:first-child{font-size:clamp(13px,1vw,25px);font-weight:900;letter-spacing:.08em}.list .item>div:nth-child(2)>div{max-width:48%}.list .item>div:nth-child(2)>div>.name{font-size:clamp(12px,1.05vw,25px)}.list .item>div:nth-child(2)>div>div:nth-of-type(2){font-size:clamp(22px,2vw,48px);font-weight:950;line-height:1.05;color:#fff;margin:.08em 0}</style><?php endif;?></div></div></body></html>
+endif; ?></div><?php endif; ?><?php if($coupleProjection):?><style>.list{display:flex;flex-wrap:wrap;align-content:stretch;gap:.65%;padding-bottom:.45%}.list .item{flex:1 1 calc(<?=number_format(100/$coupleColumns,4,'.','')?>% - .65%);height:calc((100% - <?=number_format(max(0,$coupleRows-1)*.65,2,'.','')?>%)/<?=$coupleRows?>);padding:1%;justify-content:space-evenly}.list .item>.small:first-child{font-size:clamp(12px,.9vw,22px);font-weight:900;letter-spacing:.08em}.list .item>div:nth-child(2)>div{max-width:48%}.list .item>div:nth-child(2)>div>.name{font-size:clamp(11px,.92vw,22px)}.list .item>div:nth-child(2)>div>div:nth-of-type(2){font-size:clamp(19px,1.55vw,38px);font-weight:950;line-height:1;color:#fff;margin:.04em 0}</style><?php endif;?></div></div></body></html>
