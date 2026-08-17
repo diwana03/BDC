@@ -87,9 +87,10 @@ $scoringComplete =
     );
 if ($type === "matching") {
     $title = "RANDOM FINAL MATCH";
-    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
+    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,lc.photo_url leader_photo,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country,fc.photo_url follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
+    $type = "matching_couples";
 } elseif ($type === "judges") {
     $title = "JUDGES";
     try {
@@ -116,6 +117,10 @@ if ($type === "matching") {
     }
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
+    if ($isFinalRound) {
+        // Use the shared couple renderer, which includes both dancer flags.
+        $type = "final_couples";
+    }
 } elseif (in_array($type, ["callbacks", "finalists"], true)) {
     $title = $type === "callbacks" ? "CALLBACKS" : "FINALISTS";
     $q = $pdo->prepare(
