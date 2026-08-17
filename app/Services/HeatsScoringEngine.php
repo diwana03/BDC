@@ -52,13 +52,19 @@ final class HeatsScoringEngine
                 if(in_array($jid,$assigned,true)){$chiefId=$jid;break;}
             }
             $entryId=(int)($entry['id']??0);
+            // The Chief Judge is a boundary tie-breaker, not an extra panel
+            // vote. Keep that mark separate so it cannot influence every
+            // competitor's base callback total and then be counted again.
             $total=0.0;$chiefScore=0.0;
             foreach(($marksByEntry[$entryId]??[]) as $judgeId=>$score){
                 $judgeId=(int)$judgeId;
                 if(!in_array($judgeId,$assigned,true))continue;
                 $value=(float)$score;
+                if($judgeId===$chiefId){
+                    $chiefScore=$value;
+                    continue;
+                }
                 $total+=$value;
-                if($judgeId===$chiefId)$chiefScore=$value;
             }
             $grouped[$role][]=['entry'=>$entry,'total'=>$total,'chief'=>$chiefScore];
         }

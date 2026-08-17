@@ -27,3 +27,30 @@ if($order!==$expected){
 }
 
 echo 'PASS: '.json_encode($order).PHP_EOL;
+
+// Pathological full-profile tie: cumulative counts and sums are identical,
+// but the head-to-head mini-contest must resolve before the Chief fallback.
+$pairIds=[10,20,30];
+$judgeIds=[201,202,203];
+$marks=[
+ 10=>[201=>1,202=>2,203=>3],
+ 20=>[201=>2,202=>3,203=>1],
+ 30=>[201=>3,202=>1,203=>2],
+];
+$headToHead=RelativePlacementCalculator::calculate($pairIds,$judgeIds,201,$marks);
+$headLog=$headToHead[0]['comparison_log']??[];
+if(!in_array('head_to_head',array_column($headLog,'step'),true)){
+ throw new RuntimeException('Relative Placement did not record the head-to-head tie step.');
+}
+
+try{
+ RelativePlacementCalculator::calculate([1,2],[1,2,3],1,[
+  1=>[1=>1,2=>1,3=>2],
+  2=>[1=>1,2=>2,3=>1],
+ ]);
+ throw new RuntimeException('Duplicate Final placements were accepted.');
+}catch(RuntimeException $e){
+ if(!str_contains($e->getMessage(),'more than once'))throw $e;
+}
+
+echo "PASS: complex Relative Placement safeguards\n";

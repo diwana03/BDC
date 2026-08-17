@@ -171,6 +171,40 @@ final class RelativePlacementCalculator
                 ];
             }
 
+            // Once cumulative Relative Placement comparisons are exhausted,
+            // compare the tied couples as a mini-contest. A judge votes for
+            // whichever tied couple they placed higher. This is evaluated
+            // before the Chief Judge fallback.
+            if (count($candidateIds) > 1) {
+                $headToHeadWins = array_fill_keys($candidateIds, 0);
+                foreach ($candidateIds as $leftIndex => $leftId) {
+                    foreach ($candidateIds as $rightIndex => $rightId) {
+                        if ($leftIndex >= $rightIndex) continue;
+                        $leftVotes = 0;
+                        $rightVotes = 0;
+                        foreach ($judgeIds as $judgeId) {
+                            $leftRank = (int)$marks[$leftId][$judgeId];
+                            $rightRank = (int)$marks[$rightId][$judgeId];
+                            if ($leftRank < $rightRank) $leftVotes++;
+                            elseif ($rightRank < $leftRank) $rightVotes++;
+                        }
+                        if ($leftVotes > $rightVotes) $headToHeadWins[$leftId]++;
+                        elseif ($rightVotes > $leftVotes) $headToHeadWins[$rightId]++;
+                    }
+                }
+                $bestHeadToHead = max($headToHeadWins);
+                $candidateIds = array_values(array_filter(
+                    $candidateIds,
+                    fn(int $pairId): bool => $headToHeadWins[$pairId] === $bestHeadToHead
+                ));
+                $comparisonLog[] = [
+                    'step' => 'head_to_head',
+                    'best' => $bestHeadToHead,
+                    'wins' => $headToHeadWins,
+                    'remaining' => $candidateIds,
+                ];
+            }
+
             if (count($candidateIds) > 1 && $chiefJudgeId > 0) {
                 $bestChiefRank = min(array_map(
                     fn(int $pairId): int => $profiles[$pairId]['chief_rank'],
@@ -189,23 +223,11 @@ final class RelativePlacementCalculator
             }
 
             if (count($candidateIds) > 1) {
-                $bestTotal = min(array_map(
-                    fn(int $pairId): int => $profiles[$pairId]['total_sum'],
-                    $candidateIds
-                ));
-                $candidateIds = array_values(array_filter(
-                    $candidateIds,
-                    fn(int $pairId): bool =>
-                        $profiles[$pairId]['total_sum'] === $bestTotal
-                ));
-                $comparisonLog[] = [
-                    'step' => 'total_sum',
-                    'best' => $bestTotal,
-                    'remaining' => $candidateIds,
-                ];
+                throw new RuntimeException(
+                    'Final placement remains tied after Relative Placement, head-to-head and Chief Judge comparison.'
+                );
             }
 
-            // Stable deterministic fallback only after all official comparisons.
             sort($candidateIds, SORT_NUMERIC);
             $winnerId = $candidateIds[0];
             $winner = $profiles[$winnerId];
