@@ -1057,7 +1057,7 @@ try{
    $judgeStmt->execute(['r'=>$roundId]);
    $judgeIds=array_map('intval',$judgeStmt->fetchAll(PDO::FETCH_COLUMN));
    if(($roundForFinal['scoring_mode']??'manual')==='automated'){
-    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted'");$lockedStmt->execute(['r'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
+    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted' AND id IN (SELECT latest_id FROM (SELECT MAX(id) latest_id FROM bdc_scoring_judge_sessions WHERE round_id=:r2 GROUP BY judge_id) canonical)");$lockedStmt->execute(['r'=>$roundId,'r2'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
     foreach($postedFinalRanks as $pairKey=>&$judgeRanks)foreach($lockedJudgeIds as $lockedJudgeId)unset($judgeRanks[$lockedJudgeId],$judgeRanks[(string)$lockedJudgeId]);unset($judgeRanks);
    }
 
@@ -1111,7 +1111,7 @@ try{
    $judgeStmt->execute(['r'=>$roundId]);
    $judgeIds=array_map('intval',$judgeStmt->fetchAll(PDO::FETCH_COLUMN));
    if(($roundForFinal['scoring_mode']??'manual')==='automated'){
-    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted'");$lockedStmt->execute(['r'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
+    $lockedStmt=$pdo->prepare("SELECT judge_id FROM bdc_scoring_judge_sessions WHERE round_id=:r AND status='submitted' AND id IN (SELECT latest_id FROM (SELECT MAX(id) latest_id FROM bdc_scoring_judge_sessions WHERE round_id=:r2 GROUP BY judge_id) canonical)");$lockedStmt->execute(['r'=>$roundId,'r2'=>$roundId]);$lockedJudgeIds=array_map('intval',$lockedStmt->fetchAll(PDO::FETCH_COLUMN));
     foreach($postedFinalRanks as $pairKey=>&$judgeRanks)foreach($lockedJudgeIds as $lockedJudgeId)unset($judgeRanks[$lockedJudgeId],$judgeRanks[(string)$lockedJudgeId]);unset($judgeRanks);
    }
 
@@ -1311,7 +1311,7 @@ try{
  // unavailable Judge Directory must not prevent an organiser opening saved scores.
  error_log('BDC scoring judge directory unavailable: '.$judgeDirectoryError->getMessage());
 }
-if($round){$s=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT judge_id,status FROM bdc_scoring_judge_sessions WHERE round_id=:r");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $session)$judgeSessionStatus[(int)$session['judge_id']]=(string)$session['status'];$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
+if($round){$s=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT judge_id,status FROM bdc_scoring_judge_sessions WHERE round_id=:r ORDER BY id");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $session)$judgeSessionStatus[(int)$session['judge_id']]=(string)$session['status'];$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_scoring_entries se JOIN bdc_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
 if($results){
  foreach(['leader','follower'] as $sortRole){
   usort($entries[$sortRole],function($a,$b)use($results){

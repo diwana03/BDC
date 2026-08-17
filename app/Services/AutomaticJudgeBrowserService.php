@@ -165,7 +165,7 @@ final class AutomaticJudgeBrowserService
         $final = ($round["round_type"] ?? "") === "final";
         $yesLimit = max(0, (int) ($round["yes_count"] ?? 0));
         $stmt = $pdo->prepare(
-            "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_scoring_judges j LEFT JOIN bdc_scoring_judge_sessions s ON s.judge_id=j.id WHERE j.round_id=:round ORDER BY j.judge_order",
+            "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_scoring_judges j LEFT JOIN bdc_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round ORDER BY j.judge_order",
         );
         $stmt->execute(["round" => $roundId]);
         $rows = $stmt->fetchAll();
@@ -253,7 +253,7 @@ final class AutomaticJudgeBrowserService
             return false;
         }
         $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM bdc_scoring_judges j LEFT JOIN bdc_scoring_judge_sessions s ON s.judge_id=j.id WHERE j.round_id=:round AND COALESCE(s.status,'not_started')<>'submitted'",
+            "SELECT COUNT(*) FROM bdc_scoring_judges j LEFT JOIN bdc_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round AND COALESCE(s.status,'not_started')<>'submitted'",
         );
         $stmt->execute(["round" => $roundId]);
         return (int) $stmt->fetchColumn() === 0;
@@ -309,7 +309,7 @@ final class AutomaticJudgeBrowserService
     private static function sessionForJudge(PDO $pdo, int $judgeId): ?array
     {
         $stmt = $pdo->prepare(
-            "SELECT * FROM bdc_scoring_judge_sessions WHERE judge_id=:judge LIMIT 1",
+            "SELECT * FROM bdc_scoring_judge_sessions WHERE judge_id=:judge ORDER BY id DESC LIMIT 1",
         );
         $stmt->execute(["judge" => $judgeId]);
         return $stmt->fetch() ?: null;
