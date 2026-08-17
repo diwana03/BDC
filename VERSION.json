@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev263",
-  "build": 2969,
+  "version": "2.3.3-dev264",
+  "build": 2970,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds concise dynamic Top-N Final judge guidance with explicit NO RANK instructions",
+    "Adds a one-minute projector backoff when the host returns HTTP 429",
     "Prevents portal-wide 429 request storms by throttling live polling and pausing hidden tabs",
     "Adds an optional used-rank highlighter and available-placement summary for Final judges",
     "Adds private per-couple judge comments and notification-based Final rank moving",
