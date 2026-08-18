@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev285",
-  "build": 2991,
+  "version": "2.3.3-dev286",
+  "build": 2992,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Improves the shared Test and Live Final matrix with P-number pair labels, named podium results and no SUM column",
     "Prevents the Automatic Test wrapper from injecting Test controls into a Live Automatic scoring dashboard",
     "Routes Automatic Judge Live Scoring through stable gateways across Test, Live Heats, Live Semifinal and Live Final dashboards",
     "Serves Automatic Test Judge Live Scoring through the known-working Automatic screen gateway to eliminate direct-endpoint 404 failures",
