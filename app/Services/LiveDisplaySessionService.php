@@ -61,9 +61,10 @@ final class LiveDisplaySessionService
         self::ensure($pdo);
         $token = bin2hex(random_bytes(24));
         $pdo->prepare(
-            "INSERT INTO bdc_live_display_sessions(event_id,active_event_id,data_mode,token_hash,token_hint,token_value,updated_by) VALUES(:e,:e,:m,:h,:hint,:token,:u) ON DUPLICATE KEY UPDATE active_event_id=VALUES(active_event_id),group_name=NULL,token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),token_value=VALUES(token_value),is_enabled=1,results_unlocked=0,screen_type='holding',reveal_place=NULL,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=VALUES(updated_by),updated_at=NOW()",
+            "INSERT INTO bdc_live_display_sessions(event_id,active_event_id,data_mode,token_hash,token_hint,token_value,updated_by) VALUES(:e,:ae,:m,:h,:hint,:token,:u) ON DUPLICATE KEY UPDATE active_event_id=VALUES(active_event_id),group_name=NULL,token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),token_value=VALUES(token_value),is_enabled=1,results_unlocked=0,screen_type='holding',reveal_place=NULL,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=VALUES(updated_by),updated_at=NOW()",
         )->execute([
             "e" => $eventId,
+            "ae" => $eventId,
             "m" => $test ? "test" : "real",
             "h" => hash("sha256", $token),
             "hint" => substr($token, 0, 8),
