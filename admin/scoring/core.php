@@ -590,12 +590,12 @@ try{
    ScoringBackupService::create($pdo,(int)$_POST['round_id'],false,$userId,'automatic',$action,'Before '.str_replace('_',' ',$action));
   }
   if($action==='create_scoring_backup'){
-   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can create protected scoring backups.');
+   if(!Auth::canManageScoringBackups())throw new RuntimeException('Only an Admin, Scorer, Master Scorer or Super Admin can create protected scoring backups.');
    $roundId=(int)($_POST['round_id']??0);if(!loadRound($pdo,$roundId))throw new RuntimeException('Scoring round not found.');
    $backupId=ScoringBackupService::create($pdo,$roundId,false,$userId,'manual','manual_backup',(string)($_POST['backup_label']??''));
    auditScoring($pdo,$roundId,$userId,'manual_scoring_backup_created',['backup_id'=>$backupId]);$notice='Protected scoring backup #'.$backupId.' created.';
   }elseif($action==='restore_scoring_backup'){
-   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can restore scoring backups.');
+   if(!Auth::canManageScoringBackups())throw new RuntimeException('Only an Admin, Scorer, Master Scorer or Super Admin can restore scoring backups.');
    $roundId=(int)($_POST['round_id']??0);$confirmation=strtoupper(trim((string)($_POST['restore_confirmation']??'')));if($confirmation!=='RESTORE SCORES')throw new RuntimeException('Type RESTORE SCORES to confirm recovery.');
    $restored=ScoringBackupService::restore($pdo,(int)($_POST['backup_id']??0),$roundId,false,$userId,(string)($_POST['restore_reason']??''));$notice='Scoring backup #'.$restored['id'].' restored. A safety copy of the previous state was created first.';
   }elseif($action==='reopen_completed_round'){

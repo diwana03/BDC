@@ -15,6 +15,7 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php $sidebarLink('admin/events/', '▣', 'Events & Tickets'); ?>
     <?php $sidebarLink('admin/registrations/', '☷', 'Registrations'); ?>
     <?php $sidebarLink('admin/scoring/', '⌁', 'Scoring Dashboard', 'NEW'); ?>
+    <?php $sidebarLink('admin/scoring-backups/', '↶', 'Scoring Backups'); ?>
 </div></details>
 
 <details class="admin-nav-group-v203"><summary>People</summary><div class="admin-nav-group-links-v203">

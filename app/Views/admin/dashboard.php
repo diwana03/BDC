@@ -106,7 +106,7 @@ if (
  const readState=name=>{try{return localStorage.getItem('bdc-admin-nav-'+name)}catch(e){return null}};
  const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
-  'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard'],
+  'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard','Scoring Backups'],
   'People':['Competitors','Judge Database','Identity Matches','Profile Requests'],
   'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],
   'Testing & System':['Scoring Tests Dashboard','Backup & Recovery','Storage Usage','Release Manager'],
@@ -173,6 +173,8 @@ if (
 ) ?>">＋ Create Event</a><a href="<?= e(
     url("admin/scoring/"),
 ) ?>">⌁ Scoring Dashboard</a><a href="<?= e(
+    url("admin/scoring-backups/"),
+) ?>">↶ Scoring Backups</a><a href="<?= e(
     url("admin/completed-events/"),
 ) ?>">✓ Completed Events</a><a href="<?= e(
     url("admin/archived-events/"),

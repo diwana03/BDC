@@ -89,6 +89,11 @@ final class Auth
         return self::check() && in_array((string)(self::user()['role'] ?? ''),['super_admin','master_scorer','scorer'],true);
     }
 
+    public static function canManageScoringBackups(): bool
+    {
+        return self::check() && in_array((string)(self::user()['role'] ?? ''),['super_admin','admin','master_scorer','scorer'],true);
+    }
+
     public static function requireSuperAdmin(): void
     {
         self::requireAdmin();
