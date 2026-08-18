@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev279",
-  "build": 2985,
+  "version": "2.3.3-dev280",
+  "build": 2986,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a compact live My Final Ranking popup with mobile and desktop rank-to-bib tables",
     "Renames the BDC Open display label globally to Bachata Open without changing stored category keys",
     "Renames the BDC Rising Star display label globally to Bachata Rising without changing stored category keys",
     "Restores the Bachata Rising Test division workflow by loading its special-category service dependency",
