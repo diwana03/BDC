@@ -575,7 +575,7 @@ try{
    $division=(string)($_POST['division']??'novice');
    $roundType=(string)($_POST['round_type']??'heats');
    $tier=(int)($_POST['competition_tier']??2);
-   if(!in_array($division,['novice','intermediate','advanced','all_star'],true))$division='novice';
+   if(!in_array($division,['novice','intermediate','advanced','all_star'],true)&&!SpecialCategoryService::isSpecial($division))throw new RuntimeException('Invalid division.');
    if(!in_array($roundType,['heats','final'],true))$roundType='heats';
    if(!in_array($tier,[1,2,3],true))$tier=2;
 
