@@ -135,14 +135,14 @@ if ($type === "matching") {
     $jq->execute(["r"=>$roundId]);
     $matrixJudges=$jq->fetchAll();
     if($isFinalMatrix){
-        $q=$pdo->prepare("SELECT fp.id pair_id,fp.pair_number,le.display_name leader_name,fe.display_name follower_name,COALESCE(fr.final_rank,0) rank_number,COALESCE(fr.placement_sum,0) total_score FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$finalResultTable} fr ON fr.round_id=fp.round_id AND fr.pair_id=fp.id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY CASE WHEN fr.final_rank IS NULL THEN 1 ELSE 0 END,fr.final_rank,fp.pair_number");
+        $q=$pdo->prepare("SELECT fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,COALESCE(fr.final_rank,0) rank_number,COALESCE(fr.placement_sum,0) total_score FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id LEFT JOIN {$finalResultTable} fr ON fr.round_id=fp.round_id AND fr.pair_id=fp.id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY CASE WHEN fr.final_rank IS NULL THEN 1 ELSE 0 END,fr.final_rank,fp.pair_number");
         $q->execute(["r"=>$roundId]);$items=$q->fetchAll();
         $finalMarkTable=$test?"bdc_test_scoring_final_marks":"bdc_scoring_final_marks";
         $mq=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM {$finalMarkTable} WHERE round_id=:r");
         $mq->execute(["r"=>$roundId]);
         foreach($mq->fetchAll() as $mark)$matrixMarks[(int)$mark["pair_id"]][(int)$mark["judge_id"]]=(int)$mark["rank_value"];
     }else{
-        $q=$pdo->prepare("SELECT se.id,se.bib_number,se.display_name,se.dance_role,COALESCE(sr.rank_number,0) official_rank,COALESCE(SUM(m.weighted_score),0) total_score FROM {$entryTable} se LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id WHERE se.round_id=:r AND se.entry_status='active' GROUP BY se.id,se.bib_number,se.display_name,se.dance_role,sr.rank_number ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name");
+        $q=$pdo->prepare("SELECT se.id,se.bib_number,se.display_name,se.dance_role,c.country,COALESCE(sr.rank_number,0) official_rank,COALESCE(SUM(m.weighted_score),0) total_score FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id WHERE se.round_id=:r AND se.entry_status='active' GROUP BY se.id,se.bib_number,se.display_name,se.dance_role,c.country,sr.rank_number ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name");
         $q->execute(["r"=>$roundId]);$items=$q->fetchAll();
         $mq=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank FROM {$markTable} WHERE round_id=:r");
         $mq->execute(["r"=>$roundId]);
@@ -152,12 +152,13 @@ if ($type === "matching") {
 } elseif ($type === "heats_scores") {
     $title = "LIVE CONTESTANT SCORES";
     $q = $pdo->prepare(
-        "SELECT sr.rank_number AS official_rank,COALESCE(SUM(m.weighted_score),sr.total_score,0) total_score,COALESCE(sr.result_status,'provisional') result_status,se.bib_number,se.display_name,se.dance_role
+        "SELECT sr.rank_number AS official_rank,COALESCE(SUM(m.weighted_score),sr.total_score,0) total_score,COALESCE(sr.result_status,'provisional') result_status,se.bib_number,se.display_name,se.dance_role,c.country
          FROM {$entryTable} se
+         LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id
          LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id
          LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id
          WHERE se.round_id=:r AND se.entry_status='active'
-         GROUP BY sr.rank_number,sr.total_score,sr.result_status,se.id,se.bib_number,se.display_name,se.dance_role
+         GROUP BY sr.rank_number,sr.total_score,sr.result_status,se.id,se.bib_number,se.display_name,se.dance_role,c.country
          ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name",
     );
     $q->execute(["r" => $roundId]);
@@ -177,7 +178,7 @@ if ($type === "matching") {
         $rankLimit =
             $type === "winners" ? " AND fr.final_rank BETWEEN 1 AND 5" : "";
         $q = $pdo->prepare(
-            "SELECT fr.final_rank,fr.placement_sum AS total_score,fp.id pair_id,fp.pair_number,le.display_name leader_name,fe.display_name follower_name,lc.country leader_country,lc.photo_url leader_photo,fc.country follower_country,fc.photo_url follower_photo FROM {$finalResultTable} fr JOIN {$finalPairTable} fp ON fp.id=fr.pair_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fr.round_id=:r{$rankLimit} ORDER BY fr.final_rank ASC",
+            "SELECT fr.final_rank,fr.placement_sum AS total_score,fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib,lc.country leader_country,lc.photo_url leader_photo,fc.country follower_country,fc.photo_url follower_photo FROM {$finalResultTable} fr JOIN {$finalPairTable} fp ON fp.id=fr.pair_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fr.round_id=:r{$rankLimit} ORDER BY fr.final_rank ASC",
         );
         $q->execute(["r" => $roundId]);
         $items = $q->fetchAll();
@@ -238,6 +239,39 @@ $animalPhoto = static function (string $key) use ($animalPlaceholders): string {
     $index = abs((int) crc32($key)) % count($animalPlaceholders);
     return $animalPlaceholders[$index];
 };
+// Projection identity is never optional: every scoring/status view carries the
+// contestant bib and country flag in both Test and Live modes.
+if ($type === "score_matrix") {
+    foreach ($items as &$projectionItem) {
+        if ((string) $r["round_type"] === "final") {
+            $leaderFlag = CountryFlagService::emoji($projectionItem["leader_country"] ?? null);
+            $followerFlag = CountryFlagService::emoji($projectionItem["follower_country"] ?? null);
+            $projectionItem["leader_name"] = "BIB " . ($projectionItem["leader_bib"] ?: "—") . ($leaderFlag !== "" ? " " . $leaderFlag : "") . " " . $projectionItem["leader_name"];
+            $projectionItem["follower_name"] = "BIB " . ($projectionItem["follower_bib"] ?: "—") . ($followerFlag !== "" ? " " . $followerFlag : "") . " " . $projectionItem["follower_name"];
+        } else {
+            $flag = CountryFlagService::emoji($projectionItem["country"] ?? null);
+            if ($flag !== "") $projectionItem["display_name"] = $flag . " " . $projectionItem["display_name"];
+        }
+    }
+    unset($projectionItem);
+} elseif ($type === "heats_scores") {
+    foreach ($items as &$projectionItem) {
+        $flag = CountryFlagService::emoji($projectionItem["country"] ?? null);
+        if ($flag !== "") $projectionItem["display_name"] = $flag . " " . $projectionItem["display_name"];
+    }
+    unset($projectionItem);
+} elseif (in_array($type, ["final_results", "results"], true)) {
+    foreach ($items as &$projectionItem) {
+        if (isset($projectionItem["pair_number"])) {
+            $leaderFlag = CountryFlagService::emoji($projectionItem["leader_country"] ?? null);
+            $followerFlag = CountryFlagService::emoji($projectionItem["follower_country"] ?? null);
+            $projectionItem["leader_name"] = "P" . (int) $projectionItem["pair_number"] . " · BIB " . ($projectionItem["leader_bib"] ?: "—") . ($leaderFlag !== "" ? " " . $leaderFlag : "") . " " . $projectionItem["leader_name"];
+            $projectionItem["follower_name"] = "BIB " . ($projectionItem["follower_bib"] ?: "—") . ($followerFlag !== "" ? " " . $followerFlag : "") . " " . $projectionItem["follower_name"];
+        }
+    }
+    unset($projectionItem);
+}
+
 $layout = ProjectionLayoutService::resolve(
     (string) $settings["screen_format"],
     max(1, count($items)),

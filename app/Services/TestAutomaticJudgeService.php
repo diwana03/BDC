@@ -160,6 +160,7 @@ final class TestAutomaticJudgeService
     public static function allSubmitted(PDO $pdo, int $roundId): bool
     {
         self::syncRound($pdo, $roundId);
+        self::repairIncompleteFinalSubmissions($pdo,$roundId);
         $count = $pdo->prepare(
             "SELECT COUNT(*) FROM bdc_test_scoring_judges WHERE round_id=:round",
         );
@@ -172,6 +173,16 @@ final class TestAutomaticJudgeService
         );
         $stmt->execute(["round" => $roundId]);
         return (int) $stmt->fetchColumn() === 0;
+    }
+
+    private static function repairIncompleteFinalSubmissions(PDO $pdo,int $roundId):void
+    {
+        $roundStmt=$pdo->prepare("SELECT round_type,callback_count FROM bdc_test_scoring_rounds WHERE id=:round");$roundStmt->execute(["round"=>$roundId]);$round=$roundStmt->fetch();if(!$round||$round["round_type"]!=="final")return;
+        $pairCount=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_final_pairs WHERE round_id=:round AND pairing_status='confirmed'");$pairCount->execute(["round"=>$roundId]);$required=min((int)$pairCount->fetchColumn(),max(1,(int)($round["callback_count"]??1)));if($required<1)return;
+        $sessions=$pdo->prepare("SELECT s.id,s.judge_id FROM bdc_test_scoring_judge_sessions s JOIN bdc_test_scoring_judges j ON j.id=s.judge_id WHERE j.round_id=:round AND s.status='submitted' AND s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id)");$sessions->execute(["round"=>$roundId]);
+        $valid=$pdo->prepare("SELECT COUNT(*) total,COUNT(DISTINCT fm.rank_value) unique_total,MIN(fm.rank_value) minimum,MAX(fm.rank_value) maximum FROM bdc_test_scoring_final_marks fm JOIN bdc_test_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' WHERE fm.round_id=:round AND fm.judge_id=:judge AND fm.rank_value IS NOT NULL");
+        $reopen=$pdo->prepare("UPDATE bdc_test_scoring_judge_sessions SET status='scoring',submitted_at=NULL,unlocked_at=NOW(),unlock_reason='System reopened an incomplete Final submission after pairing data changed.' WHERE id=:id AND status='submitted'");
+        foreach($sessions->fetchAll() as $session){$valid->execute(["round"=>$roundId,"judge"=>$session["judge_id"]]);$state=$valid->fetch()?:[];if((int)($state["total"]??0)!==$required||(int)($state["unique_total"]??0)!==$required||(int)($state["minimum"]??0)!==1||(int)($state["maximum"]??0)!==$required)$reopen->execute(["id"=>$session["id"]]);}
     }
 
     public static function generateAndSubmitAll(PDO $pdo, int $roundId): void
@@ -310,6 +321,9 @@ final class TestAutomaticJudgeService
             "yes_count" => 10,
         ];
         $final = (string) $round["round_type"] === "final";
+        if ($final) {
+            self::repairIncompleteFinalSubmissions($pdo, $roundId);
+        }
         $yesLimit = max(0, (int) $round["yes_count"]);
         $stmt = $pdo->prepare(
             "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_test_scoring_judges j LEFT JOIN bdc_test_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round ORDER BY j.judge_order",
@@ -333,9 +347,6 @@ final class TestAutomaticJudgeService
                     "judge" => $row["judge_id"],
                 ]);
                 $done = (int) $doneStmt->fetchColumn();
-                if ($submitted) {
-                    $done = $total;
-                }
                 $row["leaders_done"] = $done;
                 $row["leaders_total"] = $total;
                 $row["followers_done"] = 0;

@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev288",
-  "build": 2994,
+  "version": "2.3.3-dev289",
+  "build": 2995,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs stale submitted Final judge sessions when their saved placements are incomplete or missing",
+    "Shows contestant bib numbers and country flags by default throughout shared Test and Live projection status views",
+    "Locks Final pairing replacement after judging starts and protects Final cancellation with typed confirmation",
     "Adds tier-aware Heats and Semifinal instructions to the opening criteria and active judge scoring screens across Test and Live",
     "Replaces basic projector beeps with synchronized cinematic countdown, reveal, fireworks, celebration, laser and champion sound layers",
     "Aligns the shared Final matrix, removes its repeated provisional label and formats couples as #P1, #P2 and onward",

@@ -1012,6 +1012,7 @@ try{
    $notice=ucfirst($nextType).' round opened with '.$moved['leader'].' Leaders and '.$moved['follower'].' Followers. Automatic Tier '.$tierInfo['tier'].' uses the larger individual role count of '.$tierInfo['largest'].'.';
   }elseif($action==='cancel_child_round'){
    $roundId=(int)($_POST['round_id']??0);
+   if(strtoupper(trim((string)($_POST['cancel_final_confirmation']??'')))!=='CANCEL FINAL')throw new RuntimeException('Type CANCEL FINAL to unlock this action.');
    $child=loadRound($pdo,$roundId);
    if(!$child||!(int)$child['parent_round_id'])throw new RuntimeException('This round cannot be cancelled.');
    $parentId=(int)$child['parent_round_id'];
@@ -1260,6 +1261,7 @@ try{
    $roundId=(int)($_POST['round_id']??0);
    $roundForPairing=loadRound($pdo,$roundId);
    if(!$roundForPairing||$roundForPairing['round_type']!=='final')throw new RuntimeException('Final round not found.');
+   if(App\Services\RandomPairingService::scoringStarted($pdo,$roundId,true))throw new RuntimeException('Test Final pairing is locked because judging has started. Use the authorised REMATCH override before changing couples.');
    $pairs=$_POST['pair']??[];
    $pdo->beginTransaction();
    try{
@@ -1642,12 +1644,16 @@ $csrf=Csrf::token();
   <p class="text-muted mb-0">Match fixed couples first. Repository publication will appear only after Final scores are submitted and previewed.</p>
  </div>
  <?php if((int)$round['parent_round_id']>0):?>
- <form method="post" onsubmit="return confirm('Cancel this Final draft and return to the previous round? Final pairing data will be removed.');">
-  <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-  <input type="hidden" name="action" value="cancel_child_round">
-  <input type="hidden" name="round_id" value="<?=$roundId?>">
-  <button class="btn btn-outline-danger btn-sm">← Cancel Final &amp; Return</button>
- </form>
+ <details class="border border-danger-subtle rounded px-2 py-1">
+  <summary class="btn btn-outline-secondary btn-sm">🔒 Cancel Final &amp; Return</summary>
+  <form method="post" class="mt-2" onsubmit="return confirm('This will delete the Test Final draft and its pairing data, then reopen the previous round. Continue?');">
+   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
+   <input type="hidden" name="action" value="cancel_child_round">
+   <input type="hidden" name="round_id" value="<?=$roundId?>">
+   <label class="form-label small fw-semibold">Type CANCEL FINAL to unlock</label>
+   <div class="input-group input-group-sm" style="min-width:290px"><input class="form-control" name="cancel_final_confirmation" autocomplete="off" required placeholder="CANCEL FINAL"><button class="btn btn-danger">Cancel Final</button></div>
+  </form>
+ </details>
  <?php endif;?>
 </div>
 </div></div>
