@@ -1749,9 +1749,9 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
  <?php if(($round['scoring_mode']??'manual')==='automated'):?>
  <div class="card border-primary mb-3"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
   <div><strong>Automatic Final Judge Scoring</strong><div class="small text-muted">Secure judge links, sharing, submission progress and rescore controls.</div></div>
-  <a class="btn btn-sm btn-outline-primary" href="judge-control.php?round_id=<?=$roundId?>" target="_blank">Open Judge Links</a>
+  <a class="btn btn-sm btn-outline-primary" href="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" target="_blank">Open Judge Links</a>
  </div><div class="card-body p-0">
-  <iframe title="Automatic Final Judge Links" src="judge-control.php?round_id=<?=$roundId?>" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe>
+  <iframe title="Automatic Final Judge Links" src="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe>
  </div></div>
  <?php endif;?>
 
