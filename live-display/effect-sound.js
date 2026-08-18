@@ -1,13 +1,17 @@
 (() => {
   'use strict';
   const soundRequested = new URLSearchParams(location.search).get('sound') === '1';
-  let audio = null;
-  let enabled = soundRequested;
-  let lastClass = '';
+  let audio = null, master = null, enabled = soundRequested, lastClass = '';
 
   const unlock = async () => {
     if (!enabled) return;
-    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audio) {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+      master = audio.createDynamicsCompressor();
+      master.threshold.value = -16; master.knee.value = 12; master.ratio.value = 5;
+      master.attack.value = .004; master.release.value = .24;
+      master.connect(audio.destination);
+    }
     try { await audio.resume(); } catch (_) {}
   };
   if (soundRequested) {
@@ -16,27 +20,63 @@
     addEventListener('keydown', unlock, { once: true });
   }
 
-  const tone = (frequency, duration, type = 'sine', gain = 0.08, delay = 0) => {
-    if (!enabled || !audio || audio.state !== 'running') return;
-    const oscillator = audio.createOscillator();
-    const volume = audio.createGain();
-    const start = audio.currentTime + delay;
+  const ready = () => enabled && audio && master && audio.state === 'running';
+  const tone = (frequency, duration, type = 'sine', gain = .08, delay = 0, endFrequency = frequency) => {
+    if (!ready()) return;
+    const oscillator = audio.createOscillator(), volume = audio.createGain(), start = audio.currentTime + delay;
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, start);
-    volume.gain.setValueAtTime(0.0001, start);
-    volume.gain.exponentialRampToValueAtTime(gain, start + 0.02);
-    volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    oscillator.connect(volume).connect(audio.destination);
-    oscillator.start(start);
-    oscillator.stop(start + duration + 0.03);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), start + duration);
+    volume.gain.setValueAtTime(.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + Math.min(.018, duration / 4));
+    volume.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    oscillator.connect(volume).connect(master);
+    oscillator.start(start); oscillator.stop(start + duration + .03);
+  };
+  const noise = (duration, gain = .1, delay = 0, highpass = 120, lowpass = 12000) => {
+    if (!ready()) return;
+    const length = Math.ceil(audio.sampleRate * duration), buffer = audio.createBuffer(1, length, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    const source = audio.createBufferSource(), hp = audio.createBiquadFilter(), lp = audio.createBiquadFilter(), volume = audio.createGain();
+    const start = audio.currentTime + delay;
+    hp.type = 'highpass'; hp.frequency.value = highpass; lp.type = 'lowpass'; lp.frequency.value = lowpass;
+    volume.gain.setValueAtTime(gain, start); volume.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    source.buffer = buffer; source.connect(hp).connect(lp).connect(volume).connect(master); source.start(start);
+  };
+  const impact = (delay = 0, strength = 1) => {
+    tone(105, .52, 'sine', .16 * strength, delay, 42);
+    tone(62, .7, 'sine', .13 * strength, delay + .015, 30);
+    noise(.24, .12 * strength, delay, 45, 2600);
+  };
+  const sparkle = (delay = 0, gain = .045) => {
+    [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, .34, 'sine', gain, delay + i * .075, f * 1.04));
+  };
+  const firework = (delay, pitch = 1) => {
+    tone(190 * pitch, .55, 'sine', .055, delay, 720 * pitch);
+    impact(delay + .58, .72); noise(.75, .105, delay + .58, 650, 11000);
+    for (let i = 0; i < 9; i++) tone((780 + Math.random() * 1500) * pitch, .18 + Math.random() * .25, 'sine', .018, delay + .62 + Math.random() * .48);
   };
   const play = (effect) => {
-    if (effect === 'countdown') [440, 480, 520, 580, 700].forEach((frequency, i) => tone(frequency, .16, 'square', .045, i));
-    else if (effect === 'drumroll') for (let i = 0; i < 180; i++) tone(72 + Math.min(90, i * .5), .11, 'triangle', .032, i * .16);
-    else if (effect === 'fireworks') for (let i = 0; i < 6; i++) tone(95 + Math.random() * 180, .48, 'sawtooth', .04, i * .34);
-    else if (effect === 'confetti' || effect === 'gold_rain') [523, 659, 784, 1047].forEach((f, i) => tone(f, .38, 'sine', .045, i * .1));
-    else if (effect === 'laser_sweep') [880, 660, 440, 990].forEach((f, i) => tone(f, .22, 'sawtooth', .035, i * .11));
-    else if (effect === 'champion_impact') { tone(64, .8, 'sine', .12); tone(523, .9, 'triangle', .06, .08); }
+    if (!ready()) return;
+    if (effect === 'countdown') {
+      [0, 1, 2, 3, 4].forEach((delay, i) => { impact(delay, .48 + i * .07); tone(440 + i * 70, .18, 'triangle', .07, delay); });
+      impact(4.88, 1.15); sparkle(4.9, .052);
+    } else if (effect === 'drumroll') {
+      for (let i = 0; i < 40; i++) { const delay = i * .12; noise(.055, .025 + i * .0012, delay, 900, 6500); tone(i % 2 ? 150 : 118, .07, 'triangle', .026 + i * .0008, delay, 82); }
+      impact(4.86, 1.05);
+    } else if (effect === 'fireworks') {
+      [0, .72, 1.42, 2.24, 3.05, 4.02].forEach((delay, i) => firework(delay, .86 + (i % 3) * .12));
+    } else if (effect === 'confetti') {
+      impact(0, .72); [523, 659, 784].forEach((f, i) => tone(f, 1.1, 'triangle', .055, i * .045)); sparkle(.22, .05);
+    } else if (effect === 'gold_rain') {
+      impact(0, .82); [392, 494, 587, 784].forEach((f, i) => tone(f, 1.45, 'sine', .05, i * .09)); sparkle(.32, .055);
+    } else if (effect === 'laser_sweep') {
+      tone(1450, .72, 'sawtooth', .045, 0, 170); tone(320, .58, 'square', .03, .28, 1780); noise(.32, .045, .42, 1800, 12000);
+    } else if (effect === 'champion_impact') {
+      impact(0, 1.25); [262, 330, 392, 523].forEach((f, i) => tone(f, 1.75, i < 2 ? 'triangle' : 'sine', .065, .1 + i * .055));
+      sparkle(.34, .06); firework(.72, 1.08); firework(1.45, .92);
+    }
   };
   new MutationObserver(() => {
     const current = document.getElementById('fx')?.className || '';
