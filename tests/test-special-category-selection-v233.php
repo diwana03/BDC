@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 $source=file_get_contents(__DIR__.'/../admin/scoring-tests/index.php');
 if($source===false){fwrite(STDERR,"Unable to read Test scoring dashboard.\n");exit(1);}
+if(!str_contains($source,'use App\\Services\\SpecialCategoryService;')){
+ fwrite(STDERR,"Test scoring dashboard does not import SpecialCategoryService.\n");exit(1);
+}
 
 $start=strpos($source,"elseif(\$action==='generate_test_event')");
 $end=$start===false?false:strpos($source,"elseif(\$action==='generate_test_competitors')",$start);

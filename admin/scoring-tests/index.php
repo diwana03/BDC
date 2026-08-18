@@ -25,6 +25,7 @@ use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\ResultStorageService;
 use App\Services\NextRankedFinalistService;
+use App\Services\SpecialCategoryService;
 use App\Services\TestAutomaticJudgeService;
 
 Auth::requireAdmin();
