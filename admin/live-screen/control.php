@@ -23,7 +23,21 @@ if (!$round) {
     http_response_code(404);
     exit("Round not found.");
 }
-$eventId = (int) $round["event_id"];
+$roundEventId = (int) $round["event_id"];
+$sessionId = (int) ($_GET["session_id"] ?? ($_POST["session_id"] ?? 0));
+$session = $sessionId > 0 ? LiveDisplaySessionService::byId($pdo, $sessionId, $test) : null;
+if ($sessionId > 0 && !$session) {
+    http_response_code(404);
+    exit("Festival projection session not found.");
+}
+if ($session) {
+    $memberIds = array_map(fn(array $row): int => (int) $row["id"], LiveDisplaySessionService::members($pdo, $sessionId, $test));
+    if (!in_array($roundEventId, $memberIds, true)) {
+        http_response_code(403);
+        exit("This event is not part of the selected festival projection.");
+    }
+}
+$eventId = $session ? (int) $session["event_id"] : $roundEventId;
 $settings = ProjectionSettingsService::get($pdo, $roundId, $test);
 $notice = $_SESSION["projection_settings_notice"] ?? "";
 $error = "";
@@ -32,6 +46,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? nul
   try {
     $action = (string) ($_POST["action"] ?? "");
     if ($action === "generate_live") {
+        if ($sessionId > 0) {
+            throw new RuntimeException("The shared festival link is managed from Multi-Event Festival Projection.");
+        }
         LiveDisplaySessionService::generate($pdo, $eventId, $test, (int) (Auth::user()["id"] ?? 0));
         $notice = "Live Display link generated. Give this one link to the projector operator.";
     } elseif ($action === "generate_emcee" && $round["round_type"] === "final") {
@@ -45,19 +62,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? nul
       $error = $exception->getMessage();
   }
 }
-$session = LiveDisplaySessionService::forEvent($pdo, $eventId, $test);
+$session = $sessionId > 0 ? LiveDisplaySessionService::byId($pdo, $sessionId, $test) : LiveDisplaySessionService::forEvent($pdo, $eventId, $test);
 $emceeLink = $round["round_type"] === "final" ? RandomPairingService::activeLink($pdo, $roundId, $test) : null;
 $randomMatchLocked = $round["round_type"] === "final" && RandomPairingService::scoringStarted($pdo, $roundId, $test);
 $selection = ($_GET["selection"] ?? "") === "1" || $embed;
 if ($selection && $session) {
-    $session = LiveDisplaySessionService::beginSelection(
-        $pdo,
-        $eventId,
-        $roundId,
-        $test,
-        (int) (Auth::user()["id"] ?? 0),
-    );
-    $notice = "Holding Screen selected. Previous effects and projector loop cleared.";
+    if ((int)($session["current_round_id"] ?? 0) !== $roundId || (int)($session["active_event_id"] ?? $session["event_id"]) !== $roundEventId) {
+        $session = LiveDisplaySessionService::beginSelection($pdo,$eventId,$roundId,$test,(int)(Auth::user()["id"]??0));
+        $notice = "Holding Screen selected. Event changed safely; previous effects and projector loop were cleared.";
+    }
 }
 $stage = ucfirst((string) $round["round_type"]);
 $types =
@@ -135,11 +148,11 @@ if (
     $displayUrl,
 ) ?>">Open Muted</a><a target="_blank" rel="noopener" class="btn btn-success projector-open" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Every Open action first switches the audience display to the Holding Screen. Choose sound here before the audience sees the projector. The public screen has no sound controls.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
-) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
+) ?>"><input type="hidden" name="session_id" value="<?= $sessionId ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"
     : "real" ?>"><input type="hidden" name="embed" value="<?= $embed
     ? "1"
-    : "0" ?>"><button class="btn btn-dark" name="action" value="generate_live">Generate / Regenerate Live Display Link</button></form></div></div><?php if ($round["round_type"] === "final"): ?><div id="emcee-match" class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Emcee Matching · Event Projection</h2><p class="text-muted mb-2">Restricted Emcee access controls the matching view on this event's existing Live Display. There is no second projector link.</p><?php if ($emceeLink): ?><div class="input-group mb-2"><input id="emceeUrl" class="form-control" readonly value="<?= e((string) $emceeLink["url"]) ?>"><button type="button" class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('emceeUrl').value)">Copy Emcee Access</button><a target="_blank" rel="noopener" class="btn btn-danger" href="<?= e((string) $emceeLink["url"]) ?>">Open Emcee Control</a></div><div class="small text-muted">Access expires <?= e((string) $emceeLink["expires_at"]) ?>.</div><?php else: ?><p class="text-muted">Generate restricted Emcee access when the host is ready to randomize the Final couples.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(Csrf::token()) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test ? "test" : "real" ?>"><input type="hidden" name="embed" value="<?= $embed ? "1" : "0" ?>"><button class="btn btn-outline-danger" name="action" value="generate_emcee"><?= $emceeLink ? "Regenerate" : "Generate" ?> Emcee Access</button></form></div></div><?php endif; ?><form class="card settings shadow-sm mb-4" method="post" action="settings.php"><div class="card-body"><input type="hidden" name="_csrf" value="<?= e(
+    : "0" ?>"><?php if($sessionId<1):?><button class="btn btn-dark" name="action" value="generate_live">Generate / Regenerate Live Display Link</button><?php else:?><span class="badge text-bg-dark">Shared Festival Link</span><?php endif;?></form></div></div><?php if ($round["round_type"] === "final"): ?><div id="emcee-match" class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Emcee Matching · Event Projection</h2><p class="text-muted mb-2">Restricted Emcee access controls the matching view on this event's existing Live Display. There is no second projector link.</p><?php if ($emceeLink): ?><div class="input-group mb-2"><input id="emceeUrl" class="form-control" readonly value="<?= e((string) $emceeLink["url"]) ?>"><button type="button" class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('emceeUrl').value)">Copy Emcee Access</button><a target="_blank" rel="noopener" class="btn btn-danger" href="<?= e((string) $emceeLink["url"]) ?>">Open Emcee Control</a></div><div class="small text-muted">Access expires <?= e((string) $emceeLink["expires_at"]) ?>.</div><?php else: ?><p class="text-muted">Generate restricted Emcee access when the host is ready to randomize the Final couples.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(Csrf::token()) ?>"><input type="hidden" name="session_id" value="<?= $sessionId ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test ? "test" : "real" ?>"><input type="hidden" name="embed" value="<?= $embed ? "1" : "0" ?>"><button class="btn btn-outline-danger" name="action" value="generate_emcee"><?= $emceeLink ? "Regenerate" : "Generate" ?> Emcee Access</button></form></div></div><?php endif; ?><form class="card settings shadow-sm mb-4" method="post" action="settings.php"><div class="card-body"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
 ) ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"
@@ -241,7 +254,7 @@ endforeach; ?></div><div class="border rounded p-3 mb-3"><div class="fw-bold">Pr
     ? "true"
     : "false" ?>;let resultsUnlocked=<?= !empty($session["results_unlocked"])
     ? "true"
-    : "false" ?>;async function postAction(data){const body=new URLSearchParams();body.set('_csrf',csrf);body.set('event_id',String(eventId));body.set('round_id',String(roundId));body.set('data_mode',<?= json_encode(
+    : "false" ?>;async function postAction(data){const body=new URLSearchParams();body.set('_csrf',csrf);body.set('session_id',<?=json_encode((string)$sessionId)?>);body.set('event_id',String(eventId));body.set('round_id',String(roundId));body.set('data_mode',<?= json_encode(
     $test ? "test" : "real",
 ) ?>);body.set('page_number',String(pageNumber.value||1));body.set('auto_page',String(autoPage.value||'0'));body.set('page_delay_seconds',String(pageDelay.value||30));body.set('loop_delay_seconds',String(loopDelay?.value||15));body.set('loop_screens',[...document.querySelectorAll('.loop-screen:checked')].map(x=>x.value).join(','));Object.entries(data).forEach(([k,v])=>body.set(k,String(v)));const r=await fetch('live-action.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','Accept':'application/json'},cache:'no-store',credentials:'same-origin',body:body.toString()});const text=await r.text();let j;try{j=JSON.parse(text)}catch{throw new Error('Controller returned non-JSON response ('+r.status+').');}if(!r.ok||!j.ok)throw new Error(j.error||('Update failed ('+r.status+').'));return j;}function paint(j){if(j.session){resultsUnlocked=!!j.session.results_unlocked;document.querySelectorAll('.feed').forEach(b=>{const active=b.dataset.screen===j.session.screen_type;b.classList.toggle('btn-danger',active&&b.dataset.screen!=='holding');b.classList.toggle('btn-outline-danger',!active&&b.dataset.screen!=='holding');b.classList.toggle('btn-dark',active&&b.dataset.screen==='holding');b.classList.toggle('btn-outline-dark',!active&&b.dataset.screen==='holding');});const rp=document.getElementById('podiumReveal');if(rp)rp.classList.toggle('d-none',j.session.screen_type!=='winners');if(liveState)liveState.textContent='LIVE STATE: '+String(j.session.screen_type||'holding').toUpperCase()+' · Round '+roundId+' · Version '+Number(j.session.state_version||0);if(stopLoop)stopLoop.disabled=!j.session.loop_enabled;syncLock();}msg.className='small mb-2 text-success';msg.textContent='Server accepted command. Projector state updated.';}function syncLock(){document.querySelectorAll('[data-protected="1"]').forEach(b=>{b.disabled=!resultsUnlocked;b.classList.toggle('locked',!resultsUnlocked);const raw=b.textContent.replace(/^🔒\s*/,'');b.textContent=(resultsUnlocked?'':'🔒 ')+raw;});const u=document.getElementById('unlockResults'),l=document.getElementById('lockResults');if(u){u.textContent=resultsUnlocked?'Results Reveal Unlocked':'Unlock Results Reveal';u.className='btn '+(resultsUnlocked?'btn-success':'btn-warning')+' btn-sm';if(l)l.disabled=!resultsUnlocked;}}document.querySelectorAll('.feed').forEach(b=>b.addEventListener('click',async()=>{try{msg.className='small mb-2 text-muted';msg.textContent='Sending '+b.dataset.screen+' to projector…';const extra={};const j=await postAction({action:'update',screen_type:b.dataset.screen,...extra});paint(j);}catch(e){console.error(e);msg.className='small mb-2 text-danger';msg.textContent='Projector command failed: '+e.message;}}));document.querySelectorAll('.effect').forEach(b=>b.addEventListener('click',async()=>{try{msg.className='small mb-2 text-muted';msg.textContent='Sending '+b.dataset.effect+' effect to projector…';paint(await postAction({action:'effect',effect_type:b.dataset.effect}));msg.textContent=(b.dataset.effect==='none'?'Projector effect cleared.':b.textContent.trim()+' sent to projector.');}catch(e){msg.className='small mb-2 text-danger';msg.textContent='Effect command failed: '+e.message;}}));document.querySelectorAll('.reveal').forEach(b=>b.addEventListener('click',async()=>{try{msg.className='small mb-2 text-muted';msg.textContent='Revealing podium '+b.dataset.place+'…';paint(await postAction({action:'update',screen_type:'winners',reveal_place:b.dataset.place}));}catch(e){msg.className='small mb-2 text-danger';msg.textContent='Podium command failed: '+e.message;}}));if(startLoop)startLoop.addEventListener('click',async()=>{const chosen=[...document.querySelectorAll('.loop-screen:checked')];if(chosen.length<2){alert('Select at least two tabs to start the loop.');return;}try{paint(await postAction({action:'update',screen_type:chosen[0].value,loop_enabled:'1'}));}catch(e){alert(e.message);}});if(stopLoop)stopLoop.addEventListener('click',async()=>{try{paint(await postAction({action:'update',screen_type:'holding',loop_enabled:'0'}));}catch(e){alert(e.message);}});const unlock=document.getElementById('unlockResults');if(unlock)unlock.addEventListener('click',async()=>{if(resultsUnlocked)return;if(!confirm('This can reveal official competition results on the live projector. Continue?'))return;try{paint(await postAction({action:'unlock_results'}));}catch(e){alert(e.message);}});const lock=document.getElementById('lockResults');if(lock)lock.addEventListener('click',async()=>{try{paint(await postAction({action:'lock_results'}));}catch(e){alert(e.message);}});if(copyBtn&&liveUrl)copyBtn.addEventListener('click',()=>navigator.clipboard.writeText(liveUrl.value));function customState(){if(!formatEl||!cwEl||!chEl)return;const on=formatEl.value==='custom';cwEl.disabled=!on;chEl.disabled=!on;}if(formatEl)formatEl.addEventListener('change',customState);customState();<?php if (
     $embed

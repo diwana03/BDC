@@ -23,7 +23,8 @@ $eventTable = $test ? "bdc_test_events" : "bdc_events";
 $eventStmt = $pdo->prepare(
     "SELECT name FROM {$eventTable} WHERE id=:id LIMIT 1",
 );
-$eventStmt->execute(["id" => $session["event_id"]]);
+$activeEventId=(int)($session["active_event_id"]??$session["event_id"]);
+$eventStmt->execute(["id" => $activeEventId]);
 $eventName = (string) ($eventStmt->fetchColumn() ?: "BACHATA DANCE COUNCIL");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 if (
@@ -56,7 +57,7 @@ $s = $pdo->prepare(
 );
 $s->execute(["id" => $roundId]);
 $r = $s->fetch();
-if (!$r || (int) $r["event_id"] !== (int) $session["event_id"]) {
+if (!$r || (int) $r["event_id"] !== $activeEventId) {
     http_response_code(404);
     exit("Selected round is not available for this Live Display.");
 }

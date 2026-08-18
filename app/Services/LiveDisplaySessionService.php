@@ -46,6 +46,11 @@ final class LiveDisplaySessionService
         } catch (\Throwable) {
         }
         foreach(["ALTER TABLE bdc_live_display_sessions ADD COLUMN effect_type VARCHAR(24) NULL AFTER screen_type","ALTER TABLE bdc_live_display_sessions ADD COLUMN effect_version BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER effect_type"] as $sql){try{$pdo->exec($sql);}catch(\Throwable){}}
+        foreach([
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN active_event_id BIGINT UNSIGNED NULL AFTER event_id",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN group_name VARCHAR(190) NULL AFTER data_mode",
+        ] as $sql){try{$pdo->exec($sql);}catch(\Throwable){}}
+        $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_live_display_session_events(session_id BIGINT UNSIGNED NOT NULL,event_id BIGINT UNSIGNED NOT NULL,sort_order INT UNSIGNED NOT NULL DEFAULT 0,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(session_id,event_id),INDEX idx_live_display_member_event(event_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
     public static function generate(
         PDO $pdo,
@@ -56,7 +61,7 @@ final class LiveDisplaySessionService
         self::ensure($pdo);
         $token = bin2hex(random_bytes(24));
         $pdo->prepare(
-            "INSERT INTO bdc_live_display_sessions(event_id,data_mode,token_hash,token_hint,token_value,updated_by) VALUES(:e,:m,:h,:hint,:token,:u) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),token_value=VALUES(token_value),is_enabled=1,results_unlocked=0,screen_type='holding',reveal_place=NULL,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=VALUES(updated_by),updated_at=NOW()",
+            "INSERT INTO bdc_live_display_sessions(event_id,active_event_id,data_mode,token_hash,token_hint,token_value,updated_by) VALUES(:e,:e,:m,:h,:hint,:token,:u) ON DUPLICATE KEY UPDATE active_event_id=VALUES(active_event_id),group_name=NULL,token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),token_value=VALUES(token_value),is_enabled=1,results_unlocked=0,screen_type='holding',reveal_place=NULL,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=VALUES(updated_by),updated_at=NOW()",
         )->execute([
             "e" => $eventId,
             "m" => $test ? "test" : "real",
@@ -65,7 +70,26 @@ final class LiveDisplaySessionService
             "token" => $token,
             "u" => $userId ?: null,
         ]);
+        $session=self::forEvent($pdo,$eventId,$test);
+        if($session){$pdo->prepare("DELETE FROM bdc_live_display_session_events WHERE session_id=:s")->execute(['s'=>$session['id']]);$pdo->prepare("INSERT INTO bdc_live_display_session_events(session_id,event_id,sort_order) VALUES(:s,:e,1)")->execute(['s'=>$session['id'],'e'=>$eventId]);}
         return $token;
+    }
+    public static function byId(PDO $pdo,int $sessionId,bool $test):?array
+    {
+        self::ensure($pdo);$s=$pdo->prepare("SELECT * FROM bdc_live_display_sessions WHERE id=:id AND data_mode=:m AND is_enabled=1 LIMIT 1");$s->execute(['id'=>$sessionId,'m'=>$test?'test':'real']);return $s->fetch()?:null;
+    }
+    public static function members(PDO $pdo,int $sessionId,bool $test):array
+    {
+        self::ensure($pdo);$eventTable=$test?'bdc_test_events':'bdc_events';$s=$pdo->prepare("SELECT e.id,e.name,e.event_date,se.sort_order FROM bdc_live_display_session_events se JOIN {$eventTable} e ON e.id=se.event_id WHERE se.session_id=:s ORDER BY se.sort_order,e.event_date,e.name");$s->execute(['s'=>$sessionId]);return $s->fetchAll();
+    }
+    public static function generateFestival(PDO $pdo,array $eventIds,bool $test,int $userId,string $name=''):array
+    {
+        self::ensure($pdo);$eventIds=array_values(array_unique(array_filter(array_map('intval',$eventIds),fn($id)=>$id>0)));if(count($eventIds)<2)throw new \RuntimeException('Select at least two events for a festival projection.');
+        $eventTable=$test?'bdc_test_events':'bdc_events';$roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';$marks=implode(',',array_fill(0,count($eventIds),'?'));$q=$pdo->prepare("SELECT DISTINCT e.id FROM {$eventTable} e JOIN {$roundTable} r ON r.event_id=e.id WHERE e.id IN ({$marks})");$q->execute($eventIds);$valid=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));if(count($valid)!==count($eventIds))throw new \RuntimeException('Every selected event must exist and contain at least one scoring round.');
+        $token=self::generate($pdo,$eventIds[0],$test,$userId);$session=self::forEvent($pdo,$eventIds[0],$test);if(!$session)throw new \RuntimeException('Festival projection could not be created.');
+        $label=trim($name);if($label==='')$label='Festival Projection';$pdo->prepare("UPDATE bdc_live_display_sessions SET group_name=:n,active_event_id=:e,current_round_id=NULL,screen_type='holding',effect_type=NULL,reveal_place=NULL,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=:u WHERE id=:s")->execute(['n'=>substr($label,0,190),'e'=>$eventIds[0],'u'=>$userId?:null,'s'=>$session['id']]);
+        $pdo->prepare("DELETE FROM bdc_live_display_session_events WHERE session_id=:s")->execute(['s'=>$session['id']]);$add=$pdo->prepare("INSERT INTO bdc_live_display_session_events(session_id,event_id,sort_order) VALUES(:s,:e,:o)");foreach($eventIds as $i=>$id)$add->execute(['s'=>$session['id'],'e'=>$id,'o'=>$i+1]);
+        return ['session'=>self::byId($pdo,(int)$session['id'],$test),'token'=>$token];
     }
     public static function byToken(PDO $pdo, string $token): ?array
     {
@@ -226,8 +250,9 @@ final class LiveDisplaySessionService
     public static function beginSelection(PDO $pdo,int $eventId,int $roundId,bool $test,int $userId):array
     {
         self::ensure($pdo);
-        $pdo->prepare("UPDATE bdc_live_display_sessions SET current_round_id=:r,screen_type='holding',effect_type=NULL,effect_version=effect_version+1,reveal_place=NULL,page_number=1,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")
-            ->execute(['r'=>$roundId,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
+        $session=self::forEvent($pdo,$eventId,$test);if(!$session)throw new \RuntimeException('Live Display link has not been generated.');$roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';$q=$pdo->prepare("SELECT event_id FROM {$roundTable} WHERE id=:r LIMIT 1");$q->execute(['r'=>$roundId]);$activeEvent=(int)$q->fetchColumn();if($activeEvent<1)throw new \RuntimeException('Selected projection round was not found.');$member=$pdo->prepare("SELECT 1 FROM bdc_live_display_session_events WHERE session_id=:s AND event_id=:e");$member->execute(['s'=>$session['id'],'e'=>$activeEvent]);if(!$member->fetchColumn())throw new \RuntimeException('Selected event is not part of this festival projection.');
+        $pdo->prepare("UPDATE bdc_live_display_sessions SET active_event_id=:ae,current_round_id=:r,screen_type='holding',effect_type=NULL,effect_version=effect_version+1,reveal_place=NULL,page_number=1,loop_enabled=0,loop_screens=NULL,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")
+            ->execute(['ae'=>$activeEvent,'r'=>$roundId,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
         return self::forEvent($pdo,$eventId,$test)?:[];
     }
 }

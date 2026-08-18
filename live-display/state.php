@@ -74,7 +74,7 @@ $resultTable = $test
     ? "bdc_test_scoring_results"
     : "bdc_scoring_results";
 $e = $pdo->prepare("SELECT name FROM {$eventTable} WHERE id=:id");
-$e->execute(["id" => $s["event_id"]]);
+$e->execute(["id" => (int)($s["active_event_id"]??$s["event_id"])]);
 $eventName = (string) ($e->fetchColumn() ?: "BDC Event");
 $roundId = (int) ($s["current_round_id"] ?? 0);
 $total = 1;

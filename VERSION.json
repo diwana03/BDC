@@ -1,11 +1,15 @@
 {
-  "version": "2.3.3-dev295",
-  "build": 3001,
+  "version": "2.3.3-dev296",
+  "build": 3002,
   "status": "development",
   "release_date": "2026-08-19",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds one shared Festival Live Projection session for multiple selected Jack and Jill events",
+    "Forces Holding Screen and clears effects whenever the active festival event or round changes",
+    "Keeps festival event selection, display data and projector controls isolated between Test and Live",
+    "Makes optimized projector fireworks brighter, larger and more visible without removing the particle and frame-rate limits",
     "Opens Live and Test projection controls in isolated new tabs while keeping Home and Dashboard navigation unchanged",
     "Consolidates archived scoring history into one final snapshot per round while retaining protected and latest emergency recovery checkpoints",
     "Adds a central Scoring Backups and Transactions page under Live Operations",
