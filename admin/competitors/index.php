@@ -248,7 +248,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                     <select class="form-select" name="division">
                         <option value="">All divisions</option>
                         <optgroup label="Career Divisions"><?php foreach (['novice','intermediate','advanced','all_star','professional','unknown'] as $item): ?><option value="<?=e($item)?>" <?=$division===$item?'selected':''?>><?=e(ucwords(str_replace('_',' ',$item)))?></option><?php endforeach;?></optgroup>
-                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>Bachata Rising</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>BDC Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option></optgroup>
+                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>Bachata Rising</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>Bachata Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option></optgroup>
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">

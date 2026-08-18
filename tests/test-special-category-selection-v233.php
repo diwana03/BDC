@@ -47,6 +47,9 @@ $categoryService=file_get_contents(__DIR__.'/../app/Services/SpecialCategoryServ
 if($categoryService===false||!str_contains($categoryService,"self::RISING=>'Bachata Rising'")){
  fwrite(STDERR,"Canonical Bachata Rising display label is missing.\n");exit(1);
 }
+if(!str_contains($categoryService,"self::OPEN=>'Bachata Open'")){
+ fwrite(STDERR,"Canonical Bachata Open display label is missing.\n");exit(1);
+}
 $labelSurfaces=[
  'judge-profile/index.php','register/index.php','admin/scoring-draft-form.php',
  'admin/judges/edit.php','admin/scoring/active-dashboard.php',
@@ -56,6 +59,7 @@ foreach($labelSurfaces as $path){
  $surface=file_get_contents(__DIR__.'/../'.$path);
  if($surface===false){fwrite(STDERR,"Unable to read label surface: {$path}\n");exit(1);}
  if(str_contains($surface,'BDC Rising'.' Star')){fwrite(STDERR,"Legacy Rising label remains in {$path}.\n");exit(1);}
+ if(str_contains($surface,'BDC'.' Open')){fwrite(STDERR,"Legacy Bachata Open label remains in {$path}.\n");exit(1);}
 }
 
-echo "Global Bachata Rising label checks passed.\n";
+echo "Global Bachata special-category label checks passed.\n";

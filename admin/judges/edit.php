@@ -153,7 +153,7 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 <div class="col-12">
 <label class="form-label d-block">Qualified divisions</label>
 <div class="row g-2">
-<?php foreach(['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced','bachata_rising'=>'Bachata Rising','bachata_open'=>'BDC Open','bachata_invitational'=>'Bachata Invitational','salsa_rising'=>'Salsa Rising','salsa_open'=>'Salsa Open','semi_pro'=>'Semi Pro','pro'=>'Pro','all_star'=>'All Star'] as $v=>$label):?>
+<?php foreach(['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced','bachata_rising'=>'Bachata Rising','bachata_open'=>'Bachata Open','bachata_invitational'=>'Bachata Invitational','salsa_rising'=>'Salsa Rising','salsa_open'=>'Salsa Open','semi_pro'=>'Semi Pro','pro'=>'Pro','all_star'=>'All Star'] as $v=>$label):?>
 <div class="col-6 col-md-4">
 <label class="form-check">
 <input class="form-check-input" type="checkbox" name="qualified_divisions[]" value="<?=$v?>" <?=$has('qualified_divisions',$v)?'checked':''?>> <?=$label?>
