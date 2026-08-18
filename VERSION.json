@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev290",
-  "build": 2996,
+  "version": "2.3.3-dev291",
+  "build": 2997,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds protected scoring backups, recovery previews and transaction history to both Live and Test dashboards",
+    "Automatically snapshots score state before dashboard mutations and retains the latest 25 automatic copies per round",
+    "Restores marks, results, Final pairings, Final placements and judge draft/submission sessions with a pre-restore safety copy",
     "Prevents orphaned Final marks from falsely reporting a judge as 10/10 complete",
     "Repairs stale submitted Final judge sessions when their saved placements are incomplete or missing",
     "Shows contestant bib numbers and country flags by default throughout shared Test and Live projection status views",

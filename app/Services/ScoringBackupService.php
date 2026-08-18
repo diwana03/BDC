@@ -1,0 +1,113 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Services;
+
+use PDO;
+use RuntimeException;
+
+final class ScoringBackupService
+{
+    public static function ensure(PDO $pdo): void
+    {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_scoring_backups(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            round_id BIGINT UNSIGNED NOT NULL,
+            data_mode ENUM('live','test') NOT NULL,
+            backup_type ENUM('automatic','manual','pre_restore') NOT NULL DEFAULT 'automatic',
+            action_name VARCHAR(100) NOT NULL,
+            label VARCHAR(190) NULL,
+            snapshot_hash CHAR(64) NOT NULL,
+            snapshot_json LONGTEXT NOT NULL,
+            summary_json LONGTEXT NULL,
+            created_by BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            restored_by BIGINT UNSIGNED NULL,
+            restored_at DATETIME NULL,
+            restore_reason VARCHAR(500) NULL,
+            INDEX idx_scoring_backup_round(round_id,data_mode,created_at),
+            INDEX idx_scoring_backup_hash(snapshot_hash)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    public static function create(PDO $pdo,int $roundId,bool $test,int $userId,string $type,string $action,string $label=''):int
+    {
+        self::ensure($pdo);
+        $roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
+        $roundStmt=$pdo->prepare("SELECT COUNT(*) FROM `{$roundTable}` WHERE id=:round");
+        $roundStmt->execute(['round'=>$roundId]);
+        if((int)$roundStmt->fetchColumn()!==1)throw new RuntimeException('Scoring round not found for backup.');
+        if(!in_array($type,['automatic','manual','pre_restore'],true))$type='automatic';
+        $tables=self::tables($test);
+        $snapshot=[];$summary=[];
+        foreach($tables as $key=>$table){
+            $stmt=$pdo->prepare("SELECT * FROM `{$table}` WHERE round_id=:round ORDER BY id");
+            $stmt->execute(['round'=>$roundId]);
+            $snapshot[$key]=$stmt->fetchAll();
+            $summary[$key]=count($snapshot[$key]);
+        }
+        $json=json_encode(['schema'=>1,'round_id'=>$roundId,'data_mode'=>$test?'test':'live','tables'=>$snapshot],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        $hash=hash('sha256',$json);
+        $stmt=$pdo->prepare("INSERT INTO bdc_scoring_backups(round_id,data_mode,backup_type,action_name,label,snapshot_hash,snapshot_json,summary_json,created_by) VALUES(:round,:mode,:type,:action,NULLIF(:label,''),:hash,:snapshot,:summary,:user)");
+        $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live','type'=>$type,'action'=>substr($action,0,100),'label'=>substr(trim($label),0,190),'hash'=>$hash,'snapshot'=>$json,'summary'=>json_encode($summary,JSON_UNESCAPED_SLASHES),'user'=>$userId?:null]);
+        $id=(int)$pdo->lastInsertId();
+        if($type==='automatic')self::trimAutomatic($pdo,$roundId,$test,25);
+        return $id;
+    }
+
+    public static function restore(PDO $pdo,int $backupId,int $roundId,bool $test,int $userId,string $reason):array
+    {
+        self::ensure($pdo);$reason=trim($reason);
+        if($reason==='')throw new RuntimeException('Enter the reason for restoring this scoring backup.');
+        $stmt=$pdo->prepare("SELECT * FROM bdc_scoring_backups WHERE id=:id AND round_id=:round AND data_mode=:mode");
+        $stmt->execute(['id'=>$backupId,'round'=>$roundId,'mode'=>$test?'test':'live']);$backup=$stmt->fetch();
+        if(!$backup)throw new RuntimeException('Scoring backup not found for this round.');
+        if(!hash_equals((string)$backup['snapshot_hash'],hash('sha256',(string)$backup['snapshot_json'])))throw new RuntimeException('Backup integrity check failed. Recovery was stopped.');
+        $payload=json_decode((string)$backup['snapshot_json'],true,512,JSON_THROW_ON_ERROR);
+        if((int)($payload['round_id']??0)!==$roundId || (string)($payload['data_mode']??'')!==($test?'test':'live'))throw new RuntimeException('Backup scope does not match this scoring round.');
+        self::create($pdo,$roundId,$test,$userId,'pre_restore','restore_backup','Automatic safety copy before restoring backup #'.$backupId);
+        $rows=(array)($payload['tables']??[]);$tables=self::tables($test);
+        $deleteOrder=['final_results','final_marks','final_pairs','results','marks','sessions'];
+        $insertOrder=['marks','results','final_pairs','final_marks','final_results','sessions'];
+        $pdo->beginTransaction();
+        try{
+            foreach($deleteOrder as $key)$pdo->prepare("DELETE FROM `{$tables[$key]}` WHERE round_id=:round")->execute(['round'=>$roundId]);
+            foreach($insertOrder as $key)self::insertRows($pdo,$tables[$key],(array)($rows[$key]??[]),$roundId);
+            $pdo->prepare("UPDATE bdc_scoring_backups SET restored_by=:user,restored_at=NOW(),restore_reason=:reason WHERE id=:id")->execute(['user'=>$userId?:null,'reason'=>substr($reason,0,500),'id'=>$backupId]);
+            $audit=$test?'bdc_test_scoring_audit':'bdc_scoring_audit';
+            $pdo->prepare("INSERT INTO {$audit}(round_id,user_id,action,details_json) VALUES(:round,:user,'scoring_backup_restored',:details)")->execute(['round'=>$roundId,'user'=>$userId?:null,'details'=>json_encode(['backup_id'=>$backupId,'reason'=>$reason,'snapshot_hash'=>$backup['snapshot_hash']],JSON_UNESCAPED_SLASHES)]);
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['id'=>$backupId,'summary'=>json_decode((string)$backup['summary_json'],true)?:[]];
+    }
+
+    public static function list(PDO $pdo,int $roundId,bool $test,int $limit=25):array
+    {
+        self::ensure($pdo);$limit=max(1,min(100,$limit));
+        $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,summary_json,created_by,created_at,restored_by,restored_at,restore_reason FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode ORDER BY id DESC LIMIT {$limit}");
+        $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live']);return $stmt->fetchAll();
+    }
+
+    private static function tables(bool $test):array
+    {
+        $p=$test?'bdc_test_scoring_':'bdc_scoring_';
+        return ['marks'=>$p.'marks','results'=>$p.'results','final_pairs'=>$p.'final_pairs','final_marks'=>$p.'final_marks','final_results'=>$p.'final_results','sessions'=>$p.'judge_sessions'];
+    }
+
+    private static function insertRows(PDO $pdo,string $table,array $rows,int $roundId):void
+    {
+        foreach($rows as $row){
+            if(!is_array($row))continue;$row['round_id']=$roundId;$columns=array_keys($row);
+            $quoted=array_map(static fn(string $column):string=>'`'.str_replace('`','',$column).'`',$columns);
+            $placeholders=array_map(static fn(string $column):string=>':'.$column,$columns);
+            $pdo->prepare("INSERT INTO `{$table}`(".implode(',',$quoted).") VALUES(".implode(',',$placeholders).")")->execute($row);
+        }
+    }
+
+    private static function trimAutomatic(PDO $pdo,int $roundId,bool $test,int $keep):void
+    {
+        $stmt=$pdo->prepare("SELECT id FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode AND backup_type='automatic' ORDER BY id DESC LIMIT 18446744073709551615 OFFSET {$keep}");
+        $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live']);$ids=array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
+        if($ids){$ph=implode(',',array_fill(0,count($ids),'?'));$pdo->prepare("DELETE FROM bdc_scoring_backups WHERE id IN ({$ph})")->execute($ids);}
+    }
+}
