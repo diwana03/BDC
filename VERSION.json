@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev274",
-  "build": 2980,
+  "version": "2.3.3-dev275",
+  "build": 2981,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Locks Final Random Match everywhere once judging starts and provides an audited authorised REMATCH recovery",
+    "Routes legacy Test and Live projector URLs through one shared live-display engine with isolated data modes",
     "Introduces one responsive premium visual system across all Test and Live scoring administration dashboards",
     "Adds an audited emergency control that reopens all submitted Automatic Final judges together without deleting placements",
     "Always opens copied and controller-launched projector links on the neutral Holding Screen before any content is released",
@@ -53,6 +55,8 @@
     "Restores audited next-ranked Leader and Follower promotion for callback-derived Finals"
   ],
   "highlights": [
+    "Keeps Test and Live projector controls, layouts, effects and reveal protections identical",
+    "Clears invalid Final placements and reopens judge sessions only after an explicit emergency REMATCH confirmation",
     "Removes the visible Enable Sound button from all public projection screens",
     "Prevents large bib numbers from being clipped by restoring a maximum five-card row",
     "Keeps newly randomized pairings hidden on the holding screen until the timed reveal",

@@ -26,8 +26,10 @@ if (!$round) {
 $eventId = (int) $round["event_id"];
 $settings = ProjectionSettingsService::get($pdo, $roundId, $test);
 $notice = $_SESSION["projection_settings_notice"] ?? "";
+$error = "";
 unset($_SESSION["projection_settings_notice"]);
 if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? null)) {
+  try {
     $action = (string) ($_POST["action"] ?? "");
     if ($action === "generate_live") {
         LiveDisplaySessionService::generate($pdo, $eventId, $test, (int) (Auth::user()["id"] ?? 0));
@@ -39,9 +41,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? nul
         RandomPairingService::generateLink($pdo, $roundId, $test, (int) (Auth::user()["id"] ?? 0));
         $notice = "Emcee access generated for this event projector. Matching will appear on the same Live Display link.";
     }
+  } catch (Throwable $exception) {
+      $error = $exception->getMessage();
+  }
 }
 $session = LiveDisplaySessionService::forEvent($pdo, $eventId, $test);
 $emceeLink = $round["round_type"] === "final" ? RandomPairingService::activeLink($pdo, $roundId, $test) : null;
+$randomMatchLocked = $round["round_type"] === "final" && RandomPairingService::scoringStarted($pdo, $roundId, $test);
 $selection = ($_GET["selection"] ?? "") === "1" || $embed;
 if ($selection && $session) {
     $session = LiveDisplaySessionService::beginSelection(
@@ -109,6 +115,7 @@ $soundDisplayUrl = $displayUrl !== "" ? $displayUrl . "&sound=1" : "";
 if ($notice): ?><div class="alert alert-success"><?= e(
     $notice,
 ) ?></div><?php endif;
+if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif;
 if (
     !$embed
 ): ?><div class="mb-4"><div class="text-uppercase text-danger fw-bold small"><?= e(

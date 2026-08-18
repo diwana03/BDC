@@ -1282,6 +1282,12 @@ try{
   }elseif($action==='random_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    $random=App\Services\RandomPairingService::randomize($pdo,$roundId,true,$userId?:null);auditScoring($pdo,$roundId,$userId,'final_pairing_randomized',['algorithm'=>$random['algorithm'],'hash'=>$random['hash']]);$notice='Secure random Final pairing generated. Review before confirming.';
+  }elseif($action==='unlock_random_pairing'){
+   $roundId=(int)($_POST['round_id']??0);
+   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can unlock Test Random Match.');
+   $result=App\Services\RandomPairingService::unlockForRematch($pdo,$roundId,true,$userId,trim((string)($_POST['rematch_reason']??'')),trim((string)($_POST['rematch_confirmation']??'')));
+   auditScoring($pdo,$roundId,$userId,'final_random_match_emergency_unlocked',['reason'=>$result['reason'],'cleared_marks'=>$result['cleared_marks']]);
+   $notice='Test Random Match unlocked. Existing Final placements were cleared and judge sessions reopened.';
   }elseif($action==='confirm_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    $missing=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_final_pairs WHERE round_id=:r AND follower_entry_id IS NULL");
@@ -1708,15 +1714,17 @@ $csrf=Csrf::token();
 </div>
 
 <div class="card shadow-sm mb-4"><div class="card-body">
+ <?php $randomMatchLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,true);?>
  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
   <form method="post">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
-   <button class="btn btn-warning">Random Match</button>
+   <button class="btn btn-warning" <?=$randomMatchLocked?'disabled':''?>><?=$randomMatchLocked?'Random Match Locked':'Random Match'?></button>
   </form><a class="btn btn-outline-danger" href="../live-screen/control.php?round_id=<?=$roundId?>&amp;data_mode=test#emcee-match">Test Event Projection &amp; Emcee Match</a>
  </div>
+ <?php if($randomMatchLocked):?><div class="alert alert-warning"><strong>Random Match locked:</strong> Test Final scoring has started, so the current couples are protected.</div><?php if(Auth::canOverrideCompletedScores()):?><details class="border border-danger-subtle rounded p-3 mb-3"><summary class="fw-bold text-danger">Emergency REMATCH override</summary><p class="small text-muted mt-2">This clears all existing Test Final placements and results, reopens every judge session, and revokes the Test Emcee match link.</p><form method="post" class="row g-2" onsubmit="return confirm('Emergency REMATCH will clear every existing Test Final placement and result. Continue?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="unlock_random_pairing"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-md-7"><input class="form-control" name="rematch_reason" minlength="8" maxlength="500" required placeholder="Reason for emergency rematch"></div><div class="col-md-3"><input class="form-control" name="rematch_confirmation" required autocomplete="off" placeholder="Type REMATCH"></div><div class="col-md-2"><button class="btn btn-outline-danger w-100">Unlock</button></div></form></details><?php endif;?><?php endif;?>
 
  <form method="post">
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
