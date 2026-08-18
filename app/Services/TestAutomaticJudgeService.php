@@ -178,6 +178,7 @@ final class TestAutomaticJudgeService
     private static function repairIncompleteFinalSubmissions(PDO $pdo,int $roundId):void
     {
         $roundStmt=$pdo->prepare("SELECT round_type,callback_count FROM bdc_test_scoring_rounds WHERE id=:round");$roundStmt->execute(["round"=>$roundId]);$round=$roundStmt->fetch();if(!$round||$round["round_type"]!=="final")return;
+        $cleanup=$pdo->prepare("DELETE fm FROM bdc_test_scoring_final_marks fm LEFT JOIN bdc_test_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' LEFT JOIN bdc_test_scoring_judges j ON j.id=fm.judge_id AND j.round_id=fm.round_id WHERE fm.round_id=:round AND (fp.id IS NULL OR j.id IS NULL)");$cleanup->execute(["round"=>$roundId]);
         $pairCount=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_final_pairs WHERE round_id=:round AND pairing_status='confirmed'");$pairCount->execute(["round"=>$roundId]);$required=min((int)$pairCount->fetchColumn(),max(1,(int)($round["callback_count"]??1)));if($required<1)return;
         $sessions=$pdo->prepare("SELECT s.id,s.judge_id FROM bdc_test_scoring_judge_sessions s JOIN bdc_test_scoring_judges j ON j.id=s.judge_id WHERE j.round_id=:round AND s.status='submitted' AND s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id)");$sessions->execute(["round"=>$roundId]);
         $valid=$pdo->prepare("SELECT COUNT(*) total,COUNT(DISTINCT fm.rank_value) unique_total,MIN(fm.rank_value) minimum,MAX(fm.rank_value) maximum FROM bdc_test_scoring_final_marks fm JOIN bdc_test_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' WHERE fm.round_id=:round AND fm.judge_id=:judge AND fm.rank_value IS NOT NULL");
@@ -340,7 +341,7 @@ final class TestAutomaticJudgeService
                 $total = (int) $totalStmt->fetchColumn();
                 $total = min($total, max(1, (int) ($round["callback_count"] ?? $total)));
                 $doneStmt = $pdo->prepare(
-                    "SELECT COUNT(*) FROM bdc_test_scoring_final_marks WHERE round_id=:round AND judge_id=:judge AND rank_value IS NOT NULL",
+                    "SELECT COUNT(*) FROM bdc_test_scoring_final_marks fm JOIN bdc_test_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' JOIN bdc_test_scoring_judges j ON j.id=fm.judge_id AND j.round_id=fm.round_id WHERE fm.round_id=:round AND fm.judge_id=:judge AND fm.rank_value IS NOT NULL",
                 );
                 $doneStmt->execute([
                     "round" => $roundId,

@@ -212,7 +212,7 @@ final class AutomaticJudgeBrowserService
                 $total = (int) $totalStmt->fetchColumn();
                 $total = min($total, max(1, (int) ($round["callback_count"] ?? $total)));
                 $doneStmt = $pdo->prepare(
-                    "SELECT COUNT(*) FROM bdc_scoring_final_marks WHERE round_id=:round AND judge_id=:judge AND rank_value IS NOT NULL",
+                    "SELECT COUNT(*) FROM bdc_scoring_final_marks fm JOIN bdc_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' JOIN bdc_scoring_judges j ON j.id=fm.judge_id AND j.round_id=fm.round_id WHERE fm.round_id=:round AND fm.judge_id=:judge AND fm.rank_value IS NOT NULL",
                 );
                 $doneStmt->execute([
                     "round" => $roundId,
@@ -295,6 +295,8 @@ final class AutomaticJudgeBrowserService
 
     private static function repairIncompleteFinalSubmissions(PDO $pdo, int $roundId, array $round): void
     {
+        $cleanup=$pdo->prepare("DELETE fm FROM bdc_scoring_final_marks fm LEFT JOIN bdc_scoring_final_pairs fp ON fp.id=fm.pair_id AND fp.round_id=fm.round_id AND fp.pairing_status='confirmed' LEFT JOIN bdc_scoring_judges j ON j.id=fm.judge_id AND j.round_id=fm.round_id WHERE fm.round_id=:round AND (fp.id IS NULL OR j.id IS NULL)");
+        $cleanup->execute(["round"=>$roundId]);
         $pairCount=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_final_pairs WHERE round_id=:round AND pairing_status='confirmed'");
         $pairCount->execute(["round"=>$roundId]);
         $required=min((int)$pairCount->fetchColumn(),max(1,(int)($round["callback_count"]??1)));
