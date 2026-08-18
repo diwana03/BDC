@@ -60,7 +60,9 @@ if($hasCallbackTies){
  $tieCandidates=$tieCandidatesStmt->fetchAll();
 }
 $automaticScreen=url('admin/scoring-tests/automatic-screen.php');
-$automaticInlineAction='automatic-inline.php';
+$automaticInlineAction=!empty($automaticInlineGateway)
+ ? url('admin/scoring-tests/automatic-screen.php?panel=1')
+ : 'automatic-inline.php';
 ?>
 <div class="card shadow-sm mb-4 border-warning" id="automaticTestTools">
  <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center flex-wrap gap-2">

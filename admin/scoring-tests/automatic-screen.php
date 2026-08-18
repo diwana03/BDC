@@ -4,17 +4,22 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 \App\Core\Auth::requireAdmin();
 $_SESSION['bdc_test_scoring_mode'] = 'automated';
 $roundId = (int) ($_GET['round_id'] ?? 0);
+if (($_GET['panel'] ?? '') === '1') {
+    $automaticInlineGateway = true;
+    require __DIR__ . '/automatic-inline.php';
+    exit;
+}
 $src = url('admin/scoring-tests/index.php?legacy=1&test_mode=automated' . ($roundId > 0 ? '&round_id=' . $roundId : '') . '&automatic_host=1');
 $panel = url('admin/scoring-tests/automatic-inline.php');
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Automatic Scoring Test | BDC Admin</title><style>html,body{margin:0;height:100%;background:#f4f6f9;overflow:hidden}#bdcAutoFrame{width:100%;height:100%;border:0;display:block;background:#f4f6f9}#bdcAutoError{display:none;position:fixed;left:16px;right:16px;top:16px;z-index:99999;padding:12px 16px;border-radius:8px;background:#842029;color:#fff;font:14px/1.4 Arial,sans-serif}</style></head><body><div id="bdcAutoError"></div><iframe id="bdcAutoFrame" src="<?= e($src) ?>" title="BDC Automatic Scoring Test"></iframe><script>
 (function(){
-const frame=document.getElementById('bdcAutoFrame'),panelBase=<?= json_encode($panel) ?>,panelFallback=new URL('automatic-inline.php',window.location.href).pathname,screenBase=<?= json_encode(url('admin/scoring-tests/automatic-screen.php')) ?>,liveBase=<?= json_encode(url('admin/live-screen/test-control.php')) ?>,errorBox=document.getElementById('bdcAutoError');
+const frame=document.getElementById('bdcAutoFrame'),panelBase=<?= json_encode($panel) ?>,screenBase=<?= json_encode(url('admin/scoring-tests/automatic-screen.php')) ?>,panelGateway=screenBase+'?panel=1',liveBase=<?= json_encode(url('admin/live-screen/test-control.php')) ?>,errorBox=document.getElementById('bdcAutoError');
 function fail(message){errorBox.textContent=message;errorBox.style.display='block'}
 function rid(doc){const rendered=Number(doc.querySelector('input[name="round_id"]')?.value||0);if(rendered>0)return rendered;const query=new URL(frame.contentWindow.location.href).searchParams.get('round_id');return Number(query)||0}
 function links(doc){doc.querySelectorAll('a[href]').forEach(anchor=>{try{const link=new URL(anchor.href,frame.contentWindow.location.href);if(!/\/admin\/scoring-tests\/(?:index\.php)?$/.test(link.pathname))return;const round=Number(link.searchParams.get('round_id')||0);anchor.href=screenBase+(round>0?'?round_id='+round:'');anchor.target='_top'}catch(error){}})}
 function executeScripts(doc,host){host.querySelectorAll('script').forEach(oldScript=>{const script=doc.createElement('script');Array.from(oldScript.attributes).forEach(attribute=>script.setAttribute(attribute.name,attribute.value));script.textContent=oldScript.textContent;oldScript.replaceWith(script)})}
-async function fetchJudgePanel(round){const query='?round_id='+round+'&test_mode=automated',candidates=[panelFallback,panelBase].filter((value,index,list)=>value&&list.indexOf(value)===index);let lastStatus=0;for(const endpoint of candidates){const response=await fetch(endpoint+query,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'XMLHttpRequest'}});if(response.ok)return response;lastStatus=response.status;if(response.status!==404)break}throw new Error('Judge Live Scoring returned HTTP '+lastStatus)}
+async function fetchJudgePanel(round){const gateway=panelGateway+'&round_id='+round+'&test_mode=automated';let response=await fetch(gateway,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'XMLHttpRequest'}});if(response.ok)return response;const fallback=panelBase+'?round_id='+round+'&test_mode=automated';response=await fetch(fallback,{credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'XMLHttpRequest'}});if(response.ok)return response;const detail=(await response.text()).trim().slice(0,180);throw new Error('Judge Live Scoring returned HTTP '+response.status+(detail?' — '+detail.replace(/<[^>]*>/g,' '):''))}
 async function install(){
 errorBox.style.display='none';let doc;try{doc=frame.contentDocument}catch(error){fail('Automatic Test could not access the dashboard screen.');return}if(!doc)return;
 const round=rid(doc);links(doc);if(round>0&&Number(new URL(window.location.href).searchParams.get('round_id')||0)!==round)history.replaceState(null,'',screenBase+'?round_id='+round);
