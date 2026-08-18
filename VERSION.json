@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev291",
-  "build": 2997,
+  "version": "2.3.3-dev292",
+  "build": 2998,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs the corrupted Live and Test scoring dashboard payloads introduced during the dev291 repository upload",
     "Adds protected scoring backups, recovery previews and transaction history to both Live and Test dashboards",
     "Automatically snapshots score state before dashboard mutations and retains the latest 25 automatic copies per round",
     "Restores marks, results, Final pairings, Final placements and judge draft/submission sessions with a pre-restore safety copy",
