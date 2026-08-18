@@ -32,7 +32,7 @@ $formatTransaction=static function(string $json):string{
    <thead><tr><th>Backup</th><th>Created</th><th>Trigger</th><th>Contents</th><th>Recovery</th></tr></thead>
    <tbody><?php if(!$scoringBackups):?><tr><td colspan="5" class="text-center text-muted py-4">No backups yet. The first dashboard change will create one automatically.</td></tr><?php endif;?>
    <?php foreach($scoringBackups as $backup):$summary=json_decode((string)$backup['summary_json'],true)?:[];?><tr>
-    <td><strong>#<?=(int)$backup['id']?></strong> <span class="badge text-bg-<?=$backup['backup_type']==='manual'?'primary':($backup['backup_type']==='pre_restore'?'danger':'secondary')?>"><?=e(str_replace('_',' ',(string)$backup['backup_type']))?></span><?php if(!empty($backup['label'])):?><div class="small"><?=e((string)$backup['label'])?></div><?php endif;?></td>
+    <td><strong>#<?=(int)$backup['id']?></strong> <span class="badge text-bg-<?=$backup['backup_type']==='manual'?'primary':($backup['backup_type']==='pre_restore'?'danger':'secondary')?>"><?=e(str_replace('_',' ',(string)$backup['backup_type']))?></span><?php if(!empty($backup['is_protected'])):?><span class="badge text-bg-warning">Protected</span><?php endif;?><?php if(!empty($backup['label'])):?><div class="small"><?=e((string)$backup['label'])?></div><?php endif;?></td>
     <td class="small text-nowrap"><?=e((string)$backup['created_at'])?></td>
     <td class="small"><?=e(ucwords(str_replace('_',' ',(string)$backup['action_name'])))?></td>
     <td class="small">Marks <?= (int)($summary['marks']??0) ?> · Results <?= (int)($summary['results']??0) ?><br>Pairs <?= (int)($summary['final_pairs']??0) ?> · Final marks <?= (int)($summary['final_marks']??0) ?></td>

@@ -25,9 +25,12 @@ final class ScoringBackupService
             restored_by BIGINT UNSIGNED NULL,
             restored_at DATETIME NULL,
             restore_reason VARCHAR(500) NULL,
+            is_protected TINYINT(1) NOT NULL DEFAULT 0,
             INDEX idx_scoring_backup_round(round_id,data_mode,created_at),
             INDEX idx_scoring_backup_hash(snapshot_hash)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $column=$pdo->query("SHOW COLUMNS FROM bdc_scoring_backups LIKE 'is_protected'")->fetch();
+        if(!$column)$pdo->exec("ALTER TABLE bdc_scoring_backups ADD COLUMN is_protected TINYINT(1) NOT NULL DEFAULT 0 AFTER restore_reason");
     }
 
     public static function create(PDO $pdo,int $roundId,bool $test,int $userId,string $type,string $action,string $label=''):int
@@ -51,8 +54,9 @@ final class ScoringBackupService
         }
         $json=json_encode(['schema'=>1,'round_id'=>$roundId,'data_mode'=>$test?'test':'live','tables'=>$snapshot],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
         $hash=hash('sha256',$json);
-        $stmt=$pdo->prepare("INSERT INTO bdc_scoring_backups(round_id,data_mode,backup_type,action_name,label,snapshot_hash,snapshot_json,summary_json,created_by) VALUES(:round,:mode,:type,:action,NULLIF(:label,''),:hash,:snapshot,:summary,:user)");
-        $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live','type'=>$type,'action'=>substr($action,0,100),'label'=>substr(trim($label),0,190),'hash'=>$hash,'snapshot'=>$json,'summary'=>json_encode($summary,JSON_UNESCAPED_SLASHES),'user'=>$userId?:null]);
+        $protected=$type==='manual'||$action==='archive_snapshot';
+        $stmt=$pdo->prepare("INSERT INTO bdc_scoring_backups(round_id,data_mode,backup_type,action_name,label,snapshot_hash,snapshot_json,summary_json,created_by,is_protected) VALUES(:round,:mode,:type,:action,NULLIF(:label,''),:hash,:snapshot,:summary,:user,:protected)");
+        $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live','type'=>$type,'action'=>substr($action,0,100),'label'=>substr(trim($label),0,190),'hash'=>$hash,'snapshot'=>$json,'summary'=>json_encode($summary,JSON_UNESCAPED_SLASHES),'user'=>$userId?:null,'protected'=>$protected?1:0]);
         $id=(int)$pdo->lastInsertId();
         if($type==='automatic')self::trimAutomatic($pdo,$roundId,$test,25);
         return $id;
@@ -87,8 +91,33 @@ final class ScoringBackupService
     public static function list(PDO $pdo,int $roundId,bool $test,int $limit=25):array
     {
         self::ensure($pdo);$limit=max(1,min(100,$limit));
-        $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,summary_json,created_by,created_at,restored_by,restored_at,restore_reason FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode ORDER BY id DESC LIMIT {$limit}");
+        $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,summary_json,created_by,created_at,restored_by,restored_at,restore_reason,is_protected FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode ORDER BY id DESC LIMIT {$limit}");
         $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live']);return $stmt->fetchAll();
+    }
+
+    public static function consolidateEventForArchive(PDO $pdo,int $eventId,bool $test,int $userId):array
+    {
+        self::ensure($pdo);
+        $roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
+        $eventTable=$test?'bdc_test_events':'bdc_events';
+        $stmt=$pdo->prepare("SELECT r.id,r.round_type,r.division,e.name event_name FROM `{$roundTable}` r JOIN `{$eventTable}` e ON e.id=r.event_id WHERE r.event_id=:event ORDER BY r.id");
+        $stmt->execute(['event'=>$eventId]);$rounds=$stmt->fetchAll();
+        $deleted=0;$created=[];$mode=$test?'test':'live';
+        foreach($rounds as $round){
+            $roundId=(int)$round['id'];
+            $label=(string)$round['event_name'].' · '.ucwords(str_replace('_',' ',(string)$round['division'])).' '.ucfirst((string)$round['round_type']).' · Final archive snapshot';
+            $archiveId=self::create($pdo,$roundId,$test,$userId,'automatic','archive_snapshot',$label);
+            $created[]=$archiveId;
+            $latestEmergency=$pdo->prepare("SELECT id FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode AND backup_type='pre_restore' ORDER BY id DESC LIMIT 1");
+            $latestEmergency->execute(['round'=>$roundId,'mode'=>$mode]);$emergencyId=(int)($latestEmergency->fetchColumn()?:0);
+            $keep=[$archiveId];if($emergencyId>0)$keep[]=$emergencyId;
+            $protected=$pdo->prepare("SELECT id FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode AND is_protected=1 AND action_name<>'archive_snapshot'");
+            $protected->execute(['round'=>$roundId,'mode'=>$mode]);$keep=array_values(array_unique(array_merge($keep,array_map('intval',$protected->fetchAll(PDO::FETCH_COLUMN)))));
+            $ph=implode(',',array_fill(0,count($keep),'?'));
+            $delete=$pdo->prepare("DELETE FROM bdc_scoring_backups WHERE round_id=? AND data_mode=? AND id NOT IN ({$ph})");
+            $delete->execute(array_merge([$roundId,$mode],$keep));$deleted+=$delete->rowCount();
+        }
+        return ['rounds'=>count($rounds),'archive_backup_ids'=>$created,'deleted_checkpoints'=>$deleted];
     }
 
     public static function judgeSubmissionCheckpoint(PDO $pdo,int $sessionId,bool $test):void
