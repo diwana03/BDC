@@ -6,7 +6,9 @@ foreach([
  "rank===1?'Champion'"=>'Champion label',
  "rank===2?'1st Runner-Up'"=>'first runner-up label',
  "rank===3?'2nd Runner-Up'"=>'second runner-up label',
- "replace(/^#(\\d+)/,'P$1')"=>'pair P-number label',
+ "replace(/^#(\\d+)\\s*/,'#P$1 · ')"=>'pair #P-number label',
  "textContent.trim().toLowerCase()==='sum'"=>'SUM removal',
+ "document.querySelector('.provisional-label')?.remove()"=>'duplicate provisional label removal',
+ "<col style=\"width:14%\"><col style=\"width:42%\">"=>'balanced Result and Couple columns',
 ] as $needle=>$label){if(!str_contains($feed,$needle)){fwrite(STDERR,"Missing {$label}\n");exit(1);}}
 echo "Final matrix pair/result presentation regression passed\n";
