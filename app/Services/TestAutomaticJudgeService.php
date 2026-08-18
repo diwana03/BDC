@@ -108,9 +108,10 @@ final class TestAutomaticJudgeService
     }
     public static function submit(PDO $pdo, int $sessionId): void
     {
-        $pdo->prepare(
+        $stmt=$pdo->prepare(
             "UPDATE bdc_test_scoring_judge_sessions SET status='submitted',last_saved_at=NOW(),submitted_at=NOW() WHERE id=:id AND status<>'submitted'",
-        )->execute(["id" => $sessionId]);
+        );$stmt->execute(["id" => $sessionId]);
+        if($stmt->rowCount()>0)ScoringBackupService::judgeSubmissionCheckpoint($pdo,$sessionId,true);
     }
 
     public static function acceptCriteria(PDO $pdo, int $sessionId): void

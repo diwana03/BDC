@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev292",
-  "build": 2998,
+  "version": "2.3.3-dev293",
+  "build": 2999,
   "status": "development",
   "release_date": "2026-08-18",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds one-click judge-status refresh and compact backup access beside Automatic Final Judge Links",
+    "Creates named score checkpoints after every Live and Test judge submission with event, judge and time",
+    "Replaces raw scoring audit JSON with human-readable transaction descriptions",
     "Repairs the corrupted Live and Test scoring dashboard payloads introduced during the dev291 repository upload",
     "Adds protected scoring backups, recovery previews and transaction history to both Live and Test dashboards",
     "Automatically snapshots score state before dashboard mutations and retains the latest 25 automatic copies per round",

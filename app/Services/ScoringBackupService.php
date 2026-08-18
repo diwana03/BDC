@@ -34,10 +34,13 @@ final class ScoringBackupService
     {
         self::ensure($pdo);
         $roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
-        $roundStmt=$pdo->prepare("SELECT COUNT(*) FROM `{$roundTable}` WHERE id=:round");
+        $eventTable=$test?'bdc_test_events':'bdc_events';
+        $roundStmt=$pdo->prepare("SELECT e.name event_name FROM `{$roundTable}` r JOIN `{$eventTable}` e ON e.id=r.event_id WHERE r.id=:round");
         $roundStmt->execute(['round'=>$roundId]);
-        if((int)$roundStmt->fetchColumn()!==1)throw new RuntimeException('Scoring round not found for backup.');
+        $eventName=(string)$roundStmt->fetchColumn();
+        if($eventName==='')throw new RuntimeException('Scoring round not found for backup.');
         if(!in_array($type,['automatic','manual','pre_restore'],true))$type='automatic';
+        if(trim($label)==='')$label=$eventName.' · '.($type==='manual'?'Manual checkpoint':ucwords(str_replace('_',' ',$action))).' · '.date('H:i:s');
         $tables=self::tables($test);
         $snapshot=[];$summary=[];
         foreach($tables as $key=>$table){
@@ -86,6 +89,21 @@ final class ScoringBackupService
         self::ensure($pdo);$limit=max(1,min(100,$limit));
         $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,summary_json,created_by,created_at,restored_by,restored_at,restore_reason FROM bdc_scoring_backups WHERE round_id=:round AND data_mode=:mode ORDER BY id DESC LIMIT {$limit}");
         $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live']);return $stmt->fetchAll();
+    }
+
+    public static function judgeSubmissionCheckpoint(PDO $pdo,int $sessionId,bool $test):void
+    {
+        try{
+            $sessions=$test?'bdc_test_scoring_judge_sessions':'bdc_scoring_judge_sessions';
+            $judges=$test?'bdc_test_scoring_judges':'bdc_scoring_judges';
+            $rounds=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
+            $events=$test?'bdc_test_events':'bdc_events';
+            $stmt=$pdo->prepare("SELECT s.round_id,j.judge_order,j.judge_name,e.name event_name FROM `{$sessions}` s JOIN `{$judges}` j ON j.id=s.judge_id JOIN `{$rounds}` r ON r.id=s.round_id JOIN `{$events}` e ON e.id=r.event_id WHERE s.id=:session");
+            $stmt->execute(['session'=>$sessionId]);$row=$stmt->fetch();if(!$row)return;
+            $judge='J'.(int)$row['judge_order'];
+            $label=(string)$row['event_name'].' · After '.$judge.' submission · '.date('H:i:s');
+            self::create($pdo,(int)$row['round_id'],$test,0,'automatic',strtolower($judge).'_submitted',$label);
+        }catch(\Throwable $e){error_log('BDC scoring checkpoint failed: '.$e->getMessage());}
     }
 
     private static function tables(bool $test):array

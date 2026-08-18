@@ -1768,10 +1768,11 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
  <?php if(($round['scoring_mode']??'manual')==='automated'):?>
  <div class="card border-primary mb-3"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
   <div><strong>Automatic Final Judge Scoring</strong><div class="small text-muted">Secure judge links, sharing, submission progress and rescore controls.</div></div>
-  <a class="btn btn-sm btn-outline-primary" href="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" target="_blank">Open Judge Links</a>
+  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('automaticJudgeFrame').contentWindow.location.reload()">Refresh Status</button><button type="button" class="btn btn-sm btn-outline-dark" onclick="const panel=document.getElementById('scoring-backups');panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'start'})">Backups</button><a class="btn btn-sm btn-outline-primary" href="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" target="_blank">Open Judge Links</a></div>
  </div><div class="card-body p-0">
-  <iframe title="Automatic Final Judge Links" src="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe>
+  <iframe id="automaticJudgeFrame" title="Automatic Final Judge Links" src="index.php?mode=automated&amp;judge_panel=1&amp;round_id=<?=$roundId?>" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe>
  </div></div>
+ <?php $backupTestMode=false;require __DIR__.'/backup-panel.php';?>
  <?php endif;?>
 
  <form method="post" id="finalScoreForm">
@@ -2010,7 +2011,7 @@ require dirname(__DIR__).'/scoring/tie-resolution-panel.php';
 
 <?php endif;?>
 <?php endif;?><?php endif;?>
-<?php if($round):$backupTestMode=false;require __DIR__.'/backup-panel.php';endif;?>
+<?php if($round && !(($round['round_type']??'')==='final' && ($round['scoring_mode']??'manual')==='automated')):$backupTestMode=false;require __DIR__.'/backup-panel.php';endif;?>
 </div><script>
 function confirmDeleteWorkflow(form,eventName,division){
  const answer=window.prompt(

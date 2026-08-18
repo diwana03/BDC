@@ -127,9 +127,10 @@ final class AutomaticJudgeBrowserService
     }
     public static function submit(PDO $pdo, int $sessionId): void
     {
-        $pdo->prepare(
+        $stmt=$pdo->prepare(
             "UPDATE bdc_scoring_judge_sessions SET status='submitted',last_saved_at=NOW(),submitted_at=NOW() WHERE id=:id",
-        )->execute(["id" => $sessionId]);
+        );$stmt->execute(["id" => $sessionId]);
+        ScoringBackupService::judgeSubmissionCheckpoint($pdo,$sessionId,false);
     }
 
     public static function unlock(
