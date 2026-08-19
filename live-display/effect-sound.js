@@ -1,7 +1,13 @@
 (() => {
   'use strict';
   const soundRequested = new URLSearchParams(location.search).get('sound') === '1';
-  let audio = null, master = null, enabled = soundRequested, lastClass = '', pendingEffect = '';
+  let audio = null, master = null, output = null, enabled = soundRequested, lastClass = '', pendingEffect = '', audioGate = null;
+
+  const hideAudioGate = () => {
+    if (!audioGate) return;
+    audioGate.remove();
+    audioGate = null;
+  };
 
   const unlock = async () => {
     if (!enabled) return;
@@ -10,19 +16,44 @@
       master = audio.createDynamicsCompressor();
       master.threshold.value = -16; master.knee.value = 12; master.ratio.value = 5;
       master.attack.value = .004; master.release.value = .24;
-      master.connect(audio.destination);
+      output = audio.createGain();
+      output.gain.value = 1.35;
+      master.connect(output).connect(audio.destination);
     }
     try { await audio.resume(); } catch (_) {}
+    if (audio?.state === 'running') hideAudioGate();
     if (audio?.state === 'running' && pendingEffect) {
       const effect = pendingEffect;
       pendingEffect = '';
       play(effect);
     }
   };
+
+  const showAudioGate = () => {
+    if (!soundRequested || audioGate || audio?.state === 'running') return;
+    audioGate = document.createElement('button');
+    audioGate.id = 'projectorAudioGate';
+    audioGate.type = 'button';
+    audioGate.setAttribute('aria-label', 'Start projector and activate effect sound');
+    audioGate.innerHTML = '<strong>START PROJECTOR</strong><span>Click once to activate effect sound</span>';
+    Object.assign(audioGate.style, {
+      position: 'fixed', inset: '0', width: '100%', height: '100%', zIndex: '2147483647',
+      border: '0', cursor: 'pointer', color: '#fff', background: 'radial-gradient(circle at center, #6e1834 0%, #210d1b 46%, #080d18 100%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem',
+      fontFamily: 'inherit', letterSpacing: '.06em'
+    });
+    audioGate.querySelector('strong').style.fontSize = 'clamp(2rem, 6vw, 5.5rem)';
+    audioGate.querySelector('span').style.fontSize = 'clamp(1rem, 2vw, 1.65rem)';
+    audioGate.addEventListener('click', unlock);
+    document.body.appendChild(audioGate);
+  };
   if (soundRequested) {
+    showAudioGate();
     unlock();
-    addEventListener('pointerdown', unlock, { once: true, passive: true });
-    addEventListener('keydown', unlock, { once: true });
+    addEventListener('pointerdown', unlock, { passive: true });
+    addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') unlock();
+    });
   }
 
   const ready = () => enabled && audio && master && audio.state === 'running';
