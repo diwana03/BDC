@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const soundRequested = new URLSearchParams(location.search).get('sound') === '1';
-  let audio = null, master = null, enabled = soundRequested, lastClass = '';
+  let audio = null, master = null, enabled = soundRequested, lastClass = '', pendingEffect = '';
 
   const unlock = async () => {
     if (!enabled) return;
@@ -13,6 +13,11 @@
       master.connect(audio.destination);
     }
     try { await audio.resume(); } catch (_) {}
+    if (audio?.state === 'running' && pendingEffect) {
+      const effect = pendingEffect;
+      pendingEffect = '';
+      play(effect);
+    }
   };
   if (soundRequested) {
     unlock();
@@ -58,7 +63,7 @@
     for (let i = 0; i < 9; i++) tone((780 + Math.random() * 1500) * pitch, .18 + Math.random() * .25, 'sine', .018, delay + .62 + Math.random() * .48);
   };
   const play = (effect) => {
-    if (!ready()) return;
+    if (!ready()) { pendingEffect = effect; unlock(); return; }
     if (effect === 'countdown') {
       [0, 1, 2, 3, 4].forEach((delay, i) => { impact(delay, .48 + i * .07); tone(440 + i * 70, .18, 'triangle', .07, delay); });
       impact(4.88, 1.15); sparkle(4.9, .052);
@@ -78,11 +83,18 @@
       sparkle(.34, .06); firework(.72, 1.08); firework(1.45, .92);
     }
   };
-  new MutationObserver(() => {
+  const detectEffect = () => {
     const current = document.getElementById('fx')?.className || '';
     if (current === lastClass) return;
     lastClass = current;
     const effect = ['champion_impact', 'laser_sweep', 'gold_rain', 'fireworks', 'confetti', 'drumroll', 'countdown'].find(name => current.includes(name));
     if (effect) play(effect);
-  }).observe(document.getElementById('fx'), { attributes: true, attributeFilter: ['class'] });
+  };
+  addEventListener('bdc-projector-effect', event => {
+    const effect = String(event.detail?.type || '').replace(/^drumroll_[1-5]$/, 'drumroll');
+    lastClass = document.getElementById('fx')?.className || '';
+    if (effect) play(effect);
+  });
+  new MutationObserver(detectEffect).observe(document.getElementById('fx'), { attributes: true, attributeFilter: ['class'] });
+  detectEffect();
 })();

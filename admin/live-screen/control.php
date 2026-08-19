@@ -216,10 +216,10 @@ endforeach; ?></div><div class="border rounded p-3 mb-3"><div class="fw-bold">Pr
     "") ===
 "winners"
     ? ""
-    : "d-none" ?>"><div class="fw-bold mb-2">Winner Podium Reveal</div><div class="small text-muted mb-2">Reveal progressively from 5th to 1st. Previous placements remain on the podium.</div><div class="d-flex flex-wrap gap-2"><?php foreach (
+    : "d-none" ?>"><div class="fw-bold mb-2">Winner Podium Reveal</div><div class="small text-muted mb-2">Reveal progressively from 5th to 1st. Previous placements remain on the podium. No effects play automatically.</div><div class="d-flex flex-wrap gap-2"><?php foreach (
     [5, 4, 3, 2, 1]
     as $p
-): ?><button type="button" class="btn btn-outline-dark btn-sm reveal" data-place="<?= $p ?>" onclick="setTimeout(()=>{const b=new URLSearchParams({_csrf:document.getElementById('csrf').value,event_id:'<?=$eventId?>',round_id:'<?=$roundId?>',data_mode:'<?=$test?'test':'real'?>',action:'effect',effect_type:'drumroll_<?=$p?>'});fetch('live-action.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},credentials:'same-origin',body:b.toString()})},500)">Reveal <?= $p ?></button><?php endforeach; ?><button type="button" class="btn btn-warning btn-sm reveal" data-place="all">Show Full Podium</button></div></div><div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold">Results Reveal Safety</div><div class="small text-muted mb-2">Winner Podium and Final Ranking are locked to prevent accidental public reveal.</div><button type="button" id="unlockResults" class="btn <?= !empty(
+): ?><button type="button" class="btn btn-outline-dark btn-sm reveal" data-place="<?= $p ?>">Reveal <?= $p ?></button><?php endforeach; ?><button type="button" class="btn btn-warning btn-sm reveal" data-place="all">Show Full Podium</button></div></div><div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold">Results Reveal Safety</div><div class="small text-muted mb-2">Winner Podium and Final Ranking are locked to prevent accidental public reveal.</div><button type="button" id="unlockResults" class="btn <?= !empty(
     $session["results_unlocked"]
 )
     ? "btn-success"
