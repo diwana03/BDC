@@ -27,11 +27,12 @@ $activeEventId=(int)($session["active_event_id"]??$session["event_id"]);
 $eventStmt->execute(["id" => $activeEventId]);
 $eventName = (string) ($eventStmt->fetchColumn() ?: "BACHATA DANCE COUNCIL");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+$holdingBackground=trim((string)($session['holding_background_url']??''));
 if (
     $type === "holding" ||
     $roundId < 1
-) { ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif}.holding{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at top,#4a101e,#111827 55%,#030509);font-size:clamp(30px,5vw,96px);font-weight:900}</style></head><body><div class="holding"><?= e(
-    $eventName,
+) { ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif}.holding{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;background-color:#030509;background-image:<?= $holdingBackground!==''?'url('.json_encode($holdingBackground).')':'radial-gradient(circle at top,#4a101e,#111827 55%,#030509)' ?>;background-size:cover;background-position:center;background-repeat:no-repeat;font-size:clamp(30px,5vw,96px);font-weight:900;text-shadow:0 4px 22px rgba(0,0,0,.85)}</style></head><body><div class="holding"><?= e(
+    $holdingBackground!==''?'':$eventName,
 ) ?></div></body></html><?php exit();}
 if (
     in_array($type, ["final_results", "results", "winners"], true) &&

@@ -16,6 +16,10 @@ if (!$s) {
     echo json_encode(["ok" => false]);
     exit();
 }
+if (!empty($s['playlist_enabled'])) {
+    $clock=$pdo->prepare('SELECT TIMESTAMPDIFF(SECOND,updated_at,NOW()) FROM bdc_live_display_sessions WHERE id=:id');$clock->execute(['id'=>$s['id']]);
+    if((int)$clock->fetchColumn()>=max(5,(int)($s['loop_delay_seconds']??15)))$s=LiveDisplaySessionService::advanceFestivalPlaylist($pdo,$s);
+}
 if (!empty($s["loop_enabled"])) {
     $clock = $pdo->prepare(
         "SELECT TIMESTAMPDIFF(SECOND,updated_at,NOW()) FROM bdc_live_display_sessions WHERE id=:id",
@@ -177,6 +181,8 @@ echo json_encode(
         "auto_page" => (bool) $s["auto_page"],
         "page_delay_seconds" => (int) $s["page_delay_seconds"],
         "loop_enabled" => (bool) ($s["loop_enabled"] ?? false),
+        "playlist_enabled" => (bool) ($s["playlist_enabled"] ?? false),
+        "playlist_position" => (int) ($s["playlist_position"] ?? 0),
         "loop_delay_seconds" => (int) ($s["loop_delay_seconds"] ?? 15),
         "state_version" => (int) $s["state_version"],
         "data_version" => $dataVersion,

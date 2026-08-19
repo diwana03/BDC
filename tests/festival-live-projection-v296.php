@@ -6,6 +6,8 @@ $checks=[
  'shared Test workspace'=>str_contains($test,'$projectionTest=true')&&str_contains($test,'projection-workspace.php'),
  'multi-event selection UI'=>str_contains($workspace,'Multi-Event Festival Projection')&&str_contains($workspace,'event_ids[]'),
  'persistent festival session'=>str_contains($service,'function generateFestival')&&str_contains($service,'bdc_live_display_session_events'),
+ 'custom holding artwork'=>str_contains($workspace,'Custom Holding Screen')&&str_contains($feed,'holding_background_url'),
+ 'multi-event results playlist'=>str_contains($workspace,'Multi-Event Results Loop')&&str_contains($service,'function saveFestivalPlaylist')&&str_contains($state,'advanceFestivalPlaylist'),
  'native PDO placeholders are unique'=>str_contains($service,'VALUES(:e,:ae,:m,:h,:hint,:token,:u)')&&!str_contains($service,'VALUES(:e,:e,:m,:h,:hint,:token,:u)'),
  'isolated Test and Live validation'=>str_contains($service,"\$test?'bdc_test_events':'bdc_events'")&&str_contains($service,"\$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds'"),
  'membership enforcement'=>str_contains($service,'Selected event is not part of this festival projection.'),

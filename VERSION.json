@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev298",
-  "build": 3004,
+  "version": "2.3.3-dev299",
+  "build": 3005,
   "status": "development",
   "release_date": "2026-08-19",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds persistent custom full-screen Holding Screen backgrounds to shared Test and Live festival projections",
+    "Adds ordered multi-event loops combining Winner Podiums and Final Score Matrices from selected festival events",
+    "Switches event, Final round and result screen atomically for every festival playlist slide",
     "Adds one-click festival event, division and round switching without repeated projection dropdown selection",
     "Sends judge-link email from the backend and opens pre-addressed WhatsApp using Judge Database contacts across Test and Live",
     "Disables missing judge-contact actions and records every email or WhatsApp delivery attempt",
