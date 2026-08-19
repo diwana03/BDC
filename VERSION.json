@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev297",
-  "build": 3003,
+  "version": "2.3.3-dev298",
+  "build": 3004,
   "status": "development",
   "release_date": "2026-08-19",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds one-click festival event, division and round switching without repeated projection dropdown selection",
+    "Sends judge-link email from the backend and opens pre-addressed WhatsApp using Judge Database contacts across Test and Live",
+    "Disables missing judge-contact actions and records every email or WhatsApp delivery attempt",
     "Fixes MySQL native prepared-statement parameter binding when creating single-event and festival projection sessions",
     "Adds one shared Festival Live Projection session for multiple selected Jack and Jill events",
     "Forces Holding Screen and clears effects whenever the active festival event or round changes",
