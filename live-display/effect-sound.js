@@ -90,11 +90,6 @@
     const effect = ['champion_impact', 'laser_sweep', 'gold_rain', 'fireworks', 'confetti', 'drumroll', 'countdown'].find(name => current.includes(name));
     if (effect) play(effect);
   };
-  addEventListener('bdc-projector-effect', event => {
-    const effect = String(event.detail?.type || '').replace(/^drumroll_[1-5]$/, 'drumroll');
-    lastClass = document.getElementById('fx')?.className || '';
-    if (effect) play(effect);
-  });
   new MutationObserver(detectEffect).observe(document.getElementById('fx'), { attributes: true, attributeFilter: ['class'] });
   detectEffect();
 })();

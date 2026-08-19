@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev300",
-  "build": 3006,
+  "version": "2.3.3-dev301",
+  "build": 3007,
   "status": "development",
   "release_date": "2026-08-19",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Isolates projector rendering from the audio engine so sound startup cannot interrupt Projection Control buttons or visual effects",
     "Removes automatic drumroll effects from progressive Winner Podium reveals while preserving manual presentation effects",
     "Reliably synchronizes projector sound with effect events and replays sounds delayed by browser audio startup",
     "Adds persistent custom full-screen Holding Screen backgrounds to shared Test and Live festival projections",
