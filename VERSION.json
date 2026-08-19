@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev302",
-  "build": 3008,
+  "version": "2.3.3-dev303",
+  "build": 3009,
   "status": "development",
   "release_date": "2026-08-20",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Guarantees clean JSON projector commands by suppressing and logging incidental PHP output before the controller response",
+    "Adds 25, 50, 75 and 100 percent sound volume choices to Projection Control",
     "Adds a mandatory one-click projector audio gate so browsers reliably activate presentation sounds before full-screen use",
     "Isolates projector rendering from the audio engine so sound startup cannot interrupt Projection Control buttons or visual effects",
     "Removes automatic drumroll effects from progressive Winner Podium reveals while preserving manual presentation effects",

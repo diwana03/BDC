@@ -115,7 +115,7 @@ $displayUrl = !empty($session["token_value"])
         "live-display/launch.php?token=" . rawurlencode((string) $session["token_value"]),
     )
     : "";
-$soundDisplayUrl = $displayUrl !== "" ? $displayUrl . "&sound=1" : "";
+$soundDisplayUrl = $displayUrl !== "" ? $displayUrl . "&sound=1&volume=100" : "";
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Live Screen Control | BDC</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>body{background:<?= $embed
     ? "transparent"
     : "#f4f6f9" ?>}.card{border:0;border-radius:15px}.settings{border-left:5px solid #dc3545}.embed-main{padding:0!important}.locked{opacity:.55}.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#198754;margin-right:6px}.reveal-panel{border:1px solid #f0c36d;background:#fff9e8;border-radius:10px;padding:12px}.live-state{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#111827;color:#fff;border-radius:8px;padding:8px 10px}</style></head><body><?php if (
@@ -146,7 +146,7 @@ if (
     $displayUrl,
 ) ?>"><button type="button" id="copyLiveUrl" class="btn btn-outline-primary">Copy Link</button><a target="_blank" rel="noopener" class="btn btn-primary" href="<?= e(
     $displayUrl,
-) ?>">Open Muted</a><a target="_blank" rel="noopener" class="btn btn-success projector-open" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Every Open action first switches the audience display to the Holding Screen. Sound mode opens a one-time Start Projector gate required by the browser; click it before going full-screen. The public screen has no sound controls.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
+) ?>">Open Muted</a><select id="projectorVolume" class="form-select" style="max-width:130px" aria-label="Projector sound volume" onchange="document.getElementById('openProjectorSound').href=this.dataset.base+'&amp;sound=1&amp;volume='+encodeURIComponent(this.value)" data-base="<?= e($displayUrl) ?>"><option value="25">Volume 25%</option><option value="50">Volume 50%</option><option value="75">Volume 75%</option><option value="100" selected>Volume 100%</option></select><a id="openProjectorSound" target="_blank" rel="noopener" class="btn btn-success projector-open" href="<?= e($soundDisplayUrl) ?>">Open Projector With Sound</a></div><div class="small text-muted mt-2">Every Open action first switches the audience display to the Holding Screen. Choose volume, open the sound projector, then click its one-time Start Projector gate before going full-screen. The public screen has no sound controls.</div><?php else: ?><p class="text-muted mt-2">Generate one link. The projector operator opens it once and leaves it full-screen.</p><?php endif; ?><form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?= e(
     Csrf::token(),
 ) ?>"><input type="hidden" name="session_id" value="<?= $sessionId ?>"><input type="hidden" name="round_id" value="<?= $roundId ?>"><input type="hidden" name="data_mode" value="<?= $test
     ? "test"

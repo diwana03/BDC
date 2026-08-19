@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const soundRequested = new URLSearchParams(location.search).get('sound') === '1';
+  const requestedVolume = Math.max(25, Math.min(100, Number(new URLSearchParams(location.search).get('volume') || 100))) / 100;
   let audio = null, master = null, output = null, enabled = soundRequested, lastClass = '', pendingEffect = '', audioGate = null;
 
   const hideAudioGate = () => {
@@ -17,7 +18,7 @@
       master.threshold.value = -16; master.knee.value = 12; master.ratio.value = 5;
       master.attack.value = .004; master.release.value = .24;
       output = audio.createGain();
-      output.gain.value = 1.35;
+      output.gain.value = 1.35 * requestedVolume;
       master.connect(output).connect(audio.destination);
     }
     try { await audio.resume(); } catch (_) {}
