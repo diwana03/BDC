@@ -23,6 +23,7 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php if (Auth::can('judges.view')) $sidebarLink('admin/judges/', '♛', 'Judge Database', 'NEW'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/competitors/identity-review.php', '◎', 'Identity Matches', '', (int)($stats['identity_matches'] ?? 0)); ?>
     <?php $sidebarLink('admin/profile-requests/', '♙', 'Profile Requests', '', (int)($stats['profile_requests'] ?? 0)); ?>
+    <?php $sidebarLink('admin/form-sync/', '↻', 'Google Form Sync', 'NEW'); ?>
 </div></details>
 
 <details class="admin-nav-group-v203"><summary>Results &amp; Points</summary><div class="admin-nav-group-links-v203">

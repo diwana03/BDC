@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev303",
-  "build": 3009,
+  "version": "2.3.3-dev304",
+  "build": 3010,
   "status": "development",
   "release_date": "2026-08-20",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds signed Google Form response sync with exact duplicate protection, identity review and separate Bachata/Salsa profiles",
+    "Auto-orients and centre-crops Google Drive participant photos to 800 by 800 without stretching",
     "Guarantees clean JSON projector commands by suppressing and logging incidental PHP output before the controller response",
     "Adds 25, 50, 75 and 100 percent sound volume choices to Projection Control",
     "Adds a mandatory one-click projector audio gate so browsers reliably activate presentation sounds before full-screen use",

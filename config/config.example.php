@@ -35,6 +35,9 @@ return [
         'scheduled_type' => 'full',
         'keep_per_type' => 10,
     ],
+    // Google Form sync uses the BDC_GOOGLE_FORM_SYNC_SECRET environment
+    // variable. Keep the secret outside public_html and use the same value in
+    // the response spreadsheet's Apps Script Properties.
     'deployment' => [
         'enabled' => false,
         'repository_path' => '/home/account/BDC_DEV',
