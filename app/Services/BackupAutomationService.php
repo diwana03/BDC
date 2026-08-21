@@ -17,7 +17,15 @@ final class BackupAutomationService
     {
         $this->root=$root??dirname(__DIR__,2);
         $this->pdo=Database::connection();
+        $this->ensureSettingsSchema();
         $this->backupService=new BackupService($this->root);
+    }
+
+    private function ensureSettingsSchema():void
+    {
+        $columns=$this->pdo->query("SHOW COLUMNS FROM bdc_backup_settings")->fetchAll(PDO::FETCH_COLUMN);
+        if(!in_array('server_keep_count',$columns,true))$this->pdo->exec("ALTER TABLE bdc_backup_settings ADD COLUMN server_keep_count INT UNSIGNED NOT NULL DEFAULT 7 AFTER keep_count");
+        if(!in_array('drive_keep_count',$columns,true))$this->pdo->exec("ALTER TABLE bdc_backup_settings ADD COLUMN drive_keep_count INT UNSIGNED NOT NULL DEFAULT 30 AFTER server_keep_count");
     }
 
     public function settings():array
