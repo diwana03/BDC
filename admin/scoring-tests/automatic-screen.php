@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
-ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=323"></script></head>',$html));
+ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=325"></script></head>',$html));
 \App\Core\Auth::requireAdmin();
 $_SESSION['bdc_test_scoring_mode'] = 'automated';
 $roundId = (int) ($_GET['round_id'] ?? 0);

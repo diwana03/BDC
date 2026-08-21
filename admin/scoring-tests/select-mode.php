@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__,2).'/bootstrap.php';
-ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=323"></script></head>',$html));
+ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=325"></script></head>',$html));
 
 use App\Core\Auth;
 

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
-$themeAsset=e(url('public/assets/js/bdc-theme.js?v=323'));
+$themeAsset=e(url('public/assets/js/bdc-theme.js?v=325'));
 use App\Core\Csrf;use App\Core\Database;use App\Services\JudgingCriteriaService;use App\Services\TestAutomaticJudgeService;use App\Services\ScoringFlightService;
 ob_start(static fn(string $html):string=>str_replace(
  ['All <strong>LATER</strong> selections must be removed before submission.','Use <strong>LATER</strong> for consideration, but remove every <strong>LATER</strong> before submission.'],
