@@ -400,6 +400,9 @@ final class SchemaUpdater
    INDEX idx_backup_runs_completed(completed_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+  self::addColumn($pdo,'bdc_backup_settings','server_keep_count','INT UNSIGNED NOT NULL DEFAULT 7 AFTER keep_count');
+  self::addColumn($pdo,'bdc_backup_settings','drive_keep_count','INT UNSIGNED NOT NULL DEFAULT 30 AFTER server_keep_count');
+
   $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_login_attempts(
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,ip_address VARCHAR(45) NOT NULL,email_hash CHAR(64) NOT NULL,
    attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_login_attempt_lookup(ip_address,email_hash,attempted_at)

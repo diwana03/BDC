@@ -577,7 +577,7 @@ try{
   $action=(string)($_POST['action']??'');
   if($action!=='create_round' && !empty($_POST['round_id'])){
    $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','create_scoring_backup','restore_scoring_backup'],true)){
+   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','create_scoring_backup','restore_scoring_backup','delete_scoring_backup'],true)){
     $message=$lockedRound['status']==='completed'
       ? 'This completed round is locked. Only a Scorer, Master Scorer or Super Admin can confirm a resubmission override.'
       : ($lockedRound['status']==='pending_approval'
@@ -586,7 +586,7 @@ try{
     throw new RuntimeException($message);
    }
   }
-  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup'],true) && !empty($_POST['round_id'])){
+  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup','delete_scoring_backup'],true) && !empty($_POST['round_id'])){
    ScoringBackupService::create($pdo,(int)$_POST['round_id'],false,$userId,'automatic',$action,'Before '.str_replace('_',' ',$action));
   }
   if($action==='create_scoring_backup'){
@@ -598,6 +598,11 @@ try{
    if(!Auth::canManageScoringBackups())throw new RuntimeException('Only an Admin, Scorer, Master Scorer or Super Admin can restore scoring backups.');
    $roundId=(int)($_POST['round_id']??0);$confirmation=strtoupper(trim((string)($_POST['restore_confirmation']??'')));if($confirmation!=='RESTORE SCORES')throw new RuntimeException('Type RESTORE SCORES to confirm recovery.');
    $restored=ScoringBackupService::restore($pdo,(int)($_POST['backup_id']??0),$roundId,false,$userId,(string)($_POST['restore_reason']??''));$notice='Scoring backup #'.$restored['id'].' restored. A safety copy of the previous state was created first.';
+  }elseif($action==='delete_scoring_backup'){
+   if(!Auth::canManageScoringBackups())throw new RuntimeException('Only an Admin, Scorer, Master Scorer or Super Admin can delete scoring backups.');
+   $roundId=(int)($_POST['round_id']??0);if(!loadRound($pdo,$roundId))throw new RuntimeException('Scoring round not found.');
+   if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE BACKUP')throw new RuntimeException('Type DELETE BACKUP to confirm permanent deletion.');
+   $deleted=ScoringBackupService::delete($pdo,(int)($_POST['backup_id']??0),$roundId,false,$userId,(string)($_POST['delete_reason']??''));$notice='Scoring backup #'.$deleted['id'].' permanently deleted. Current scores were not changed.';
   }elseif($action==='reopen_completed_round'){
    if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can reopen a completed round.');
    $roundId=(int)($_POST['round_id']??0);
@@ -1414,6 +1419,7 @@ foreach(['leader','follower'] as $role){
 $csrf=Csrf::token();
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scoring Dashboard | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="../../public/css/scoring-premium.css?v=275" rel="stylesheet"><style>.score-input{width:48px;text-align:center}.sticky-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px;z-index:5}.role-card{min-height:220px}.status-pill{text-transform:capitalize}.score-table th{white-space:nowrap;font-size:.8rem}.score-table td{vertical-align:middle}.callback{background:#d1e7dd!important}.alternate{background:#fff3cd!important}.tie_pending{background:#f8d7da!important}@media(max-width:575.98px){.navbar .container-fluid{align-items:flex-start}.navbar-brand{margin-bottom:.5rem}.dashboard-heading{gap:.75rem}.dashboard-heading .text-muted{font-size:1rem}.modal-dialog{margin:.5rem}.modal-content{max-height:calc(100dvh - 1rem)}.modal-body{overflow-y:auto}.modal-footer{flex-wrap:wrap}.modal-footer form,.modal-footer form .btn{width:100%}}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="../">BDC Admin</a><div class="d-flex gap-2"><a class="btn btn-warning btn-sm" href="https://bachatadancecouncil.com/">BDC Home</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><div class="container-fluid py-4" style="max-width:1600px"><div class="dashboard-heading d-flex flex-wrap justify-content-between align-items-start mb-3"><div><h1 class="h3 mb-1">Scoring Dashboard</h1><div class="text-muted"><?=($round && ($round['scoring_mode']??'manual')==='automated')?'Automatic Relative Placement Final':'Manual Scoring Engine · Event Round Workflow'?></div></div><?php if($round):?><span class="badge text-bg-primary status-pill"><?=e(str_replace('_',' ',$round['status']))?></span><?php endif;?></div>
+<a class="btn btn-dark btn-sm position-fixed end-0 bottom-0 m-3 shadow" style="z-index:1080" href="../scoring-backups/?data_mode=live<?=$roundId?'&amp;round_id='.$roundId:''?>">Backups &amp; Recovery</a>
 <?php if($round):?>
 <?php $registrationDeskInherited=(int)($round['parent_round_id']??0)>0;?>
 <div class="card shadow-sm mb-4 border-2 <?=$registrationDeskInherited?'border-secondary bg-light text-secondary':'border-warning bg-warning-subtle'?>" <?=$registrationDeskInherited?'aria-disabled="true"':''?> id="<?=$registrationDeskInherited?'registration-desk-inherited':'registration-desk-sync'?>">

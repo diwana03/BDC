@@ -209,6 +209,30 @@ final class BackupService
         $this->log('backup_delete', 'success', ['type' => $type, 'name' => $name], $userId);
     }
 
+    public function restoreDatabaseBackup(string $type,string $name,?int $userId=null):array
+    {
+        if(!in_array($type,['database','full'],true))throw new RuntimeException('Only Database or Full Portal backups can be applied from the web recovery screen.');
+        $source=$this->resolve($type,$name);$temporary='';
+        if($type==='full'){
+            if(!class_exists(ZipArchive::class))throw new RuntimeException('PHP ZipArchive is required to open a Full Portal backup.');
+            $zip=new ZipArchive();if($zip->open($source)!==true)throw new RuntimeException('Full backup could not be opened.');
+            $databaseEntry='';for($i=0;$i<$zip->numFiles;$i++){ $entry=(string)$zip->getNameIndex($i);if(str_starts_with($entry,'database/')&&str_ends_with($entry,'.sql.gz')){$databaseEntry=$entry;break;} }
+            if($databaseEntry===''){$zip->close();throw new RuntimeException('Full backup does not contain a database recovery file.');}
+            $temporary=tempnam(sys_get_temp_dir(),'bdc_restore_');if($temporary===false){$zip->close();throw new RuntimeException('Could not prepare the database recovery file.');}
+            $stream=$zip->getStream($databaseEntry);$out=fopen($temporary,'wb');if($stream===false||$out===false){$zip->close();if(is_resource($out))fclose($out);@unlink($temporary);throw new RuntimeException('Could not extract the database recovery file.');}
+            stream_copy_to_stream($stream,$out);fclose($stream);fclose($out);$zip->close();$source=$temporary;
+        }
+        $safety=$this->createDatabaseBackup($userId);
+        try{
+            $compressed=(string)file_get_contents($source);$sql=gzdecode($compressed);
+            if($sql===false||!str_contains($sql,'BDC Competitor Dashboard database backup'))throw new RuntimeException('Backup validation failed. No database changes were applied.');
+            Database::connection()->exec($sql);
+            $result=['applied'=>$name,'safety_backup'=>$safety['name']];
+            $this->log('database_restore','success',$result,$userId);return $result;
+        }catch(\Throwable $e){$this->log('database_restore','failed',['name'=>$name,'safety_backup'=>$safety['name'],'message'=>$e->getMessage()],$userId);throw $e;}
+        finally{if($temporary!==''&&is_file($temporary))@unlink($temporary);}
+    }
+
     public function cleanup(int $keep, ?int $userId = null): int
     {
         $keep = max(1, min(100, $keep));

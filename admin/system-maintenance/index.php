@@ -43,6 +43,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     $result=$manual->createSiteBackup($userId);$message=$result['name'];
    }elseif($action==='full'){
     $result=$manual->createFullBackup($userId);$message=$result['name'];
+   }elseif($action==='delete_backup'){
+    if(strtoupper(trim((string)($_POST['confirmation']??'')))!=='DELETE BACKUP')throw new RuntimeException('Type DELETE BACKUP to confirm permanent deletion.');
+    $manual->delete((string)($_POST['backup_type']??''),(string)($_POST['backup_name']??''),$userId);$message='Backup permanently deleted.';
+   }elseif($action==='apply_backup'){
+    if(strtoupper(trim((string)($_POST['confirmation']??'')))!=='APPLY BACKUP')throw new RuntimeException('Type APPLY BACKUP to confirm recovery.');
+    $result=$manual->restoreDatabaseBackup((string)($_POST['backup_type']??''),(string)($_POST['backup_name']??''),$userId);$message='Backup applied. Safety copy retained as '.$result['safety_backup'].'.';
    }else throw new RuntimeException('Unknown backup action.');
   }catch(Throwable $e){$error=$e->getMessage();}
  }
@@ -80,12 +86,13 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
    <div class="col-md-4"><label class="form-label">Backup time</label><input class="form-control" type="time" name="backup_time" value="<?=e(substr((string)$settings['backup_time'],0,5))?>"></div>
    <div class="col-md-4 weekly-field"><label class="form-label">Weekday</label><select class="form-select" name="weekday"><?php foreach([1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday',7=>'Sunday'] as $v=>$l):?><option value="<?=$v?>" <?=(int)$settings['weekday']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select></div>
    <div class="col-md-4 monthly-field"><label class="form-label">Day of month</label><input class="form-control" type="number" min="1" max="28" name="month_day" value="<?=(int)$settings['month_day']?>"></div>
-   <div class="col-md-4"><label class="form-label">Backups to keep</label><input class="form-control" type="number" min="1" max="100" name="keep_count" value="<?=(int)$settings['keep_count']?>"><div class="form-text">Oldest local and Drive backups are removed after this limit.</div></div>
+   <div class="col-md-4"><label class="form-label">Keep on this server</label><input class="form-control" type="number" min="1" max="100" name="server_keep_count" value="<?=(int)($settings['server_keep_count']??$settings['keep_count'])?>"><div class="form-text">Retain this many backups of each type locally.</div></div>
+   <div class="col-md-4"><label class="form-label">Keep on Google Drive</label><input class="form-control" type="number" min="1" max="365" name="drive_keep_count" value="<?=(int)($settings['drive_keep_count']??30)?>"><div class="form-text">Drive retention is independent from server retention.</div></div>
   </div>
   <hr>
-  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Google Drive</h2><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="google_drive_enabled" value="1" <?=!empty($settings['google_drive_enabled'])?'checked':''?>><span class="form-check-label">Upload enabled</span></label></div>
+  <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 mb-0">Google Drive Backup</h2><div class="small text-muted">1. Create a Drive folder · 2. Share it with the service-account email · 3. Paste the folder URL · 4. Upload the JSON key · 5. Save and test.</div></div><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="google_drive_enabled" value="1" <?=!empty($settings['google_drive_enabled'])?'checked':''?>><span class="form-check-label">Upload enabled</span></label></div>
   <div class="row g-3">
-   <div class="col-md-6"><label class="form-label">Google Drive folder ID</label><input class="form-control" name="google_drive_folder_id" value="<?=e((string)$settings['google_drive_folder_id'])?>" placeholder="1AbCdEf..."><div class="form-text">Share this Drive folder with the service-account email.</div></div>
+   <div class="col-md-6"><label class="form-label">Google Drive folder ID or URL</label><input class="form-control" name="google_drive_folder_id" value="<?=e((string)$settings['google_drive_folder_id'])?>" placeholder="https://drive.google.com/drive/folders/..."><div class="form-text">A folder URL or folder ID is accepted.</div></div>
    <div class="col-md-6"><label class="form-label">Service-account JSON</label><input class="form-control" type="file" name="service_account_json" accept=".json,application/json"><div class="form-text">Stored privately with 0600 permissions. Leave blank to keep the current file.</div></div>
   </div>
   <div class="mt-4"><button class="btn btn-primary">Save Backup Settings</button></div>
@@ -98,7 +105,7 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
   <?php foreach($backups as $backup):?><tr>
    <td><?=e(date('Y-m-d H:i:s',(int)$backup['created_at']))?></td><td><span class="badge text-bg-light border"><?=e($backup['type']==='site'?'Website':ucfirst((string)$backup['type']))?></span></td>
    <td><?=e((string)$backup['name'])?></td><td><?=backupBytes((int)$backup['size'])?></td><td class="checksum"><?=e(substr((string)$backup['checksum'],0,16))?>&hellip;</td>
-   <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="<?=e(url('admin/system-maintenance/download.php?type='.urlencode((string)$backup['type']).'&name='.urlencode((string)$backup['name'])))?>">Download</a></td>
+   <td class="text-end"><div class="d-flex justify-content-end gap-1"><a class="btn btn-sm btn-outline-dark" href="<?=e(url('admin/system-maintenance/download.php?type='.urlencode((string)$backup['type']).'&name='.urlencode((string)$backup['name'])))?>">Download</a><?php if(in_array($backup['type'],['database','full'],true)):?><details><summary class="btn btn-sm btn-warning">Apply</summary><form method="post" class="border rounded bg-white p-2 mt-1 text-start" style="min-width:250px" onsubmit="return confirm('Apply this backup to the current database? A fresh safety backup is created first.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="apply_backup"><input type="hidden" name="backup_type" value="<?=e((string)$backup['type'])?>"><input type="hidden" name="backup_name" value="<?=e((string)$backup['name'])?>"><input class="form-control form-control-sm mb-2" name="confirmation" required placeholder="Type APPLY BACKUP"><button class="btn btn-warning btn-sm w-100">Apply Database Recovery</button></form></details><?php endif;?><details><summary class="btn btn-sm btn-outline-danger">Delete</summary><form method="post" class="border border-danger rounded bg-white p-2 mt-1 text-start" style="min-width:250px" onsubmit="return confirm('Permanently delete this backup file?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="delete_backup"><input type="hidden" name="backup_type" value="<?=e((string)$backup['type'])?>"><input type="hidden" name="backup_name" value="<?=e((string)$backup['name'])?>"><input class="form-control form-control-sm mb-2" name="confirmation" required placeholder="Type DELETE BACKUP"><button class="btn btn-outline-danger btn-sm w-100">Delete Backup</button></form></details></div></td>
   </tr><?php endforeach;?><?php if(!$backups):?><tr><td colspan="6" class="text-muted">No recovery backup files are available yet.</td></tr><?php endif;?>
   </tbody></table></div>
  </div></div>
@@ -121,7 +128,7 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
  <div class="card settings-card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Status</h2>
   <p><strong>Last run:</strong><br><?=e((string)($settings['last_run_at']?:'Never'))?></p>
   <p><strong>Next run:</strong><br><?=e((string)($settings['next_run_at']?:'Not scheduled'))?></p>
-  <p><strong>Retention:</strong><br>Keep last <?=(int)$settings['keep_count']?> successful backups</p>
+  <p><strong>Server retention:</strong><br>Keep <?=(int)($settings['server_keep_count']??$settings['keep_count'])?> backups of each type</p><p><strong>Drive retention:</strong><br>Keep <?=(int)($settings['drive_keep_count']??30)?> successful uploads</p>
   <div class="d-grid gap-2">
    <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="run_now"><button class="btn btn-success w-100">Run Scheduled Type Now</button></form>
    <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="test_drive"><button class="btn btn-outline-primary w-100">Test Google Drive</button></form>

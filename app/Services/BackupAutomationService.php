@@ -25,7 +25,7 @@ final class BackupAutomationService
         $row=$this->pdo->query("SELECT * FROM bdc_backup_settings WHERE id=1")->fetch();
         return $row?:[
             'enabled'=>0,'frequency'=>'daily','backup_time'=>'03:00:00','weekday'=>1,'month_day'=>1,
-            'backup_type'=>'full','keep_count'=>7,'google_drive_enabled'=>0,'google_drive_folder_id'=>'',
+            'backup_type'=>'full','keep_count'=>7,'server_keep_count'=>7,'drive_keep_count'=>30,'google_drive_enabled'=>0,'google_drive_folder_id'=>'',
             'service_account_path'=>'storage/private/google-drive-service-account.json','last_run_at'=>null,
             'next_run_at'=>null,
         ];
@@ -38,7 +38,8 @@ final class BackupAutomationService
         $time=preg_match('/^\d{2}:\d{2}$/',(string)($data['backup_time']??''))?(string)$data['backup_time'].':00':'03:00:00';
         $weekday=max(1,min(7,(int)($data['weekday']??1)));
         $monthDay=max(1,min(28,(int)($data['month_day']??1)));
-        $keep=max(1,min(100,(int)($data['keep_count']??7)));
+        $serverKeep=max(1,min(100,(int)($data['server_keep_count']??$data['keep_count']??7)));
+        $driveKeep=max(1,min(365,(int)($data['drive_keep_count']??30)));
         $path=(string)($this->settings()['service_account_path']??'storage/private/google-drive-service-account.json');
 
         if($serviceAccountUpload && ($serviceAccountUpload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
@@ -57,23 +58,23 @@ final class BackupAutomationService
         $next=$this->calculateNextRun($frequency,$time,$weekday,$monthDay);
         $stmt=$this->pdo->prepare("
             INSERT INTO bdc_backup_settings(
-             id,enabled,frequency,backup_time,weekday,month_day,backup_type,keep_count,
+             id,enabled,frequency,backup_time,weekday,month_day,backup_type,keep_count,server_keep_count,drive_keep_count,
              google_drive_enabled,google_drive_folder_id,service_account_path,next_run_at,updated_at
             ) VALUES(
-             1,:enabled,:frequency,:backup_time,:weekday,:month_day,:backup_type,:keep_count,
+             1,:enabled,:frequency,:backup_time,:weekday,:month_day,:backup_type,:keep_count,:server_keep,:drive_keep,
              :drive_enabled,:folder_id,:credential_path,:next_run,NOW()
             )
             ON DUPLICATE KEY UPDATE
              enabled=VALUES(enabled),frequency=VALUES(frequency),backup_time=VALUES(backup_time),
              weekday=VALUES(weekday),month_day=VALUES(month_day),backup_type=VALUES(backup_type),
-             keep_count=VALUES(keep_count),google_drive_enabled=VALUES(google_drive_enabled),
+             keep_count=VALUES(keep_count),server_keep_count=VALUES(server_keep_count),drive_keep_count=VALUES(drive_keep_count),google_drive_enabled=VALUES(google_drive_enabled),
              google_drive_folder_id=VALUES(google_drive_folder_id),
              service_account_path=VALUES(service_account_path),next_run_at=VALUES(next_run_at),updated_at=NOW()
         ");
         $stmt->execute([
             'enabled'=>!empty($data['enabled'])?1:0,
             'frequency'=>$frequency,'backup_time'=>$time,'weekday'=>$weekday,'month_day'=>$monthDay,
-            'backup_type'=>$backupType,'keep_count'=>$keep,
+            'backup_type'=>$backupType,'keep_count'=>$serverKeep,'server_keep'=>$serverKeep,'drive_keep'=>$driveKeep,
             'drive_enabled'=>!empty($data['google_drive_enabled'])?1:0,
             'folder_id'=>GoogleDriveBackupService::normaliseFolderId((string)($data['google_drive_folder_id']??'')),
             'credential_path'=>$path,'next_run'=>$next,
@@ -152,7 +153,7 @@ final class BackupAutomationService
             $this->pdo->prepare("UPDATE bdc_backup_settings SET last_run_at=NOW(),next_run_at=:next_run WHERE id=1")
                 ->execute(['next_run'=>$next]);
 
-            $this->applyRetention((int)$settings['keep_count'],$settings);
+            $this->applyRetention((int)($settings['server_keep_count']??$settings['keep_count']),(int)($settings['drive_keep_count']??30),$settings);
 
             return ['run_id'=>$runId,'backup'=>$result,'google_drive_status'=>$driveStatus,'google_drive_error'=>$driveError];
         }catch(\Throwable $e){
@@ -173,20 +174,17 @@ final class BackupAutomationService
         return new GoogleDriveBackupService($path,(string)$settings['google_drive_folder_id']);
     }
 
-    public function applyRetention(int $keep,array $settings):int
+    public function applyRetention(int $serverKeep,int $driveKeep,array $settings):int
     {
-        $keep=max(1,min(100,$keep));
+        $serverKeep=max(1,min(100,$serverKeep));$driveKeep=max(1,min(365,$driveKeep));
         $runs=$this->pdo->query("SELECT * FROM bdc_backup_runs WHERE status='success' ORDER BY completed_at DESC,id DESC")->fetchAll();
         $deleted=0;
-        foreach(array_slice($runs,$keep) as $run){
+        foreach(array_slice($runs,$driveKeep) as $run){
             if(!empty($run['google_drive_file_id']) && !empty($settings['google_drive_enabled'])){
-                try{$this->drive($settings)->delete((string)$run['google_drive_file_id']);}catch(\Throwable $e){}
+                try{$this->drive($settings)->delete((string)$run['google_drive_file_id']);$this->pdo->prepare("UPDATE bdc_backup_runs SET google_drive_status='disabled',google_drive_file_id=NULL,google_drive_link=NULL WHERE id=:id")->execute(['id'=>$run['id']]);}catch(\Throwable $e){}
             }
-            $local=$this->root.'/'.ltrim((string)$run['local_path'],'/');
-            if(is_file($local))@unlink($local);
-            $this->pdo->prepare("UPDATE bdc_backup_runs SET status='deleted',deleted_at=NOW() WHERE id=:id")->execute(['id'=>$run['id']]);
-            $deleted++;
         }
+        $deleted=$this->backupService->cleanup($serverKeep);
         return $deleted;
     }
 

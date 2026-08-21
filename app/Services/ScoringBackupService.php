@@ -95,6 +95,30 @@ final class ScoringBackupService
         $stmt->execute(['round'=>$roundId,'mode'=>$test?'test':'live']);return $stmt->fetchAll();
     }
 
+    public static function delete(PDO $pdo,int $backupId,int $roundId,bool $test,int $userId,string $reason):array
+    {
+        self::ensure($pdo);$reason=trim($reason);
+        if($reason==='')throw new RuntimeException('Enter the reason for deleting this scoring backup.');
+        $mode=$test?'test':'live';
+        $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,is_protected FROM bdc_scoring_backups WHERE id=:id AND round_id=:round AND data_mode=:mode");
+        $stmt->execute(['id'=>$backupId,'round'=>$roundId,'mode'=>$mode]);$backup=$stmt->fetch();
+        if(!$backup)throw new RuntimeException('Scoring backup not found for this round.');
+        $audit=$test?'bdc_test_scoring_audit':'bdc_scoring_audit';
+        $pdo->beginTransaction();
+        try{
+            $deleted=$pdo->prepare("DELETE FROM bdc_scoring_backups WHERE id=:id AND round_id=:round AND data_mode=:mode");
+            $deleted->execute(['id'=>$backupId,'round'=>$roundId,'mode'=>$mode]);
+            if($deleted->rowCount()!==1)throw new RuntimeException('Scoring backup could not be deleted.');
+            $pdo->prepare("INSERT INTO {$audit}(round_id,user_id,action,details_json) VALUES(:round,:user,'scoring_backup_deleted',:details)")->execute([
+                'round'=>$roundId,
+                'user'=>$userId?:null,
+                'details'=>json_encode(['backup_id'=>$backupId,'reason'=>substr($reason,0,500),'backup_type'=>$backup['backup_type'],'action_name'=>$backup['action_name'],'label'=>$backup['label'],'snapshot_hash'=>$backup['snapshot_hash'],'was_protected'=>(bool)$backup['is_protected']],JSON_UNESCAPED_SLASHES),
+            ]);
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['id'=>$backupId,'was_protected'=>(bool)$backup['is_protected']];
+    }
+
     public static function consolidateEventForArchive(PDO $pdo,int $eventId,bool $test,int $userId):array
     {
         self::ensure($pdo);

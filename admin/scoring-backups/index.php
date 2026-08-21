@@ -29,6 +29,10 @@ try{
    if(strtoupper(trim((string)($_POST['restore_confirmation']??'')))!=='RESTORE SCORES')throw new RuntimeException('Type RESTORE SCORES to confirm recovery.');
    $restored=ScoringBackupService::restore($pdo,(int)($_POST['backup_id']??0),$roundId,$backupTestMode,$userId,(string)($_POST['restore_reason']??''));
    $notice='Checkpoint #'.$restored['id'].' restored. The previous state was backed up first.';
+  }elseif($action==='delete_scoring_backup'){
+   if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE BACKUP')throw new RuntimeException('Type DELETE BACKUP to confirm permanent deletion.');
+   $deleted=ScoringBackupService::delete($pdo,(int)($_POST['backup_id']??0),$roundId,$backupTestMode,$userId,(string)($_POST['delete_reason']??''));
+   $notice='Checkpoint #'.$deleted['id'].' permanently deleted. The scoring round itself was not changed.';
   }
  }
 }catch(Throwable $e){$error=$e->getMessage();}
