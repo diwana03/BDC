@@ -14,7 +14,7 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php $sidebarLink('admin/live-screen/', '▣', 'Live Projection', 'TOP'); ?>
     <?php $sidebarLink('admin/events/', '▣', 'Events & Tickets'); ?>
     <?php $sidebarLink('admin/registrations/', '☷', 'Registrations'); ?>
-    <?php $sidebarLink('admin/scoring/?mode=manual', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
+    <?php $sidebarLink('admin/scoring/', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/scoring-backups/', '↶', 'Scoring Backups'); ?>
 </div></details>

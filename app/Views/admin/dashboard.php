@@ -52,7 +52,7 @@ $bdcEnvironmentClass =
 ) ?>"><span>▤</span>Archived Events</a><a href="<?= e(
     url("admin/registrations/"),
 ) ?>"><span>☷</span>Registrations</a><a href="<?= e(
-    url("admin/scoring/?mode=manual"),
+    url("admin/scoring/"),
 ) ?>"><span>⌁</span>Jack &amp; Jill Scoring <em>NEW</em></a><a href="<?= e(
     url("admin/dance-cup/"),
 ) ?>"><span>★</span>Dance Cup Scoring <em>NEW</em></a><a href="<?= e(
