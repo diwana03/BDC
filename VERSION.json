@@ -1,12 +1,13 @@
 {
-  "version": "2.3.3-dev306",
-  "build": 3012,
+  "version": "2.3.3-dev307",
+  "build": 3013,
   "status": "development",
   "release_date": "2026-08-21",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
-    "Splits the main Scoring Dashboard into dedicated Jack and Jill and Dance Cup workflows",
+    "Provides separate Live Operations links for Jack and Jill Scoring and Dance Cup Scoring without an intermediate workflow selector",
+    "Provides separate Test links for Jack and Jill Scoring Tests and isolated Dance Cup Scoring Tests",
     "Adds an isolated Dance Cup dashboard for Solo, Couple, Duo and Team scoring categories",
     "Adds a flexible Dance Cup criteria builder with automatically calculated category maximums",
     "Uses first names on every shared Test and Live audience projection while preserving full names in scoring records",

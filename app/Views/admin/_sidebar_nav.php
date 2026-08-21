@@ -14,7 +14,8 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php $sidebarLink('admin/live-screen/', '▣', 'Live Projection', 'TOP'); ?>
     <?php $sidebarLink('admin/events/', '▣', 'Events & Tickets'); ?>
     <?php $sidebarLink('admin/registrations/', '☷', 'Registrations'); ?>
-    <?php $sidebarLink('admin/scoring/', '⌁', 'Scoring Dashboard', 'NEW'); ?>
+    <?php $sidebarLink('admin/scoring/?mode=manual', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
+    <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/scoring-backups/', '↶', 'Scoring Backups'); ?>
 </div></details>
 
@@ -23,7 +24,6 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php if (Auth::can('judges.view')) $sidebarLink('admin/judges/', '♛', 'Judge Database', 'NEW'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/competitors/identity-review.php', '◎', 'Identity Matches', '', (int)($stats['identity_matches'] ?? 0)); ?>
     <?php $sidebarLink('admin/profile-requests/', '♙', 'Profile Requests', '', (int)($stats['profile_requests'] ?? 0)); ?>
-    <?php $sidebarLink('admin/form-sync/', '↻', 'Google Form Sync', 'NEW'); ?>
 </div></details>
 
 <details class="admin-nav-group-v203"><summary>Results &amp; Points</summary><div class="admin-nav-group-links-v203">
@@ -35,7 +35,8 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
 </div></details>
 
 <details class="admin-nav-group-v203"><summary>Testing &amp; System</summary><div class="admin-nav-group-links-v203">
-    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/scoring-tests/select-mode.php', '⚗', 'Scoring Tests Dashboard', 'TEST'); ?>
+    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/scoring-tests/select-mode.php', '⚗', 'Jack & Jill Scoring Tests', 'TEST'); ?>
+    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/dance-cup/?data_mode=test', '★', 'Dance Cup Scoring Tests', 'TEST'); ?>
     <?php $sidebarLink('admin/system-maintenance/', '☁', 'Backup & Recovery'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/storage-usage/', '◫', 'Storage Usage', 'NEW'); ?>
 </div></details>

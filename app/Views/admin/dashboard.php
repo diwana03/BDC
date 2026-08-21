@@ -52,8 +52,10 @@ $bdcEnvironmentClass =
 ) ?>"><span>▤</span>Archived Events</a><a href="<?= e(
     url("admin/registrations/"),
 ) ?>"><span>☷</span>Registrations</a><a href="<?= e(
-    url("admin/scoring/"),
-) ?>"><span>⌁</span>Scoring Dashboard <em>NEW</em></a><a href="<?= e(
+    url("admin/scoring/?mode=manual"),
+) ?>"><span>⌁</span>Jack &amp; Jill Scoring <em>NEW</em></a><a href="<?= e(
+    url("admin/dance-cup/"),
+) ?>"><span>★</span>Dance Cup Scoring <em>NEW</em></a><a href="<?= e(
     url("admin/point-adjustments/"),
 ) ?>"><span>＋</span>Point Adjustments<?php if (
     !empty($pendingPointAdjustments)
@@ -61,7 +63,9 @@ $bdcEnvironmentClass =
     App\Core\Auth::isSuperAdmin()
 ): ?><a href="<?= e(
     url("admin/scoring-tests/select-mode.php"),
-) ?>"><span>⚗</span>Scoring Tests Dashboard <em>TEST</em></a><?php endif; ?><a href="<?= e(
+) ?>"><span>⚗</span>Jack &amp; Jill Scoring Tests <em>TEST</em></a><a href="<?= e(
+    url("admin/dance-cup/?data_mode=test"),
+) ?>"><span>★</span>Dance Cup Scoring Tests <em>TEST</em></a><?php endif; ?><a href="<?= e(
     url("admin/results/"),
 ) ?>"><span>♕</span>Result Repository</a><a href="<?= e(
     url("admin/placements/"),
@@ -106,10 +110,10 @@ if (
  const readState=name=>{try{return localStorage.getItem('bdc-admin-nav-'+name)}catch(e){return null}};
  const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
-  'Live Operations':['Live Projection','Events & Tickets','Registrations','Scoring Dashboard','Scoring Backups'],
+  'Live Operations':['Live Projection','Events & Tickets','Registrations','Jack & Jill Scoring','Dance Cup Scoring','Scoring Backups'],
   'People':['Competitors','Judge Database','Identity Matches','Profile Requests'],
   'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],
-  'Testing & System':['Scoring Tests Dashboard','Backup & Recovery','Storage Usage','Release Manager'],
+  'Testing & System':['Jack & Jill Scoring Tests','Dance Cup Scoring Tests','Backup & Recovery','Storage Usage','Release Manager'],
   'Super Admin':['AI Operations','Smart Result Import','Legacy & Bulk Import','Merge Duplicates','Users & Roles','SQL Console']
  };
  fragment.appendChild(dashboard.cloneNode(true));
@@ -171,8 +175,10 @@ if (
 ) ?>">＋ Add Competitor</a><a href="<?= e(
     url("admin/events/"),
 ) ?>">＋ Create Event</a><a href="<?= e(
-    url("admin/scoring/"),
-) ?>">⌁ Scoring Dashboard</a><a href="<?= e(
+    url("admin/scoring/?mode=manual"),
+) ?>">⌁ Jack &amp; Jill Scoring</a><a href="<?= e(
+    url("admin/dance-cup/"),
+) ?>">★ Dance Cup Scoring</a><a href="<?= e(
     url("admin/scoring-backups/"),
 ) ?>">↶ Scoring Backups</a><a href="<?= e(
     url("admin/completed-events/"),
