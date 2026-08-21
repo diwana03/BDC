@@ -29,14 +29,16 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   try{
    $action=(string)($_POST['action']??'');
    if($action==='save_settings'){
-    $automation->saveSettings($_POST,$_FILES['service_account_json']??null);
+    $automation->saveSettings($_POST,$_FILES['service_account_json']??null,$_FILES['oauth_client_json']??null);
     $message='Automated backup settings saved.';
    }elseif($action==='run_now'){
     $result=$automation->run(true,$userId);
     $message='Backup created. Google Drive status: '.($result['google_drive_status']??'disabled').'.';
    }elseif($action==='test_drive'){
     $result=$automation->testGoogleDrive();
-    $message='Google Drive connected: '.$result['folder_name'].' using '.$result['service_account'].'.';
+    $message='Google Drive connected: '.$result['folder_name'].' using '.($result['account']??$result['service_account']??'Google authorization').'.';
+   }elseif($action==='disconnect_drive'){
+    $automation->disconnectGoogleOAuth();$message='Google Drive OAuth connection removed. Automated uploads are disabled.';
    }elseif($action==='database'){
     $result=$manual->createDatabaseBackup($userId);$message=$result['name'];
    }elseif($action==='site'){
@@ -58,7 +60,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  }
 }
 
-$settings=$automation->settings();
+$message=$message?:((string)($_SESSION['backup_oauth_message']??''));$error=$error?:((string)($_SESSION['backup_oauth_error']??''));unset($_SESSION['backup_oauth_message'],$_SESSION['backup_oauth_error']);
+$settings=$automation->settings();$oauth=$automation->googleOAuthStatus();
 $history=$automation->history(100);
 $backups=$manual->listBackups();
 $health=$manual->systemHealth();
@@ -94,13 +97,15 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
    <div class="col-md-4"><label class="form-label">Keep on Google Drive</label><input class="form-control" type="number" min="1" max="365" name="drive_keep_count" value="<?=(int)($settings['drive_keep_count']??30)?>"><div class="form-text">Drive retention is independent from server retention.</div></div>
   </div>
   <hr>
-  <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 mb-0">Google Drive Backup</h2><div class="small text-muted">1. Create a Drive folder · 2. Share it with the service-account email · 3. Paste the folder URL · 4. Upload the JSON key · 5. Save and test.</div></div><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="google_drive_enabled" value="1" <?=!empty($settings['google_drive_enabled'])?'checked':''?>><span class="form-check-label">Upload enabled</span></label></div>
+  <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 mb-0">Google Drive Backup</h2><div class="small text-muted">Upload the OAuth Web client JSON once, save settings, then connect the Google account that owns the backup storage.</div></div><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="google_drive_enabled" value="1" <?=!empty($settings['google_drive_enabled'])?'checked':''?>><span class="form-check-label">Upload enabled</span></label></div>
+  <div class="alert <?=$oauth['connected']?'alert-success':'alert-light border'?> py-2"><strong><?=$oauth['connected']?'Connected':'Not connected'?></strong><?php if($oauth['connected']):?> as <?=e((string)$oauth['account'])?><?php elseif($oauth['client_configured']):?> · OAuth client saved and ready to connect<?php else:?> · Upload the OAuth client JSON below<?php endif;?></div>
   <div class="row g-3">
    <div class="col-md-6"><label class="form-label">Google Drive folder ID or URL</label><input class="form-control" name="google_drive_folder_id" value="<?=e((string)$settings['google_drive_folder_id'])?>" placeholder="https://drive.google.com/drive/folders/..."><div class="form-text">A folder URL or folder ID is accepted.</div></div>
-   <div class="col-md-6"><label class="form-label">Service-account JSON</label><input class="form-control" type="file" name="service_account_json" accept=".json,application/json"><div class="form-text">Stored privately with 0600 permissions. Leave blank to keep the current file.</div></div>
+   <div class="col-md-6"><label class="form-label">OAuth Web client JSON</label><input class="form-control" type="file" name="oauth_client_json" accept=".json,application/json"><div class="form-text">Stored privately with 0600 permissions. Never paste the client secret into chat.</div></div>
   </div>
-  <div class="mt-4"><button class="btn btn-primary">Save Backup Settings</button></div>
+  <div class="mt-4 d-flex gap-2 flex-wrap"><button class="btn btn-primary">Save Backup Settings</button><?php if($oauth['client_configured']&&!$oauth['connected']):?><a class="btn btn-success" href="google-drive-connect.php">Connect Google Drive</a><?php endif;?></div>
  </div></form>
+ <?php if($oauth['connected']):?><form method="post" class="mb-4" onsubmit="return confirm('Disconnect Google Drive and disable automated uploads?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="disconnect_drive"><button class="btn btn-sm btn-outline-danger">Disconnect Google Drive</button></form><?php endif;?>
 
  <div class="card settings-card shadow-sm mb-4"><div class="card-body">
   <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0">Available Recovery Backups</h2><span class="badge text-bg-secondary"><?=count($backups)?> files</span></div>

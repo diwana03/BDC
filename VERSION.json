@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev332",
-  "build": 3038,
+  "version": "2.3.3-dev333",
+  "build": 3039,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds owner-authorized Google OAuth backups with secure refresh tokens, automatic BDC_Backup folder creation, scheduled token refresh and dashboard connection controls",
     "Fixes Google Drive shared-folder 404 errors by using the correct server-to-server backup scope instead of the picker-only drive.file scope",
     "Makes the Backup Dashboard self-provision its additive server and Google Drive retention columns before reading or saving configuration",
     "Adds checkbox selection and one-confirmation bulk deletion for scoped Test/Live scoring checkpoints and validated server backup files",

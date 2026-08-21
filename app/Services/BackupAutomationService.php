@@ -39,7 +39,7 @@ final class BackupAutomationService
         ];
     }
 
-    public function saveSettings(array $data,?array $serviceAccountUpload=null):array
+    public function saveSettings(array $data,?array $serviceAccountUpload=null,?array $oauthClientUpload=null):array
     {
         $frequency=in_array($data['frequency']??'daily',['daily','weekly','monthly'],true)?$data['frequency']:'daily';
         $backupType=in_array($data['backup_type']??'full',['database','site','full'],true)?$data['backup_type']:'full';
@@ -61,6 +61,14 @@ final class BackupAutomationService
             if(!move_uploaded_file((string)$serviceAccountUpload['tmp_name'],$absolute))throw new RuntimeException('Could not store Google credentials.');
             @chmod($absolute,0600);
             $path='storage/private/google-drive-service-account.json';
+        }
+        if($oauthClientUpload && ($oauthClientUpload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
+            if(($oauthClientUpload['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Google OAuth client JSON upload failed.');
+            if((int)($oauthClientUpload['size']??0)>1024*1024)throw new RuntimeException('Google OAuth client JSON must be 1 MB or smaller.');
+            $json=json_decode((string)file_get_contents((string)$oauthClientUpload['tmp_name']),true);$client=$json['web']??$json['installed']??null;
+            if(!is_array($client)||empty($client['client_id'])||empty($client['client_secret']))throw new RuntimeException('Invalid Google OAuth client JSON. Download the Web application JSON from Google Cloud.');
+            $dir=$this->root.'/storage/private';if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))throw new RuntimeException('Could not create secure credential folder.');
+            $absolute=$dir.'/google-drive-oauth-client.json';if(!move_uploaded_file((string)$oauthClientUpload['tmp_name'],$absolute))throw new RuntimeException('Could not store Google OAuth credentials.');@chmod($absolute,0600);
         }
 
         $next=$this->calculateNextRun($frequency,$time,$weekday,$monthDay);
@@ -176,8 +184,29 @@ final class BackupAutomationService
         return $this->drive($this->settings())->testConnection();
     }
 
-    private function drive(array $settings):GoogleDriveBackupService
+    public function googleOAuthStatus():array
     {
+        return ['client_configured'=>GoogleDriveOAuthBackupService::clientConfigured($this->root),'connected'=>GoogleDriveOAuthBackupService::connected($this->root),'account'=>GoogleDriveOAuthBackupService::account($this->root)];
+    }
+
+    public function googleOAuthAuthorizationUrl():string{return (new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??'')))->authorizationUrl();}
+
+    public function completeGoogleOAuth(string $code,string $state):array
+    {
+        $drive=new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??''));$account=$drive->complete($code,$state);$folder=$drive->ensureManagedFolder('BDC_Backup');
+        $this->pdo->prepare('UPDATE bdc_backup_settings SET google_drive_folder_id=:folder,google_drive_enabled=1,updated_at=NOW() WHERE id=1')->execute(['folder'=>$folder['id']]);
+        return $account+['folder_id'=>$folder['id'],'folder_name'=>$folder['name']??'BDC_Backup'];
+    }
+
+    public function disconnectGoogleOAuth():void
+    {
+        $path=$this->root.'/storage/private/google-drive-oauth-token.json';if(is_file($path))@unlink($path);
+        $this->pdo->exec('UPDATE bdc_backup_settings SET google_drive_enabled=0,updated_at=NOW() WHERE id=1');
+    }
+
+    private function drive(array $settings):GoogleDriveBackupService|GoogleDriveOAuthBackupService
+    {
+        if(GoogleDriveOAuthBackupService::connected($this->root))return new GoogleDriveOAuthBackupService($this->root,(string)$settings['google_drive_folder_id']);
         $path=$this->root.'/'.ltrim((string)$settings['service_account_path'],'/');
         return new GoogleDriveBackupService($path,(string)$settings['google_drive_folder_id']);
     }
