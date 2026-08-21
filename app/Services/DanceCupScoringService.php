@@ -16,6 +16,20 @@ final class DanceCupScoringService
             : ['competitions' => 'bdc_dance_cup_competitions', 'criteria' => 'bdc_dance_cup_criteria', 'events' => 'bdc_dance_cup_events'];
     }
 
+    /**
+     * Keep the Dance Cup workspace recoverable when code is updated outside the
+     * release manager and the matching migration has not been run yet.
+     */
+    public static function ensureWorkspaceTables(PDO $pdo, bool $test = false): void
+    {
+        $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_entries(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,competitor_id BIGINT UNSIGNED NULL,bib_number INT UNSIGNED NOT NULL,display_name VARCHAR(190) NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_entry_bib(competition_id,bib_number),UNIQUE KEY uq_dc_entry_competitor(competition_id,competitor_id),INDEX idx_dc_entry_comp(competition_id,status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_judges(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,judge_id BIGINT UNSIGNED NULL,judge_name VARCHAR(190) NOT NULL,judge_order INT UNSIGNED NOT NULL DEFAULT 1,is_chief TINYINT(1) NOT NULL DEFAULT 0,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_judge_name(competition_id,judge_name),INDEX idx_dc_judge_comp(competition_id,judge_order)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_marks(competition_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,judge_id BIGINT UNSIGNED NOT NULL,criterion_id BIGINT UNSIGNED NOT NULL,points DECIMAL(8,2) NOT NULL DEFAULT 0,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(competition_id,entry_id,judge_id,criterion_id),INDEX idx_dc_marks_comp(competition_id,judge_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_results(competition_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,total_score DECIMAL(12,2) NOT NULL DEFAULT 0,placement INT UNSIGNED NOT NULL,calculated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(competition_id,entry_id),INDEX idx_dc_result_place(competition_id,placement)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_checkpoints(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,label VARCHAR(190) NOT NULL,snapshot_json LONGTEXT NOT NULL,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_dc_checkpoint_comp(competition_id,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
     /** @param array<int,array{name:string,max:float}> $criteria */
     public static function createCompetition(PDO $pdo, array $data, array $criteria, ?int $userId, bool $test = false): int
     {

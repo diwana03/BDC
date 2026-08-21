@@ -19,6 +19,7 @@ try{
     if($competitionId<1||!$ids)throw new RuntimeException('Judge order is empty.');
     $table=$test?'bdc_test_dance_cup_judges':'bdc_dance_cup_judges';
     $pdo=Database::connection();
+    \App\Services\DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
     $q=$pdo->prepare("SELECT id,is_chief FROM {$table} WHERE competition_id=:competition");
     $q->execute(['competition'=>$competitionId]);
     $existing=$q->fetchAll();
