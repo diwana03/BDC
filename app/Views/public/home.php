@@ -13,7 +13,7 @@
   <div class="container portal-nav-container">
     <a class="navbar-brand portal-brand" href="<?= e(url('/')) ?>">
       <span class="portal-brand-logo-wrap">
-        <img class="portal-brand-logo" src="<?= e(url('/public/assets/img/bdc-logo-header.png')) ?>" alt="BDC logo">
+        <img class="portal-brand-logo" src="<?= e(url('/public/assets/bdc-logo.png')) ?>" alt="BDC logo">
       </span>
       <span>Bachata Dance Council Portal</span>
     </a>

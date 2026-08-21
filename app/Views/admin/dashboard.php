@@ -18,7 +18,7 @@ $bdcEnvironmentClass =
 ) ?> · VERSION <?= e(
      (string) ($bdcVersion["version"] ?? ReleaseManagerService::VERSION),
  ) ?></div><div class="admin-layout-v203"><header class="admin-topbar-v203"><div class="admin-topbar-brand-v203"><span class="admin-topbar-logo-v203"><img src="<?= e(
-    url("public/assets/img/bdc-logo.png"),
+    url("public/assets/bdc-logo.png"),
 ) ?>" alt="BDC"></span><span><strong>BDC Admin Dashboard</strong><small>Bachata Dance Council · Competition Portal</small></span></div><div class="admin-topbar-actions-v203"><a class="admin-topbar-home-v203" href="https://bachatadancecouncil.com/">⌂ BDC Home</a><span class="admin-topbar-divider-v203"></span><span class="admin-topbar-user-v203"><b>Hello, <?= e(
     App\Core\Auth::user()["full_name"] ?? "Admin",
 ) ?></b><small><?= App\Core\Auth::isSuperAdmin()

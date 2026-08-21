@@ -66,7 +66,7 @@ function resultLabel(array $entry):string{
  if($status==='eliminated')return '—';
  return '';
 }
-$logo=url('public/assets/img/bdc-logo-header.png');
+$logo=url('public/assets/bdc-logo.png');
 $isAutomatic=($round['scoring_mode']??'manual')==='automated';
 $witnesses=array_values(array_filter([
  trim((string)($round['witness_1']??'')),

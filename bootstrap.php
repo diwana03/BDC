@@ -57,6 +57,33 @@ if (!function_exists('url')) {
     }
 }
 
+/*
+ * One official BDC identity across every HTML surface. This runs centrally so
+ * judge links, Test, Live, Dance Cup, administration, print views and audience
+ * projection cannot drift into unbranded one-off templates.
+ */
+$bdcOfficialLogoUrl = url('public/assets/bdc-logo.png');
+$bdcBrandingScriptUrl = url('public/js/bdc-global-branding.js?v=320');
+ob_start(static function (string $html) use ($bdcOfficialLogoUrl, $bdcBrandingScriptUrl): string {
+    if ($html === '' || stripos($html, '</body>') === false || str_contains($html, 'data-bdc-global-branding-loader')) {
+        return $html;
+    }
+    $contentType = '';
+    foreach (headers_list() as $headerLine) {
+        if (stripos($headerLine, 'Content-Type:') === 0) {
+            $contentType = trim(substr($headerLine, strlen('Content-Type:')));
+            break;
+        }
+    }
+    if ($contentType !== '' && stripos($contentType, 'text/html') === false) {
+        return $html;
+    }
+    $logo = json_encode($bdcOfficialLogoUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $loader = '<script data-bdc-global-branding-loader>window.BDC_OFFICIAL_LOGO_URL=' . $logo . ';</script>'
+        . '<script defer src="' . e($bdcBrandingScriptUrl) . '"></script>';
+    return preg_replace('/<\/body>/i', $loader . '</body>', $html, 1) ?? $html;
+});
+
 $bdcBootstrapMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcBootstrapPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
 $bdcIsScoringTestIndex = preg_match('#/admin/scoring-tests(?:/(?:index|panel)\.php)?/?$#', $bdcBootstrapPath) === 1;
