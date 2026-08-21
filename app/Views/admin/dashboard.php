@@ -11,13 +11,9 @@ $bdcEnvironmentClass =
     url("public/assets/css/app.css?v=204"),
 ) ?>"><link rel="stylesheet" href="<?= e(
     url("public/assets/css/bdc-brand-theme.css?v=8"),
-) ?>"></head><body class="admin-v203 <?= e(
+) ?>"><link rel="stylesheet" data-bdc-theme-styles href="<?= e(url("public/assets/css/bdc-theme.css?v=323")) ?>"><script defer src="<?= e(url("public/assets/js/bdc-theme.js?v=323")) ?>"></script></head><body class="admin-v203 <?= e(
     $bdcEnvironmentClass,
-) ?>"><div class="admin-environment-banner" style="padding:8px 12px;text-align:center;font-weight:800;letter-spacing:.08em;"><?= e(
-    ReleaseManagerService::environmentLabel(),
-) ?> · VERSION <?= e(
-     (string) ($bdcVersion["version"] ?? ReleaseManagerService::VERSION),
- ) ?></div><div class="admin-layout-v203"><header class="admin-topbar-v203"><div class="admin-topbar-brand-v203"><span class="admin-topbar-logo-v203"><img src="<?= e(
+) ?>"><div class="admin-layout-v203"><header class="admin-topbar-v203"><div class="admin-topbar-brand-v203"><span class="admin-topbar-logo-v203"><img src="<?= e(
     url("public/assets/bdc-logo.png"),
 ) ?>" alt="BDC"></span><span><strong>BDC Admin Dashboard</strong><small>Bachata Dance Council · Competition Portal</small></span></div><div class="admin-topbar-actions-v203"><a class="admin-topbar-home-v203" href="https://bachatadancecouncil.com/">⌂ BDC Home</a><span class="admin-topbar-divider-v203"></span><span class="admin-topbar-user-v203"><b>Hello, <?= e(
     App\Core\Auth::user()["full_name"] ?? "Admin",

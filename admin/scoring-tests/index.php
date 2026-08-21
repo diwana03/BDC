@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=323"></script></head>',$html));
 
 // Return plain HTML from PHP. Bluehost was caching an already-compressed body
 // and then applying transport gzip again, leaving binary bytes in the browser.

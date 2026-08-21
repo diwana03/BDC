@@ -43,6 +43,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(newKey)state[role][newKey]++;
   card.dataset.currentMark=newValue;update();
  })));update();
+ const reviewNames=document.getElementById('reviewNames');
+ if(reviewNames){
+  const upgradeReview=()=>{
+   reviewNames.querySelectorAll('button').forEach(button=>{
+    if(button.querySelector('.review-bib'))return;
+    const card=cards.find(row=>row.dataset.name===button.textContent.trim());
+    const match=card?.querySelector('strong')?.textContent.match(/#\s*(\d+)/),bib=match?.[1]||'—',name=card?.dataset.name||button.textContent.trim();
+    button.innerHTML=`<span class="review-bib">#${bib}</span><span class="review-name">${name}</span>`;
+    button.classList.add('review-later-button');
+   });
+  };
+  new MutationObserver(upgradeReview).observe(reviewNames,{childList:true});upgradeReview();
+ }
 });
 document.addEventListener('DOMContentLoaded',()=>{
  if(!document.body.textContent.includes('Submitted.'))return;

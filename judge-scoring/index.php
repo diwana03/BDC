@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 require dirname(__DIR__).'/bootstrap.php';
+$themeAsset=e(url('public/assets/js/bdc-theme.js?v=323'));
 
-ob_start(static fn(string $html):string=>str_replace(
+ob_start(static function(string $html)use($themeAsset):string{
+    $html=str_replace(
     [
         'All <strong>LATER</strong> selections must be removed before submission.',
         'Use <strong>LATER</strong> for consideration, but remove every <strong>LATER</strong> before submission.',
@@ -11,7 +13,9 @@ ob_start(static fn(string $html):string=>str_replace(
     ],
     '<strong>LATER is optional.</strong> It is a private review marker and does not block submission.',
     $html
-));
+    );
+    return str_replace('</head>','<script defer src="'.$themeAsset.'"></script></head>',$html);
+});
 
 use App\Core\Database;
 use App\Services\AutomaticJudgeBrowserService;
@@ -204,7 +208,7 @@ function updateAvailability(role){const state=selectionState[role]||{yes:0,A1:0,
 function localRuleCheck(button){const card=button.closest('[data-entry-card]');if(!card)return true;const role=card.dataset.role,state=selectionState[role]||{yes:0,A1:0,A2:0,A3:0},current=card.querySelector('.choice.active')?.dataset.value||'',next=button.dataset.value;if(next==='YES'&&current!=='YES'&&state.yes>=yesLimit){showRuleMessage('Maximum '+yesLimit+' YES selections allowed for '+(role==='leader'?'Leaders':'Followers')+'. Clear or change another YES first.');return false;}if(['A1','A2','A3'].includes(next)&&current!==next&&state[next]>=1){showRuleMessage(next+' is already used for '+(role==='leader'?'Leaders':'Followers')+'. Each alternate rank can be used only once.');return false;}return true}
 function adjustLocalState(card,newValue){if(!card)return;const role=card.dataset.role,state=selectionState[role],old=card.querySelector('.choice.active')?.dataset.value||'';if(old==='YES')state.yes=Math.max(0,state.yes-1);else if(['A1','A2','A3'].includes(old))state[old]=Math.max(0,state[old]-1);if(newValue==='YES')state.yes++;else if(['A1','A2','A3'].includes(newValue))state[newValue]++;updateCounter(role)}
 function htmlEscape(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))}
-function renderReviewLater(){const cards=[...document.querySelectorAll('[data-entry-card]')].filter(card=>card.querySelector('.choice.active')?.dataset.value==='LATER'),box=document.getElementById('reviewLaterList'),names=document.getElementById('reviewLaterNames');box.style.display=cards.length?'block':'none';names.innerHTML=cards.map(card=>'<button type="button" class="choice" data-review-entry="'+card.dataset.entryCard+'">'+htmlEscape(card.dataset.name)+'</button>').join('');names.querySelectorAll('button').forEach(button=>button.onclick=()=>{const card=document.querySelector('[data-entry-card="'+button.dataset.reviewEntry+'"]'),role=card.dataset.role;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===role));document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===role));card.scrollIntoView({behavior:'smooth',block:'center'})})}
+function renderReviewLater(){const cards=[...document.querySelectorAll('[data-entry-card]')].filter(card=>card.querySelector('.choice.active')?.dataset.value==='LATER'),box=document.getElementById('reviewLaterList'),names=document.getElementById('reviewLaterNames');if(!box||!names)return;const helper=box.querySelector('.small');if(helper)helper.textContent='Tap a bib to return to that competitor.';box.style.display=cards.length?'block':'none';names.innerHTML=cards.map(card=>{const bib=(card.querySelector('.bib')?.textContent.match(/#\s*(\d+)/)||[])[1]||'—';return '<button type="button" class="choice review-later-button" data-review-entry="'+card.dataset.entryCard+'"><span class="review-bib">#'+htmlEscape(bib)+'</span><span class="review-name">'+htmlEscape(card.dataset.name)+'</span></button>'}).join('');names.querySelectorAll('button').forEach(button=>button.onclick=()=>{const card=document.querySelector('[data-entry-card="'+button.dataset.reviewEntry+'"]'),role=card.dataset.role;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===role));document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===role));card.scrollIntoView({behavior:'smooth',block:'center'})})}
 async function saveChoice(button){
  const card=button.closest?button.closest('[data-entry-card]'):null;if(card&&card.dataset.saving==='1')return;if(card&&!localRuleCheck(button))return;
  const saved=card?card.querySelector('.saved'):button.parentElement.querySelector('.saved'),oldButton=card?card.querySelector('.choice.active'):null,oldValue=oldButton?.dataset.value||'';

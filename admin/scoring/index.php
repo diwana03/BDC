@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=323"></script></head>',$html));
 $mode=(string)($_GET['mode']??'');$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);$action=(string)($_POST['action']??'');
 if($mode==='special'){header('Location: ?mode=manual'.($roundId?'&round_id='.$roundId:''));exit;}
 if($_SERVER['REQUEST_METHOD']==='POST'&&$action==='create_round'&&in_array((string)($_POST['division']??''),['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'],true)){require __DIR__.'/integrated-special-create.php';exit;}

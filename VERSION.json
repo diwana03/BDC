@@ -1,11 +1,15 @@
 {
-  "version": "2.3.3-dev322",
-  "build": 3028,
+  "version": "2.3.3-dev323",
+  "build": 3029,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds persistent Light, Dark and System appearance controls across Admin, Test, Live, judge, Dance Cup, Jack and Jill, and projection-control screens without changing the audience projector",
+    "Adds BDC Competitor and Judge Database autocomplete to Dance Cup roster setup while preserving manual team and new-name entry",
+    "Makes Review Later shortcuts bib-first with a large bib and smaller competitor name across Live and Test judge scoring",
+    "Removes the redundant full-width Production and version strip from the administration dashboard",
     "Replaces the generic blue Production administration dashboard with a premium BDC midnight, wine, champagne and warm-ivory visual system",
     "Keeps live YES, A1, A2 and A3 judge selection trackers pinned while scrolling and allows completed submissions to retain optional private LATER markers",
     "Upgrades the administration dashboard with a premium BDC navy, burgundy and champagne visual system while preserving environment identification",
