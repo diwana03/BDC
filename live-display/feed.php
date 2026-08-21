@@ -90,8 +90,9 @@ $scoringComplete =
         true,
     );
 if ($type === "flights") {
-    $flight = $page;
-    $title = "FLIGHT {$flight} · NOW DANCING";
+    $flightSummary = ScoringFlightService::summary($pdo, $roundId, $test);
+    $flight = max(1, (int)($flightSummary['active_flight'] ?? $page));
+    $title = "ROUND {$flight} · NOW DANCING";
     ScoringFlightService::ensure($pdo, $test);
     $assignmentTable = $test ? 'bdc_test_scoring_flight_assignments' : 'bdc_scoring_flight_assignments';
     if ((string)$r['round_type'] === 'final') {

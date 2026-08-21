@@ -163,6 +163,7 @@ final class LiveDisplaySessionService
             "results",
             "winners",
             "matching",
+            "flights",
         ];
         if (!in_array($type, $allowed, true)) {
             $type = "holding";

@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev314",
-  "build": 3020,
+  "version": "2.3.3-dev315",
+  "build": 3021,
   "status": "development",
-  "release_date": "2026-08-21",
+  "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Connects organiser Scoring Rounds to judge screens and Live Projection so all surfaces advance together",
+    "Shows judges only the active Scoring Round while preserving marks from earlier rounds",
+    "Renames user-facing Flights to clear Round 1, Round 2 and onward labels",
     "Prevents the same competitor from being added twice to one round or silently moved to a new bib",
     "Adds Save Competitors and Submit Competitors checkpoints that lock the roster before judging across Test and Live",
     "Adds Final-equivalent judge status, backup, link and audited emergency unlock-all controls to Automatic Heats and Semifinals",
