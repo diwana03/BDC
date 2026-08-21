@@ -14,6 +14,11 @@ ob_start(static function(string $html)use($themeAsset):string{
     '<strong>LATER is optional.</strong> It is a private review marker and does not block submission.',
     $html
     );
+    $html=str_replace(
+        ['<strong>BDC AUTOMATIC SCORING</strong>','<div class="eyebrow">BDC AUTOMATIC SCORING</div>'],
+        '',
+        $html
+    );
     return str_replace('</head>','<script defer src="'.$themeAsset.'"></script></head>',$html);
 });
 

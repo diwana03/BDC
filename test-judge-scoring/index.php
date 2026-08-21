@@ -6,7 +6,11 @@ use App\Core\Csrf;use App\Core\Database;use App\Services\JudgingCriteriaService;
 ob_start(static fn(string $html):string=>str_replace(
  ['All <strong>LATER</strong> selections must be removed before submission.','Use <strong>LATER</strong> for consideration, but remove every <strong>LATER</strong> before submission.'],
  '<strong>LATER is optional.</strong> It is a private review marker and does not block submission.',
- str_replace('</head>','<script defer src="'.$themeAsset.'"></script><style id="bdc-test-sticky-tracker">.counter{position:sticky!important;top:6px!important;z-index:50!important;border-width:2px!important;box-shadow:0 8px 22px rgba(15,23,42,.2)!important}</style></head>',$html)
+ str_replace(
+  ['<span class="navbar-brand">BDC Automatic Scoring TEST</span>','<div class="test">BDC AUTOMATIC SCORING · TEST ONLY</div>'],
+  ['', '<div class="test">TEST ONLY</div>'],
+  str_replace('</head>','<script defer src="'.$themeAsset.'"></script><style id="bdc-test-sticky-tracker">.counter{position:sticky!important;top:6px!important;z-index:50!important;border-width:2px!important;box-shadow:0 8px 22px rgba(15,23,42,.2)!important}</style></head>',$html)
+ )
 ));
 $pdo=Database::connection();$token=(string)($_GET['token']??$_POST['token']??'');$session=TestAutomaticJudgeService::byToken($pdo,$token);if(!$session){http_response_code(404);exit('Invalid or expired test judge link.');}
 $flightSummary=ScoringFlightService::summary($pdo,(int)$session['round_id'],true);$flightCount=(int)($flightSummary['flight_count']??0);$activeFlight=max(1,(int)($flightSummary['active_flight']??1));$flightsEnabled=$flightCount>0;$viewRound=$flightsEnabled?max(1,min($flightCount,(int)($_GET['scoring_round']??$_POST['scoring_round']??1))):1;

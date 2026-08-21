@@ -17,9 +17,9 @@
   function preference() {
     try {
       var saved = localStorage.getItem(STORAGE_KEY);
-      return OPTIONS.indexOf(saved) >= 0 ? saved : 'system';
+      return OPTIONS.indexOf(saved) >= 0 ? saved : 'light';
     } catch (error) {
-      return 'system';
+      return 'light';
     }
   }
 
@@ -30,7 +30,7 @@
   }
 
   function apply(value, notify) {
-    var selected = OPTIONS.indexOf(value) >= 0 ? value : 'system';
+    var selected = OPTIONS.indexOf(value) >= 0 ? value : 'light';
     var resolved = effective(selected);
     document.documentElement.dataset.bdcThemePreference = selected;
     document.documentElement.dataset.bdcTheme = resolved;
