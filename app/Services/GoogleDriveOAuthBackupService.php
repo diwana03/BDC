@@ -51,6 +51,11 @@ final class GoogleDriveOAuthBackupService
         $state=bin2hex(random_bytes(24));$_SESSION['bdc_google_oauth_state']=$state;
         return 'https://accounts.google.com/o/oauth2/v2/auth?'.http_build_query([
             'client_id'=>$this->client['client_id'],'redirect_uri'=>$this->redirectUri(),'response_type'=>'code',
+            // Keep Google's one-time authorization code out of the callback URL.
+            // Some shared-hosting ModSecurity rules reject long OAuth codes in
+            // query strings before PHP can validate them. The callback relays
+            // this fragment to the same-origin endpoint as an encoded JSON body.
+            'response_mode'=>'fragment',
             'scope'=>'https://www.googleapis.com/auth/drive.file','access_type'=>'offline','prompt'=>'consent',
             'include_granted_scopes'=>'true','state'=>$state,
         ]);

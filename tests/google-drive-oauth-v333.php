@@ -9,5 +9,5 @@ $root=dirname(__DIR__);$files=[
 ];
 foreach($files as $name=>$path)if(!is_file($path)){fwrite(STDERR,"Missing {$name}\n");exit(1);}
 $all=implode("\n",array_map(static fn(string $path):string=>(string)file_get_contents($path),$files));
-foreach(['drive.file','access_type','offline','refresh_token','google-drive-oauth-token.json','ensureManagedFolder','Connect Google Drive','disconnect_drive','bdc_google_oauth_state'] as $marker){if(!str_contains($all,$marker)){fwrite(STDERR,"Missing {$marker}\n");exit(1);}}
+foreach(['drive.file','access_type','offline','refresh_token','google-drive-oauth-token.json','ensureManagedFolder','Connect Google Drive','disconnect_drive','bdc_google_oauth_state','response_mode','fragment','location.hash','payload'] as $marker){if(!str_contains($all,$marker)){fwrite(STDERR,"Missing {$marker}\n");exit(1);}}
 echo "google drive oauth v333: PASS\n";
