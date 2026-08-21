@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev315",
-  "build": 3021,
+  "version": "2.3.3-dev316",
+  "build": 3022,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds judge-controlled Round 1, Round 2 and onward tabs with one combined final submission",
+    "Preserves one shared YES and alternate quota across every Scoring Round",
+    "Keeps organiser active-round selection dedicated to Live Projection while judges review rounds independently",
     "Connects organiser Scoring Rounds to judge screens and Live Projection so all surfaces advance together",
     "Shows judges only the active Scoring Round while preserving marks from earlier rounds",
     "Renames user-facing Flights to clear Round 1, Round 2 and onward labels",
