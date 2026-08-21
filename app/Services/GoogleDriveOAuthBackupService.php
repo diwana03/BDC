@@ -46,6 +46,20 @@ final class GoogleDriveOAuthBackupService
         return rtrim((string)Config::get('app.url','https://bachatadancecouncil.com/portal'),'/').'/admin/system-maintenance/google-drive-callback.php';
     }
 
+    public function popupRedirectUri():string
+    {
+        $parts=parse_url((string)Config::get('app.url','https://bachatadancecouncil.com/portal'));
+        $scheme=(string)($parts['scheme']??'https');$host=(string)($parts['host']??'bachatadancecouncil.com');
+        $port=isset($parts['port'])?':'.(int)$parts['port']:'';
+        return $scheme.'://'.$host.$port;
+    }
+
+    public function popupConfig():array
+    {
+        $state=bin2hex(random_bytes(24));$_SESSION['bdc_google_oauth_state']=$state;
+        return ['client_id'=>(string)$this->client['client_id'],'state'=>$state,'scope'=>'https://www.googleapis.com/auth/drive.file'];
+    }
+
     public function authorizationUrl():string
     {
         $state=bin2hex(random_bytes(24));$_SESSION['bdc_google_oauth_state']=$state;
@@ -61,11 +75,11 @@ final class GoogleDriveOAuthBackupService
         ]);
     }
 
-    public function complete(string $code,string $state):array
+    public function complete(string $code,string $state,?string $redirectUri=null):array
     {
         $expected=(string)($_SESSION['bdc_google_oauth_state']??'');unset($_SESSION['bdc_google_oauth_state']);
         if($expected===''||$state===''||!hash_equals($expected,$state))throw new RuntimeException('Google authorization state is invalid or expired. Start Connect Google Drive again.');
-        $token=$this->tokenRequest(['code'=>$code,'client_id'=>$this->client['client_id'],'client_secret'=>$this->client['client_secret'],'redirect_uri'=>$this->redirectUri(),'grant_type'=>'authorization_code']);
+        $token=$this->tokenRequest(['code'=>$code,'client_id'=>$this->client['client_id'],'client_secret'=>$this->client['client_secret'],'redirect_uri'=>$redirectUri??$this->redirectUri(),'grant_type'=>'authorization_code']);
         if(empty($token['refresh_token']))throw new RuntimeException('Google did not issue an offline refresh token. Remove BDC Backup System from your Google Account connections and connect again.');
         $token['expires_at']=time()+(int)($token['expires_in']??3600)-60;
         $about=$this->api('GET','https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)',null,(string)$token['access_token']);

@@ -62,6 +62,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 
 $message=$message?:((string)($_SESSION['backup_oauth_message']??''));$error=$error?:((string)($_SESSION['backup_oauth_error']??''));unset($_SESSION['backup_oauth_message'],$_SESSION['backup_oauth_error']);
 $settings=$automation->settings();$oauth=$automation->googleOAuthStatus();
+$oauthPopup=$oauth['client_configured']&&!$oauth['connected']?$automation->googleOAuthPopupConfig():null;
 $history=$automation->history(100);
 $backups=$manual->listBackups();
 $health=$manual->systemHealth();
@@ -103,7 +104,7 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
    <div class="col-md-6"><label class="form-label">Google Drive folder ID or URL</label><input class="form-control" name="google_drive_folder_id" value="<?=e((string)$settings['google_drive_folder_id'])?>" placeholder="https://drive.google.com/drive/folders/..."><div class="form-text">A folder URL or folder ID is accepted.</div></div>
    <div class="col-md-6"><label class="form-label">OAuth Web client JSON</label><input class="form-control" type="file" name="oauth_client_json" accept=".json,application/json"><div class="form-text">Stored privately with 0600 permissions. Never paste the client secret into chat.</div></div>
   </div>
-  <div class="mt-4 d-flex gap-2 flex-wrap"><button class="btn btn-primary">Save Backup Settings</button><?php if($oauth['client_configured']&&!$oauth['connected']):?><a class="btn btn-success" href="google-drive-connect.php">Connect Google Drive</a><?php endif;?></div>
+  <div class="mt-4 d-flex gap-2 flex-wrap"><button class="btn btn-primary">Save Backup Settings</button><?php if($oauthPopup):?><button class="btn btn-success" type="button" id="connectGoogleDrive">Connect Google Drive</button><?php endif;?></div>
  </div></form>
  <?php if($oauth['connected']):?><form method="post" class="mb-4" onsubmit="return confirm('Disconnect Google Drive and disable automated uploads?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="disconnect_drive"><button class="btn btn-sm btn-outline-danger">Disconnect Google Drive</button></form><?php endif;?>
 
@@ -149,6 +150,9 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
 </div>
 </div>
 </main>
+<?php if($oauthPopup):?><script src="https://accounts.google.com/gsi/client" async defer></script><script>
+(()=>{const button=document.getElementById('connectGoogleDrive');const config=<?=json_encode($oauthPopup,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;button.addEventListener('click',()=>{if(!window.google?.accounts?.oauth2){alert('Google authorization is still loading. Please click Connect Google Drive again.');return;}button.disabled=true;button.textContent='Connecting…';const client=google.accounts.oauth2.initCodeClient({client_id:config.client_id,scope:config.scope,ux_mode:'popup',state:config.state,select_account:true,callback:response=>{const data={code:response.code||'',state:response.state||'',error:response.error||'',popup:true};const payload=btoa(JSON.stringify(data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');fetch('google-drive-popup.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload})}).then(async result=>{let body={};try{body=await result.json();}catch(e){}location.assign(body.redirect||'./');}).catch(()=>{button.disabled=false;button.textContent='Connect Google Drive';alert('Google Drive connection could not be completed.');});},error_callback:()=>{button.disabled=false;button.textContent='Connect Google Drive';}});client.requestCode();});})();
+</script><?php endif;?>
 <script>
 function toggleSchedule(){const v=document.getElementById('frequency').value;document.querySelectorAll('.weekly-field').forEach(x=>x.style.display=v==='weekly'?'block':'none');document.querySelectorAll('.monthly-field').forEach(x=>x.style.display=v==='monthly'?'block':'none');}
 document.getElementById('frequency').addEventListener('change',toggleSchedule);toggleSchedule();

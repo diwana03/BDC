@@ -191,9 +191,11 @@ final class BackupAutomationService
 
     public function googleOAuthAuthorizationUrl():string{return (new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??'')))->authorizationUrl();}
 
-    public function completeGoogleOAuth(string $code,string $state):array
+    public function googleOAuthPopupConfig():array{return (new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??'')))->popupConfig();}
+
+    public function completeGoogleOAuth(string $code,string $state,bool $popup=false):array
     {
-        $drive=new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??''));$account=$drive->complete($code,$state);$folder=$drive->ensureManagedFolder('BDC_Backup');
+        $drive=new GoogleDriveOAuthBackupService($this->root,(string)($this->settings()['google_drive_folder_id']??''));$account=$drive->complete($code,$state,$popup?$drive->popupRedirectUri():null);$folder=$drive->ensureManagedFolder('BDC_Backup');
         $this->pdo->prepare('UPDATE bdc_backup_settings SET google_drive_folder_id=:folder,google_drive_enabled=1,updated_at=NOW() WHERE id=1')->execute(['folder'=>$folder['id']]);
         return $account+['folder_id'=>$folder['id'],'folder_name'=>$folder['name']??'BDC_Backup'];
     }

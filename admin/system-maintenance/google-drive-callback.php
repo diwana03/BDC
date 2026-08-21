@@ -13,7 +13,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   $oauth=$decoded!==false?json_decode($decoded,true):null;
   if(!is_array($oauth))throw new RuntimeException('Google authorization response was invalid. Start Connect Google Drive again.');
   if(!empty($oauth['error']))throw new RuntimeException('Google authorization was cancelled: '.(string)$oauth['error']);
-  $result=(new BackupAutomationService(dirname(__DIR__,2)))->completeGoogleOAuth((string)($oauth['code']??''),(string)($oauth['state']??''));
+  $result=(new BackupAutomationService(dirname(__DIR__,2)))->completeGoogleOAuth((string)($oauth['code']??''),(string)($oauth['state']??''),!empty($oauth['popup']));
   $_SESSION['backup_oauth_message']='Google Drive connected as '.$result['account_email'].'. BDC folder: '.$result['folder_name'].'.';
   echo json_encode(['ok'=>true,'redirect'=>'./']);
  }catch(Throwable $e){

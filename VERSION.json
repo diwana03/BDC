@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev334",
-  "build": 3040,
+  "version": "2.3.3-dev335",
+  "build": 3041,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the hosting-blocked Google OAuth redirect with Google's official popup code flow so authorization completes without navigating through a ModSecurity-filtered callback URL",
     "Routes the Google OAuth authorization response through a fragment and same-origin encoded POST so shared-hosting ModSecurity cannot reject the callback query string",
     "Adds owner-authorized Google OAuth backups with secure refresh tokens, automatic BDC_Backup folder creation, scheduled token refresh and dashboard connection controls",
     "Fixes Google Drive shared-folder 404 errors by using the correct server-to-server backup scope instead of the picker-only drive.file scope",
