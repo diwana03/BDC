@@ -99,6 +99,10 @@
 
   const brandTarget = document.querySelector('.navbar-brand, .admin-topbar-brand-v203, .portal-brand, header.top .wrap');
   const existing = document.querySelector('img[src*="bdc-logo"]');
+  if (existing && !brandTarget) {
+    shell(existing);
+    return;
+  }
   const image = existing || document.createElement('img');
   const wrap = shell(image);
   if (brandTarget) {

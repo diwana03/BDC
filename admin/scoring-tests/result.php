@@ -68,6 +68,9 @@ function resultLabel(array $entry):string{
  if($status==='eliminated')return '—';
  return '';
 }
+function scoreTotalLabel(array $entry):string{
+ return $entry['total_score']===null?'—':number_format((float)$entry['total_score'],1);
+}
 $logo=url('public/assets/img/bdc-logo-header.png');
 $isAutomatic=($round['scoring_mode']??'manual')==='automated';
 $witnesses=array_values(array_filter([
@@ -137,7 +140,7 @@ th.result,td.result{width:16mm;font-weight:700}
 <div class="fit-shell"><div class="page fit-page">
  <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e(strtoupper($label))?></h2></div><div class="meta"><strong>Judges:</strong> <?=count($judges)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
  <div class="page-label"><?=e($label)?> · All Judges</div>
- <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;?><td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
+ <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
  <div class="judge-key"><strong>Judge Key</strong><?php foreach($judges as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
 </div></div>
 <?php endforeach;?>
@@ -152,7 +155,7 @@ th.result,td.result{width:16mm;font-weight:700}
  <div class="page-label"><?=e($label)?> · Judges <?=e(implode(', ',array_map(fn($judge):string=>'J'.(int)$judge['judge_order'],$judgeChunk)))?></div>
  <table class="paginated-table">
   <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total">Total</th><th class="result">Result</th></tr></thead>
-  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;?><td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
+  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
  </table>
  <div class="judge-key paginated-key"><strong>Judge Key</strong><?php foreach($judgeChunk as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
  <footer class="footer compact-footer"><div class="witnesses"><strong>Scoring Witnesses</strong><?php if($witnesses):foreach($witnesses as $witness):?><span class="witness-line"><?=e($witness)?></span><?php endforeach;else:?><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><?php endif;?></div><div class="version"><strong>Chief Judge:</strong><br><?=e($chiefJudge?:'—')?><br><br><strong>Scoring Administrator:</strong><br><?=e((string)($round['scoring_administrator']??''))?></div></footer>
@@ -191,7 +194,7 @@ th.result,td.result{width:16mm;font-weight:700}
       <td class="bib"><?= (int)$entry['bib_number'] ?></td>
       <td class="name"><?=e($entry['display_name'])?></td>
       <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;endif;?>
-      <td class="total"><?=number_format((float)($entry['total_score']??0),1)?></td>
+      <td class="total"><?=e(scoreTotalLabel($entry))?></td>
       <td class="result"><?=e(resultLabel($entry))?></td>
      </tr>
     <?php endforeach;?>
