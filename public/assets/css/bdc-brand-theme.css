@@ -95,4 +95,26 @@
 .admin-v203.admin-env-staging .admin-nav-group-links-v203 a{color:rgba(255,255,255,.9)}
 .admin-v203.admin-env-staging .admin-nav-group-links-v203 a>span{color:#ffe3a1}
 
+/* Premium BDC operations dashboard: official navy, burgundy and champagne. */
+.admin-v203{background:radial-gradient(circle at 85% 0,#f9f3e7 0,#f4f6fa 34%,#edf1f7 100%);--bdc-navy:#101b32;--bdc-navy-2:#192a49;--bdc-burgundy:#7e2038;--bdc-gold:#c7a65a;--bdc-champagne:#f7ecd2}
+.admin-v203 .admin-topbar-v203{background:linear-gradient(110deg,var(--bdc-navy) 0%,var(--bdc-navy-2) 64%,var(--bdc-burgundy) 100%);border-bottom:1px solid rgba(199,166,90,.65);box-shadow:0 12px 32px rgba(16,27,50,.24)}
+.admin-v203 .admin-topbar-logo-v203{background:#fff!important;border:1px solid rgba(199,166,90,.7)!important;border-radius:14px!important;box-shadow:0 7px 20px rgba(0,0,0,.22)!important}
+.admin-v203 .admin-sidebar-v203{background:linear-gradient(180deg,var(--bdc-navy-2),var(--bdc-navy) 60%,#0a1120)!important;border-right:1px solid rgba(199,166,90,.38)!important;color:#fff!important}
+.admin-v203 .admin-sidebar-v203 nav a{color:rgba(255,255,255,.84)!important;border-radius:11px!important;margin:3px 8px}
+.admin-v203 .admin-sidebar-v203 nav a>span{color:#e7ce91!important}
+.admin-v203 .admin-sidebar-v203 nav a:hover{background:rgba(247,236,210,.1)!important;color:#fff!important}
+.admin-v203 .admin-sidebar-v203 nav a.active{background:linear-gradient(100deg,#fff,#fbf6e9)!important;color:var(--bdc-burgundy)!important;border-left:4px solid var(--bdc-gold)!important;box-shadow:0 8px 20px rgba(0,0,0,.16)}
+.admin-v203 .admin-main-v203{background:transparent!important}
+.admin-v203 .admin-metric-card-v203,.admin-v203 .admin-card-v203{background:rgba(255,255,255,.94)!important;border:1px solid rgba(16,27,50,.1)!important;border-radius:18px!important;box-shadow:0 12px 28px rgba(16,27,50,.08)!important;overflow:hidden}
+.admin-v203 .admin-metric-card-v203{border-top:3px solid var(--bdc-gold)!important}
+.admin-v203 .admin-metric-card-v203:hover{transform:translateY(-2px);border-color:rgba(126,32,56,.35)!important;box-shadow:0 16px 34px rgba(16,27,50,.13)!important}
+.admin-v203 .admin-card-head-v203{background:linear-gradient(100deg,#fff,#fbf7ee);border-bottom:1px solid rgba(199,166,90,.35)}
+.admin-v203 .admin-card-head-v203 h2,.admin-v203 .admin-page-heading-v203 h1{color:var(--bdc-navy)!important}
+.admin-v203 .admin-quick-actions-v203 a{background:#fff!important;border:1px solid rgba(16,27,50,.14)!important;border-radius:12px!important;color:var(--bdc-navy-2)!important;box-shadow:0 5px 14px rgba(16,27,50,.06)}
+.admin-v203 .admin-quick-actions-v203 a:hover{background:var(--bdc-champagne)!important;border-color:var(--bdc-gold)!important;color:var(--bdc-burgundy)!important}
+.admin-v203 .admin-table-wrap-v203 thead{background:var(--bdc-navy)!important;color:#fff!important}
+.admin-v203 .admin-system-card-v203{background:rgba(247,236,210,.1)!important;border-color:rgba(199,166,90,.35)!important;color:#fff!important;border-radius:14px!important}
+.admin-v203.admin-env-production .admin-environment-banner{background:linear-gradient(90deg,var(--bdc-navy),var(--bdc-burgundy))!important;border-bottom:2px solid var(--bdc-gold)!important}
+.admin-v203.admin-env-staging .admin-environment-banner{background:linear-gradient(90deg,#d89a18,#f4c65d)!important;border-bottom:4px solid #78510a!important}
+
 @media(max-width:575.98px){.portal-top-actions{gap:.35rem}.portal-top-actions .btn{padding-left:.65rem!important;padding-right:.65rem!important}.portal-brand span:last-child{max-width:175px;white-space:normal;line-height:1.1}}
