@@ -43,6 +43,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    }elseif($action==='test_drive'){
     $result=$automation->testGoogleDrive();
     $message='Google Drive connected: '.$result['folder_name'].' using '.($result['account']??$result['service_account']??'Google authorization').'.';
+   }elseif($action==='repair_drive'){
+    $result=$automation->repairGoogleDriveStorage();
+    $message='Google Drive storage repaired. '.$result['verified'].' backup file(s) verified in '.$result['folder_name'].($result['missing']?' · '.$result['missing'].' missing file(s) marked failed.':'.');
    }elseif($action==='disconnect_drive'){
     $automation->disconnectGoogleOAuth();$message='Google Drive OAuth connection removed. Automated uploads are disabled.';
    }elseif($action==='database'){
@@ -112,7 +115,7 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
   </div>
   <div class="mt-4 d-flex gap-2 flex-wrap"><button class="btn btn-primary">Save Backup Settings</button><?php if($oauthPopup):?><button class="btn btn-success" type="button" id="connectGoogleDrive">Connect Google Drive</button><?php endif;?></div>
  </div></form>
- <?php if($oauth['connected']):?><form method="post" class="mb-4" onsubmit="return confirm('Disconnect Google Drive and disable automated uploads?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="disconnect_drive"><button class="btn btn-sm btn-outline-danger">Disconnect Google Drive</button></form><?php endif;?>
+ <?php if($oauth['connected']):?><div class="d-flex gap-2 flex-wrap mb-4"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="repair_drive"><button class="btn btn-sm btn-success">Repair & Verify Drive Storage</button></form><?php if(!empty($settings['google_drive_folder_id'])):?><a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener noreferrer" href="https://drive.google.com/drive/folders/<?=e(rawurlencode((string)$settings['google_drive_folder_id']))?>">Open Backup Folder</a><?php endif;?><form method="post" onsubmit="return confirm('Disconnect Google Drive and disable automated uploads?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="disconnect_drive"><button class="btn btn-sm btn-outline-danger">Disconnect Google Drive</button></form></div><?php endif;?>
 
  <div class="card settings-card shadow-sm mb-4"><div class="card-body">
   <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0">Available Recovery Backups</h2><span class="badge text-bg-secondary"><?=count($backups)?> files</span></div>

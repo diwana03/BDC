@@ -93,15 +93,23 @@ final class GoogleDriveOAuthBackupService
         if($this->folderId!==''){
             try{return $this->folder();}catch(\Throwable){}
         }
-        $data=$this->api('POST','https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink',json_encode(['name'=>$preferredName,'mimeType'=>'application/vnd.google-apps.folder'],JSON_UNESCAPED_SLASHES));
+        $data=$this->api('POST','https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink,parents,trashed',json_encode(['name'=>$preferredName,'mimeType'=>'application/vnd.google-apps.folder'],JSON_UNESCAPED_SLASHES));
         $this->folderId=(string)($data['id']??'');if($this->folderId==='')throw new RuntimeException('Google Drive did not return the new backup folder ID.');
         return $data;
+    }
+
+    public function folderId():string{return $this->folderId;}
+
+    public function folderUrl():string
+    {
+        return $this->folderId!==''?'https://drive.google.com/drive/folders/'.rawurlencode($this->folderId):'';
     }
 
     private function folder():array
     {
         if($this->folderId==='')throw new RuntimeException('Connect Google Drive to create the BDC backup folder.');
-        $data=$this->api('GET','https://www.googleapis.com/drive/v3/files/'.rawurlencode($this->folderId).'?supportsAllDrives=true&fields=id,name,mimeType,webViewLink,capabilities(canAddChildren)');
+        $data=$this->api('GET','https://www.googleapis.com/drive/v3/files/'.rawurlencode($this->folderId).'?supportsAllDrives=true&fields=id,name,mimeType,webViewLink,parents,trashed,capabilities(canAddChildren)');
+        if(!empty($data['trashed']))throw new RuntimeException('The saved Google Drive backup folder is in Trash.');
         if(($data['mimeType']??'')!=='application/vnd.google-apps.folder')throw new RuntimeException('The selected Google Drive item is not a folder.');
         return $data;
     }
@@ -115,11 +123,33 @@ final class GoogleDriveOAuthBackupService
     public function upload(string $localPath,string $remoteName):array
     {
         if(!is_file($localPath))throw new RuntimeException('Backup file was not found for Google Drive upload.');
+        $this->folder();
         $token=$this->accessToken();$boundary='bdc_backup_'.bin2hex(random_bytes(12));
         $metadata=json_encode(['name'=>$remoteName,'parents'=>[$this->folderId],'appProperties'=>['source'=>'bdc_backup']],JSON_UNESCAPED_SLASHES);
         $body="--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$metadata}\r\n";
         $body.="--{$boundary}\r\nContent-Type: application/octet-stream\r\n\r\n".(string)file_get_contents($localPath)."\r\n--{$boundary}--\r\n";
-        return $this->api('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,createdTime,webViewLink',$body,$token,['Content-Type: multipart/related; boundary='.$boundary]);
+        $uploaded=$this->api('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,createdTime,webViewLink,parents,trashed',$body,$token,['Content-Type: multipart/related; boundary='.$boundary]);
+        return $this->attachAndVerifyFile((string)($uploaded['id']??''));
+    }
+
+    public function attachAndVerifyFile(string $fileId):array
+    {
+        if($fileId==='')throw new RuntimeException('Google Drive did not return a backup file ID.');
+        $this->folder();
+        $file=$this->file($fileId);
+        if(!in_array($this->folderId,(array)($file['parents']??[]),true)){
+            $file=$this->api('PATCH','https://www.googleapis.com/drive/v3/files/'.rawurlencode($fileId).'?supportsAllDrives=true&addParents='.rawurlencode($this->folderId).'&fields=id,name,size,createdTime,webViewLink,parents,trashed','{}');
+        }
+        if(!in_array($this->folderId,(array)($file['parents']??[]),true))throw new RuntimeException('Google Drive uploaded the backup but did not attach it to the BDC_Backup folder.');
+        return $file;
+    }
+
+    private function file(string $fileId):array
+    {
+        $file=$this->api('GET','https://www.googleapis.com/drive/v3/files/'.rawurlencode($fileId).'?supportsAllDrives=true&fields=id,name,size,createdTime,webViewLink,parents,trashed');
+        if(!empty($file['trashed']))throw new RuntimeException('The Google Drive backup file is in Trash.');
+        if((string)($file['id']??'')==='')throw new RuntimeException('Google Drive could not verify the uploaded backup file.');
+        return $file;
     }
 
     public function delete(string $fileId):void

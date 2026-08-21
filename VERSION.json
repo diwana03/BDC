@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev336",
-  "build": 3042,
+  "version": "2.3.3-dev337",
+  "build": 3043,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs deleted or stale Google Drive backup folders, reattaches accessible backup files, verifies every upload parent and exposes direct folder access from Backup Recovery",
     "Replaces the hosting-blocked Google OAuth redirect with Google's official popup code flow so authorization completes without navigating through a ModSecurity-filtered callback URL",
     "Routes the Google OAuth authorization response through a fragment and same-origin encoded POST so shared-hosting ModSecurity cannot reject the callback query string",
     "Adds owner-authorized Google OAuth backups with secure refresh tokens, automatic BDC_Backup folder creation, scheduled token refresh and dashboard connection controls",

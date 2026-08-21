@@ -143,6 +143,11 @@ final class BackupAutomationService
             if(!empty($settings['google_drive_enabled'])){
                 try{
                     $drive=$this->drive($settings);
+                    if($drive instanceof GoogleDriveOAuthBackupService){
+                        $folder=$drive->ensureManagedFolder('BDC_Backup');
+                        $settings['google_drive_folder_id']=(string)$folder['id'];
+                        $this->pdo->prepare('UPDATE bdc_backup_settings SET google_drive_folder_id=:folder,updated_at=NOW() WHERE id=1')->execute(['folder'=>$settings['google_drive_folder_id']]);
+                    }
                     $uploaded=$drive->upload($path,$result['name']);
                     $driveStatus='uploaded';
                     $driveId=(string)$uploaded['id'];
@@ -185,6 +190,30 @@ final class BackupAutomationService
     public function testGoogleDrive():array
     {
         return $this->drive($this->settings())->testConnection();
+    }
+
+    public function repairGoogleDriveStorage():array
+    {
+        $settings=$this->settings();
+        $drive=$this->drive($settings);
+        if(!($drive instanceof GoogleDriveOAuthBackupService))throw new RuntimeException('Connect Google Drive with OAuth before repairing backup storage.');
+        $folder=$drive->ensureManagedFolder('BDC_Backup');
+        $folderId=(string)$folder['id'];
+        $this->pdo->prepare('UPDATE bdc_backup_settings SET google_drive_folder_id=:folder,google_drive_enabled=1,updated_at=NOW() WHERE id=1')->execute(['folder'=>$folderId]);
+        $runs=$this->pdo->query("SELECT id,google_drive_file_id FROM bdc_backup_runs WHERE google_drive_status='uploaded' AND google_drive_file_id IS NOT NULL ORDER BY id DESC")->fetchAll();
+        $repaired=0;$missing=0;
+        foreach($runs as $run){
+            try{
+                $file=$drive->attachAndVerifyFile((string)$run['google_drive_file_id']);
+                $link='https://drive.google.com/file/d/'.rawurlencode((string)$file['id']).'/view';
+                $this->pdo->prepare("UPDATE bdc_backup_runs SET google_drive_status='uploaded',google_drive_link=:link,error_message=NULL WHERE id=:id")->execute(['link'=>$link,'id'=>$run['id']]);
+                $repaired++;
+            }catch(\Throwable $e){
+                $this->pdo->prepare("UPDATE bdc_backup_runs SET google_drive_status='failed',error_message=:error WHERE id=:id")->execute(['error'=>'Drive verification failed: '.$e->getMessage(),'id'=>$run['id']]);
+                $missing++;
+            }
+        }
+        return ['folder_id'=>$folderId,'folder_name'=>(string)($folder['name']??'BDC_Backup'),'folder_url'=>$drive->folderUrl(),'verified'=>$repaired,'missing'=>$missing];
     }
 
     public function googleOAuthStatus():array
