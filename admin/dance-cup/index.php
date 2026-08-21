@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__, 2) . '/bootstrap.php';
+
+use App\Core\Auth;
+use App\Core\Csrf;
+use App\Core\Database;
+use App\Services\DanceCupScoringService;
+
+Auth::requireAdmin();
+$pdo = Database::connection();
+$test = (string) ($_GET['data_mode'] ?? '') === 'test';
+if ($test && !Auth::isSuperAdmin()) {
+    http_response_code(403);
+    exit('Super Admin access required for Test scoring.');
+}
+$tables = DanceCupScoringService::tables($test);
+$error = '';
+$notice = isset($_GET['created']) ? 'Dance Cup scoring category created.' : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        if (!Csrf::verify($_POST['_csrf'] ?? null)) throw new RuntimeException('Invalid security token. Refresh and try again.');
+        $names = (array) ($_POST['criterion_name'] ?? []);
+        $maximums = (array) ($_POST['criterion_max'] ?? []);
+        $criteria = [];
+        foreach ($names as $index => $name) {
+            if (trim((string) $name) === '' && trim((string) ($maximums[$index] ?? '')) === '') continue;
+            $criteria[] = ['name' => trim((string) $name), 'max' => (float) ($maximums[$index] ?? 0)];
+        }
+        DanceCupScoringService::createCompetition($pdo, $_POST, $criteria, (int) (Auth::user()['id'] ?? 0), $test);
+        header('Location: ?created=1' . ($test ? '&data_mode=test' : ''), true, 303);
+        exit;
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
+    }
+}
+$events = $pdo->query("SELECT id,name,event_date FROM {$tables['events']} WHERE status NOT IN ('archived','published') ORDER BY event_date DESC,id DESC")->fetchAll();
+$competitions = $pdo->query("SELECT c.*,e.name event_name,e.event_date,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=c.id) criterion_count FROM {$tables['competitions']} c JOIN {$tables['events']} e ON e.id=c.event_id ORDER BY c.updated_at DESC,c.id DESC")->fetchAll();
+$csrf = Csrf::token();
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=$test?'Test ':''?>Dance Cup Scoring | BDC</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="../../public/css/scoring-premium.css?v=274" rel="stylesheet"><style>.criterion-row{display:grid;grid-template-columns:minmax(0,1fr) 150px 44px;gap:.6rem;margin-bottom:.6rem}.workflow-pill{letter-spacing:.06em}@media(max-width:575px){.criterion-row{grid-template-columns:minmax(0,1fr) 105px 42px}}</style></head><body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="<?=$test?'../scoring-tests/select-mode.php':'../scoring/'?>"><?=$test?'BDC Test Scoring':'BDC Scoring'?></a><div class="d-flex gap-2"><a class="btn btn-outline-light btn-sm" href="<?=$test?'../scoring-tests/select-mode.php':'../scoring/'?>">Workflows</a><a class="btn btn-outline-light btn-sm" href="../">Dashboard</a></div></div></nav><main class="container-fluid py-4" style="max-width:1500px"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><span class="badge <?=$test?'text-bg-danger':'text-bg-warning'?> workflow-pill"><?=$test?'TEST ONLY · ':''?>DANCE CUP</span><h1 class="h3 mt-2 mb-1"><?=$test?'Test ':''?>Dance Cup Scoring Dashboard</h1><p class="text-muted mb-0">Numeric criteria scoring for Solo, Couple, Duo and Team competitions. No Jack &amp; Jill points or callbacks.</p></div></div><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?><?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><section class="card border-0 shadow-sm mb-4"><div class="card-body p-4"><h2 class="h5">Create Dance Cup Category</h2><p class="text-muted">Define the scoring criteria for this category. The maximum score is calculated automatically from the criterion limits.</p><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><div class="row g-3"><div class="col-lg-6"><label class="form-label">Event</label><select class="form-select" name="event_id" required><option value="">Select event</option><?php foreach($events as $event):?><option value="<?=(int)$event['id']?>"><?=e(($event['event_date']?:'Date pending').' — '.$event['name'])?></option><?php endforeach;?></select></div><div class="col-lg-6"><label class="form-label">Category Name</label><input class="form-control" name="category_name" placeholder="e.g. Bachata Solo Open" maxlength="190" required></div><div class="col-md-4"><label class="form-label">Entry Type</label><select class="form-select" name="entry_type"><option value="solo">Solo</option><option value="couple">Couple</option><option value="duo">Duo</option><option value="team">Team</option></select></div><div class="col-md-4"><label class="form-label">Dance Style</label><input class="form-control" name="dance_style" placeholder="Bachata, Salsa, Cha Cha…" maxlength="80"></div><div class="col-md-4"><label class="form-label">Round</label><select class="form-select" name="round_name"><option value="qualifier">Qualifier</option><option value="quarterfinal">Quarterfinal</option><option value="semifinal">Semifinal</option><option value="final" selected>Final</option></select></div><div class="col-12"><div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label fw-bold mb-0">Scoring Criteria</label><span class="badge text-bg-dark">Total: <span id="criteriaTotal">100</span></span></div><div id="criteriaRows"></div><button class="btn btn-sm btn-outline-primary" type="button" id="addCriterion">+ Add Criterion</button></div><div class="col-12"><button class="btn btn-warning btn-lg">Create Dance Cup Scoring</button></div></div></form></div></section><section class="card border-0 shadow-sm"><div class="card-body"><h2 class="h5">Dance Cup Categories</h2><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Event</th><th>Category</th><th>Entry</th><th>Round</th><th>Criteria</th><th>Maximum</th><th>Status</th></tr></thead><tbody><?php foreach($competitions as $competition):?><tr><td><strong><?=e($competition['event_name'])?></strong><div class="small text-muted"><?=e($competition['event_date']?:'Date pending')?></div></td><td><?=e($competition['category_name'])?><div class="small text-muted"><?=e($competition['dance_style']?:'Custom dance')?></div></td><td><?=e(ucfirst($competition['entry_type']))?></td><td><?=e(ucfirst($competition['round_name']))?></td><td><?=(int)$competition['criterion_count']?></td><td><?=number_format((float)$competition['maximum_score'],2)?></td><td><span class="badge text-bg-secondary"><?=e(ucfirst($competition['status']))?></span></td></tr><?php endforeach;?><?php if(!$competitions):?><tr><td colspan="7" class="text-center text-muted py-5">No Dance Cup scoring categories yet.</td></tr><?php endif;?></tbody></table></div></div></section></main><script>const defaults=[['Timing',20],['Musicality / Choreography',20],['Technique',20],['Difficulty',15],['Connection / Synchronisation',15],['Presentation',10]],rows=document.getElementById('criteriaRows'),total=document.getElementById('criteriaTotal');function recalc(){total.textContent=[...document.querySelectorAll('.criterion-max')].reduce((s,x)=>s+(Number(x.value)||0),0).toFixed(2).replace(/\.00$/,'')}function add(name='',max=''){const row=document.createElement('div');row.className='criterion-row';row.innerHTML=`<input class="form-control" name="criterion_name[]" maxlength="120" placeholder="Criterion name" required><input class="form-control criterion-max" type="number" name="criterion_max[]" min="0.01" max="1000" step="0.01" placeholder="Maximum" required><button class="btn btn-outline-danger" type="button" aria-label="Remove">×</button>`;row.children[0].value=name;row.children[1].value=max;row.children[1].addEventListener('input',recalc);row.children[2].onclick=()=>{row.remove();recalc()};rows.appendChild(row);recalc()}defaults.forEach(x=>add(...x));document.getElementById('addCriterion').onclick=()=>add();</script></body></html>

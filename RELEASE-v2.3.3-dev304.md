@@ -1,31 +1,24 @@
-# BDC 2.3.3-dev304 · build 3010
+# BDC 2.3.3-dev304 · Build 3010
 
-## Google Forms direct sync
+## Optional Flights
 
-- Adds a signed, server-side Google Form response endpoint at `/api/form-sync/`.
-- Reuses a clear existing BDC identity by exact name and relevant identifiers.
-- Leaves conflicting or ambiguous identities in a visible **Google Form Sync → Pending Review** queue.
-- Creates one BDC identity for a new participant and separate Bachata/Salsa discipline profiles under that ID.
-- Maps 4th Asia Open to Bachata Open / Salsa Open and 1st Asia Amateur to Bachata Rising / Salsa Rising.
-- Ignores payment, payment proof, consent and timestamp fields.
-- Auto-orients and centre-crops Drive photos to an unstretched 800×800 JPEG.
-- Prevents old and exact-duplicate rows from being processed twice using source keys and canonical hashes.
-- Records failed rows without advancing them as completed.
-- Includes an installable Apps Script trigger and setup documentation for both response spreadsheets.
+- Adds optional Flights to Heats, Semifinal and Final in both Live and Test scoring.
+- Supports any Flight size from 1 to 50 and an unlimited resulting number of Flights.
+- Orders non-Final Leaders and Followers independently by bib number.
+- Orders confirmed Final couples by Leader bib, then Follower bib.
+- Leaves existing scoring unchanged when Flights are not configured.
 
-## Security and deployment
+## Operations and safety
 
-- Requests require an HMAC-SHA256 signature generated from a 32+ character environment secret.
-- The secret is never committed to source or stored in `config/config.php`.
-- Production remains unchanged. Deploy this candidate to Staging, configure the secret, run migrations and test one controlled response before promotion.
+- Adds a premium **Manage Flights** workspace to scoring dashboards.
+- Locks Flight assignment rebuilding as soon as judging starts.
+- Allows Scorer, Master Scorer or Super Admin emergency rebuilding only with a reason and typed `REBUILD` confirmation.
+- Creates a protected scoring checkpoint before an authorised locked rebuild and records the operation in scoring transactions.
+- Adds **Flight Call** to the shared Test and Live projector; the projection Page value selects the Flight number.
 
-## Validation
+## Parity Gate
 
-- PHP syntax and unit checks: pending because PHP CLI is unavailable in the current workspace.
-- Source inspection: completed.
-- Database migration: pending Staging Release Manager.
-- Staging runtime workflow: pending deployment.
-
-## Scoring parity
-
-- Not applicable. No Test scoreboard, Live scoring or projector file is changed.
+- **Testing:** shared scoring dashboards expose Flights against isolated Test rounds and the Test projector.
+- **Live:** the same Flight service and controls operate against Live rounds.
+- **Projector:** the shared Test/Live feed and display render the selected Flight in bib order.
+- Static parity checks completed; staging runtime confirmation remains pending in Release Manager.

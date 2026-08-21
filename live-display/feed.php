@@ -7,6 +7,8 @@ use App\Services\ProjectionSettingsService;
 use App\Services\ProjectionLayoutService;
 use App\Services\CountryFlagService;
 use App\Services\JudgeDirectoryService;
+use App\Services\ScoringFlightService;
+use App\Services\ProjectionNameService;
 $pdo = Database::connection();
 $token = trim((string) ($_GET["token"] ?? ""));
 $session = LiveDisplaySessionService::byToken($pdo, $token);
@@ -87,7 +89,23 @@ $scoringComplete =
         ],
         true,
     );
-if ($type === "matching") {
+if ($type === "flights") {
+    $flight = $page;
+    $title = "FLIGHT {$flight} · NOW DANCING";
+    ScoringFlightService::ensure($pdo, $test);
+    $assignmentTable = $test ? 'bdc_test_scoring_flight_assignments' : 'bdc_scoring_flight_assignments';
+    if ((string)$r['round_type'] === 'final') {
+        $q = $pdo->prepare("SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,lc.photo_url leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,fc.photo_url follower_photo FROM {$assignmentTable} fa JOIN {$finalPairTable} fp ON fp.id=fa.subject_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fa.round_id=:r AND fa.subject_type='pair' AND fa.flight_number=:flight ORDER BY fa.position_number");
+        $q->execute(['r'=>$roundId,'flight'=>$flight]);
+        $items = $q->fetchAll();
+        $type = 'final_couples';
+    } else {
+        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
+        $q->execute(['r'=>$roundId,'flight'=>$flight]);
+        $items = $q->fetchAll();
+        $type = 'flight_competitors';
+    }
+} elseif ($type === "matching") {
     $title = "RANDOM FINAL MATCH";
     $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,lc.photo_url leader_photo,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country,fc.photo_url follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
     $q->execute(["r" => $roundId]);
@@ -232,6 +250,29 @@ if ($type === "matching") {
         $items = [["total" => 0, "submitted" => 0]];
     }
 }
+
+// Audience screens use compact first names. When the same first name appears
+// more than once on the current screen, add the surname initial to both names.
+$items = ProjectionNameService::abbreviateRows(
+    $items,
+    ["display_name", "leader_name", "follower_name"],
+);
+$matrixJudges = ProjectionNameService::abbreviateRows($matrixJudges, ["judge_name"]);
+$finalJudges = ProjectionNameService::abbreviateRows($finalJudges, ["judge_name"]);
+if ($type === "judges") {
+    $judgeProjectionNames = [];
+    foreach ($items as $judgeIndex => $judgeItem) {
+        $judgeProjectionNames[(string) $judgeIndex] = trim((string) (
+            $judgeItem["full_name"] ?: $judgeItem["judge_name"]
+        ));
+    }
+    $judgeProjectionNames = ProjectionNameService::abbreviateNames($judgeProjectionNames);
+    foreach ($items as $judgeIndex => &$judgeItem) {
+        $judgeItem["full_name"] = $judgeProjectionNames[(string) $judgeIndex] ?? "";
+        $judgeItem["judge_name"] = $judgeItem["full_name"];
+    }
+    unset($judgeItem);
+}
 $animalPlaceholders = [
     url("public/assets/img/projection-animals/rabbit.png"),
     url("public/assets/img/projection-animals/baby-elephant.png"),
@@ -291,7 +332,7 @@ $coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
 $competitorRoleCols=max(1,(int)floor($cols/2));
 $competitorRoleCapacity=max(1,(int)$layout["rows"]*$competitorRoleCols);
-$splitRoleScreen=in_array($type,["competitors","callbacks","finalists"],true)&&(string)$r["round_type"]!=="final";
+$splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&(string)$r["round_type"]!=="final";
 if($splitRoleScreen){
     foreach($items as $competitorItem){
         $role=(string)($competitorItem["dance_role"]??"");
