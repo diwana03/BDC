@@ -150,6 +150,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         $html.='<form method="post" class="d-flex align-items-center gap-2"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="regenerate_registration_desk_link"><input type="hidden" name="round_id" value="'.$roundId.'"><span class="small text-muted">Secure desk link needs to be reissued for this admin session.</span><button class="btn btn-warning btn-sm" onclick="return confirm(\'Regenerate the Registration Desk link? The previous desk link will stop working.\')">Regenerate Registration Link</button></form>';
     }
     $html.='</div></div></div></div>';
+    $html.='<div class="card shadow-sm mb-4 border-info-subtle"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h6 mb-1">Flights <span class="badge text-bg-secondary">Optional</span></h2><div class="small text-muted">Divide this round into unlimited bib-ordered Flights without changing its scoring rules.</div></div><a class="btn btn-outline-primary btn-sm" href="flights.php?round_id='.$roundId.'&amp;data_mode=real">Manage Flights</a></div></div>';
     try{
         foreach(AutomaticJudgeBrowserService::syncRound($pdo,$roundId) as $syncedJudge){
             if((string)($syncedJudge['plain_token']??'')!=='')$_SESSION['automatic_judge_tokens'][(int)$syncedJudge['id']]=(string)$syncedJudge['plain_token'];

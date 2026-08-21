@@ -7,6 +7,7 @@ use App\Core\Database;
 use App\Services\ProjectionSettingsService;
 use App\Services\LiveDisplaySessionService;
 use App\Services\RandomPairingService;
+use App\Services\ScoringFlightService;
 Auth::requireAdmin();
 $test = ($_GET["data_mode"] ?? ($_POST["data_mode"] ?? "real")) === "test";
 $embed = ($_GET["embed"] ?? ($_POST["embed"] ?? "")) === "1";
@@ -100,6 +101,14 @@ $types =
                 "winners" => "Winner Podium",
                 "final_results" => "Final Full Results · Landscape",
             ]);
+try {
+    $flightSummary = ScoringFlightService::summary($pdo, $roundId, $test);
+    if ((int)($flightSummary['flight_count'] ?? 0) > 0) {
+        $types = ['flights' => 'Flight Call'] + $types;
+    }
+} catch (Throwable) {
+    $flightSummary = ['flight_count' => 0];
+}
 $formats = [
     "16:9" => "16:9 Landscape",
     "9:16" => "9:16 Portrait",
@@ -200,7 +209,7 @@ $v
     : "btn-outline-danger" ?> <?= $protected &&
  empty($session["results_unlocked"])
      ? "locked"
-     : "" ?>" data-screen="<?= e($v) ?>" data-protected="<?= $protected
+     : "" ?>" data-screen="<?= e($v) ?>" data-default-page="<?= $v==='flights'?(int)($flightSummary['active_flight']??1):'' ?>" onclick="if(this.dataset.defaultPage)document.getElementById('pageNumber').value=this.dataset.defaultPage" data-protected="<?= $protected
     ? "1"
     : "0" ?>" <?= $protected && empty($session["results_unlocked"])
     ? "disabled"

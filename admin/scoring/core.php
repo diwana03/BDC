@@ -1447,6 +1447,9 @@ $csrf=Csrf::token();
  </div>
 </div>
 <?php endif;?>
+<?php if($round):?>
+<div class="card shadow-sm mb-4 border-info-subtle"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Flights <span class="badge text-bg-secondary">Optional</span></h2><div class="text-muted small">Call large rounds in bib-ordered groups. Available for Heats, Semifinal and Final without changing the scoring method.</div></div><a class="btn btn-outline-primary" href="flights.php?round_id=<?=$roundId?>&amp;data_mode=real">Manage Flights</a></div></div>
+<?php endif;?>
 <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?>
 <?php if(!$round):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
