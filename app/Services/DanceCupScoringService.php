@@ -12,8 +12,8 @@ final class DanceCupScoringService
     public static function tables(bool $test = false): array
     {
         return $test
-            ? ['competitions' => 'bdc_test_dance_cup_competitions', 'criteria' => 'bdc_test_dance_cup_criteria', 'events' => 'bdc_test_events']
-            : ['competitions' => 'bdc_dance_cup_competitions', 'criteria' => 'bdc_dance_cup_criteria', 'events' => 'bdc_events'];
+            ? ['competitions' => 'bdc_test_dance_cup_competitions', 'criteria' => 'bdc_test_dance_cup_criteria', 'events' => 'bdc_test_dance_cup_events']
+            : ['competitions' => 'bdc_dance_cup_competitions', 'criteria' => 'bdc_dance_cup_criteria', 'events' => 'bdc_dance_cup_events'];
     }
 
     /** @param array<int,array{name:string,max:float}> $criteria */
@@ -24,9 +24,15 @@ final class DanceCupScoringService
         $category = trim((string) ($data['category_name'] ?? ''));
         $entryType = (string) ($data['entry_type'] ?? 'solo');
         $roundName = (string) ($data['round_name'] ?? 'final');
+        $danceStyle = (string) ($data['dance_style'] ?? 'bachata');
+        $level = (string) ($data['competition_level'] ?? 'open');
+        $performanceType = (string) ($data['performance_type'] ?? 'showcase');
         if ($eventId < 1 || $category === '') throw new RuntimeException('Event and category name are required.');
         if (!in_array($entryType, ['solo', 'couple', 'duo', 'team'], true)) throw new RuntimeException('Invalid entry type.');
         if (!in_array($roundName, ['qualifier', 'quarterfinal', 'semifinal', 'final'], true)) throw new RuntimeException('Invalid Dance Cup round.');
+        if (!in_array($danceStyle, ['salsa', 'bachata', 'cha_cha', 'other'], true)) throw new RuntimeException('Invalid dance style.');
+        if (!in_array($level, ['amateur', 'intermediate', 'pro_am', 'professional', 'open'], true)) throw new RuntimeException('Invalid competition level.');
+        if (!in_array($performanceType, ['showcase', 'classic', 'cabaret', 'shines', 'just_dance'], true)) throw new RuntimeException('Invalid performance type.');
         if (!$criteria) throw new RuntimeException('Add at least one scoring criterion.');
         $maximum = 0.0;
         $seen = [];
@@ -43,12 +49,14 @@ final class DanceCupScoringService
 
         $pdo->beginTransaction();
         try {
-            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,round_name,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:round_name,:maximum,:user)");
+            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,competition_level,performance_type,round_name,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:level,:performance_type,:round_name,:maximum,:user)");
             $insert->execute([
                 'event' => $eventId,
                 'category' => $category,
                 'entry_type' => $entryType,
-                'dance_style' => trim((string) ($data['dance_style'] ?? '')) ?: null,
+                'dance_style' => $danceStyle,
+                'level' => $level,
+                'performance_type' => $performanceType,
                 'round_name' => $roundName,
                 'maximum' => $maximum,
                 'user' => $userId ?: null,

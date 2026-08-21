@@ -1,11 +1,15 @@
 {
-  "version": "2.3.3-dev316",
-  "build": 3022,
+  "version": "2.3.3-dev317",
+  "build": 3023,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds independent Dance Cup event creation instead of borrowing Jack and Jill events",
+    "Adds Salsa, Bachata, Cha Cha and custom dance dropdowns with Open first and selected by default",
+    "Adds Professional, Pro-Am, Intermediate and Amateur Dance Cup levels plus established performance formats",
+    "Makes every Dance Cup Draft row clickable with an Open and Edit workspace",
     "Adds judge-controlled Round 1, Round 2 and onward tabs with one combined final submission",
     "Preserves one shared YES and alternate quota across every Scoring Round",
     "Keeps organiser active-round selection dedicated to Live Projection while judges review rounds independently",
