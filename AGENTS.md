@@ -2,6 +2,25 @@
 
 These instructions are mandatory for every contributor and coding agent working in this repository.
 
+## Workspace-first rule
+
+- Always inspect the current BDC workspace, repository instructions, existing implementation, version history, and working-tree state before researching, designing, changing, testing, committing, or publishing anything.
+- The workspace is the source of truth. Never rely only on conversation memory, screenshots, assumptions, or a newly invented replacement when the existing BDC implementation can be inspected.
+- Preserve existing workflows and user data unless the requested change explicitly requires a migration. Never recreate or overwrite established functionality without first tracing how it currently works across Testing, Live, and projector surfaces.
+- Before editing, identify all affected counterpart files and shared services so a change does not create dashboard drift or remove an existing feature.
+
+## Meaning of R&D
+
+When the user says **“R&D”**, it means:
+
+1. Inspect the workspace first.
+2. Research and analyse the request and the existing implementation.
+3. Implement the complete solution in the workspace; do not stop at recommendations, a plan, prose, or a visual mockup.
+4. Validate all affected Testing, Live, judge, admin, and projector surfaces as applicable.
+5. Update version and release notes, commit the validated work, and publish it to the GitHub `develop` release line unless the user explicitly says not to publish.
+
+R&D must never be reported as complete when only analysis, design, or part of the required workflow exists.
+
 ## Test-first, one-release scoring rule
 
 For every feature, correction, workflow, interface, API, or calculation that affects scoring:
@@ -16,7 +35,7 @@ Testing-first describes the internal coding order. It does not permit a Test-onl
 
 ### Hard parity gate for R&D
 
-“R&D” means prepare the release and push it to the `develop` release line. It never overrides the Test/Live parity rule.
+“R&D” includes preparing the implemented release and publishing it to the `develop` release line. It never overrides the workspace-first or Test/Live parity rules.
 
 Before any scoring R&D candidate is pushed to `develop`, the contributor must statically verify and report all three surfaces:
 

@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev321",
-  "build": 3027,
+  "version": "2.3.3-dev322",
+  "build": 3028,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the generic blue Production administration dashboard with a premium BDC midnight, wine, champagne and warm-ivory visual system",
     "Keeps live YES, A1, A2 and A3 judge selection trackers pinned while scrolling and allows completed submissions to retain optional private LATER markers",
     "Upgrades the administration dashboard with a premium BDC navy, burgundy and champagne visual system while preserving environment identification",
     "Resolves the legacy Dance Cup result-table schema collision without deleting historical winner records and restores Live category scoring",
