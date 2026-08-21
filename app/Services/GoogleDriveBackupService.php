@@ -52,7 +52,12 @@ final class GoogleDriveBackupService
         if(!empty($this->credentials['private_key_id']))$header['kid']=$this->credentials['private_key_id'];
         $claims=[
             'iss'=>$this->credentials['client_email'],
-            'scope'=>'https://www.googleapis.com/auth/drive.file',
+            // This is a server-to-server backup integration without Google Picker.
+            // drive.file only covers files selected through an app/picker workflow and
+            // therefore returns 404 for an existing folder shared directly with the
+            // service account. The service account still only sees Drive items that
+            // have been explicitly shared with its email address.
+            'scope'=>'https://www.googleapis.com/auth/drive',
             'aud'=>'https://oauth2.googleapis.com/token',
             'iat'=>$now,
             'exp'=>$now+3600,
