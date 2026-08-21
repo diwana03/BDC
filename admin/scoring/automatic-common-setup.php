@@ -9,6 +9,7 @@ use App\Services\SpecialCategoryService;
 use App\Services\ScoringJudgeAssignmentService;
 use App\Services\AutomaticJudgeBrowserService;
 use App\Services\ScoringRulesService;
+use App\Services\ScoringRosterCheckpointService;
 
 function bdcRenderAutomaticCommonSetup(int $roundId):string
 {
@@ -29,10 +30,13 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $entryStmt->execute(['round'=>$roundId]);
     $entries=['leader'=>[],'follower'=>[]];
     foreach($entryStmt->fetchAll() as $entry)$entries[$entry['dance_role']][]=$entry;
+    $activeCompetitorIds=[];foreach(array_merge($entries['leader'],$entries['follower']) as $entry)$activeCompetitorIds[(int)$entry['competitor_id']]=true;
+    $rosterState=ScoringRosterCheckpointService::state($pdo,$roundId);
+    $rosterSubmitted=(string)$rosterState['status']==='submitted';
     $nextBib=['leader'=>1,'follower'=>1];
     foreach(['leader','follower'] as $role)foreach($entries[$role] as $entry)$nextBib[$role]=max($nextBib[$role],(int)$entry['bib_number']+1);
 
-    $suggestions=$pdo->query("SELECT bdc_id,exact_name,dance_role,status FROM bdc_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
+    $suggestions=$pdo->query("SELECT id,bdc_id,exact_name,dance_role,status FROM bdc_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
     $csrf=Csrf::token();
     $special=SpecialCategoryService::isSpecial((string)$round['division']);
     $categoryLabel=$special?SpecialCategoryService::label((string)$round['division']):ucfirst((string)$round['division']);
@@ -129,7 +133,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
 
     foreach(['leader'=>'Leader','follower'=>'Follower'] as $suggestionRole=>$suggestionLabel){
         $html.='<datalist id="competitorSuggestions'.ucfirst($suggestionRole).'">';
-        foreach($suggestions as $suggestion)if((string)$suggestion['dance_role']===$suggestionRole)$html.='<option value="'.$e((string)$suggestion['bdc_id']).'">'.$e((string)$suggestion['exact_name'].' · '.$suggestionLabel.((string)$suggestion['status']==='pending'?' · Details pending':'')).'</option>';
+        foreach($suggestions as $suggestion)if((string)$suggestion['dance_role']===$suggestionRole&&!isset($activeCompetitorIds[(int)$suggestion['id']]))$html.='<option value="'.$e((string)$suggestion['bdc_id']).'">'.$e((string)$suggestion['exact_name'].' · '.$suggestionLabel.((string)$suggestion['status']==='pending'?' · Details pending':'')).'</option>';
         $html.='</datalist>';
     }
 
@@ -142,7 +146,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $html.='</div></div></div>';
     $html.='<div class="card shadow-sm mb-4 border-primary border-2 bg-primary-subtle"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1 text-primary-emphasis">Flights <span class="badge text-bg-primary">Optional</span></h2><div class="small text-body-secondary">Divide this round into unlimited bib-ordered Flights without changing its scoring rules.</div></div><a class="btn btn-primary fw-semibold" href="flights.php?round_id='.$roundId.'&amp;data_mode=real">Manage Flights</a></div></div>';
 
-    $html.='<div class="row g-3 mb-4">';
+    $html.='<fieldset '.($rosterSubmitted?'disabled':'').'><div class="row g-3 mb-4">';
     foreach(['leader'=>['Leaders','primary'],'follower'=>['Followers','danger']] as $role=>$meta){
         $html.='<div class="col-lg-6"><div class="card shadow-sm role-card border-'.$meta[1].' border-2"><div class="card-header bg-'.$meta[1].' text-white fw-semibold">'.$meta[0].'</div><div class="card-body"><form method="post" action="automatic-setup-action.php" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="'.$roundId.'"><input type="hidden" name="dance_role" value="'.$role.'"><div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="'.$nextBib[$role].'" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div><div class="col-9"><input class="form-control" name="competitor_search" list="competitorSuggestions'.ucfirst($role).'" placeholder="Type '.$role.' name or BDC ID" required><div class="form-text">Only '.ucfirst($role).' BDC IDs are shown.</div></div><div class="col-6"><button class="btn btn-'.$meta[1].' w-100" name="entry_mode" value="existing">Add Existing</button></div><div class="col-6"><button class="btn btn-outline-'.$meta[1].' w-100" name="entry_mode" value="create" onclick="return confirm(\'Create a provisional BDC competitor using only this name?\')">Create Name &amp; Add</button></div></form>';
         $html.='<table class="table table-sm align-middle"><thead><tr><th style="width:150px">Bib</th><th>Competitor</th><th>BDC ID</th><th style="width:100px"></th></tr></thead><tbody>';
@@ -152,15 +156,33 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         }
         $html.='</tbody></table></div></div></div>';
     }
-    $html.='</div>';
+    $html.='</div></fieldset>';
 
-    try{
-        foreach(AutomaticJudgeBrowserService::syncRound($pdo,$roundId) as $syncedJudge){
-            if((string)($syncedJudge['plain_token']??'')!=='')$_SESSION['automatic_judge_tokens'][(int)$syncedJudge['id']]=(string)$syncedJudge['plain_token'];
+    $html.='<div class="card shadow-sm mb-4 '.($rosterSubmitted?'border-success bg-success-subtle':'border-warning bg-warning-subtle').'"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Competitor Checkpoint</h2><div class="small text-body-secondary">'.($rosterSubmitted?'Competitors are submitted and locked. Bib changes, additions and removals are blocked.':'Save the current roster as a draft, then submit it to lock competitors before judging.').'</div>'.(!empty($rosterState['saved_at'])?'<div class="small mt-1">Last saved: '.$e((string)$rosterState['saved_at']).'</div>':'').'</div><div class="d-flex gap-2 flex-wrap">';
+    if(!$rosterSubmitted){
+        $html.='<form method="post" action="automatic-setup-action.php"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="round_id" value="'.$roundId.'"><button class="btn btn-outline-dark" name="action" value="save_competitors">Save Competitors</button><button class="btn btn-success" name="action" value="submit_competitors" onclick="return confirm(\'Submit and lock the current competitor roster? Bib changes, additions and removals will be blocked.\')">Submit Competitors</button></form>';
+    }elseif(Auth::isSuperAdmin()){
+        $html.='<form method="post" action="automatic-setup-action.php" class="d-flex gap-2 flex-wrap"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="round_id" value="'.$roundId.'"><input class="form-control" name="reopen_reason" placeholder="Required reopen reason" required><button class="btn btn-warning" name="action" value="reopen_competitors" onclick="return confirm(\'Reopen submitted competitors for correction?\')">Reopen Competitors</button></form>';
+    }
+    $html.='</div></div></div>';
+
+    if($rosterSubmitted){
+        try{
+            foreach(AutomaticJudgeBrowserService::syncRound($pdo,$roundId) as $syncedJudge){
+                if((string)($syncedJudge['plain_token']??'')!=='')$_SESSION['automatic_judge_tokens'][(int)$syncedJudge['id']]=(string)$syncedJudge['plain_token'];
+            }
+        }catch(Throwable $judgeLinkError){error_log('BDC automatic judge-link sync unavailable: '.$judgeLinkError->getMessage());}
+        $judgeControlGateway='index.php?mode=automated&amp;judge_panel=1&amp;round_id='.$roundId;
+        $progress=AutomaticJudgeBrowserService::progress($pdo,$roundId);
+        $lockedJudgeCount=count(array_filter($progress,static fn(array $judge):bool=>(string)($judge['session_status']??'')==='submitted'));
+        $html.='<div class="card shadow-sm mb-4 border-primary"><div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap"><div><strong>Automatic '.ucfirst((string)$round['round_type']).' Judge Scoring</strong><div class="small text-muted">Secure judge links, sharing, submission progress and rescore controls.</div></div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'automaticJudgeFrame\').contentWindow.location.reload()">Refresh Status</button><button type="button" class="btn btn-outline-dark btn-sm" onclick="const panel=document.getElementById(\'scoring-backups\');if(panel){panel.open=true;panel.scrollIntoView({behavior:\'smooth\',block:\'start\'})}">Backups</button><a class="btn btn-outline-primary btn-sm" href="'.$judgeControlGateway.'" target="_blank" rel="noopener">Open Judge Links</a></div></div><div class="card-body p-0"><iframe id="automaticJudgeFrame" title="Automatic Judge Live Links" src="'.$judgeControlGateway.'" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe></div></div>';
+        if($lockedJudgeCount>0&&Auth::canOverrideCompletedScores()){
+            $html.='<section class="border border-danger rounded p-3 mb-4"><div class="fw-bold text-danger">Emergency Scoring Control</div><div class="small text-muted mb-2">Reopens all '.$lockedJudgeCount.' submitted judge columns together. Existing scores are preserved and every affected judge must resubmit.</div><form method="post" action="automatic-setup-action.php" class="row g-2 align-items-end" onsubmit="return confirm(\'Emergency unlock all '.$lockedJudgeCount.' submitted judge score columns?\')"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="unlock_all_judges"><input type="hidden" name="round_id" value="'.$roundId.'"><div class="col-lg-6"><label class="form-label small fw-semibold">Required emergency reason</label><input class="form-control" name="unlock_all_reason" maxlength="500" required></div><div class="col-lg-3"><label class="form-label small fw-semibold">Type UNLOCK ALL</label><input class="form-control" name="unlock_all_confirmation" autocomplete="off" required></div><div class="col-lg-3"><button class="btn btn-danger w-100">Unlock All Locked Scores ('.$lockedJudgeCount.')</button></div></form></section>';
         }
-    }catch(Throwable $judgeLinkError){error_log('BDC automatic judge-link sync unavailable: '.$judgeLinkError->getMessage());}
-    $judgeControlGateway='index.php?mode=automated&amp;judge_panel=1&amp;round_id='.$roundId;
-    $html.='<div class="card shadow-sm mb-4"><div class="card-header d-flex justify-content-between align-items-center gap-2"><div><strong>Judge Live Links</strong><div class="small text-muted">Copy or send each secure browser-scoring link and monitor submissions.</div></div><a class="btn btn-outline-primary btn-sm" href="'.$judgeControlGateway.'" target="_blank" rel="noopener">Open Full Judge Control</a></div><div class="card-body"><iframe title="Automatic Judge Live Links" src="'.$judgeControlGateway.'" style="display:block;width:100%;height:620px;border:0" loading="eager"></iframe></div></div>';
+        ob_start();$backupTestMode=false;$backupAction='index.php?mode=automated&round_id='.$roundId;require __DIR__.'/backup-panel.php';$html.=(string)ob_get_clean();
+    }else{
+        $html.='<div class="card shadow-sm mb-4 border-secondary"><div class="card-body"><h2 class="h5">Judge Live Links</h2><div class="alert alert-secondary mb-0">Save and submit the competitor roster above before judge links are enabled.</div></div></div>';
+    }
     $html.='<script>window.addJudge=window.addJudge||function(){const wrap=document.getElementById("judgesWrap");if(!wrap)return;const index=wrap.querySelectorAll(".judge-row").length;const row=document.createElement("div");row.className="row g-2 mb-2 judge-row align-items-center";row.innerHTML=`<div class="col-md-2"><strong>Judge ${index+1}</strong><input type="hidden" name="judge_assignment_id[]" value="0"><input type="hidden" name="judge_directory_id[]" value="0"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="${index}"> Chief</label></div>`;wrap.appendChild(row);};</script>';
     return $html;
 }

@@ -28,6 +28,7 @@ use App\Services\NextRankedFinalistService;
 use App\Services\SpecialCategoryService;
 use App\Services\TestAutomaticJudgeService;
 use App\Services\ScoringBackupService;
+use App\Services\ScoringRosterCheckpointService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -875,6 +876,7 @@ try{
    auditScoring($pdo,$roundId,$userId,'heats_settings_saved',['tier'=>$tier,'yes_count'=>$yes,'alternate_count'=>3,'weights'=>['yes'=>10.0,'alt1'=>4.5,'alt2'=>4.3,'alt3'=>4.2]]);
    $notice='BDC Tier '.$tier.' settings saved: '.$yes.' YES selections and 3 alternates.';
   }elseif($action==='add_entry'){
+   ScoringRosterCheckpointService::assertEditable($pdo,(int)$_POST['round_id'],true);
    $roundId=(int)$_POST['round_id'];$role=(string)$_POST['dance_role'];$bib=(int)$_POST['bib_number'];$term=trim((string)$_POST['competitor_search']);$entryMode=(string)($_POST['entry_mode']??'existing');
    if(!in_array($role,['leader','follower'],true)||$bib<1||$term==='')throw new RuntimeException('Choose role, bib and competitor name.');
    $roundForEntry=loadRound($pdo,$roundId);if(!$roundForEntry)throw new RuntimeException('Round not found.');
@@ -911,10 +913,12 @@ try{
      $pdo->commit();
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
    }
-   $pdo->prepare("INSERT INTO bdc_test_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name) VALUES(:r,:c,:role,:bib,:n) ON DUPLICATE KEY UPDATE bib_number=VALUES(bib_number),display_name=VALUES(display_name),entry_status='active'")->execute(['r'=>$roundId,'c'=>$comp['id'],'role'=>$role,'bib'=>$bib,'n'=>$comp['exact_name']]);
+   $existingEntry=$pdo->prepare("SELECT dance_role,bib_number,display_name FROM bdc_test_scoring_entries WHERE round_id=:round AND competitor_id=:competitor AND entry_status='active' LIMIT 1");$existingEntry->execute(['round'=>$roundId,'competitor'=>$comp['id']]);if($already=$existingEntry->fetch())throw new RuntimeException($already['display_name'].' is already entered as '.ucfirst((string)$already['dance_role']).' with bib #'.(int)$already['bib_number'].'. Change the existing bib instead of adding the competitor again.');
+   $pdo->prepare("INSERT INTO bdc_test_scoring_entries(round_id,competitor_id,dance_role,bib_number,display_name) VALUES(:r,:c,:role,:bib,:n)")->execute(['r'=>$roundId,'c'=>$comp['id'],'role'=>$role,'bib'=>$bib,'n'=>$comp['exact_name']]);
    auditScoring($pdo,$roundId,$userId,'entry_added',['competitor_id'=>$comp['id'],'bdc_id'=>$comp['bdc_id'],'role'=>$role,'bib'=>$bib,'provisional'=>$entryMode==='create']);
    $notice=ucfirst($role).' added: '.$comp['exact_name'].' ('.$comp['bdc_id'].').';
   }elseif($action==='update_bib'){
+   ScoringRosterCheckpointService::assertEditable($pdo,(int)($_POST['round_id']??0),true);
    $roundId=(int)($_POST['round_id']??0);$entryId=(int)($_POST['entry_id']??0);$newBib=(int)($_POST['bib_number']??0);
    if($roundId<1||$entryId<1||$newBib<1)throw new RuntimeException('Enter a valid bib number.');
    $entryStmt=$pdo->prepare("SELECT id,dance_role,bib_number,display_name FROM bdc_test_scoring_entries WHERE id=:id AND round_id=:r AND entry_status='active'");
@@ -927,7 +931,13 @@ try{
    auditScoring($pdo,$roundId,$userId,'bib_updated',['entry_id'=>$entryId,'role'=>$entry['dance_role'],'old_bib'=>(int)$entry['bib_number'],'new_bib'=>$newBib]);
    $notice=$entry['display_name'].' bib updated to '.$newBib.'.';
   }elseif($action==='remove_entry'){
-   $roundId=(int)$_POST['round_id'];$id=(int)$_POST['entry_id'];$pdo->prepare("UPDATE bdc_test_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id]);$notice='Entry removed.';
+   $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::assertEditable($pdo,$roundId,true);$id=(int)$_POST['entry_id'];$pdo->prepare("UPDATE bdc_test_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id]);$notice='Entry removed.';
+  }elseif($action==='save_competitors'){
+   $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::checkpoint($pdo,$roundId,$userId,'save',true);$notice='Test competitor roster checkpoint saved as draft.';
+  }elseif($action==='submit_competitors'){
+   $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::checkpoint($pdo,$roundId,$userId,'submit',true);$notice='Test competitors submitted and locked.';
+  }elseif($action==='reopen_competitors'){
+   $roundId=(int)$_POST['round_id'];if(!Auth::isSuperAdmin())throw new RuntimeException('Only the Super Admin can reopen submitted competitors.');ScoringRosterCheckpointService::checkpoint($pdo,$roundId,$userId,'reopen',true,(string)($_POST['reopen_reason']??''));$notice='Test competitor roster reopened for correction.';
   }elseif($action==='save_judges'){
    $roundId=(int)$_POST['round_id'];$rawNames=$_POST['judge_name']??[];$rawScopes=$_POST['judge_scope']??[];$chief=(int)($_POST['chief_index']??-1);$rows=[];
    foreach($rawNames as $index=>$rawName){$name=trim((string)$rawName);if($name==='')continue;$scope=(string)($rawScopes[$index]??'all');if(!in_array($scope,['all','leader','follower'],true))$scope='all';$rows[]=['name'=>$name,'scope'=>$scope,'original_index'=>(int)$index];}
@@ -1322,7 +1332,7 @@ try{
 }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();$error=$e->getMessage();}
 
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_test_events ORDER BY event_date DESC,name")->fetchAll();
-$competitorSuggestions=$pdo->query("SELECT bdc_id,exact_name,dance_role,status FROM bdc_test_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
+$competitorSuggestions=$pdo->query("SELECT id,bdc_id,exact_name,dance_role,status FROM bdc_test_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
 $round=$roundId?loadRound($pdo,$roundId):null;
 if($round && in_array((string)$round['round_type'],['heats','semifinal'],true) && !\App\Services\SpecialCategoryService::isSpecial((string)$round['division'])){
  applyAutomaticTier($pdo,$roundId,false);
@@ -1415,6 +1425,9 @@ if($finalResults){
   return (int)$a['pair_number']<=>(int)$b['pair_number'];
  });
 }}
+$rosterState=$round?ScoringRosterCheckpointService::state($pdo,$roundId,true):['status'=>'draft','saved_at'=>null];
+$rosterSubmitted=(string)($rosterState['status']??'draft')==='submitted';
+$activeCompetitorIds=[];foreach(array_merge($entries['leader'],$entries['follower']) as $activeEntry)$activeCompetitorIds[(int)$activeEntry['competitor_id']]=true;
 $tieGroups=[];
 if($round){
  $tieStmt=$pdo->prepare("
@@ -1957,8 +1970,8 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
 </form>
 </div></div></div>
 <div class="col-lg-8"><div class="card shadow-sm h-100" id="judge-setup"><div class="card-body"><h2 class="h5">Judge Setup</h2><div class="small text-muted mb-3">Default is All. Each role panel must contain at least 3 judges.</div><form method="post" id="judgesForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div id="judgesWrap"><?php $display=$judges?:[['judge_name'=>'','is_chief'=>1,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all'],['judge_name'=>'','is_chief'=>0,'scoring_scope'=>'all']];foreach($display as $i=>$j):?><div class="row g-2 mb-2 judge-row align-items-center"><div class="col-md-2"><strong>Judge <?=$i+1?></strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" value="<?=e($j['judge_name'])?>" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><?php foreach(['all'=>'All','leader'=>'Leaders','follower'=>'Followers'] as $scopeValue=>$scopeLabel):?><option value="<?=$scopeValue?>" <?=($j['scoring_scope']??'all')===$scopeValue?'selected':''?>><?=$scopeLabel?></option><?php endforeach;?></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="<?=$i?>" <?=(int)$j['is_chief']?'checked':''?>> Chief</label></div></div><?php endforeach;?></div><div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addJudge()">+ Judge</button><button class="btn btn-dark btn-sm">Submit Judges</button><a class="btn btn-outline-primary btn-sm" href="print.php?round_id=<?=$roundId?>" target="_blank">Generate Judge Sheets</a></div></form></div></div></div></div>
-<datalist id="competitorSuggestions"><?php foreach($competitorSuggestions as $suggestion):?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' · '.ucfirst($suggestion['dance_role']).($suggestion['status']==='pending'?' · Details pending':''))?></option><?php endforeach;?></datalist>
-<div class="row g-3 mb-4">
+<datalist id="competitorSuggestions"><?php foreach($competitorSuggestions as $suggestion):if(isset($activeCompetitorIds[(int)($suggestion['id']??0)]))continue;?><option value="<?=e($suggestion['bdc_id'])?>"><?=e($suggestion['exact_name'].' · '.ucfirst($suggestion['dance_role']).($suggestion['status']==='pending'?' · Details pending':''))?></option><?php endforeach;?></datalist>
+<fieldset <?=$rosterSubmitted?'disabled':''?>><div class="row g-3 mb-4">
 <div class="col-lg-6"><div class="card shadow-sm role-card"><div class="card-header bg-primary-subtle fw-semibold">Leaders</div><div class="card-body">
 <form method="post" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="dance_role" value="leader">
 <div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="<?=$nextBib['leader']?>" aria-label="Leader bib number" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div>
@@ -1977,7 +1990,8 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
 </form>
 <table class="table table-sm align-middle"><thead><tr><th style="width:150px">Bib</th><th>Competitor</th><th>BDC ID</th><th style="width:100px"></th></tr></thead><tbody><?php foreach($entries['follower'] as $x):?><tr><td><form method="post" class="d-flex gap-1"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="update_bib"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><input class="form-control form-control-sm" style="width:76px" type="number" min="1" name="bib_number" value="<?=$x['bib_number']?>" aria-label="Edit follower bib"><button class="btn btn-sm btn-outline-primary">Save</button></form></td><td><?=e($x['display_name'])?><?php if($x['competitor_status']==='pending'):?> <span class="badge text-bg-warning">Details pending</span><?php endif;?></td><td><code><?=e($x['bdc_id'])?></code></td><td><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="remove_entry"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="entry_id" value="<?=$x['id']?>"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr><?php endforeach;?></tbody></table>
 </div></div></div>
-</div></div></div>
+</div></fieldset>
+<div class="card shadow-sm mb-4 <?=$rosterSubmitted?'border-success bg-success-subtle':'border-warning bg-warning-subtle'?>"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Test Competitor Checkpoint</h2><div class="small text-body-secondary"><?=$rosterSubmitted?'Competitors are submitted and locked.':'Save the current Test roster as a draft, then submit it before judging.'?></div><?php if(!empty($rosterState['saved_at'])):?><div class="small mt-1">Last saved: <?=e((string)$rosterState['saved_at'])?></div><?php endif;?></div><div><?php if(!$rosterSubmitted):?><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-outline-dark" name="action" value="save_competitors">Save Competitors</button><button class="btn btn-success" name="action" value="submit_competitors" onclick="return confirm('Submit and lock the Test competitor roster?')">Submit Competitors</button></form><?php elseif(Auth::isSuperAdmin()):?><form method="post" class="d-flex gap-2 flex-wrap"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="reopen_reason" placeholder="Required reopen reason" required><button class="btn btn-warning" name="action" value="reopen_competitors">Reopen Competitors</button></form><?php endif;?></div></div></div>
 <?php if($judges && ($entries['leader']||$entries['follower'])):$leaderPanelCount=count(array_filter($judges,fn($judge)=>in_array($judge['scoring_scope']??'all',['all','leader'],true)));$followerPanelCount=count(array_filter($judges,fn($judge)=>in_array($judge['scoring_scope']??'all',['all','follower'],true)));?><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><span class="badge text-bg-primary me-2">Leader Panel: <?=$leaderPanelCount?> judges</span><span class="badge text-bg-danger">Follower Panel: <?=$followerPanelCount?> judges</span></div><a class="btn btn-outline-dark btn-sm" href="#judge-setup">Reselect Judges</a></div><form method="post" id="heatsScoreForm" data-callback-count="<?=(int)$round['callback_count']?>"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="score_payload" id="scorePayload" value=""><div class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Manual <?=e(ucfirst($round['round_type']))?> Score Entry</h2><div class="text-muted small mb-2">Enter 1 or YES for a YES mark. Enter A1, A2 or A3 for alternates. Every save retains the screen data.</div><div class="alert alert-info py-2 mb-3"><strong>Live Preview:</strong> totals and provisional ranks update immediately. Use Calculate &amp; Sort to review the server result before Submit Scores.</div><?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):?><h3 class="h6 mt-4"><?=$label?></h3><div class="table-responsive"><table class="table table-bordered score-table"><thead><tr><th>Bib</th><th>Name</th><?php foreach($judges as $j):?><th><?=e($j['judge_name'])?><?=(int)$j['is_chief']?' ★':''?></th><?php endforeach;?><th>Total</th><th>Result</th></tr></thead><tbody><?php foreach($entries[$role] as $x):$res=$results[$x['id']]??null;?><tr class="score-row <?=e($res['result_status']??'')?>" data-role="<?=$role?>" data-entry-id="<?=$x['id']?>"><td><?=$x['bib_number']?></td><td><?=e($x['display_name'])?></td><?php foreach($judges as $j):$assigned=in_array($j['scoring_scope']??'all',['all',$role],true);$m=$marks[$x['id']][$j['id']]??null;$val='';if($m){$val=$m['mark_type']==='yes'?'1':($m['mark_type']==='alt'?'A'.$m['alt_rank']:'');}?><td><?php if($assigned):?><input class="form-control form-control-sm score-input" data-entry-id="<?=$x['id']?>" data-judge-id="<?=$j['id']?>" data-chief="<?=(int)$j['is_chief']?>" name="mark[<?=$x['id']?>][<?=$j['id']?>]" value="<?=e($val)?>"><?php else:?><span class="badge text-bg-light border text-muted">Not Assigned</span><?php endif;?></td><?php endforeach;?><td><span class="live-total"><?=isset($res['total_score'])?number_format((float)$res['total_score'],1):'0.0'?></span><div class="small text-muted">YES <span class="live-yes">0</span> · Chief <span class="live-chief">0.0</span></div></td><td><span class="live-status"><?=e($res['result_status']??'Live preview')?></span> <span class="live-rank"><?=isset($res['rank_number'])?'#'.$res['rank_number']:''?></span></td></tr><?php endforeach;?></tbody></table></div><?php endforeach;?></div></div>
 <div class="card shadow-sm mb-3"><div class="card-body">
  <h2 class="h6 mb-3">Scoring Witnesses</h2>

@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev313",
-  "build": 3019,
+  "version": "2.3.3-dev314",
+  "build": 3020,
   "status": "development",
   "release_date": "2026-08-21",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Prevents the same competitor from being added twice to one round or silently moved to a new bib",
+    "Adds Save Competitors and Submit Competitors checkpoints that lock the roster before judging across Test and Live",
+    "Adds Final-equivalent judge status, backup, link and audited emergency unlock-all controls to Automatic Heats and Semifinals",
     "Prevents duplicate judge selection by Judge ID or normalized name and removes selected judges from the remaining search suggestions",
     "Replaces bright setup colours with a restrained champagne-gold, sapphire, navy and burgundy premium scoring palette",
     "Moves Registration Desk and Flights above competitor entry and gives setup, Leader and Follower boards distinct accessible colours across Test and Live scoring",
