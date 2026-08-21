@@ -69,6 +69,13 @@ final class ScoringJudgeAssignmentService
             if((string)$key===(string)$chiefKey || $row['original_index']===(string)$chiefKey){$chiefCleanKey=$key;break;}
         }
         if($chiefCleanKey===null)throw new RuntimeException('Select one Chief Judge.');
+
+        // Display order is a scoring invariant: the Chief Judge is always J1.
+        // Keep the administrator's chosen order for every other judge.
+        $chiefRow=$clean[$chiefCleanKey];
+        unset($clean[$chiefCleanKey]);
+        $clean=array_values(array_merge([$chiefRow],array_values($clean)));
+        $chiefCleanKey='0';
         foreach(['leader','follower'] as $role){
             $count=count(array_filter($clean,static fn(array $row):bool=>in_array($row['scope'],['all',$role],true)));
             if($count<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');

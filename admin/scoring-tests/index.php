@@ -944,10 +944,12 @@ try{
    if(count($rows)<3)throw new RuntimeException('Minimum 3 judges required.');
    if(count($rows)!==count(array_unique(array_map(fn($row)=>mb_strtolower(trim((string)preg_replace('/\s+/u',' ',$row['name']))),$rows))))throw new RuntimeException('The same judge cannot be selected more than once.');
    $chiefRowIndex=null;foreach($rows as $rowIndex=>$row){if($row['original_index']===$chief){$chiefRowIndex=$rowIndex;break;}}if($chiefRowIndex===null)throw new RuntimeException('Select one Chief Judge.');
+   $chiefRow=$rows[$chiefRowIndex];unset($rows[$chiefRowIndex]);$rows=array_values(array_merge([$chiefRow],array_values($rows)));$chiefRowIndex=0;
    foreach(['leader','follower'] as $role){$panelCount=count(array_filter($rows,fn($row)=>in_array($row['scope'],['all',$role],true)));if($panelCount<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');}
    $existingStmt=$pdo->prepare("SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order");$existingStmt->execute(['r'=>$roundId]);$existing=$existingStmt->fetchAll();$existingByName=[];foreach($existing as $judge)$existingByName[mb_strtolower(trim((string)$judge['judge_name']))]=$judge;
    $pdo->beginTransaction();
    try{
+    $pdo->prepare("UPDATE bdc_test_scoring_judges SET judge_order=judge_order+10000 WHERE round_id=:round")->execute(['round'=>$roundId]);
     $usedIds=[];$chiefId=0;$update=$pdo->prepare("UPDATE bdc_test_scoring_judges SET judge_name=:name,judge_order=:order_no,is_chief=:chief,scoring_scope=:scope WHERE id=:id AND round_id=:round");$insert=$pdo->prepare("INSERT INTO bdc_test_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:round,:name,:order_no,:chief,:scope)");
     foreach($rows as $index=>$row){$key=mb_strtolower($row['name']);$isChief=$index===$chiefRowIndex?1:0;if(isset($existingByName[$key])){$id=(int)$existingByName[$key]['id'];$update->execute(['name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope'],'id'=>$id,'round'=>$roundId]);}else{$insert->execute(['round'=>$roundId,'name'=>$row['name'],'order_no'=>$index+1,'chief'=>$isChief,'scope'=>$row['scope']]);$id=(int)$pdo->lastInsertId();}$usedIds[]=$id;if($isChief)$chiefId=$id;}
     if($usedIds){$ph=implode(',',array_fill(0,count($usedIds),'?'));$pdo->prepare("DELETE FROM bdc_test_scoring_judges WHERE round_id=? AND id NOT IN ($ph)")->execute(array_merge([$roundId],$usedIds));}
@@ -1107,6 +1109,7 @@ try{
    $lower=array_map(fn($row)=>mb_strtolower($row['name']),array_values($clean));
    if(count($lower)!==count(array_unique($lower)))throw new RuntimeException('Final judge names must be unique.');
    if(!isset($clean[$chiefKey]))throw new RuntimeException('Select one Final Chief Judge.');
+   $chiefRow=$clean[$chiefKey];unset($clean[$chiefKey]);$clean=array_merge([$chiefKey=>$chiefRow],$clean);
 
    $existingStmt=$pdo->prepare("SELECT id FROM bdc_test_scoring_judges WHERE round_id=:r");
    $existingStmt->execute(['r'=>$roundId]);
@@ -1114,6 +1117,7 @@ try{
 
    $pdo->beginTransaction();
    try{
+    $pdo->prepare("UPDATE bdc_test_scoring_judges SET judge_order=judge_order+10000 WHERE round_id=:r")->execute(['r'=>$roundId]);
     $keptIds=[];
     $chiefId=0;
     $order=1;
@@ -2260,4 +2264,4 @@ document.querySelectorAll('.final-judge-page-button').forEach(button=>{
   });
  });
 });
-</script></body></html>
+</script><script src="../../public/js/judge-order-controls.js?v=318"></script></body></html>

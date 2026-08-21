@@ -19,7 +19,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $round=$stmt->fetch();
     if(!$round||($round['scoring_mode']??'')!=='automated'||($round['round_type']??'')==='final')return '';
 
-    $judgeStmt=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:round ORDER BY judge_order');
+    $judgeStmt=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:round ORDER BY is_chief DESC,judge_order,id');
     $judgeStmt->execute(['round'=>$roundId]);
     $judges=$judgeStmt->fetchAll();
     $judgeDirectory=[];
@@ -184,5 +184,6 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
         $html.='<div class="card shadow-sm mb-4 border-secondary"><div class="card-body"><h2 class="h5">Judge Live Links</h2><div class="alert alert-secondary mb-0">Save and submit the competitor roster above before judge links are enabled.</div></div></div>';
     }
     $html.='<script>window.addJudge=window.addJudge||function(){const wrap=document.getElementById("judgesWrap");if(!wrap)return;const index=wrap.querySelectorAll(".judge-row").length;const row=document.createElement("div");row.className="row g-2 mb-2 judge-row align-items-center";row.innerHTML=`<div class="col-md-2"><strong>Judge ${index+1}</strong><input type="hidden" name="judge_assignment_id[]" value="0"><input type="hidden" name="judge_directory_id[]" value="0"></div><div class="col-md-5"><input class="form-control" name="judge_name[]" list="judgeDirectorySuggestions" placeholder="Search or type a new judge" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="${index}"> Chief</label></div>`;wrap.appendChild(row);};</script>';
+    $html.='<script src="../../public/js/judge-order-controls.js?v=318"></script>';
     return $html;
 }

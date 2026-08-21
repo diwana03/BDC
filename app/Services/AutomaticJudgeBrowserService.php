@@ -17,7 +17,7 @@ final class AutomaticJudgeBrowserService
             return [];
         }
         $judgeStmt = $pdo->prepare(
-            "SELECT id,judge_name,judge_order,is_chief,scoring_scope FROM bdc_scoring_judges WHERE round_id=:round ORDER BY judge_order",
+            "SELECT id,judge_name,judge_order,is_chief,scoring_scope FROM bdc_scoring_judges WHERE round_id=:round ORDER BY is_chief DESC,judge_order,id",
         );
         $judgeStmt->execute(["round" => $roundId]);
         $judges = $judgeStmt->fetchAll();

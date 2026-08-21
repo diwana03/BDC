@@ -20,7 +20,7 @@ $roundStmt->execute(['id'=>$roundId]);
 $round=$roundStmt->fetch();
 if(!$round){http_response_code(404);exit('Round not found.');}
 
-$judgeStmt=$pdo->prepare("SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
+$judgeStmt=$pdo->prepare("SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY is_chief DESC,judge_order,id");
 $judgeStmt->execute(['r'=>$roundId]);
 $judges=$judgeStmt->fetchAll();
 

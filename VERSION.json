@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev317",
-  "build": 3023,
+  "version": "2.3.3-dev318",
+  "build": 3024,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds administrator-controlled judge display order across Test, Live, Dance Cup, scoring reports and projection while always pinning the Chief Judge first",
     "Adds independent Dance Cup event creation instead of borrowing Jack and Jill events",
     "Adds Salsa, Bachata, Cha Cha and custom dance dropdowns with Open first and selected by default",
     "Adds Professional, Pro-Am, Intermediate and Amateur Dance Cup levels plus established performance formats",

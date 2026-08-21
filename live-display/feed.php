@@ -120,7 +120,7 @@ if ($type === "flights") {
     } catch (Throwable) {
     }
     $q = $pdo->prepare(
-        "SELECT sj.judge_name,sj.judge_order,sj.is_chief,sj.scoring_scope,j.full_name,j.country,j.country_code,j.photo_url FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:r ORDER BY sj.judge_order,sj.id",
+        "SELECT sj.judge_name,sj.judge_order,sj.is_chief,sj.scoring_scope,j.full_name,j.country,j.country_code,j.photo_url FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:r ORDER BY sj.is_chief DESC,sj.judge_order,sj.id",
     );
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
@@ -467,7 +467,7 @@ elseif ($type === "judges"):
 ) ?>" onerror="this.remove()"><?php endif; ?><div class="name"><?=
 e($x["full_name"] ?: $x["judge_name"])
 ?><?= (int) $x["is_chief"] ? " ★" : ""
-?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.45em;min-height:clamp(30px,2.5vw,64px)"><?php if ($flagUrl = country_flag_url($countryCode !== "" ? $countryCode : $country)): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($country ?: $countryCode) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45)"><?php endif; ?><?= $country !== "" ? e($country) : "" ?></div><?php endif; ?></div><?php
+?></div><div class="small"><?= (int) $x["is_chief"] ? "CHIEF JUDGE · " : "" ?><?= e(strtoupper((string) ($x["scoring_scope"] ?? "all"))) ?></div><?php if ($country !== "" || $countryCode !== ""): ?><div class="small" style="display:flex;align-items:center;justify-content:center;gap:.45em;min-height:clamp(30px,2.5vw,64px)"><?php if ($flagUrl = country_flag_url($countryCode !== "" ? $countryCode : $country)): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($country ?: $countryCode) ?> flag" style="width:clamp(42px,3.2vw,78px);height:clamp(28px,2.13vw,52px);object-fit:cover;border:2px solid rgba(255,255,255,.7);border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.45)"><?php endif; ?><?= $country !== "" ? e($country) : "" ?></div><?php endif; ?></div><?php
     endforeach;
 else:
     foreach ($items as $x):

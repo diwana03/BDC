@@ -328,7 +328,7 @@ final class TestAutomaticJudgeService
         }
         $yesLimit = max(0, (int) $round["yes_count"]);
         $stmt = $pdo->prepare(
-            "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_test_scoring_judges j LEFT JOIN bdc_test_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round ORDER BY j.judge_order",
+            "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_test_scoring_judges j LEFT JOIN bdc_test_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round ORDER BY j.is_chief DESC,j.judge_order,j.id",
         );
         $stmt->execute(["round" => $roundId]);
         $rows = $stmt->fetchAll();
@@ -431,7 +431,7 @@ final class TestAutomaticJudgeService
     private static function judges(PDO $pdo, int $roundId): array
     {
         $stmt = $pdo->prepare(
-            "SELECT id,judge_name,judge_order,is_chief,scoring_scope FROM bdc_test_scoring_judges WHERE round_id=:round ORDER BY judge_order",
+            "SELECT id,judge_name,judge_order,is_chief,scoring_scope FROM bdc_test_scoring_judges WHERE round_id=:round ORDER BY is_chief DESC,judge_order,id",
         );
         $stmt->execute(["round" => $roundId]);
         return $stmt->fetchAll();

@@ -31,7 +31,7 @@ final class ScoringCalculationService
             throw new RuntimeException('Shared Heats engine applies only to Heats and Semi-Finals.');
         }
 
-        $judgeStmt=$pdo->prepare("SELECT * FROM {$tables['judges']} WHERE round_id=:r ORDER BY judge_order");
+        $judgeStmt=$pdo->prepare("SELECT * FROM {$tables['judges']} WHERE round_id=:r ORDER BY is_chief DESC,judge_order,id");
         $judgeStmt->execute(['r'=>$roundId]);
         $judges=$judgeStmt->fetchAll();
 
