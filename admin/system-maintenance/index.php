@@ -23,6 +23,12 @@ function backupBytes(int|float $bytes):string{
  return number_format($value,$i?2:0).' '.$units[$i];
 }
 
+function googleDriveFileUrl(array $run):string{
+ $fileId=trim((string)($run['google_drive_file_id']??''));
+ if($fileId!=='')return 'https://drive.google.com/file/d/'.rawurlencode($fileId).'/view';
+ return trim((string)($run['google_drive_link']??''));
+}
+
 if($_SERVER['REQUEST_METHOD']==='POST'){
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token.';
  else{
@@ -129,7 +135,7 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
    <td><span class="badge <?=$run['status']==='success'?'text-bg-success':($run['status']==='failed'?'text-bg-danger':'text-bg-secondary')?>"><?=e($run['status'])?></span></td>
    <td><?=e((string)$run['file_name'])?><?php if($run['error_message']):?><div class="text-danger small"><?=e($run['error_message'])?></div><?php endif;?></td>
    <td><?=backupBytes((int)$run['file_size'])?></td>
-   <td><?php if($run['google_drive_status']==='uploaded'):?><span class="badge text-bg-success">Uploaded</span><?php if($run['google_drive_link']):?> <a target="_blank" href="<?=e($run['google_drive_link'])?>">Open</a><?php endif;?><?php elseif($run['google_drive_status']==='failed'):?><span class="badge text-bg-danger">Failed</span><?php else:?><span class="text-muted">Disabled</span><?php endif;?></td>
+   <td><?php if($run['google_drive_status']==='uploaded'):?><?php $driveFileUrl=googleDriveFileUrl($run);?><span class="badge text-bg-success">Uploaded</span><?php if($driveFileUrl!==''):?> <a target="_blank" rel="noopener noreferrer" href="<?=e($driveFileUrl)?>">Open</a><?php endif;?><?php elseif($run['google_drive_status']==='failed'):?><span class="badge text-bg-danger">Failed</span><?php else:?><span class="text-muted">Disabled</span><?php endif;?></td>
   </tr><?php endforeach;?><?php if(!$history):?><tr><td colspan="6" class="text-muted">No automated backup history yet.</td></tr><?php endif;?>
   </tbody></table></div>
  </div></div>

@@ -146,7 +146,10 @@ final class BackupAutomationService
                     $uploaded=$drive->upload($path,$result['name']);
                     $driveStatus='uploaded';
                     $driveId=(string)$uploaded['id'];
-                    $driveLink=(string)($uploaded['webViewLink']??'');
+                    // Build the canonical Drive URL from the returned file ID.
+                    // The provider webViewLink has produced invalid 404 links for
+                    // otherwise successful uploads on some OAuth responses.
+                    $driveLink=$driveId!==''?'https://drive.google.com/file/d/'.rawurlencode($driveId).'/view':'';
                 }catch(\Throwable $e){
                     $driveStatus='failed';$driveError=$e->getMessage();
                 }
