@@ -63,7 +63,7 @@ if (!function_exists('url')) {
  * projection cannot drift into unbranded one-off templates.
  */
 $bdcOfficialLogoUrl = url('public/assets/bdc-logo.png');
-$bdcBrandingScriptUrl = url('public/js/bdc-global-branding.js?v=320');
+$bdcBrandingScriptUrl = url('public/js/bdc-global-branding.js?v=326');
 ob_start(static function (string $html) use ($bdcOfficialLogoUrl, $bdcBrandingScriptUrl): string {
     if ($html === '' || stripos($html, '</body>') === false || str_contains($html, 'data-bdc-global-branding-loader')) {
         return $html;
