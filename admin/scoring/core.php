@@ -577,7 +577,7 @@ try{
   $action=(string)($_POST['action']??'');
   if($action!=='create_round' && !empty($_POST['round_id'])){
    $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','create_scoring_backup','restore_scoring_backup','delete_scoring_backup'],true)){
+   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups'],true)){
     $message=$lockedRound['status']==='completed'
       ? 'This completed round is locked. Only a Scorer, Master Scorer or Super Admin can confirm a resubmission override.'
       : ($lockedRound['status']==='pending_approval'
@@ -586,7 +586,7 @@ try{
     throw new RuntimeException($message);
    }
   }
-  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup','delete_scoring_backup'],true) && !empty($_POST['round_id'])){
+  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups'],true) && !empty($_POST['round_id'])){
    ScoringBackupService::create($pdo,(int)$_POST['round_id'],false,$userId,'automatic',$action,'Before '.str_replace('_',' ',$action));
   }
   if($action==='create_scoring_backup'){
@@ -603,6 +603,12 @@ try{
    $roundId=(int)($_POST['round_id']??0);if(!loadRound($pdo,$roundId))throw new RuntimeException('Scoring round not found.');
    if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE BACKUP')throw new RuntimeException('Type DELETE BACKUP to confirm permanent deletion.');
    $deleted=ScoringBackupService::delete($pdo,(int)($_POST['backup_id']??0),$roundId,false,$userId,(string)($_POST['delete_reason']??''));$notice='Scoring backup #'.$deleted['id'].' permanently deleted. Current scores were not changed.';
+  }elseif($action==='delete_selected_scoring_backups'){
+   if(!Auth::canManageScoringBackups())throw new RuntimeException('Only an Admin, Scorer, Master Scorer or Super Admin can delete scoring backups.');
+   $roundId=(int)($_POST['round_id']??0);if(!loadRound($pdo,$roundId))throw new RuntimeException('Scoring round not found.');
+   if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE SELECTED')throw new RuntimeException('Type DELETE SELECTED to confirm permanent deletion.');
+   $ids=array_values(array_unique(array_filter(array_map('intval',(array)($_POST['backup_ids']??[])),static fn(int $id):bool=>$id>0)));if(!$ids)throw new RuntimeException('Select at least one scoring backup to delete.');
+   $deleted=ScoringBackupService::deleteMany($pdo,$ids,$roundId,false,$userId,(string)($_POST['delete_reason']??''));$notice=$deleted['count'].' selected scoring backup'.($deleted['count']===1?'':'s').' permanently deleted. Current scores were not changed.';
   }elseif($action==='reopen_completed_round'){
    if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can reopen a completed round.');
    $roundId=(int)($_POST['round_id']??0);

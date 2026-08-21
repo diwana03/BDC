@@ -119,6 +119,26 @@ final class ScoringBackupService
         return ['id'=>$backupId,'was_protected'=>(bool)$backup['is_protected']];
     }
 
+    public static function deleteMany(PDO $pdo,array $backupIds,int $roundId,bool $test,int $userId,string $reason):array
+    {
+        self::ensure($pdo);$reason=trim($reason);$ids=array_values(array_unique(array_filter(array_map('intval',$backupIds),static fn(int $id):bool=>$id>0)));
+        if($reason==='')throw new RuntimeException('Enter the reason for deleting these scoring backups.');
+        if(!$ids)throw new RuntimeException('Select at least one scoring backup to delete.');
+        $mode=$test?'test':'live';$ph=implode(',',array_fill(0,count($ids),'?'));
+        $stmt=$pdo->prepare("SELECT id,backup_type,action_name,label,snapshot_hash,is_protected FROM bdc_scoring_backups WHERE round_id=? AND data_mode=? AND id IN ({$ph}) ORDER BY id");
+        $stmt->execute(array_merge([$roundId,$mode],$ids));$backups=$stmt->fetchAll();
+        if(count($backups)!==count($ids))throw new RuntimeException('One or more selected scoring backups do not belong to this round. Nothing was deleted.');
+        $audit=$test?'bdc_test_scoring_audit':'bdc_scoring_audit';$pdo->beginTransaction();
+        try{
+            $delete=$pdo->prepare("DELETE FROM bdc_scoring_backups WHERE round_id=? AND data_mode=? AND id IN ({$ph})");$delete->execute(array_merge([$roundId,$mode],$ids));
+            if($delete->rowCount()!==count($ids))throw new RuntimeException('The selected scoring backups could not all be deleted.');
+            $log=$pdo->prepare("INSERT INTO {$audit}(round_id,user_id,action,details_json) VALUES(:round,:user,'scoring_backup_deleted',:details)");
+            foreach($backups as $backup)$log->execute(['round'=>$roundId,'user'=>$userId?:null,'details'=>json_encode(['backup_id'=>(int)$backup['id'],'reason'=>substr($reason,0,500),'backup_type'=>$backup['backup_type'],'action_name'=>$backup['action_name'],'label'=>$backup['label'],'snapshot_hash'=>$backup['snapshot_hash'],'was_protected'=>(bool)$backup['is_protected'],'bulk_delete'=>true],JSON_UNESCAPED_SLASHES)]);
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['ids'=>$ids,'count'=>count($ids)];
+    }
+
     public static function consolidateEventForArchive(PDO $pdo,int $eventId,bool $test,int $userId):array
     {
         self::ensure($pdo);

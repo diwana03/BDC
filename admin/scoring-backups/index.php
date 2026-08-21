@@ -33,6 +33,12 @@ try{
    if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE BACKUP')throw new RuntimeException('Type DELETE BACKUP to confirm permanent deletion.');
    $deleted=ScoringBackupService::delete($pdo,(int)($_POST['backup_id']??0),$roundId,$backupTestMode,$userId,(string)($_POST['delete_reason']??''));
    $notice='Checkpoint #'.$deleted['id'].' permanently deleted. The scoring round itself was not changed.';
+  }elseif($action==='delete_selected_scoring_backups'){
+   if(strtoupper(trim((string)($_POST['delete_confirmation']??'')))!=='DELETE SELECTED')throw new RuntimeException('Type DELETE SELECTED to confirm permanent deletion.');
+   $ids=array_values(array_unique(array_filter(array_map('intval',(array)($_POST['backup_ids']??[])),static fn(int $id):bool=>$id>0)));
+   if(!$ids)throw new RuntimeException('Select at least one scoring backup to delete.');
+   $deleted=ScoringBackupService::deleteMany($pdo,$ids,$roundId,$backupTestMode,$userId,(string)($_POST['delete_reason']??''));
+   $notice=$deleted['count'].' selected checkpoint'.($deleted['count']===1?'':'s').' permanently deleted. The scoring round itself was not changed.';
   }
  }
 }catch(Throwable $e){$error=$e->getMessage();}
