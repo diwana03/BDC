@@ -13,7 +13,7 @@ header('Cache-Control: no-store');
 
 $term = trim((string) ($_GET['q'] ?? ''));
 $type = (string) ($_GET['type'] ?? 'competitor');
-if (mb_strlen($term) < 2) {
+if (mb_strlen($term) < 1) {
     echo json_encode(['ok' => true, 'items' => []]);
     exit;
 }
@@ -21,7 +21,7 @@ if (mb_strlen($term) < 2) {
 try {
     $pdo = Database::connection();
     if ($type === 'judge') {
-        $rows = JudgeDirectoryService::search($pdo, $term, 12);
+        $rows = JudgeDirectoryService::search($pdo, $term, 100);
         $items = array_map(static fn(array $row): array => [
             'id' => (int) $row['id'],
             'code' => (string) ($row['judge_code'] ?? ''),
@@ -29,7 +29,7 @@ try {
             'meta' => trim(implode(' · ', array_filter([(string) ($row['judge_code'] ?? ''), (string) ($row['country'] ?? '')]))),
         ], $rows);
     } else {
-        $query = $pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE status<>'archived' AND (exact_name LIKE :contains OR bdc_id LIKE :prefix) ORDER BY CASE WHEN exact_name LIKE :starts THEN 0 ELSE 1 END,exact_name LIMIT 12");
+        $query = $pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE status<>'archived' AND (exact_name LIKE :contains OR bdc_id LIKE :prefix) ORDER BY CASE WHEN exact_name LIKE :starts THEN 0 ELSE 1 END,exact_name LIMIT 100");
         $query->execute(['contains' => '%' . $term . '%', 'prefix' => $term . '%', 'starts' => $term . '%']);
         $items = array_map(static fn(array $row): array => [
             'id' => (int) $row['id'],
