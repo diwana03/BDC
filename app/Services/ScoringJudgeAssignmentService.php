@@ -9,6 +9,11 @@ use Throwable;
 
 final class ScoringJudgeAssignmentService
 {
+    private static function normaliseName(string $name):string
+    {
+        return mb_strtolower(trim((string)preg_replace('/\s+/u',' ',$name)));
+    }
+
     /** @return array<int,array<string,mixed>> */
     public static function directory(PDO $pdo): array
     {
@@ -54,8 +59,10 @@ final class ScoringJudgeAssignmentService
             ];
         }
         if(count($clean)<3)throw new RuntimeException('Minimum 3 judges required.');
-        $normalised=array_map(static fn(array $row):string=>mb_strtolower($row['name']),array_values($clean));
-        if(count($normalised)!==count(array_unique($normalised)))throw new RuntimeException('Judge names must be unique.');
+        $normalised=array_map(static fn(array $row):string=>self::normaliseName($row['name']),array_values($clean));
+        if(count($normalised)!==count(array_unique($normalised)))throw new RuntimeException('The same judge cannot be selected more than once.');
+        $postedDirectoryIds=array_values(array_filter(array_map(static fn(array $row):int=>(int)$row['directory_id'],array_values($clean))));
+        if(count($postedDirectoryIds)!==count(array_unique($postedDirectoryIds)))throw new RuntimeException('The same Judge Database profile cannot be assigned twice.');
 
         $chiefCleanKey=null;
         foreach($clean as $key=>$row){
@@ -77,9 +84,9 @@ final class ScoringJudgeAssignmentService
                 $stmt->execute(['id'=>$row['directory_id']]);
                 $directory=$stmt->fetch()?:null;
                 if($directory){
-                    $typed=mb_strtolower($row['name']);
-                    $full=mb_strtolower(trim((string)$directory['full_name']));
-                    $display=mb_strtolower(trim((string)($directory['display_name']??'')));
+                    $typed=self::normaliseName($row['name']);
+                    $full=self::normaliseName((string)$directory['full_name']);
+                    $display=self::normaliseName((string)($directory['display_name']??''));
                     if($typed!==$full && ($display===''||$typed!==$display))$directory=null;
                 }
             }

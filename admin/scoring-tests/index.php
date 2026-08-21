@@ -932,7 +932,7 @@ try{
    $roundId=(int)$_POST['round_id'];$rawNames=$_POST['judge_name']??[];$rawScopes=$_POST['judge_scope']??[];$chief=(int)($_POST['chief_index']??-1);$rows=[];
    foreach($rawNames as $index=>$rawName){$name=trim((string)$rawName);if($name==='')continue;$scope=(string)($rawScopes[$index]??'all');if(!in_array($scope,['all','leader','follower'],true))$scope='all';$rows[]=['name'=>$name,'scope'=>$scope,'original_index'=>(int)$index];}
    if(count($rows)<3)throw new RuntimeException('Minimum 3 judges required.');
-   if(count($rows)!==count(array_unique(array_map(fn($row)=>mb_strtolower($row['name']),$rows))))throw new RuntimeException('Judge names must be unique.');
+   if(count($rows)!==count(array_unique(array_map(fn($row)=>mb_strtolower(trim((string)preg_replace('/\s+/u',' ',$row['name']))),$rows))))throw new RuntimeException('The same judge cannot be selected more than once.');
    $chiefRowIndex=null;foreach($rows as $rowIndex=>$row){if($row['original_index']===$chief){$chiefRowIndex=$rowIndex;break;}}if($chiefRowIndex===null)throw new RuntimeException('Select one Chief Judge.');
    foreach(['leader','follower'] as $role){$panelCount=count(array_filter($rows,fn($row)=>in_array($row['scope'],['all',$role],true)));if($panelCount<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');}
    $existingStmt=$pdo->prepare("SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order");$existingStmt->execute(['r'=>$roundId]);$existing=$existingStmt->fetchAll();$existingByName=[];foreach($existing as $judge)$existingByName[mb_strtolower(trim((string)$judge['judge_name']))]=$judge;
