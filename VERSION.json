@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev309",
-  "build": 3015,
+  "version": "2.3.3-dev312",
+  "build": 3018,
   "status": "development",
   "release_date": "2026-08-21",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces bright setup colours with a restrained champagne-gold, sapphire, navy and burgundy premium scoring palette",
+    "Moves Registration Desk and Flights above competitor entry and gives setup, Leader and Follower boards distinct accessible colours across Test and Live scoring",
+    "Prevents universal Back and Dashboard navigation from appearing inside embedded judge-control and scoring iframes while retaining it on standalone pages",
     "Restores the complete omitted Flight workflow to GitHub develop across Automatic and Manual Live scoring, isolated Test scoring, and shared projection controls",
     "Restores the Jack and Jill landing page with direct Manual Scoring, Automatic Scoring and Live Projection choices while preserving separate Dance Cup access",
     "Provides separate Live Operations links for Jack and Jill Scoring and Dance Cup Scoring without an intermediate workflow selector",

@@ -279,6 +279,7 @@ if ($bdcAdminHtmlCandidate) {
 (function(){
   if(window.__bdcUniversalAdminNavLoaded)return;
   window.__bdcUniversalAdminNavLoaded=true;
+  if(window.self!==window.top)return;
   var dashboard=__BDC_DASHBOARD_URL__;
   var parity=__BDC_PARITY_URL__;
   var cleanPath=window.location.pathname.replace(/\/+$/,'');
