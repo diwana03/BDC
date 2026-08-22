@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev350",
-  "build": 3056,
+  "version": "2.3.3-dev351",
+  "build": 3057,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs Dance Cup Judge Database autocomplete from the first typed character by using native-MySQL-safe search bindings and visible retry feedback across shared Test and Live category workspaces",
     "Adds four session-wide premium projector screen presets, two dark and two light, with instant shared Test/Live selection across holding, scoring, matrix, podium and result screens",
     "Adds an independent custom projector music module with validated MP3, M4A, WAV and OGG upload, persistent loop playback, pause, volume and explicit clear controls without changing built-in effect sounds",
     "Fixes Chief Judge selection after panel reordering by preserving the numeric J1 key used by strict backend assignment, so the selected Chief is saved, pinned first and applied to calculation",
