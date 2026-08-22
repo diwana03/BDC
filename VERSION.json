@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev356",
-  "build": 3062,
+  "version": "2.3.3-dev357",
+  "build": 3063,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a Jack-and-Jill-style Dance Cup entry screen with direct Manual Scoring, Automatic Scoring and Live Projection choices, routing every saved category into the selected isolated Test or Live workflow",
     "Removes the remaining duplicate projector-shell logo when hosting resolves the Live Display route explicitly as live-display/index.php as well as the clean live-display directory URL",
     "Removes the duplicate outer-shell logo from shared Test and Live audience projection, preserves one native projector logo, enlarges it for venue visibility and centers the Holding Screen brand with the event title",
     "Adds a completely separate Dance Cup automation module with secure per-judge browser scoring, draft saving, submission locking, progress monitoring and manual scoring fallback across isolated Test and Live data",
