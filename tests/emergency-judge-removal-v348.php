@@ -13,7 +13,7 @@ $files=[
 ];
 $expect=[
  'emergency'=>['REMOVE JUDGE','emergency_judge_removed','fewer than 3 applicable judges','emergency_judge_removal','results_invalidated'],
- 'assignment'=>['$affectsResults','results_invalidated','final_results'],
+ 'assignment'=>['$affectsResults','results_invalidated','final_results','$chiefCleanKey=0;',"\$key===\$chiefCleanKey"],
  'backup'=>["'judges'=>\$p.'judges'",'$hasJudgeSnapshot'],
  'live'=>['ScoringJudgeEmergencyService','Remove Judge Safely','canOverrideCompletedScores'],
  'test'=>['ScoringJudgeEmergencyService','Type REMOVE JUDGE'],

@@ -75,7 +75,9 @@ final class ScoringJudgeAssignmentService
         $chiefRow=$clean[$chiefCleanKey];
         unset($clean[$chiefCleanKey]);
         $clean=array_values(array_merge([$chiefRow],array_values($clean)));
-        $chiefCleanKey='0';
+        // array_values() resets keys to integers. Keep this key numeric because the
+        // strict comparison below decides which assignment receives is_chief=1.
+        $chiefCleanKey=0;
         foreach(['leader','follower'] as $role){
             $count=count(array_filter($clean,static fn(array $row):bool=>in_array($row['scope'],['all',$role],true)));
             if($count<3)throw new RuntimeException(ucfirst($role).' panel must have at least 3 judges.');
