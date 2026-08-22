@@ -106,6 +106,8 @@
 
   const brandTarget = document.querySelector('.navbar-brand, .admin-topbar-brand-v203, .portal-brand, header.top .wrap');
   const existing = document.querySelector('img[src*="bdc-logo"]');
+  // Embedded operational panels belong to their branded parent screen.
+  if (window.self !== window.top && !brandTarget && !existing) return;
   if (existing && !brandTarget) {
     shell(existing);
     return;

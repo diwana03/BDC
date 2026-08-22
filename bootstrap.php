@@ -63,8 +63,9 @@ if (!function_exists('url')) {
  * projection cannot drift into unbranded one-off templates.
  */
 $bdcOfficialLogoUrl = url('public/assets/bdc-logo.png');
-$bdcBrandingScriptUrl = url('public/js/bdc-global-branding.js?v=341');
-ob_start(static function (string $html) use ($bdcOfficialLogoUrl, $bdcBrandingScriptUrl): string {
+$bdcBrandingScriptUrl = url('public/js/bdc-global-branding.js?v=345');
+$bdcCopyLinkScriptUrl = url('public/js/bdc-copy-link-v345.js?v=345');
+ob_start(static function (string $html) use ($bdcOfficialLogoUrl, $bdcBrandingScriptUrl, $bdcCopyLinkScriptUrl): string {
     if ($html === '' || stripos($html, '</body>') === false || str_contains($html, 'data-bdc-global-branding-loader')) {
         return $html;
     }
@@ -80,7 +81,8 @@ ob_start(static function (string $html) use ($bdcOfficialLogoUrl, $bdcBrandingSc
     }
     $logo = json_encode($bdcOfficialLogoUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     $loader = '<script data-bdc-global-branding-loader>window.BDC_OFFICIAL_LOGO_URL=' . $logo . ';</script>'
-        . '<script defer src="' . e($bdcBrandingScriptUrl) . '"></script>';
+        . '<script defer src="' . e($bdcBrandingScriptUrl) . '"></script>'
+        . '<script defer src="' . e($bdcCopyLinkScriptUrl) . '"></script>';
     return preg_replace('/<\/body>/i', $loader . '</body>', $html, 1) ?? $html;
 });
 
