@@ -1,0 +1,20 @@
+<?php
+declare(strict_types=1);
+$root=dirname(__DIR__);$checks=[];
+$service=file_get_contents($root.'/app/Services/DanceCupScoringService.php');
+$automation=file_get_contents($root.'/admin/dance-cup/automation.php');
+$judge=file_get_contents($root.'/admin/dance-cup/judge-scoring.php');
+$control=file_get_contents($root.'/admin/dance-cup/projection-control.php');
+$feed=file_get_contents($root.'/admin/dance-cup/projection-feed.php');
+$projector=file_get_contents($root.'/admin/dance-cup/projector.php');
+$category=file_get_contents($root.'/admin/dance-cup/category.php');
+$checks['isolated live and test prefixes']=str_contains($service,"'bdc_test_dance_cup'")&&str_contains($service,"'bdc_dance_cup'");
+$checks['secure judge sessions']=str_contains($service,'_judge_sessions')&&str_contains($automation,'bin2hex(random_bytes(32))');
+$checks['judge draft and submission']=str_contains($judge,"action==='submit'")&&str_contains($judge,"status='submitted'");
+$checks['event projector separate from J&J']=str_contains($service,'_event_projection')&&!str_contains($control,'bdc_live_display_sessions');
+$checks['event category switching']=str_contains($control,"action==='switch_category'")&&str_contains($control,'Same event and same projector link');
+$checks['contestant holding run of show']=str_contains($control,"action==='start_cycle'")&&str_contains($projector,"cycle.phase==='contestant'");
+$checks['contestant number UI']=str_contains($category,'Contestant No.')&&str_contains($projector,'Contestant ');
+$checks['projection screens']=str_contains($control,"'judges'=>'Judges'")&&str_contains($control,"'results'=>'Live Scoreboard'")&&str_contains($feed,'scoring_results');
+$checks['four adaptive themes']=substr_count($control,"=>['")>=4&&str_contains($projector,'body[data-theme=pearl_navy]');
+$failed=array_keys(array_filter($checks,static fn(bool $ok):bool=>!$ok));foreach($checks as $name=>$ok)echo ($ok?'PASS':'FAIL')." {$name}\n";if($failed){exit(1);}echo "Dance Cup automation and event projection static gate passed.\n";

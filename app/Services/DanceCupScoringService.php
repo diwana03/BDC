@@ -30,6 +30,28 @@ final class DanceCupScoringService
         // intentionally use a distinct name so neither schema can overwrite it.
         $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_scoring_results(competition_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,total_score DECIMAL(12,2) NOT NULL DEFAULT 0,placement INT UNSIGNED NOT NULL,calculated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(competition_id,entry_id),INDEX idx_dc_scoring_result_place(competition_id,placement)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_checkpoints(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,label VARCHAR(190) NOT NULL,snapshot_json LONGTEXT NOT NULL,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_dc_checkpoint_comp(competition_id,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_judge_sessions(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,judge_assignment_id BIGINT UNSIGNED NOT NULL,access_token CHAR(64) NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'not_started',started_at DATETIME NULL,submitted_at DATETIME NULL,last_seen_at DATETIME NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_session_judge(competition_id,judge_assignment_id),UNIQUE KEY uq_dc_session_token(access_token),INDEX idx_dc_session_status(competition_id,status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_projection(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,access_token CHAR(64) NOT NULL,screen_type VARCHAR(30) NOT NULL DEFAULT 'holding',theme VARCHAR(30) NOT NULL DEFAULT 'midnight_wine',state_version BIGINT UNSIGNED NOT NULL DEFAULT 1,updated_by BIGINT UNSIGNED NULL,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_projection_competition(competition_id),UNIQUE KEY uq_dc_projection_token(access_token)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_event_projection(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,active_competition_id BIGINT UNSIGNED NOT NULL,active_entry_id BIGINT UNSIGNED NULL,access_token CHAR(64) NOT NULL,screen_type VARCHAR(30) NOT NULL DEFAULT 'holding',theme VARCHAR(30) NOT NULL DEFAULT 'midnight_wine',holding_title VARCHAR(190) NOT NULL DEFAULT 'Dance Cup',holding_message VARCHAR(255) NOT NULL DEFAULT 'Next contestant preparing',contestant_seconds INT UNSIGNED NOT NULL DEFAULT 12,holding_seconds INT UNSIGNED NOT NULL DEFAULT 8,auto_cycle TINYINT(1) NOT NULL DEFAULT 0,state_version BIGINT UNSIGNED NOT NULL DEFAULT 1,updated_by BIGINT UNSIGNED NULL,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_event_projection(event_id),UNIQUE KEY uq_dc_event_projection_token(access_token)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
+    public static function ensureAutomation(PDO $pdo, int $competitionId, bool $test = false): void
+    {
+        self::ensureWorkspaceTables($pdo, $test);
+        $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $judges = $pdo->prepare("SELECT id FROM {$prefix}_judges WHERE competition_id=:competition ORDER BY judge_order,id");
+        $judges->execute(['competition' => $competitionId]);
+        $session = $pdo->prepare("INSERT IGNORE INTO {$prefix}_judge_sessions(competition_id,judge_assignment_id,access_token) VALUES(:competition,:judge,:token)");
+        foreach ($judges->fetchAll(PDO::FETCH_COLUMN) as $judgeId) {
+            $session->execute(['competition' => $competitionId, 'judge' => (int) $judgeId, 'token' => bin2hex(random_bytes(32))]);
+        }
+        $event = $pdo->prepare("SELECT event_id FROM ".self::tables($test)['competitions']." WHERE id=:competition");
+        $event->execute(['competition' => $competitionId]);
+        $eventId = (int) $event->fetchColumn();
+        if ($eventId > 0) {
+            $projection = $pdo->prepare("INSERT IGNORE INTO {$prefix}_event_projection(event_id,active_competition_id,access_token) VALUES(:event,:competition,:token)");
+            $projection->execute(['event' => $eventId, 'competition' => $competitionId, 'token' => bin2hex(random_bytes(32))]);
+        }
     }
 
     /** @param array<int,array{name:string,max:float}> $criteria */
