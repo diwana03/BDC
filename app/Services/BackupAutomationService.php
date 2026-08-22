@@ -26,6 +26,79 @@ final class BackupAutomationService
         $columns=$this->pdo->query("SHOW COLUMNS FROM bdc_backup_settings")->fetchAll(PDO::FETCH_COLUMN);
         if(!in_array('server_keep_count',$columns,true))$this->pdo->exec("ALTER TABLE bdc_backup_settings ADD COLUMN server_keep_count INT UNSIGNED NOT NULL DEFAULT 7 AFTER keep_count");
         if(!in_array('drive_keep_count',$columns,true))$this->pdo->exec("ALTER TABLE bdc_backup_settings ADD COLUMN drive_keep_count INT UNSIGNED NOT NULL DEFAULT 30 AFTER server_keep_count");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS bdc_backup_schedules(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            schedule_name VARCHAR(120) NOT NULL,
+            enabled TINYINT(1) NOT NULL DEFAULT 1,
+            frequency ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'daily',
+            backup_time TIME NOT NULL DEFAULT '03:00:00',
+            weekday TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            month_day TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            backup_type ENUM('database','site','full') NOT NULL DEFAULT 'full',
+            last_run_at DATETIME NULL,
+            next_run_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE INDEX uq_backup_schedule_slot(backup_type,frequency,backup_time,weekday,month_day),
+            INDEX idx_backup_schedule_due(enabled,next_run_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $count=(int)$this->pdo->query('SELECT COUNT(*) FROM bdc_backup_schedules')->fetchColumn();
+        if($count===0){
+            $legacy=$this->pdo->query('SELECT * FROM bdc_backup_settings WHERE id=1')->fetch();
+            if($legacy && !empty($legacy['enabled'])){
+                $this->pdo->prepare("INSERT IGNORE INTO bdc_backup_schedules(schedule_name,enabled,frequency,backup_time,weekday,month_day,backup_type,last_run_at,next_run_at) VALUES('Existing backup schedule',1,:frequency,:time,:weekday,:month_day,:type,:last_run,:next_run)")
+                    ->execute(['frequency'=>$legacy['frequency'],'time'=>$legacy['backup_time'],'weekday'=>$legacy['weekday'],'month_day'=>$legacy['month_day'],'type'=>$legacy['backup_type'],'last_run'=>$legacy['last_run_at'],'next_run'=>$legacy['next_run_at']]);
+            }
+        }
+    }
+
+    public function schedules():array
+    {
+        return $this->pdo->query('SELECT * FROM bdc_backup_schedules ORDER BY enabled DESC,next_run_at,id')->fetchAll();
+    }
+
+    public function saveSchedule(array $data):array
+    {
+        $id=max(0,(int)($data['schedule_id']??0));
+        $frequency=in_array($data['frequency']??'daily',['daily','weekly','monthly'],true)?$data['frequency']:'daily';
+        $backupType=in_array($data['backup_type']??'full',['database','site','full'],true)?$data['backup_type']:'full';
+        $time=preg_match('/^\d{2}:\d{2}$/',(string)($data['backup_time']??''))?(string)$data['backup_time'].':00':'03:00:00';
+        $weekday=$frequency==='weekly'?max(1,min(7,(int)($data['weekday']??1))):1;
+        $monthDay=$frequency==='monthly'?max(1,min(28,(int)($data['month_day']??1))):1;
+        $name=trim((string)($data['schedule_name']??''));
+        if($name==='')$name=ucfirst($backupType).' '.ucfirst($frequency).' '.substr($time,0,5);
+        $duplicate=$this->pdo->prepare('SELECT id FROM bdc_backup_schedules WHERE backup_type=:type AND frequency=:frequency AND backup_time=:time AND weekday=:weekday AND month_day=:month_day AND id<>:id LIMIT 1');
+        $duplicate->execute(['type'=>$backupType,'frequency'=>$frequency,'time'=>$time,'weekday'=>$weekday,'month_day'=>$monthDay,'id'=>$id]);
+        if($duplicate->fetchColumn())throw new RuntimeException('That backup schedule already exists. Edit the existing row instead.');
+        $next=$this->calculateNextRun($frequency,$time,$weekday,$monthDay);
+        if($id>0){
+            $stmt=$this->pdo->prepare('UPDATE bdc_backup_schedules SET schedule_name=:name,enabled=:enabled,frequency=:frequency,backup_time=:time,weekday=:weekday,month_day=:month_day,backup_type=:type,next_run_at=:next WHERE id=:id');
+            $stmt->execute(['name'=>$name,'enabled'=>!empty($data['enabled'])?1:0,'frequency'=>$frequency,'time'=>$time,'weekday'=>$weekday,'month_day'=>$monthDay,'type'=>$backupType,'next'=>$next,'id'=>$id]);
+            if($stmt->rowCount()===0 && !$this->schedule($id))throw new RuntimeException('Backup schedule not found.');
+        }else{
+            $this->pdo->prepare('INSERT INTO bdc_backup_schedules(schedule_name,enabled,frequency,backup_time,weekday,month_day,backup_type,next_run_at) VALUES(:name,:enabled,:frequency,:time,:weekday,:month_day,:type,:next)')
+                ->execute(['name'=>$name,'enabled'=>!empty($data['enabled'])?1:0,'frequency'=>$frequency,'time'=>$time,'weekday'=>$weekday,'month_day'=>$monthDay,'type'=>$backupType,'next'=>$next]);
+            $id=(int)$this->pdo->lastInsertId();
+        }
+        return $this->schedule($id)??[];
+    }
+
+    public function deleteSchedule(int $id):void
+    {
+        $stmt=$this->pdo->prepare('DELETE FROM bdc_backup_schedules WHERE id=:id');$stmt->execute(['id'=>$id]);
+        if($stmt->rowCount()!==1)throw new RuntimeException('Backup schedule not found.');
+    }
+
+    public function setScheduleEnabled(int $id,bool $enabled):void
+    {
+        $schedule=$this->schedule($id);if(!$schedule)throw new RuntimeException('Backup schedule not found.');
+        $next=$enabled?$this->calculateNextRun((string)$schedule['frequency'],(string)$schedule['backup_time'],(int)$schedule['weekday'],(int)$schedule['month_day']):$schedule['next_run_at'];
+        $this->pdo->prepare('UPDATE bdc_backup_schedules SET enabled=:enabled,next_run_at=:next WHERE id=:id')->execute(['enabled'=>$enabled?1:0,'next'=>$next,'id'=>$id]);
+    }
+
+    private function schedule(int $id):?array
+    {
+        $stmt=$this->pdo->prepare('SELECT * FROM bdc_backup_schedules WHERE id=:id');$stmt->execute(['id'=>$id]);return $stmt->fetch()?:null;
     }
 
     public function settings():array
@@ -115,16 +188,19 @@ final class BackupAutomationService
         return $candidate->format('Y-m-d H:i:s');
     }
 
-    public function due():bool
+    public function due(?array $schedule=null):bool
     {
-        $s=$this->settings();
+        $s=$schedule??$this->settings();
         return !empty($s['enabled']) && !empty($s['next_run_at']) && strtotime((string)$s['next_run_at'])<=time();
     }
 
-    public function run(bool $force=false,?int $userId=null):array
+    public function run(bool $force=false,?int $userId=null,?int $scheduleId=null):array
     {
         $settings=$this->settings();
-        if(!$force && !$this->due())return ['skipped'=>true,'message'=>'Backup is not due yet.'];
+        $schedule=$scheduleId!==null?$this->schedule($scheduleId):null;
+        if($scheduleId!==null && !$schedule)throw new RuntimeException('Backup schedule not found.');
+        if($schedule)$settings=array_replace($settings,$schedule);
+        if(!$force && !$this->due($settings))return ['skipped'=>true,'message'=>'Backup is not due yet.'];
         $started=date('Y-m-d H:i:s');
         $runId=0;
         $this->pdo->prepare("INSERT INTO bdc_backup_runs(backup_type,status,started_at,triggered_by) VALUES(:type,'running',NOW(),:user_id)")
@@ -174,8 +250,13 @@ final class BackupAutomationService
                 (string)$settings['frequency'],(string)$settings['backup_time'],
                 (int)$settings['weekday'],(int)$settings['month_day']
             );
-            $this->pdo->prepare("UPDATE bdc_backup_settings SET last_run_at=NOW(),next_run_at=:next_run WHERE id=1")
-                ->execute(['next_run'=>$next]);
+            if($schedule){
+                $this->pdo->prepare("UPDATE bdc_backup_schedules SET last_run_at=NOW(),next_run_at=:next_run WHERE id=:id")
+                    ->execute(['next_run'=>$next,'id'=>$schedule['id']]);
+            }else{
+                $this->pdo->prepare("UPDATE bdc_backup_settings SET last_run_at=NOW(),next_run_at=:next_run WHERE id=1")
+                    ->execute(['next_run'=>$next]);
+            }
 
             $this->applyRetention((int)($settings['server_keep_count']??$settings['keep_count']),(int)($settings['drive_keep_count']??30),$settings);
 
@@ -185,6 +266,17 @@ final class BackupAutomationService
                 ->execute(['error'=>$e->getMessage(),'id'=>$runId]);
             throw $e;
         }
+    }
+
+    public function runDue(?int $userId=null):array
+    {
+        $results=[];
+        foreach($this->schedules() as $schedule){
+            if(!$this->due($schedule))continue;
+            try{$results[]=['schedule_id'=>(int)$schedule['id'],'schedule_name'=>$schedule['schedule_name'],'result'=>$this->run(false,$userId,(int)$schedule['id'])];}
+            catch(\Throwable $e){$results[]=['schedule_id'=>(int)$schedule['id'],'schedule_name'=>$schedule['schedule_name'],'error'=>$e->getMessage()];}
+        }
+        return $results?:[['skipped'=>true,'message'=>'No backup schedules are due.']];
     }
 
     public function testGoogleDrive():array

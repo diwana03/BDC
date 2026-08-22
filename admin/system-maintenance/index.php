@@ -36,9 +36,15 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $action=(string)($_POST['action']??'');
    if($action==='save_settings'){
     $automation->saveSettings($_POST,$_FILES['service_account_json']??null,$_FILES['oauth_client_json']??null);
-    $message='Automated backup settings saved.';
+    $message='Backup storage and retention settings saved.';
+   }elseif($action==='save_schedule'){
+    $schedule=$automation->saveSchedule($_POST);$message='Backup schedule "'.$schedule['schedule_name'].'" saved.';
+   }elseif($action==='delete_schedule'){
+    $automation->deleteSchedule((int)($_POST['schedule_id']??0));$message='Backup schedule deleted.';
+   }elseif($action==='toggle_schedule'){
+    $enabled=!empty($_POST['enabled']);$automation->setScheduleEnabled((int)($_POST['schedule_id']??0),$enabled);$message='Backup schedule '.($enabled?'enabled.':'disabled.');
    }elseif($action==='run_now'){
-    $result=$automation->run(true,$userId);
+    $scheduleId=(int)($_POST['schedule_id']??0);$result=$automation->run(true,$userId,$scheduleId>0?$scheduleId:null);
     $message='Backup created. Google Drive status: '.($result['google_drive_status']??'disabled').'.';
    }elseif($action==='test_drive'){
     $result=$automation->testGoogleDrive();
@@ -71,6 +77,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 
 $message=$message?:((string)($_SESSION['backup_oauth_message']??''));$error=$error?:((string)($_SESSION['backup_oauth_error']??''));unset($_SESSION['backup_oauth_message'],$_SESSION['backup_oauth_error']);
 $settings=$automation->settings();$oauth=$automation->googleOAuthStatus();
+$schedules=$automation->schedules();
 $oauthPopup=$oauth['client_configured']&&!$oauth['connected']?$automation->googleOAuthPopupConfig():null;
 $history=$automation->history(100);
 $backups=$manual->listBackups();
@@ -94,15 +101,27 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
 
 <div class="row g-4">
 <div class="col-lg-8">
+ <div class="card settings-card shadow-sm mb-4"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3"><div><h2 class="h5 mb-1">Automated Backup Schedules</h2><p class="small text-muted mb-0">Add multiple schedules. Exact duplicate type, frequency, day and time combinations are blocked.</p></div><span class="badge text-bg-primary"><?=count($schedules)?> configured</span></div>
+  <form method="post" class="border rounded p-3 mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_schedule"><div class="row g-2 align-items-end">
+   <div class="col-md-4"><label class="form-label">Schedule name</label><input class="form-control" name="schedule_name" maxlength="120" placeholder="e.g. Daily full backup"></div>
+   <div class="col-md-3"><label class="form-label">Backup type</label><select class="form-select" name="backup_type"><?php foreach(['full'=>'Full portal','database'=>'Database only','site'=>'Website files'] as $v=>$l):?><option value="<?=$v?>"><?=$l?></option><?php endforeach;?></select></div>
+   <div class="col-md-2"><label class="form-label">Frequency</label><select class="form-select schedule-frequency" name="frequency"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+   <div class="col-md-3"><label class="form-label">Time</label><input class="form-control" type="time" name="backup_time" value="03:00" required></div>
+   <div class="col-md-3 schedule-weekday" style="display:none"><label class="form-label">Weekday</label><select class="form-select" name="weekday"><?php foreach([1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday',7=>'Sunday'] as $v=>$l):?><option value="<?=$v?>"><?=$l?></option><?php endforeach;?></select></div>
+   <div class="col-md-3 schedule-monthday" style="display:none"><label class="form-label">Day of month</label><input class="form-control" type="number" min="1" max="28" name="month_day" value="1"></div>
+   <div class="col-md-3"><label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="enabled" value="1" checked> <span class="form-check-label">Enabled</span></label></div>
+   <div class="col-md-3"><button class="btn btn-primary w-100">Add Schedule</button></div>
+  </div></form>
+  <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Name</th><th>Type</th><th>Schedule</th><th>Status</th><th>Last run</th><th>Next run</th><th></th></tr></thead><tbody>
+  <?php foreach($schedules as $schedule):?><tr><td><strong><?=e((string)$schedule['schedule_name'])?></strong></td><td><?=e(ucfirst((string)$schedule['backup_type']))?></td><td><?=e(ucfirst((string)$schedule['frequency']))?> · <?=e(substr((string)$schedule['backup_time'],0,5))?><?php if($schedule['frequency']==='weekly'):?> · <?=e([1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'][(int)$schedule['weekday']]??'')?><?php elseif($schedule['frequency']==='monthly'):?> · day <?=(int)$schedule['month_day']?><?php endif;?></td><td><span class="badge <?=!empty($schedule['enabled'])?'text-bg-success':'text-bg-secondary'?>"><?=!empty($schedule['enabled'])?'Active':'Disabled'?></span></td><td><?=e((string)($schedule['last_run_at']?:'Never'))?></td><td><?=e((string)($schedule['next_run_at']?:'Not scheduled'))?></td><td><div class="d-flex gap-1 justify-content-end flex-wrap"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="run_now"><input type="hidden" name="schedule_id" value="<?=(int)$schedule['id']?>"><button class="btn btn-sm btn-outline-success">Run now</button></form><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="toggle_schedule"><input type="hidden" name="schedule_id" value="<?=(int)$schedule['id']?>"><input type="hidden" name="enabled" value="<?=!empty($schedule['enabled'])?'0':'1'?>"><button class="btn btn-sm btn-outline-secondary"><?=!empty($schedule['enabled'])?'Disable':'Enable'?></button></form><details><summary class="btn btn-sm btn-outline-primary">Edit</summary><form method="post" class="border rounded bg-white p-2 mt-1 text-start" style="min-width:280px"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_schedule"><input type="hidden" name="schedule_id" value="<?=(int)$schedule['id']?>"><input type="hidden" name="enabled" value="<?=!empty($schedule['enabled'])?'1':'0'?>"><input class="form-control form-control-sm mb-1" name="schedule_name" value="<?=e((string)$schedule['schedule_name'])?>" required><select class="form-select form-select-sm mb-1" name="backup_type"><?php foreach(['full'=>'Full portal','database'=>'Database only','site'=>'Website files'] as $v=>$l):?><option value="<?=$v?>" <?=$schedule['backup_type']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select><select class="form-select form-select-sm mb-1" name="frequency"><?php foreach(['daily'=>'Daily','weekly'=>'Weekly','monthly'=>'Monthly'] as $v=>$l):?><option value="<?=$v?>" <?=$schedule['frequency']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select><input class="form-control form-control-sm mb-1" type="time" name="backup_time" value="<?=e(substr((string)$schedule['backup_time'],0,5))?>"><div class="d-flex gap-1"><select class="form-select form-select-sm" name="weekday"><?php foreach([1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'] as $v=>$l):?><option value="<?=$v?>" <?=(int)$schedule['weekday']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select><input class="form-control form-control-sm" type="number" min="1" max="28" name="month_day" value="<?=(int)$schedule['month_day']?>"></div><button class="btn btn-primary btn-sm w-100 mt-2">Save changes</button></form></details><form method="post" onsubmit="return confirm('Delete this backup schedule?')"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="delete_schedule"><input type="hidden" name="schedule_id" value="<?=(int)$schedule['id']?>"><button class="btn btn-sm btn-outline-danger">Delete</button></form></div></td></tr><?php endforeach;?>
+  <?php if(!$schedules):?><tr><td colspan="7" class="text-muted">No automated schedules exist yet. Add the first one above.</td></tr><?php endif;?></tbody></table></div>
+ </div></div>
  <form method="post" enctype="multipart/form-data" class="card settings-card shadow-sm mb-4"><div class="card-body">
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_settings">
-  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Automation Settings</h2><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="enabled" value="1" <?=!empty($settings['enabled'])?'checked':''?>><span class="form-check-label">Enabled</span></label></div>
+  <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 mb-0">Backup Storage Settings</h2><div class="small text-muted">Shared retention and Google Drive settings used by every schedule.</div></div></div>
+  <input type="hidden" name="enabled" value="0"><input type="hidden" name="backup_type" value="<?=e((string)$settings['backup_type'])?>"><input type="hidden" name="frequency" value="<?=e((string)$settings['frequency'])?>"><input type="hidden" name="backup_time" value="<?=e(substr((string)$settings['backup_time'],0,5))?>"><input type="hidden" name="weekday" value="<?=(int)$settings['weekday']?>"><input type="hidden" name="month_day" value="<?=(int)$settings['month_day']?>">
   <div class="row g-3">
-   <div class="col-md-4"><label class="form-label">Backup type</label><select class="form-select" name="backup_type"><?php foreach(['full'=>'Full portal','database'=>'Database only','site'=>'Website files'] as $v=>$l):?><option value="<?=$v?>" <?=$settings['backup_type']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select></div>
-   <div class="col-md-4"><label class="form-label">Frequency</label><select class="form-select" name="frequency" id="frequency"><?php foreach(['daily'=>'Daily','weekly'=>'Weekly','monthly'=>'Monthly'] as $v=>$l):?><option value="<?=$v?>" <?=$settings['frequency']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select></div>
-   <div class="col-md-4"><label class="form-label">Backup time</label><input class="form-control" type="time" name="backup_time" value="<?=e(substr((string)$settings['backup_time'],0,5))?>"></div>
-   <div class="col-md-4 weekly-field"><label class="form-label">Weekday</label><select class="form-select" name="weekday"><?php foreach([1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday',7=>'Sunday'] as $v=>$l):?><option value="<?=$v?>" <?=(int)$settings['weekday']===$v?'selected':''?>><?=$l?></option><?php endforeach;?></select></div>
-   <div class="col-md-4 monthly-field"><label class="form-label">Day of month</label><input class="form-control" type="number" min="1" max="28" name="month_day" value="<?=(int)$settings['month_day']?>"></div>
    <div class="col-md-4"><label class="form-label">Keep on this server</label><input class="form-control" type="number" min="1" max="100" name="server_keep_count" value="<?=(int)($settings['server_keep_count']??$settings['keep_count'])?>"><div class="form-text">Retain this many backups of each type locally.</div></div>
    <div class="col-md-4"><label class="form-label">Keep on Google Drive</label><input class="form-control" type="number" min="1" max="365" name="drive_keep_count" value="<?=(int)($settings['drive_keep_count']??30)?>"><div class="form-text">Drive retention is independent from server retention.</div></div>
   </div>
@@ -145,16 +164,15 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
 </div>
 
 <div class="col-lg-4">
- <div class="card settings-card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Status</h2>
-  <p><strong>Last run:</strong><br><?=e((string)($settings['last_run_at']?:'Never'))?></p>
-  <p><strong>Next run:</strong><br><?=e((string)($settings['next_run_at']?:'Not scheduled'))?></p>
+ <div class="card settings-card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Schedule Status</h2>
+  <p><strong>Configured:</strong> <?=count($schedules)?></p><p><strong>Active:</strong> <?=count(array_filter($schedules,static fn(array $schedule):bool=>!empty($schedule['enabled'])))?></p>
+  <p class="small text-muted">Each schedule row shows its own last and next run. Use Run now on the exact schedule you want.</p>
   <p><strong>Server retention:</strong><br>Keep <?=(int)($settings['server_keep_count']??$settings['keep_count'])?> backups of each type</p><p><strong>Drive retention:</strong><br>Keep <?=(int)($settings['drive_keep_count']??30)?> successful uploads</p>
   <div class="d-grid gap-2">
-   <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="run_now"><button class="btn btn-success w-100">Run Scheduled Type Now</button></form>
    <form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="test_drive"><button class="btn btn-outline-primary w-100">Test Google Drive</button></form>
   </div>
  </div></div>
- <div class="card settings-card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Server Cron</h2><p class="small text-muted">Run this URL every 5–15 minutes. The portal creates a backup only when the configured schedule is due.</p><input class="form-control form-control-sm" readonly value="<?=e($cronUrl)?>"></div></div>
+ <div class="card settings-card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Server Cron</h2><p class="small text-muted">Run this one URL every 5–15 minutes. It checks every active schedule and runs all jobs currently due.</p><input class="form-control form-control-sm" readonly value="<?=e($cronUrl)?>"></div></div>
  <div class="card settings-card shadow-sm"><div class="card-body"><h2 class="h5">System Health</h2><ul class="list-unstyled small mb-0"><li>PHP: <?=e($health['php_version'])?></li><li>MySQL: <?=e($health['mysql_version'])?></li><li>Free disk: <?=backupBytes($health['disk_free'])?></li><li>ZIP: <?=$health['zip_available']?'Available':'Missing'?></li><li>Backup folder: <?=$health['backup_writable']?'Writable':'Not writable'?></li></ul></div></div>
 </div>
 </div>
@@ -163,6 +181,5 @@ $cronUrl=url('admin/system-maintenance/cron.php').'?token='.urlencode((string)\A
 (()=>{const button=document.getElementById('connectGoogleDrive');const config=<?=json_encode($oauthPopup,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;button.addEventListener('click',()=>{if(!window.google?.accounts?.oauth2){alert('Google authorization is still loading. Please click Connect Google Drive again.');return;}button.disabled=true;button.textContent='Connecting…';const client=google.accounts.oauth2.initCodeClient({client_id:config.client_id,scope:config.scope,ux_mode:'popup',state:config.state,select_account:true,callback:response=>{const data={code:response.code||'',state:response.state||'',error:response.error||'',popup:true};const payload=btoa(JSON.stringify(data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');fetch('google-drive-popup.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload})}).then(async result=>{let body={};try{body=await result.json();}catch(e){}location.assign(body.redirect||'./');}).catch(()=>{button.disabled=false;button.textContent='Connect Google Drive';alert('Google Drive connection could not be completed.');});},error_callback:()=>{button.disabled=false;button.textContent='Connect Google Drive';}});client.requestCode();});})();
 </script><?php endif;?>
 <script>
-function toggleSchedule(){const v=document.getElementById('frequency').value;document.querySelectorAll('.weekly-field').forEach(x=>x.style.display=v==='weekly'?'block':'none');document.querySelectorAll('.monthly-field').forEach(x=>x.style.display=v==='monthly'?'block':'none');}
-document.getElementById('frequency').addEventListener('change',toggleSchedule);toggleSchedule();
+document.querySelectorAll('.schedule-frequency').forEach(select=>{const form=select.closest('form'),toggle=()=>{form.querySelectorAll('.schedule-weekday').forEach(x=>x.style.display=select.value==='weekly'?'block':'none');form.querySelectorAll('.schedule-monthday').forEach(x=>x.style.display=select.value==='monthly'?'block':'none')};select.addEventListener('change',toggle);toggle()});
 </script></body></html>

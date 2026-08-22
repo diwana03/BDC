@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const cards=[...document.querySelectorAll('.score-row')];
  if(!cards.length)return;
- const criteria=document.createElement('button');criteria.type='button';criteria.className='btn btn-outline-primary mb-3';criteria.textContent='View Criteria';criteria.onclick=()=>alert('JUDGING CRITERIA\n\nTiming 20%\nTechnique 20%\nConnection 20%\nMusicality 20%\nPresentation 10%\nDifficulty 10%\n\nHeats: use the configured YES quota and assign A1, A2 and A3 no more than once per role.\n\nJudge independently and keep all scoring confidential.');document.getElementById('reviewList')?.before(criteria);
+ const criteria=document.createElement('button');criteria.type='button';criteria.className='btn btn-outline-primary mb-3';criteria.textContent='View Criteria';criteria.onclick=()=>alert('JUDGING CRITERIA\n\nTiming 20%\nTechnique 20%\nConnection 20%\nMusicality 20%\nPresentation 10%\nDifficulty 10%\n\nHeats: use the configured YES quota and assign A1, A2 and A3 no more than once per role. Comments are optional and private to this judge/device.\n\nJudge independently and keep all scoring confidential.');document.querySelector('.counter')?.before(criteria);
  const limit=Number((document.querySelector('.counter')?.textContent.match(/YES\s+\d+\/(\d+)/i)||[])[1]||10);
  const roles=['leader','follower'];
  const state={leader:{yes:0,alt1:0,alt2:0,alt3:0},follower:{yes:0,alt1:0,alt2:0,alt3:0}};
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const counters=[...document.querySelectorAll('.counter')];
  counters.forEach(counter=>{counter.dataset.quotaCounter=counter.textContent.trim().toLowerCase().startsWith('followers')?'follower':'leader';});
  let message=document.getElementById('quotaRuleMessage');
- if(!message){message=document.createElement('div');message.id='quotaRuleMessage';message.className='alert alert-warning';message.style.display='none';document.getElementById('reviewList')?.before(message);}
+ if(!message){message=document.createElement('div');message.id='quotaRuleMessage';message.className='alert alert-warning';message.style.display='none';document.querySelector('.counter')?.before(message);}
  const notify=text=>{message.textContent=text;message.style.display='block';message.scrollIntoView({behavior:'smooth',block:'nearest'});clearTimeout(notify.timer);notify.timer=setTimeout(()=>message.style.display='none',4000);};
  const update=()=>{
   roles.forEach(role=>{
@@ -43,19 +43,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(newKey)state[role][newKey]++;
   card.dataset.currentMark=newValue;update();
  })));update();
- const reviewNames=document.getElementById('reviewNames');
- if(reviewNames){
-  const upgradeReview=()=>{
-   reviewNames.querySelectorAll('button').forEach(button=>{
-    if(button.querySelector('.review-bib'))return;
-    const card=cards.find(row=>row.dataset.name===button.textContent.trim());
-    const match=card?.querySelector('strong')?.textContent.match(/#\s*(\d+)/),bib=match?.[1]||'—',name=card?.dataset.name||button.textContent.trim();
-    button.innerHTML=`<span class="review-bib">#${bib}</span><span class="review-name">${name}</span>`;
-    button.classList.add('review-later-button');
-   });
-  };
-  new MutationObserver(upgradeReview).observe(reviewNames,{childList:true});upgradeReview();
- }
 });
 document.addEventListener('DOMContentLoaded',()=>{
  if(!document.body.textContent.includes('Submitted.'))return;

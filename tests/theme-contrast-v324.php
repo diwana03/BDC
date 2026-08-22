@@ -12,7 +12,7 @@ $checks = [
     'Light default' => str_contains($controller, "saved : 'light'") && str_contains($controller, "value : 'light'"),
     'layered dark surfaces' => str_contains($theme, '--bdc-theme-surface-3:#202b3d'),
     'dark instructions' => str_contains($theme, '.alert.success') && str_contains($theme, '.alert.warning'),
-    'dark Review Later' => str_contains($theme, '.review-list{background:#30270f'),
+    'dark judge comments' => str_contains($theme, '.heats-comment input') && str_contains($theme, '.competitor-comment input'),
     'dark choice states' => str_contains($theme, '.choice[data-value="YES"]') && str_contains($theme, '.choice.no.active'),
     'Live subtitle filter' => str_contains($live, '<div class="eyebrow">BDC AUTOMATIC SCORING</div>'),
     'Test subtitle filter' => str_contains($test, '<span class="navbar-brand">BDC Automatic Scoring TEST</span>'),

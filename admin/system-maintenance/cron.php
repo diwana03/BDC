@@ -17,7 +17,7 @@ if($expected==='' || !hash_equals($expected,$provided)){
 try{
  $pdo=Database::connection();
  $automation=new BackupAutomationService(dirname(__DIR__,2));
- $result=$automation->run(false,null);
+ $result=$automation->runDue(null);
  echo json_encode(['ok'=>true,'result'=>$result],JSON_UNESCAPED_SLASHES);
 }catch(Throwable $e){
  http_response_code(500);echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);

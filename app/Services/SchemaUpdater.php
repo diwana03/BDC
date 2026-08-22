@@ -400,6 +400,23 @@ final class SchemaUpdater
    INDEX idx_backup_runs_completed(completed_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+  $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_backup_schedules(
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   schedule_name VARCHAR(120) NOT NULL,
+   enabled TINYINT(1) NOT NULL DEFAULT 1,
+   frequency ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'daily',
+   backup_time TIME NOT NULL DEFAULT '03:00:00',
+   weekday TINYINT UNSIGNED NOT NULL DEFAULT 1,
+   month_day TINYINT UNSIGNED NOT NULL DEFAULT 1,
+   backup_type ENUM('database','site','full') NOT NULL DEFAULT 'full',
+   last_run_at DATETIME NULL,
+   next_run_at DATETIME NULL,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   UNIQUE INDEX uq_backup_schedule_slot(backup_type,frequency,backup_time,weekday,month_day),
+   INDEX idx_backup_schedule_due(enabled,next_run_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
   self::addColumn($pdo,'bdc_backup_settings','server_keep_count','INT UNSIGNED NOT NULL DEFAULT 7 AFTER keep_count');
   self::addColumn($pdo,'bdc_backup_settings','drive_keep_count','INT UNSIGNED NOT NULL DEFAULT 30 AFTER server_keep_count');
 
