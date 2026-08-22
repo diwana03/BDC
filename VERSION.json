@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev340",
-  "build": 3046,
+  "version": "2.3.3-dev341",
+  "build": 3047,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Synchronizes judge-header theme docking after branding initialization and matches the sub-390 px logo grid to the real white-tile width",
     "Docks the Light, Dark and System appearance selector inside judge headers so it cannot cover event titles or sticky scoring controls",
     "Aligns official-logo judge headers into a compact responsive event column across Test and Live criteria, Heats, Semifinal and Final screens",
     "Adds multiple named Daily, Weekly and Monthly backup schedules with duplicate prevention, per-job status and one cron runner for every due job",

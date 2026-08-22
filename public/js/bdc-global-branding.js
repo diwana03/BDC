@@ -97,6 +97,13 @@
     actions.appendChild(control);
   }
 
+  function dockJudgeThemeControl(meta) {
+    const control = document.querySelector('.bdc-theme-control');
+    if (!control || !meta || meta.contains(control)) return;
+    control.classList.add('bdc-theme-control-inline', 'bdc-theme-control-judge');
+    meta.appendChild(control);
+  }
+
   const brandTarget = document.querySelector('.navbar-brand, .admin-topbar-brand-v203, .portal-brand, header.top .wrap');
   const existing = document.querySelector('img[src*="bdc-logo"]');
   if (existing && !brandTarget) {
@@ -151,6 +158,9 @@
         });
         copy.appendChild(meta);
       }
+      const judgeMeta = copy.querySelector(':scope > .judge-header-meta');
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { dockJudgeThemeControl(judgeMeta); });
+      else dockJudgeThemeControl(judgeMeta);
     }
     if (brandTarget.matches('.navbar-brand')) {
       const testBadge = brandTarget.closest('.navbar')?.querySelector('.badge.text-bg-warning');
@@ -197,6 +207,8 @@
         if (pageHeading) pageHeading.remove();
         if (pageMeta) pageMeta.remove();
         if (criteriaMeta) criteriaMeta.remove();
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { dockJudgeThemeControl(meta); });
+        else dockJudgeThemeControl(meta);
         return;
       }
       enhanceNavbar(brandTarget);

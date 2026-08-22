@@ -18,11 +18,14 @@ $live=(string)file_get_contents($files['live']);
 foreach(['judge-premium-header','judge-header-inner','judge-header-copy','judge-header-title','judge-header-meta','judge-header-chip','TEST ONLY'] as $marker){
     if(!str_contains($branding.$theme,$marker)){fwrite(STDERR,"Missing header marker {$marker}\n");exit(1);}
 }
+foreach(['dockJudgeThemeControl','DOMContentLoaded','bdc-theme-control-judge'] as $marker){
+    if(!str_contains($branding,$marker)){fwrite(STDERR,"Missing branding timing marker {$marker}\n");exit(1);}
+}
 foreach(['judgeHeaderMeta','bdc-theme-control-judge','judgeHeaderMeta.appendChild(control)'] as $marker){
     if(!str_contains((string)file_get_contents($root.'/public/assets/js/bdc-theme.js'),$marker)){fwrite(STDERR,"Missing theme docking marker {$marker}\n");exit(1);}
 }
 foreach(['grid-template-columns:auto minmax(0,1fr)','max-width:390px','bdc-official-logo','overflow-wrap:anywhere'] as $marker){
     if(!str_contains($theme,$marker)){fwrite(STDERR,"Missing responsive marker {$marker}\n");exit(1);}
 }
-if(!str_contains($test,'bdc-theme.js?v=340')||!str_contains($live,'bdc-theme.js?v=340')){fwrite(STDERR,"Test/Live theme cache parity failed\n");exit(1);}
+if(!str_contains($test,'bdc-theme.js?v=341')||!str_contains($live,'bdc-theme.js?v=341')){fwrite(STDERR,"Test/Live theme cache parity failed\n");exit(1);}
 echo "judge header alignment v339: PASS\n";

@@ -9,7 +9,7 @@
   if (!document.querySelector('link[data-bdc-theme-styles], link[href*="/css/bdc-theme.css"]')) {
     var stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
-    stylesheet.href = assetBase + '/css/bdc-theme.css?v=340';
+    stylesheet.href = assetBase + '/css/bdc-theme.css?v=341';
     stylesheet.dataset.bdcThemeStyles = '1';
     document.head.appendChild(stylesheet);
   }
