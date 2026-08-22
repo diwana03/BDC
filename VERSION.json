@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev346",
-  "build": 3052,
+  "version": "2.3.3-dev347",
+  "build": 3053,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows N/A instead of a misleading blank mark in shared Test and Live Leader/Follower matrices when a judge is not assigned to that role, while retaining a dash for applicable but unscored cells",
     "Turns the shared Test and Live scoring-progress projection into a responsive completed-versus-pending judge board, then reveals real judging times with lighthearted fastest and slowest awards after everyone submits",
     "Removes duplicate floating BDC logos from embedded operational panels and makes Copy Link reliable inside Test and Live iframes with clipboard fallback and confirmation",
     "Makes the shared Test and Live audience projector scale from its real rendered width and height across HD, 4K, ultrawide LED, 4:3 and portrait screens without stretching scoring content",
