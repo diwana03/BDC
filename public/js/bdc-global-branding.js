@@ -5,7 +5,7 @@
 
   const logoUrl = String(window.BDC_OFFICIAL_LOGO_URL || '');
   if (!logoUrl) return;
-  if (/\/live-display\/?$/.test(location.pathname)) return;
+  if (/\/live-display(?:\/index\.php)?\/?$/.test(location.pathname)) return;
 
   const style = document.createElement('style');
   style.id = 'bdc-global-branding-style';

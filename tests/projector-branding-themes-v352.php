@@ -18,7 +18,7 @@ $checks = [
     'all four themes remain available' => str_contains($css, 'obsidian_gold') && str_contains($css, 'ivory_burgundy') && str_contains($css, 'pearl_sapphire'),
     'theme-aware text is defined' => str_contains($css, '--bdc-ink') && str_contains($css, '--bdc-muted'),
     'responsive logo uses container units' => str_contains($css, 'cqw') && str_contains($css, 'cqh'),
-    'projector shell skips duplicate global logo' => str_contains(file_get_contents($root . '/public/js/bdc-global-branding.js'), '/\\/live-display\\/?$/'),
+    'projector shell skips directory and index routes' => str_contains(file_get_contents($root . '/public/js/bdc-global-branding.js'), '/\\/live-display(?:\\/index\\.php)?\\/?$/'),
     'projector feed keeps native logo sizing' => str_contains(file_get_contents($root . '/public/js/bdc-global-branding.js'), "closest('.projection-brand, .holding-inner')"),
     'venue logo is presentation scale' => str_contains($css, 'width:max(88px,min(8cqw,14cqh))'),
 ];
