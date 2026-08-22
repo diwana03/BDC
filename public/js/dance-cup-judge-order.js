@@ -1,12 +1,17 @@
 (function () {
   'use strict';
+  const roster = document.querySelector('[data-dc-judge-roster]');
   const scoreTable = Array.from(document.querySelectorAll('table')).find((table) => table.textContent.includes('Judge Total'));
-  if (!scoreTable) return;
+  if (!roster && !scoreTable) return;
   const csrf = document.querySelector('input[name="_csrf"]')?.value;
   const competitionId = document.querySelector('input[name="id"]')?.value;
   if (!csrf || !competitionId) return;
   const seen = new Map();
-  scoreTable.querySelectorAll('tbody tr').forEach((row) => {
+  roster?.querySelectorAll('[data-judge-id]').forEach((row) => {
+    const id = row.dataset.judgeId || '';
+    if (id) seen.set(id, {id, name: row.dataset.judgeName || '', chief: row.dataset.chief === '1'});
+  });
+  scoreTable?.querySelectorAll('tbody tr').forEach((row) => {
     const input = row.querySelector('input[name^="mark["]');
     const match = input?.name.match(/^mark\[\d+\]\[(\d+)\]/);
     const name = row.cells[1]?.textContent.trim() || '';
@@ -17,7 +22,8 @@
   const panel = document.createElement('section');
   panel.className = 'card border-warning shadow-sm my-4 no-print';
   panel.innerHTML = '<div class="card-body"><h2 class="h5">Judge Display Order</h2><p class="text-muted small">Chief Judge is pinned first. This order controls scoring, printed sheets and Live Projection.</p><div data-order-list></div><button type="button" class="btn btn-warning mt-2" data-save-order>Save Judge Order</button><span class="ms-2 small" data-status></span></div>';
-  scoreTable.closest('form')?.before(panel);
+  if (roster) roster.after(panel);
+  else scoreTable?.closest('form')?.before(panel);
   const list = panel.querySelector('[data-order-list]');
   function paint() {
     list.replaceChildren();
