@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev338",
-  "build": 3044,
+  "version": "2.3.3-dev339",
+  "build": 3045,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Aligns official-logo judge headers into a compact responsive event column across Test and Live criteria, Heats, Semifinal and Final screens",
     "Adds multiple named Daily, Weekly and Monthly backup schedules with duplicate prevention, per-job status and one cron runner for every due job",
     "Removes LATER from Heats and Semifinal judge scoring and adds compact private per-competitor comments across isolated Test and Live workflows",
     "Repairs deleted or stale Google Drive backup folders, reattaches accessible backup files, verifies every upload parent and exposes direct folder access from Backup Recovery",

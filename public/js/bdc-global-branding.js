@@ -108,7 +108,97 @@
   if (brandTarget) {
     brandTarget.classList.add('bdc-brand-navbar');
     if (!brandTarget.contains(wrap)) brandTarget.insertBefore(wrap, brandTarget.firstChild);
+    if (brandTarget.matches('header.top .wrap')) {
+      const judgeHeader = brandTarget.closest('header.top');
+      judgeHeader?.classList.add('judge-premium-header');
+      brandTarget.classList.add('judge-header-inner');
+      let copy = brandTarget.querySelector(':scope > .judge-header-copy');
+      if (!copy) {
+        copy = document.createElement('div');
+        copy.className = 'judge-header-copy';
+        Array.from(brandTarget.children).forEach(function (child) {
+          if (child !== wrap) copy.appendChild(child);
+        });
+        brandTarget.appendChild(copy);
+      }
+      const title = copy.querySelector('h1,h2');
+      title?.classList.add('judge-header-title');
+      const metaNodes = Array.from(copy.children).filter(function (child) {
+        return child !== title && !child.classList.contains('judge-header-meta');
+      });
+      let meta = copy.querySelector(':scope > .judge-header-meta');
+      if (!meta && metaNodes.length) {
+        meta = document.createElement('div');
+        meta.className = 'judge-header-meta';
+        metaNodes.forEach(function (node) {
+          const chip = document.createElement('span');
+          chip.className = 'judge-header-chip';
+          if (node.classList.contains('test')) chip.classList.add('judge-header-chip-test');
+          if (node.classList.contains('chief')) chip.classList.add('judge-header-chip-chief');
+          if (node.classList.contains('meta') || (!node.classList.contains('test') && !node.classList.contains('chief') && /[·\n]/.test(node.innerText))) {
+            const pieces = node.innerText.split(/\s*[·\n]\s*/).filter(Boolean);
+            pieces.forEach(function (piece, index) {
+              const part = document.createElement('span');
+              part.className = 'judge-header-chip' + (/^(HEATS|SEMIFINAL|FINAL)$/i.test(piece) ? ' judge-header-chip-round' : '');
+              part.textContent = piece;
+              meta.appendChild(part);
+            });
+          } else {
+            chip.textContent = node.textContent.trim();
+            meta.appendChild(chip);
+          }
+          node.remove();
+        });
+        copy.appendChild(meta);
+      }
+    }
     if (brandTarget.matches('.navbar-brand')) {
+      const testBadge = brandTarget.closest('.navbar')?.querySelector('.badge.text-bg-warning');
+      const main = document.querySelector('main');
+      if (testBadge && main) {
+        const nav = brandTarget.closest('.navbar');
+        const inner = brandTarget.closest('.container-fluid');
+        const pageHeading = main.querySelector(':scope > h1.h3');
+        const criteriaHeading = main.querySelector('.card h1.h3');
+        const criteriaMeta = criteriaHeading?.nextElementSibling?.classList.contains('text-muted') ? criteriaHeading.nextElementSibling : null;
+        const pageMeta = pageHeading?.nextElementSibling?.classList.contains('text-muted') ? pageHeading.nextElementSibling : null;
+        const title = document.createElement('h2');
+        title.className = 'judge-header-title';
+        if (pageHeading) title.textContent = pageHeading.textContent.trim();
+        else if (criteriaMeta) title.textContent = criteriaMeta.textContent.split('·')[0].trim();
+        else title.textContent = document.title.replace(/\s*\|.*$/, '').trim();
+        const copy = document.createElement('div');
+        copy.className = 'judge-header-copy';
+        const meta = document.createElement('div');
+        meta.className = 'judge-header-meta';
+        const testChip = document.createElement('span');
+        testChip.className = 'judge-header-chip judge-header-chip-test';
+        testChip.textContent = 'TEST ONLY';
+        meta.appendChild(testChip);
+        const sourceMeta = pageMeta || criteriaMeta;
+        let sourceParts = sourceMeta ? sourceMeta.textContent.split('·').map(function (value) { return value.trim(); }).filter(Boolean) : [];
+        if (criteriaMeta) sourceParts = sourceParts.slice(1);
+        const instruction = main.querySelector('.alert-info strong');
+        const roundLabel = instruction?.textContent.replace(/\s+Instructions.*$/i, '').trim();
+        if (roundLabel && /^(HEATS|SEMIFINAL|FINAL)$/i.test(roundLabel)) sourceParts.splice(criteriaMeta ? 0 : 1, 0, roundLabel);
+        const judgeIndex = criteriaMeta ? sourceParts.length - 1 : Math.min(2, sourceParts.length - 1);
+        sourceParts.forEach(function (value, index) {
+          const chip = document.createElement('span');
+          chip.className = 'judge-header-chip' + (/^(HEATS|SEMIFINAL|FINAL)$/i.test(value) ? ' judge-header-chip-round' : '');
+          const isJudge = index === judgeIndex && !/Chief Judge/i.test(value);
+          chip.textContent = isJudge && !/^Judge:/i.test(value) && !/^(HEATS|SEMIFINAL|FINAL)$/i.test(value) ? 'Judge: ' + value : value;
+          meta.appendChild(chip);
+        });
+        copy.append(title, meta);
+        brandTarget.appendChild(copy);
+        nav?.classList.add('judge-premium-header');
+        inner?.classList.add('judge-header-inner');
+        testBadge.remove();
+        if (pageHeading) pageHeading.remove();
+        if (pageMeta) pageMeta.remove();
+        if (criteriaMeta) criteriaMeta.remove();
+        return;
+      }
       enhanceNavbar(brandTarget);
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', dockThemeControl);
       else dockThemeControl();

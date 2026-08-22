@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
-$themeAsset=e(url('public/assets/js/bdc-theme.js?v=325'));
+$themeAsset=e(url('public/assets/js/bdc-theme.js?v=339'));
 use App\Core\Csrf;use App\Core\Database;use App\Services\JudgingCriteriaService;use App\Services\TestAutomaticJudgeService;use App\Services\ScoringFlightService;
 ob_start(static fn(string $html):string=>str_replace(
   ['<span class="navbar-brand">BDC Automatic Scoring TEST</span>','<div class="test">BDC AUTOMATIC SCORING · TEST ONLY</div>'],
-  ['', '<div class="test">TEST ONLY</div>'],
+  ['<span class="navbar-brand"></span>', '<div class="test">TEST ONLY</div>'],
   str_replace('</head>','<script defer src="'.$themeAsset.'"></script><style id="bdc-test-sticky-tracker">.counter{position:sticky!important;top:6px!important;z-index:50!important;border-width:2px!important;box-shadow:0 8px 22px rgba(15,23,42,.2)!important}</style></head>',$html)
  ));
 $pdo=Database::connection();$token=(string)($_GET['token']??$_POST['token']??'');$session=TestAutomaticJudgeService::byToken($pdo,$token);if(!$session){http_response_code(404);exit('Invalid or expired test judge link.');}
