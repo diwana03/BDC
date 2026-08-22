@@ -9,7 +9,7 @@
   if (!document.querySelector('link[data-bdc-theme-styles], link[href*="/css/bdc-theme.css"]')) {
     var stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
-    stylesheet.href = assetBase + '/css/bdc-theme.css?v=339';
+    stylesheet.href = assetBase + '/css/bdc-theme.css?v=340';
     stylesheet.dataset.bdcThemeStyles = '1';
     document.head.appendChild(stylesheet);
   }
@@ -60,9 +60,13 @@
       return '<button type="button" data-bdc-theme-option="' + option + '" aria-pressed="false"><span aria-hidden="true">' + icon + '</span><span>' + option.charAt(0).toUpperCase() + option.slice(1) + '</span></button>';
     }).join('');
     var adminActions = document.querySelector('.admin-topbar-actions-v203');
+    var judgeHeaderMeta = document.querySelector('.judge-premium-header .judge-header-meta');
     if (adminActions) {
       control.classList.add('bdc-theme-control-inline');
       adminActions.insertBefore(control, adminActions.firstChild);
+    } else if (judgeHeaderMeta) {
+      control.classList.add('bdc-theme-control-inline', 'bdc-theme-control-judge');
+      judgeHeaderMeta.appendChild(control);
     } else {
       document.body.appendChild(control);
     }

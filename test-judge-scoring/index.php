@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
-$themeAsset=e(url('public/assets/js/bdc-theme.js?v=339'));
+$themeAsset=e(url('public/assets/js/bdc-theme.js?v=340'));
 use App\Core\Csrf;use App\Core\Database;use App\Services\JudgingCriteriaService;use App\Services\TestAutomaticJudgeService;use App\Services\ScoringFlightService;
 ob_start(static fn(string $html):string=>str_replace(
   ['<span class="navbar-brand">BDC Automatic Scoring TEST</span>','<div class="test">BDC AUTOMATIC SCORING · TEST ONLY</div>'],

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__).'/bootstrap.php';
-$themeAsset=e(url('public/assets/js/bdc-theme.js?v=339'));
+$themeAsset=e(url('public/assets/js/bdc-theme.js?v=340'));
 
 ob_start(static function(string $html)use($themeAsset):string{
     $html=str_replace(
