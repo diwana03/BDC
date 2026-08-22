@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev342",
-  "build": 3048,
+  "version": "2.3.3-dev343",
+  "build": 3049,
   "status": "development",
   "release_date": "2026-08-22",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Upgrades the shared Test and Live Leader/Follower scoring matrix with premium BDC navy, burgundy and champagne surfaces plus semantic YES and alternate mark colors",
     "Replaces unusable judge-delivery buttons with a clear Contact information missing message when no Judge Database email or WhatsApp number is available",
     "Synchronizes judge-header theme docking after branding initialization and matches the sub-390 px logo grid to the real white-tile width",
     "Docks the Light, Dark and System appearance selector inside judge headers so it cannot cover event titles or sticky scoring controls",
