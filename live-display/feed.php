@@ -20,7 +20,7 @@ $projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCust
 ob_start(static fn(string $html):string=>str_replace(
     ['</head>','<body>','<div class="stage"><div class="event">'],
     [
-        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=352"></head>',
+        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"></head>',
         '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">',
         '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div><div class="event">',
     ],
@@ -43,9 +43,7 @@ $holdingBackground=trim((string)($session['holding_background_url']??''));
 if (
     $type === "holding" ||
     $roundId < 1
-) { ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif}.holding{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;background-color:#030509;background-image:<?= $holdingBackground!==''?'url('.json_encode($holdingBackground).')':'radial-gradient(circle at top,#4a101e,#111827 55%,#030509)' ?>;background-size:cover;background-position:center;background-repeat:no-repeat;font-size:clamp(30px,5vw,96px);font-weight:900;text-shadow:0 4px 22px rgba(0,0,0,.85)}</style></head><body><div class="holding"><?= e(
-    $holdingBackground!==''?'':$eventName,
-) ?></div></body></html><?php exit();}
+) { ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif}.holding{width:100vw;height:100vh;display:grid;place-items:center;text-align:center;background-color:#030509;background-image:<?= $holdingBackground!==''?'url('.json_encode($holdingBackground).')':'radial-gradient(circle at top,#4a101e,#111827 55%,#030509)' ?>;background-size:cover;background-position:center;background-repeat:no-repeat}.holding-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(22px,3.2vh,48px);width:min(92vw,1800px);padding:5vh 4vw}.holding-logo{display:block;width:clamp(104px,10vw,190px);height:auto;aspect-ratio:1;object-fit:contain;border-radius:clamp(16px,1.4vw,28px);background:#fff;box-shadow:0 18px 55px rgba(0,0,0,.38)}.holding-title{max-width:100%;font-size:clamp(34px,4.65vw,96px);font-weight:900;line-height:1.08;text-wrap:balance;text-shadow:0 4px 22px rgba(0,0,0,.72)}@media(max-aspect-ratio:4/3){.holding-inner{gap:clamp(18px,2.6vh,34px)}.holding-logo{width:clamp(92px,17vw,150px)}.holding-title{font-size:clamp(30px,7vw,68px)}}</style></head><body><div class="holding"><div class="holding-inner"><img class="holding-logo" src="<?=e(url('public/assets/bdc-logo.png'))?>" alt="Bachata Dance Council"><?php if($holdingBackground===''):?><div class="holding-title"><?=e($eventName)?></div><?php endif;?></div></div></body></html><?php exit();}
 if (
     in_array($type, ["final_results", "results", "winners"], true) &&
     empty($session["results_unlocked"])

@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev354",
-  "build": 3060,
+  "version": "2.3.3-dev355",
+  "build": 3061,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Removes the duplicate outer-shell logo from shared Test and Live audience projection, preserves one native projector logo, enlarges it for venue visibility and centers the Holding Screen brand with the event title",
     "Adds a completely separate Dance Cup automation module with secure per-judge browser scoring, draft saving, submission locking, progress monitoring and manual scoring fallback across isolated Test and Live data",
     "Adds an event-wide Dance Cup Live Projection module with one reusable projector link, same-event category switching, contestant-number calls, customized holding screens and automatic contestant-to-holding run-of-show cycling",
     "Shows every saved Dance Cup judge immediately in an independent premium Assigned Judges roster before competitors exist, with Chief identity, panel count, clearer missing-roster guidance and judge ordering that no longer depends on a visible scoring table",

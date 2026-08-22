@@ -5,6 +5,7 @@
 
   const logoUrl = String(window.BDC_OFFICIAL_LOGO_URL || '');
   if (!logoUrl) return;
+  if (/\/live-display\/?$/.test(location.pathname)) return;
 
   const style = document.createElement('style');
   style.id = 'bdc-global-branding-style';
@@ -106,6 +107,8 @@
 
   const brandTarget = document.querySelector('.navbar-brand, .admin-topbar-brand-v203, .portal-brand, header.top .wrap');
   const existing = document.querySelector('img[src*="bdc-logo"]');
+  // Projector layouts own their single venue-scale logo placement.
+  if (existing?.closest('.projection-brand, .holding-inner')) return;
   // Embedded operational panels belong to their branded parent screen.
   if (window.self !== window.top && !brandTarget && !existing) return;
   if (existing && !brandTarget) {

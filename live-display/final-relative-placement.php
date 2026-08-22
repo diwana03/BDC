@@ -21,7 +21,7 @@ $q=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM {$mt} WHERE round_id=:
 ob_start(static fn(string $html):string=>str_replace(
     ['</title>','<body>','<div class="stage">'],
     [
-        '</title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=352">',
+        '</title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355">',
         '<body data-projector-theme="'.e($projectorTheme).'">',
         '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div>',
     ],
