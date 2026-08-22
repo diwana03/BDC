@@ -74,12 +74,17 @@ final class ScoringBackupService
         if((int)($payload['round_id']??0)!==$roundId || (string)($payload['data_mode']??'')!==($test?'test':'live'))throw new RuntimeException('Backup scope does not match this scoring round.');
         self::create($pdo,$roundId,$test,$userId,'pre_restore','restore_backup','Automatic safety copy before restoring backup #'.$backupId);
         $rows=(array)($payload['tables']??[]);$tables=self::tables($test);
+        $hasJudgeSnapshot=array_key_exists('judges',$rows);
         $deleteOrder=['final_results','final_marks','final_pairs','results','marks','sessions'];
         $insertOrder=['marks','results','final_pairs','final_marks','final_results','sessions'];
+        if($hasJudgeSnapshot){$deleteOrder[]='judges';array_unshift($insertOrder,'judges');}
         $pdo->beginTransaction();
         try{
+            $roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
+            if($hasJudgeSnapshot)$pdo->prepare("UPDATE `{$roundTable}` SET chief_judge_id=NULL WHERE id=:round")->execute(['round'=>$roundId]);
             foreach($deleteOrder as $key)$pdo->prepare("DELETE FROM `{$tables[$key]}` WHERE round_id=:round")->execute(['round'=>$roundId]);
             foreach($insertOrder as $key)self::insertRows($pdo,$tables[$key],(array)($rows[$key]??[]),$roundId);
+            if($hasJudgeSnapshot){$chiefId=0;foreach((array)$rows['judges'] as $judge)if((int)($judge['is_chief']??0)===1){$chiefId=(int)($judge['id']??0);break;}$pdo->prepare("UPDATE `{$roundTable}` SET chief_judge_id=:chief WHERE id=:round")->execute(['chief'=>$chiefId?:null,'round'=>$roundId]);}
             $pdo->prepare("UPDATE bdc_scoring_backups SET restored_by=:user,restored_at=NOW(),restore_reason=:reason WHERE id=:id")->execute(['user'=>$userId?:null,'reason'=>substr($reason,0,500),'id'=>$backupId]);
             $audit=$test?'bdc_test_scoring_audit':'bdc_scoring_audit';
             $pdo->prepare("INSERT INTO {$audit}(round_id,user_id,action,details_json) VALUES(:round,:user,'scoring_backup_restored',:details)")->execute(['round'=>$roundId,'user'=>$userId?:null,'details'=>json_encode(['backup_id'=>$backupId,'reason'=>$reason,'snapshot_hash'=>$backup['snapshot_hash']],JSON_UNESCAPED_SLASHES)]);
@@ -182,7 +187,7 @@ final class ScoringBackupService
     private static function tables(bool $test):array
     {
         $p=$test?'bdc_test_scoring_':'bdc_scoring_';
-        return ['marks'=>$p.'marks','results'=>$p.'results','final_pairs'=>$p.'final_pairs','final_marks'=>$p.'final_marks','final_results'=>$p.'final_results','sessions'=>$p.'judge_sessions'];
+        return ['judges'=>$p.'judges','marks'=>$p.'marks','results'=>$p.'results','final_pairs'=>$p.'final_pairs','final_marks'=>$p.'final_marks','final_results'=>$p.'final_results','sessions'=>$p.'judge_sessions'];
     }
 
     private static function insertRows(PDO $pdo,string $table,array $rows,int $roundId):void

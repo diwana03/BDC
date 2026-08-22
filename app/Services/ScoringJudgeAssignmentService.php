@@ -26,7 +26,7 @@ final class ScoringJudgeAssignmentService
 
     /**
      * @param array<int,array{name:string,scope?:string,assignment_id?:int,directory_id?:int,original_index?:int|string}> $rows
-     * @return array{count:int,chief_id:int,chief_name:string,created_directory_count:int}
+     * @return array{count:int,chief_id:int,chief_name:string,created_directory_count:int,results_invalidated:bool}
      */
     public static function save(
         PDO $pdo,
@@ -126,7 +126,7 @@ final class ScoringJudgeAssignmentService
                 ->execute(['round'=>$roundId]);
             $update=$pdo->prepare("UPDATE {$table} SET judge_id=:directory,judge_name=:name,judge_order=:position,is_chief=:chief,scoring_scope=:scope WHERE id=:id AND round_id=:round");
             $insert=$pdo->prepare("INSERT INTO {$table}(judge_id,round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:directory,:round,:name,:position,:chief,:scope)");
-            $kept=[];$chiefId=0;$position=1;
+            $kept=[];$chiefId=0;$position=1;$affectsResults=false;
             foreach($clean as $key=>$row){
                 $assignment=null;
                 if($row['assignment_id']>0 && isset($existingById[$row['assignment_id']]))$assignment=$existingById[$row['assignment_id']];
@@ -138,13 +138,16 @@ final class ScoringJudgeAssignmentService
                         ? (int)$assignment['judge_id']!==$row['directory_id']
                         : mb_strtolower(trim((string)$assignment['judge_name']))!==mb_strtolower($row['name']);
                     if($identityChanged){
+                        $affectsResults=true;
                         $prefix=$table==='bdc_test_scoring_judges'?'bdc_test_scoring_':'bdc_scoring_';
                         foreach([$prefix.'judge_sessions',$prefix.'marks',$prefix.'final_marks'] as $dependent){
                             try{$pdo->prepare("DELETE FROM {$dependent} WHERE judge_id=:judge")->execute(['judge'=>$assignmentId]);}catch(Throwable){}
                         }
                     }
+                    if((string)($assignment['scoring_scope']??'all')!==$row['scope'] || (int)$assignment['is_chief']!==$isChief)$affectsResults=true;
                     $update->execute(['directory'=>$row['directory_id'],'name'=>$row['name'],'position'=>$position,'chief'=>$isChief,'scope'=>$row['scope'],'id'=>$assignmentId,'round'=>$roundId]);
                 }else{
+                    $affectsResults=true;
                     $insert->execute(['directory'=>$row['directory_id'],'round'=>$roundId,'name'=>$row['name'],'position'=>$position,'chief'=>$isChief,'scope'=>$row['scope']]);
                     $assignmentId=(int)$pdo->lastInsertId();
                 }
@@ -154,6 +157,7 @@ final class ScoringJudgeAssignmentService
             }
             $remove=array_values(array_diff(array_map('intval',array_column($existing,'id')),$kept));
             if($remove){
+                $affectsResults=true;
                 $placeholders=implode(',',array_fill(0,count($remove),'?'));
                 $prefix=$table==='bdc_test_scoring_judges'?'bdc_test_scoring_':'bdc_scoring_';
                 foreach([$prefix.'judge_sessions',$prefix.'marks',$prefix.'final_marks'] as $dependent){
@@ -164,12 +168,19 @@ final class ScoringJudgeAssignmentService
             }
             $pdo->prepare("UPDATE {$roundTable} SET chief_judge_id=:chief WHERE id=:round")
                 ->execute(['chief'=>$chiefId?:null,'round'=>$roundId]);
+            if($affectsResults){
+                $prefix=$table==='bdc_test_scoring_judges'?'bdc_test_scoring_':'bdc_scoring_';
+                foreach([$prefix.'results',$prefix.'final_results'] as $resultTable){
+                    try{$pdo->prepare("DELETE FROM {$resultTable} WHERE round_id=:round")->execute(['round'=>$roundId]);}catch(Throwable){}
+                }
+                $pdo->prepare("UPDATE {$roundTable} SET status=CASE WHEN status IN ('completed','pending_approval','archived') THEN status ELSE 'draft' END WHERE id=:round")->execute(['round'=>$roundId]);
+            }
             $pdo->commit();
         }catch(Throwable $e){
             if($pdo->inTransaction())$pdo->rollBack();
             throw $e;
         }
 
-        return ['count'=>count($clean),'chief_id'=>$chiefId,'chief_name'=>$clean[$chiefCleanKey]['name'],'created_directory_count'=>$created];
+        return ['count'=>count($clean),'chief_id'=>$chiefId,'chief_name'=>$clean[$chiefCleanKey]['name'],'created_directory_count'=>$created,'results_invalidated'=>$affectsResults];
     }
 }

@@ -32,11 +32,19 @@
     const controls = document.createElement('span');
     controls.dataset.judgeOrderControls = '1';
     controls.className = 'd-inline-flex gap-1 align-items-center ms-2';
-    controls.innerHTML = '<button type="button" class="btn btn-sm btn-outline-secondary" data-move="up" aria-label="Move judge up">↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-move="down" aria-label="Move judge down">↓</button><span class="badge text-bg-warning d-none" data-pinned>Chief · Pinned first</span>';
+    controls.innerHTML = '<button type="button" class="btn btn-sm btn-outline-secondary" data-move="up" aria-label="Move judge up">↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-move="down" aria-label="Move judge down">↓</button><button type="button" class="btn btn-sm btn-outline-danger" data-remove-judge aria-label="Remove judge">Remove</button><span class="badge text-bg-warning d-none" data-pinned>Chief · Pinned first</span>';
     const target = row.querySelector('.col-md-2:last-child, .input-group-text:last-of-type') || row;
     target.appendChild(controls);
     controls.addEventListener('click', (event) => {
       const button = event.target.closest('[data-move]');
+      const remove = event.target.closest('[data-remove-judge]');
+      if(remove){
+        const wrap=row.parentElement,rows=rowsFor(wrap);
+        if(rows.length<=3){alert('A scoring panel must keep at least 3 judges.');return;}
+        if(chiefRadio(row)?.checked){alert('Select a replacement Chief Judge before removing the current Chief.');return;}
+        if(!confirm('Remove this judge from the panel? Submit Judges to save the change. Existing marks for every other judge are preserved.'))return;
+        row.remove();refresh(wrap);return;
+      }
       if (!button) return;
       const wrap = row.parentElement;
       const rows = rowsFor(wrap);

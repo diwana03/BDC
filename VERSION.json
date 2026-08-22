@@ -1,11 +1,16 @@
 {
-  "version": "2.3.3-dev347",
-  "build": 3053,
+  "version": "2.3.3-dev348",
+  "build": 3054,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds protected emergency judge removal across Test and Live, preserves every other judge score, promotes a replacement Chief, invalidates stale results, creates a recovery checkpoint and prevents role panels dropping below three judges",
+    "Extends new scoring checkpoints to include the complete judge panel while retaining restore compatibility with older score-only checkpoints",
+    "Makes committed panel changes recalculate safely after a Chief, scope, identity, addition or removal change instead of retaining results from the previous judge panel",
+    "Adds visible Remove controls to Judge Setup while keeping the Chief pinned and requiring a replacement Chief before removal",
+    "Replaces raw ALL judge-card labels with audience-friendly Leader and Follower assignments and premium aligned Chief styling on shared Test and Live projection",
     "Shows N/A instead of a misleading blank mark in shared Test and Live Leader/Follower matrices when a judge is not assigned to that role, while retaining a dash for applicable but unscored cells",
     "Turns the shared Test and Live scoring-progress projection into a responsive completed-versus-pending judge board, then reveals real judging times with lighthearted fastest and slowest awards after everyone submits",
     "Removes duplicate floating BDC logos from embedded operational panels and makes Copy Link reliable inside Test and Live iframes with clipboard fallback and confirmation",
