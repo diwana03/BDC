@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev343",
-  "build": 3049,
+  "version": "2.3.3-dev344",
+  "build": 3050,
   "status": "development",
-  "release_date": "2026-08-22",
+  "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes the shared Test and Live audience projector scale from its real rendered width and height across HD, 4K, ultrawide LED, 4:3 and portrait screens without stretching scoring content",
     "Upgrades the shared Test and Live Leader/Follower scoring matrix with premium BDC navy, burgundy and champagne surfaces plus semantic YES and alternate mark colors",
     "Replaces unusable judge-delivery buttons with a clear Contact information missing message when no Judge Database email or WhatsApp number is available",
     "Synchronizes judge-header theme docking after branding initialization and matches the sub-390 px logo grid to the real white-tile width",
