@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev358",
-  "build": 3064,
+  "version": "2.3.3-dev359",
+  "build": 3065,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Simplifies Dance Cup workflow wording, replaces technical labels with clear actions, and fixes workflow hero text contrast across light and dark themes",
     "Corrects the Dance Cup workflow selector so Manual Scoring, Automatic Scoring and Live Projection open three real category dashboards with direct links to their own isolated modules instead of reopening the same creation form",
     "Adds a Jack-and-Jill-style Dance Cup entry screen with direct Manual Scoring, Automatic Scoring and Live Projection choices, routing every saved category into the selected isolated Test or Live workflow",
     "Removes the remaining duplicate projector-shell logo when hosting resolves the Live Display route explicitly as live-display/index.php as well as the clean live-display directory URL",
