@@ -52,6 +52,12 @@ final class LiveDisplaySessionService
             "ALTER TABLE bdc_live_display_sessions ADD COLUMN holding_background_url VARCHAR(500) NULL AFTER group_name",
             "ALTER TABLE bdc_live_display_sessions ADD COLUMN playlist_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER loop_delay_seconds",
             "ALTER TABLE bdc_live_display_sessions ADD COLUMN playlist_position INT UNSIGNED NOT NULL DEFAULT 0 AFTER playlist_enabled",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN screen_theme VARCHAR(32) NOT NULL DEFAULT 'midnight_burgundy' AFTER holding_background_url",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN music_url VARCHAR(500) NULL AFTER screen_theme",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN music_name VARCHAR(190) NULL AFTER music_url",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN music_status VARCHAR(16) NOT NULL DEFAULT 'stopped' AFTER music_name",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN music_volume INT UNSIGNED NOT NULL DEFAULT 60 AFTER music_status",
+            "ALTER TABLE bdc_live_display_sessions ADD COLUMN music_version BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER music_volume",
         ] as $sql){try{$pdo->exec($sql);}catch(\Throwable){}}
         $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_live_display_session_events(session_id BIGINT UNSIGNED NOT NULL,event_id BIGINT UNSIGNED NOT NULL,sort_order INT UNSIGNED NOT NULL DEFAULT 0,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(session_id,event_id),INDEX idx_live_display_member_event(event_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_live_display_playlist_items(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,session_id BIGINT UNSIGNED NOT NULL,event_id BIGINT UNSIGNED NOT NULL,round_id BIGINT UNSIGNED NOT NULL,screen_type ENUM('winners','final_results') NOT NULL,sort_order INT UNSIGNED NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE INDEX uq_live_playlist_order(session_id,sort_order),INDEX idx_live_playlist_session(session_id),INDEX idx_live_playlist_round(round_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
@@ -251,6 +257,24 @@ final class LiveDisplaySessionService
         // Effects are an overlay channel. Do not increment state_version here:
         // reloading the underlying feed would hide or interrupt the overlay.
         $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
+        return self::forEvent($pdo,$eventId,$test)?:[];
+    }
+    public static function setTheme(PDO $pdo,int $eventId,bool $test,string $theme,int $userId):array
+    {
+        self::ensure($pdo);$allowed=['midnight_burgundy','obsidian_gold','ivory_burgundy','pearl_sapphire'];
+        if(!in_array($theme,$allowed,true))throw new \RuntimeException('Choose one of the four projector screen styles.');
+        $pdo->prepare("UPDATE bdc_live_display_sessions SET screen_theme=:theme,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['theme'=>$theme,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
+        return self::forEvent($pdo,$eventId,$test)?:[];
+    }
+    public static function musicControl(PDO $pdo,int $eventId,bool $test,string $action,int $volume,int $userId):array
+    {
+        self::ensure($pdo);$session=self::forEvent($pdo,$eventId,$test);if(!$session)throw new \RuntimeException('Live Display link has not been generated.');
+        $volume=max(0,min(100,$volume));$status=(string)($session['music_status']??'stopped');$url=(string)($session['music_url']??'');
+        if($action==='music_play'){if($url==='')throw new \RuntimeException('Upload a music track first.');$status='playing';}
+        elseif($action==='music_pause'){$status='paused';}
+        elseif($action==='music_clear'){$status='stopped';$url='';}
+        elseif($action!=='music_volume')throw new \RuntimeException('Invalid music command.');
+        $clear=$action==='music_clear';$pdo->prepare("UPDATE bdc_live_display_sessions SET music_url=:url,music_name=CASE WHEN :clear=1 THEN NULL ELSE music_name END,music_status=:status,music_volume=:volume,music_version=music_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['url'=>$clear?null:$url,'clear'=>$clear?1:0,'status'=>$status,'volume'=>$volume,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
         return self::forEvent($pdo,$eventId,$test)?:[];
     }
     public static function beginSelection(PDO $pdo,int $eventId,int $roundId,bool $test,int $userId):array

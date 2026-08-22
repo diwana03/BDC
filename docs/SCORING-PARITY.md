@@ -22,6 +22,8 @@ This file defines the release baseline shared by the Testing Score Dashboard, Li
 | Preview/print drafts and final results | Required | Required | Full-score screens use the same saved data |
 | Missing-photo fallback | Same cute-animal set | Same cute-animal set | Rabbit, baby elephant or panda, never a blank slot |
 | Country display | One flag per contestant | One flag per contestant | Same-country couples still show two flags |
+| Projector screen style | Same four premium presets | Same four premium presets | One session choice applies to every audience screen |
+| Projector music | Same isolated upload/player controls | Same isolated upload/player controls | Loops in the persistent projector shell; effect sounds remain independent |
 
 ## Intentionally Test-only
 

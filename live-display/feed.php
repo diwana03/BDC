@@ -16,6 +16,8 @@ if (!$session) {
     http_response_code(404);
     exit("Live Display link is invalid or disabled.");
 }
+$projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCustomHolding=trim((string)($session['holding_background_url']??''))!=='';
+ob_start(static fn(string $html):string=>str_replace(['</head>','<body>'],['<link rel="stylesheet" href="../public/css/projector-themes-v350.css?v=350"></head>','<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">'],$html));
 $test = $session["data_mode"] === "test";
 $roundId = (int) ($session["current_round_id"] ?? 0);
 $type = (string) ($session["screen_type"] ?? "holding");

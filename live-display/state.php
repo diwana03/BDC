@@ -188,6 +188,12 @@ echo json_encode(
         "data_version" => $dataVersion,
         "effect_type" => $s["effect_type"] ?? null,
         "effect_version" => (int) ($s["effect_version"] ?? 0),
+        "screen_theme" => $s["screen_theme"] ?? "midnight_burgundy",
+        "music_url" => $s["music_url"] ?? null,
+        "music_name" => $s["music_name"] ?? null,
+        "music_status" => $s["music_status"] ?? "stopped",
+        "music_volume" => (int) ($s["music_volume"] ?? 60),
+        "music_version" => (int) ($s["music_version"] ?? 0),
     ],
     JSON_UNESCAPED_SLASHES,
 );
