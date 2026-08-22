@@ -71,6 +71,9 @@ $finalJudges = [];
 $finalMarks = [];
 $matrixJudges = [];
 $matrixMarks = [];
+$scoringSubmittedJudges = [];
+$scoringPendingJudges = [];
+$scoringTimingJudges = [];
 $scoringComplete =
     in_array(
         (string) ($r["event_status"] ?? ""),
@@ -236,17 +239,39 @@ if ($type === "flights") {
         $sessionTable = $test
             ? "bdc_test_scoring_judge_sessions"
             : "bdc_scoring_judge_sessions";
-        if ($test) {
-            $q = $pdo->prepare(
-                "SELECT COUNT(*) total,SUM(status='submitted') submitted FROM {$sessionTable} WHERE round_id=:r",
-            );
-        } else {
-            $q = $pdo->prepare(
-                "SELECT COUNT(*) total,SUM(CASE WHEN s.status='submitted' THEN 1 ELSE 0 END) submitted FROM {$judgeTable} j LEFT JOIN {$sessionTable} s ON s.judge_id=j.id WHERE j.round_id=:r",
+        $q = $pdo->prepare(
+            "SELECT j.id,j.judge_order,j.judge_name,j.is_chief,COALESCE(s.status,'not_started') session_status,
+                    s.opened_at,s.submitted_at,
+                    CASE WHEN s.opened_at IS NOT NULL AND s.submitted_at IS NOT NULL
+                         THEN GREATEST(0,TIMESTAMPDIFF(SECOND,s.opened_at,s.submitted_at)) ELSE NULL END elapsed_seconds
+             FROM {$judgeTable} j
+             LEFT JOIN {$sessionTable} s ON s.round_id=j.round_id AND s.judge_id=j.id
+             WHERE j.round_id=:r
+             ORDER BY j.is_chief DESC,j.judge_order,j.id",
+        );
+        $q->execute(["r" => $roundId]);
+        $scoringJudges = $q->fetchAll();
+        foreach ($scoringJudges as $scoringJudge) {
+            if ((string) $scoringJudge["session_status"] === "submitted") {
+                $scoringSubmittedJudges[] = $scoringJudge;
+            } else {
+                $scoringPendingJudges[] = $scoringJudge;
+            }
+        }
+        $items = [[
+            "total" => count($scoringJudges),
+            "submitted" => count($scoringSubmittedJudges),
+        ]];
+        if ($scoringJudges && !$scoringPendingJudges) {
+            $scoringTimingJudges = array_values(array_filter(
+                $scoringSubmittedJudges,
+                static fn(array $judge): bool => $judge["elapsed_seconds"] !== null,
+            ));
+            usort($scoringTimingJudges, static fn(array $a, array $b): int =>
+                ((int) $a["elapsed_seconds"] <=> (int) $b["elapsed_seconds"])
+                ?: ((int) $a["judge_order"] <=> (int) $b["judge_order"])
             );
         }
-        $q->execute(["r" => $roundId]);
-        $items = [$q->fetch() ?: ["total" => 0, "submitted" => 0]];
     } catch (Throwable) {
         $items = [["total" => 0, "submitted" => 0]];
     }
@@ -450,13 +475,34 @@ endif; ?></div><?php
 endforeach; ?></div><?php else: ?><div class="list"><?php if (
     $type === "scoring"
 ):
-    if (
+    $x = $items[0];
+    if ($scoringTimingJudges):
+        $fastestJudge = $scoringTimingJudges[0];
+        $slowestJudge = $scoringTimingJudges[count($scoringTimingJudges) - 1];
+        $formatJudgeTime = static function (int $seconds): string {
+            if ($seconds < 60) return $seconds . " sec";
+            $minutes = intdiv($seconds, 60);
+            $remainingSeconds = $seconds % 60;
+            return $minutes . " min" . ($remainingSeconds > 0 ? " " . $remainingSeconds . " sec" : "");
+        }; ?><style>
+.timing-celebration{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.86fr) minmax(260px,1.28fr) minmax(0,.86fr);gap:1.15%;align-items:stretch}.timing-award,.timing-board{border:1px solid rgba(255,255,255,.2);border-radius:max(8px,min(.8cqw,1.4cqh));overflow:hidden;box-shadow:0 1.2cqh 3cqh rgba(0,0,0,.23)}.timing-award{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4%;background:radial-gradient(circle at 50% 25%,rgba(255,255,255,.13),rgba(8,14,27,.78) 68%)}.timing-award.fastest{border-color:rgba(250,204,21,.68);background:radial-gradient(circle at 50% 28%,rgba(216,170,55,.34),rgba(68,40,7,.6) 50%,rgba(8,14,27,.9))}.timing-award.slowest{border-color:rgba(244,114,182,.5);background:radial-gradient(circle at 50% 28%,rgba(125,38,56,.4),rgba(55,19,38,.64) 52%,rgba(8,14,27,.9))}.timing-award-icon{font-size:max(38px,min(5cqw,8.8cqh));line-height:1}.timing-award-label{margin-top:.45em;color:#fde68a;font-size:max(10px,min(.96cqw,1.7cqh));font-weight:950;letter-spacing:.1em}.timing-award-name{max-width:100%;margin:.35em 0;font-size:max(17px,min(2cqw,3.55cqh));font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.timing-award-time{font-size:max(20px,min(2.7cqw,4.8cqh));font-weight:950}.timing-award-joke{margin-top:.7em;color:#dbe4f3;font-size:max(9px,min(.83cqw,1.48cqh));font-weight:700}.timing-board{display:flex;flex-direction:column;background:rgba(8,14,27,.7)}.timing-board-heading{padding:min(1.2cqh,.68cqw);background:linear-gradient(90deg,rgba(125,38,56,.55),rgba(216,170,55,.24));font-size:max(12px,min(1.25cqw,2.2cqh));font-weight:950;letter-spacing:.06em}.timing-list{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:min(.8cqh,.45cqw);padding:min(1cqh,.58cqw)}.timing-row{display:flex;align-items:center;justify-content:space-between;gap:.6em;min-width:0;padding:min(.85cqh,.5cqw);border:1px solid rgba(255,255,255,.12);border-radius:max(5px,min(.48cqw,.85cqh));background:rgba(255,255,255,.065);font-size:max(9px,min(.9cqw,1.6cqh));font-weight:850}.timing-row-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.timing-row-time{flex:0 0 auto;color:#fde7b0;font-weight:950}@container (aspect-ratio < 6/5){.timing-celebration{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,.72fr) minmax(0,1fr)}.timing-board{grid-column:1/-1;grid-row:2}.timing-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style><div class="timing-celebration"><section class="timing-award fastest"><div class="timing-award-icon">⚡🏆</div><div class="timing-award-label">SPEED STAR</div><div class="timing-award-name">J<?=(int)$fastestJudge["judge_order"]?> · <?=e((string)$fastestJudge["judge_name"])?></div><div class="timing-award-time"><?=e($formatJudgeTime((int)$fastestJudge["elapsed_seconds"]))?></div><div class="timing-award-joke">Fast eyes. Sharp scores. No coffee break needed.</div></section><section class="timing-board"><div class="timing-board-heading">ALL JUDGES FINISHED · SCORING TIMES</div><div class="timing-list"><?php foreach($scoringTimingJudges as $position=>$judge):?><div class="timing-row"><span class="timing-row-name"><?=($position+1)?> · J<?=(int)$judge["judge_order"]?> <?=e((string)$judge["judge_name"])?><?=(int)$judge["is_chief"]===1?" ★":""?></span><span class="timing-row-time"><?=e($formatJudgeTime((int)$judge["elapsed_seconds"]))?></span></div><?php endforeach;?></div></section><section class="timing-award slowest"><div class="timing-award-icon">🐢✨</div><div class="timing-award-label">SCENIC ROUTE AWARD</div><div class="timing-award-name">J<?=(int)$slowestJudge["judge_order"]?> · <?=e((string)$slowestJudge["judge_name"])?></div><div class="timing-award-time"><?=e($formatJudgeTime((int)$slowestJudge["elapsed_seconds"]))?></div><div class="timing-award-joke">Great care taken. Next round: same quality, fewer sightseeing stops.</div></section></div><?php elseif (
         $scoringComplete
     ): ?><div class="item"><div class="big">✓</div><div class="small">ROUND FINISHED</div></div><?php else:$x =
-            $items[0]; ?><div class="item"><div class="big"><?= (int) ($x[
-    "submitted"
-] ?? 0) ?> / <?= (int) ($x["total"] ??
-     0) ?></div><div class="small">JUDGES SUBMITTED</div></div><?php endif;
+            $items[0]; ?><style>
+.scoring-progress{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.54fr) minmax(0,1fr);gap:1.15%;align-items:stretch}
+.judge-status-panel{min-width:0;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.22);border-radius:max(8px,min(.8cqw,1.4cqh));overflow:hidden;background:rgba(8,14,27,.58);box-shadow:0 1.2cqh 3cqh rgba(0,0,0,.2)}
+.judge-status-heading{display:flex;align-items:center;justify-content:space-between;padding:min(1.15cqh,.65cqw) min(1.3cqh,.8cqw);font-size:max(11px,min(1.28cqw,2.25cqh));font-weight:950;letter-spacing:.055em;text-transform:uppercase}
+.judge-status-panel.complete{border-color:rgba(52,211,153,.5);background:linear-gradient(145deg,rgba(6,78,59,.42),rgba(8,14,27,.72))}.judge-status-panel.complete .judge-status-heading{background:linear-gradient(90deg,rgba(16,185,129,.32),rgba(16,185,129,.08));color:#a7f3d0}
+.judge-status-panel.pending{border-color:rgba(251,191,36,.48);background:linear-gradient(215deg,rgba(120,53,15,.34),rgba(8,14,27,.72))}.judge-status-panel.pending .judge-status-heading{background:linear-gradient(90deg,rgba(245,158,11,.26),rgba(245,158,11,.07));color:#fde68a}
+.judge-status-count{display:grid;place-items:center;min-width:1.8em;height:1.8em;border-radius:999px;background:rgba(255,255,255,.12);font-size:.8em}
+.judge-status-list{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:min(1cqh,.55cqw);padding:min(1.25cqh,.7cqw)}
+.judge-chip{min-width:0;display:flex;align-items:center;gap:min(1cqh,.55cqw);padding:min(1.05cqh,.58cqw);border-radius:max(6px,min(.56cqw,1cqh));background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);font-size:max(10px,min(1.05cqw,1.85cqh));font-weight:850;text-align:left}
+.judge-chip-icon{display:grid;place-items:center;flex:0 0 auto;width:1.75em;height:1.75em;border-radius:50%;font-weight:950}.complete .judge-chip-icon{background:#10b981;color:#052e22}.pending .judge-chip-icon{background:#f59e0b;color:#451a03}.judge-chip-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.judge-chip-chief{display:block;color:#fbd56a;font-size:.58em;letter-spacing:.07em}
+.scoring-progress-total{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:max(8px,min(.8cqw,1.4cqh));border:1px solid rgba(216,170,55,.48);background:radial-gradient(circle at 50% 35%,rgba(125,38,56,.42),rgba(17,24,39,.92) 68%);box-shadow:inset 0 0 4cqh rgba(216,170,55,.07),0 1.2cqh 3cqh rgba(0,0,0,.25)}
+.scoring-progress-total .big{font-size:max(42px,min(6.8cqw,12cqh));line-height:.95}.scoring-progress-total .small{margin-top:.75em;color:#fde7b0;font-weight:850;letter-spacing:.09em}.scoring-progress-bar{width:68%;height:max(5px,min(.42cqw,.72cqh));margin-top:1.1em;border-radius:999px;background:rgba(255,255,255,.13);overflow:hidden}.scoring-progress-bar>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#d8aa37,#34d399);box-shadow:0 0 1.4cqh rgba(52,211,153,.6)}
+@container (aspect-ratio < 6/5){.scoring-progress{grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr)}.scoring-progress-total{grid-column:1/-1;grid-row:1;min-height:15cqh}.judge-status-list{grid-template-columns:1fr}}
+</style><div class="scoring-progress"><section class="judge-status-panel complete"><div class="judge-status-heading"><span>✓ Completed</span><span class="judge-status-count"><?=count($scoringSubmittedJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringSubmittedJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringSubmittedJudges):?><div class="judge-chip"><span class="judge-chip-icon">—</span><span class="judge-chip-name">Waiting for first submission</span></div><?php endif;?></div></section><div class="scoring-progress-total"><div class="big"><?= (int) ($x["submitted"] ?? 0) ?> / <?= (int) ($x["total"] ?? 0) ?></div><div class="small">JUDGES SUBMITTED</div><div class="scoring-progress-bar"><span style="width:<?=((int)($x["total"]??0)>0?round(((int)($x["submitted"]??0)/(int)$x["total"])*100):0)?>%"></span></div></div><section class="judge-status-panel pending"><div class="judge-status-heading"><span>◷ Pending</span><span class="judge-status-count"><?=count($scoringPendingJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringPendingJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">…</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringPendingJudges):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">All judges completed</span></div><?php endif;?></div></section></div><?php endif;
 elseif ($type === "judges"):
     foreach ($items as $x):
         $country = trim((string) ($x["country"] ?? ""));
