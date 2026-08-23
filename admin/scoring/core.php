@@ -2293,4 +2293,4 @@ async function refreshRegistrationDeskSync(){
 }
 refreshRegistrationDeskSync();
 setInterval(refreshRegistrationDeskSync,3000);
-</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>
+</script><script src="../../public/js/final-pairing-sync.js?v=384" defer></script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>
