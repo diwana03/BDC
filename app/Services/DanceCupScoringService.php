@@ -54,6 +54,53 @@ final class DanceCupScoringService
         }
     }
 
+    /** @return array<string,array<int,array{name:string,max:float}>> */
+    public static function defaultCriteriaTemplates(): array
+    {
+        $technique = 'Dance Style Technique / Authenticity';
+        $presentation = 'Overall Presentation (Costume & Showmanship)';
+        return [
+            'solo' => [
+                ['name' => 'Timing', 'max' => 20.0],
+                ['name' => 'Musicality & Choreography', 'max' => 20.0],
+                ['name' => 'Difficulty', 'max' => 20.0],
+                ['name' => $technique, 'max' => 20.0],
+                ['name' => $presentation, 'max' => 20.0],
+            ],
+            'couple' => [
+                ['name' => 'Timing', 'max' => 20.0],
+                ['name' => 'Musicality & Choreography', 'max' => 20.0],
+                ['name' => 'Connection & Partnering', 'max' => 20.0],
+                ['name' => $technique, 'max' => 20.0],
+                ['name' => 'Difficulty', 'max' => 10.0],
+                ['name' => $presentation, 'max' => 10.0],
+            ],
+            'duo' => [
+                ['name' => 'Timing', 'max' => 20.0],
+                ['name' => 'Musicality & Choreography', 'max' => 20.0],
+                ['name' => 'Connection & Partnering', 'max' => 20.0],
+                ['name' => $technique, 'max' => 20.0],
+                ['name' => 'Difficulty', 'max' => 10.0],
+                ['name' => $presentation, 'max' => 10.0],
+            ],
+            'team' => [
+                ['name' => 'Timing', 'max' => 20.0],
+                ['name' => 'Musicality & Choreography', 'max' => 20.0],
+                ['name' => 'Synchronization & Teamwork', 'max' => 20.0],
+                ['name' => $technique, 'max' => 20.0],
+                ['name' => 'Difficulty', 'max' => 10.0],
+                ['name' => $presentation, 'max' => 10.0],
+            ],
+        ];
+    }
+
+    /** @return array<int,array{name:string,max:float}> */
+    public static function defaultCriteria(string $entryType): array
+    {
+        $templates = self::defaultCriteriaTemplates();
+        return $templates[$entryType] ?? $templates['solo'];
+    }
+
     /** @param array<int,array{name:string,max:float}> $criteria */
     public static function createCompetition(PDO $pdo, array $data, array $criteria, ?int $userId, bool $test = false): int
     {
