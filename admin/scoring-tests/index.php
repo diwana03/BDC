@@ -1787,6 +1787,21 @@ $csrf=Csrf::token();
  </div></div>
 </div>
 
+<?php if(($round['scoring_mode']??'manual')==='manual'):?>
+<div class="card shadow-sm mb-4 border-dark"><div class="card-body">
+ <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2"><div><h2 class="h5 mb-1">Test Final Judges</h2><div class="text-muted small">Set the isolated manual Relative Placement panel before matching couples, then select exactly one Chief Judge.</div></div><span class="badge text-bg-danger">TEST · MANUAL FINAL</span></div>
+ <form method="post" id="finalJudgesForm">
+  <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_final_judges"><input type="hidden" name="round_id" value="<?=$roundId?>">
+  <div id="finalJudgesWrap">
+  <?php $finalJudgeDisplay=$judges?:[['id'=>0,'judge_name'=>'','is_chief'=>1],['id'=>0,'judge_name'=>'','is_chief'=>0],['id'=>0,'judge_name'=>'','is_chief'=>0]];foreach($finalJudgeDisplay as $i=>$judge):$judgeKey='judge_'.$i;?>
+   <div class="input-group mb-2 judge-row" data-judge-row><span class="input-group-text final-judge-number">Judge <?=$i+1?></span><input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>"><input class="form-control" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Final judge name" required><span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span><button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button></div>
+  <?php endforeach;?>
+  </div>
+  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button><button class="btn btn-dark btn-sm">Save Test Final Judges</button></div>
+ </form>
+</div></div>
+<?php endif;?>
+
 <div class="card shadow-sm mb-4"><div class="card-body">
  <?php $randomMatchLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,true);$emceeLink=App\Services\RandomPairingService::activeLink($pdo,$roundId,true);?>
  <div class="border border-danger-subtle rounded p-3 mb-3 bg-danger-subtle bg-opacity-10">
@@ -1862,6 +1877,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
   <a class="btn btn-outline-primary" href="print.php?round_id=<?=$roundId?>" target="_blank">Print Final Judge Sheets</a>
  </div>
 
+ <?php if(($round['scoring_mode']??'manual')==='automated'):?>
  <div class="card border-0 bg-light mb-3"><div class="card-body">
   <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
    <div>
@@ -1898,6 +1914,7 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
    </div>
   </form>
  </div></div>
+ <?php endif;?>
 
  <form method="post" id="finalScoreForm">
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
