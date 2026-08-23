@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev374",
-  "build": 3080,
+  "version": "2.3.3-dev375",
+  "build": 3081,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps Automatic Scoring at the scorer's exact page position after Save Scores Draft, Calculate and Sort, or Submit Scores across Testing and Live, and labels every genuinely missing judge mark N/A in both score reports",
     "Makes 8-plus-judge Heats reports readable by printing Leaders and Followers on full-width paginated pages across Testing and Live, and restores the scorer's exact dashboard position after Save Draft, Calculate and Submit",
     "Keeps the locked Heats score report visibly accessible for review, printing and PDF saving after a completed Test or Live round is reopened from history, without reopening scoring",
     "Adds a secure 12-hour event-specific Mobile Projection Remote for scorers and projector operators with safe screens, live status, page navigation, Auto Page and four lightweight effects across Testing and Live",

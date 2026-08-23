@@ -54,11 +54,11 @@ $marks=[];
 foreach($markStmt->fetchAll() as $mark)$marks[(int)$mark['entry_id']][(int)$mark['judge_id']]=$mark;
 
 function markLabel(?array $mark,bool $automatic=false):string{
- if($automatic)return $mark===null?'':rtrim(rtrim(number_format((float)$mark['weighted_score'],2,'.',''),'0'),'.');
- if(!$mark||$mark['mark_type']==='blank')return '';
+ if($mark===null||($mark['mark_type']??'blank')==='blank')return 'N/A';
+ if($automatic)return rtrim(rtrim(number_format((float)$mark['weighted_score'],2,'.',''),'0'),'.');
  if($mark['mark_type']==='yes')return '1';
  if($mark['mark_type']==='alt')return 'A'.(int)$mark['alt_rank'];
- return '';
+ return 'N/A';
 }
 function resultLabel(array $entry):string{
  $status=(string)($entry['result_status']??'');
