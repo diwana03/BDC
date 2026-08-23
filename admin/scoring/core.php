@@ -1716,9 +1716,9 @@ $csrf=Csrf::token();
  </div></div>
 </div>
 
-<?php if(($round['scoring_mode']??'manual')==='manual'):?>
+<?php if(in_array(($round['scoring_mode']??'manual'),['manual','automated'],true)):?>
 <div class="card shadow-sm mb-4 border-dark"><div class="card-body">
- <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2"><div><h2 class="h5 mb-1">Final Judges</h2><div class="text-muted small">Set the manual Relative Placement panel before matching couples. Search the Judge Database or type a new judge, then select exactly one Chief Judge.</div></div><span class="badge text-bg-dark">MANUAL FINAL</span></div>
+ <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2"><div><h2 class="h5 mb-1">Final Judge Selection</h2><div class="text-muted small">Set the Relative Placement judging panel before matching couples. Search the Judge Database or type a new judge, then select exactly one Chief Judge.</div></div><span class="badge text-bg-dark"><?=($round['scoring_mode']??'manual')==='automated'?'AUTOMATIC FINAL':'MANUAL FINAL'?></span></div>
  <datalist id="judgeDirectorySuggestions"><?php foreach($judgeDirectory as $directoryJudge):$directoryName=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);?><option value="<?=e($directoryName)?>"><?=e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:''))?></option><?php endforeach;?></datalist>
  <form method="post" id="finalJudgesForm">
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_final_judges"><input type="hidden" name="round_id" value="<?=$roundId?>">
@@ -1808,43 +1808,8 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
 
  <?php if(($round['scoring_mode']??'manual')==='automated'):?>
  <div class="card border-0 bg-light mb-3"><div class="card-body">
-  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
-   <div>
-    <h3 class="h6 mb-1">Final Judges</h3>
-    <div class="text-muted small">The Final can use a different judging panel. Edit existing judges, append new judges, remove judges and select one Final Chief Judge.</div>
-   </div>
-  </div>
+  <h3 class="h6 mb-2">Final Ranking Setup</h3>
   <form method="post" class="d-flex align-items-end gap-2 flex-wrap mb-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="save_final_rank_count"><input type="hidden" name="round_id" value="<?=$roundId?>"><div><label class="form-label fw-semibold">Placements each judge must rank</label><select class="form-select" name="final_rank_count" <?=$finalRankSettingLocked?'disabled':''?>><?php for($rankOption=$finalRankMinimum;$rankOption<=$finalRankMaximum;$rankOption++):?><option value="<?=$rankOption?>" <?=$rankOption===$finalRankCount?'selected':''?>>Top <?=$rankOption?></option><?php endfor;?></select></div><?php if($finalRankSettingLocked):?><span class="badge text-bg-secondary mb-2">Locked because judging has started</span><?php else:?><button class="btn btn-dark mb-0">Save Final Ranking Depth</button><?php endif;?></form>
-  <datalist id="judgeDirectorySuggestions"><?php foreach($judgeDirectory as $directoryJudge):$directoryName=(string)($directoryJudge['display_name']?:$directoryJudge['full_name']);?><option value="<?=e($directoryName)?>"><?=e((string)$directoryJudge['judge_code'].(!empty($directoryJudge['country'])?' · '.$directoryJudge['country']:''))?></option><?php endforeach;?></datalist>
-  <form method="post" id="finalJudgesForm">
-   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-   <input type="hidden" name="action" value="save_final_judges">
-   <input type="hidden" name="round_id" value="<?=$roundId?>">
-   <div id="finalJudgesWrap">
-   <?php
-   $finalJudgeDisplay=$judges?:[
-    ['id'=>0,'judge_name'=>'','is_chief'=>1],
-    ['id'=>0,'judge_name'=>'','is_chief'=>0],
-    ['id'=>0,'judge_name'=>'','is_chief'=>0]
-   ];
-   foreach($finalJudgeDisplay as $i=>$judge):
-    $judgeKey='judge_'.$i;
-   ?>
-    <div class="input-group mb-2 judge-row" data-judge-row>
-     <span class="input-group-text final-judge-number">Judge <?=$i+1?></span>
-     <input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>">
-     <input type="hidden" name="final_judges[<?=$judgeKey?>][directory_id]" value="<?=(int)($judge['judge_id']??0)?>">
-     <input class="form-control" list="judgeDirectorySuggestions" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Search or type a new judge" required>
-     <span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span>
-     <button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button>
-    </div>
-   <?php endforeach;?>
-   </div>
-   <div class="d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button>
-    <button class="btn btn-dark btn-sm">Save Final Judges</button>
-   </div>
-  </form>
  </div></div>
  <?php endif;?>
 
