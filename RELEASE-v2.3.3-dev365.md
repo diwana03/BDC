@@ -13,8 +13,8 @@
 
 - 8 Leaders / 7 or 6 Followers: both roles run Tier 1 Heats.
 - 8 Leaders / 5 Followers: Followers direct to Final; Leaders run Heats.
-- 12 Leaders / 10 Followers: Followers direct to Final; Leaders run Tier 2 Heats.
-- 18 Leaders / 15 Followers: Followers direct to Final; Leaders run Tier 3 Heats.
+- 20 Leaders / 10 Followers: Followers direct to Final; Leaders run Tier 2 Heats.
+- 35 Leaders / 15 Followers: Followers direct to Final; Leaders run Tier 3 Heats.
 
 ## Parity Gate
 
@@ -29,7 +29,7 @@
 
 ### Staging/runtime validation
 
-- Validate 8/5, 5/8, 12/10, 10/12, 18/15, 15/18 and 5/5.
+- Validate 8/5, 5/8, 20/10, 10/20, 35/15, 15/35 and 5/5.
 - Confirm the direct role is absent from Heats entry, present in Final transfer and visible on Final projection.
 - Production promotion remains blocked until Staging passes.
 

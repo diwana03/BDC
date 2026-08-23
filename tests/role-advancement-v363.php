@@ -30,7 +30,7 @@ $plan=RoleAdvancementService::roundPlan(8,5,5);
 $assert($plan['leader']['requires_judging']===true,'Eight leaders must run Tier 1 Heats.');
 $assert($plan['follower']['direct_to_final']===true,'Five followers must advance directly.');
 
-foreach([[12,10,10],[18,15,15]] as [$leaders,$followers,$quota]){
+foreach([[20,10,10],[35,15,15]] as [$leaders,$followers,$quota]){
     $mixedTierPlan=RoleAdvancementService::roundPlan($leaders,$followers,$quota);
     $assert($mixedTierPlan['leader']['requires_judging']===true,$leaders.' leaders must run Heats.');
     $assert($mixedTierPlan['follower']['direct_to_final']===true,$followers.' followers must advance directly at quota '.$quota.'.');

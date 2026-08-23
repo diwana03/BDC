@@ -2127,8 +2127,24 @@ function updateLiveScoring(){
    row.querySelector('.live-chief').textContent=chief.toFixed(1);
    return {row,total,chief,yes,entry:parseInt(row.dataset.entryId||'0',10)};
   });
-  calculated.sort((a,b)=>b.total-a.total||b.chief-a.chief||b.yes-a.yes||a.entry-b.entry);
-  calculated.forEach((item,index)=>{const rank=index+1;const status=rank<=callbackCount?'Callback':(rank<=callbackCount+3?'Alternate':'Eliminated');item.row.querySelector('.live-rank').textContent='#'+rank;item.row.querySelector('.live-status').textContent=status+' · Live';});
+  calculated.sort((a,b)=>b.total-a.total||a.entry-b.entry);
+  const alternateLimit=Math.min(callbackCount+3,calculated.length);
+  for(let start=0;start<calculated.length;){
+   let end=start;while(end+1<calculated.length&&calculated[end+1].total===calculated[start].total)end++;
+   const startPosition=start+1,endPosition=end+1,rank=startPosition;
+   const crossesCallback=startPosition<=callbackCount&&endPosition>callbackCount;
+   const crossesAlternate=startPosition<=alternateLimit&&endPosition>alternateLimit;
+   const tiedAlternate=end>start&&startPosition>callbackCount&&endPosition<=alternateLimit;
+   let status='Eliminated',rowClass='';
+   if(crossesCallback||crossesAlternate||tiedAlternate){status='Tie Pending';rowClass='tie_pending';}
+   else if(endPosition<=callbackCount){status='Callback';rowClass='callback';}
+   else if(startPosition>callbackCount&&endPosition<=alternateLimit){status='Alternate';rowClass='alternate';}
+   for(let index=start;index<=end;index++){
+    const item=calculated[index];item.row.classList.remove('callback','alternate','tie_pending');if(rowClass)item.row.classList.add(rowClass);
+    item.row.querySelector('.live-rank').textContent='#'+rank;item.row.querySelector('.live-status').textContent=status+' · Live';
+   }
+   start=end+1;
+  }
  });
 }
 function setAutosaveStatus(text,className){if(!autosaveStatus)return;autosaveStatus.textContent=text;autosaveStatus.className='small ms-auto '+(className||'text-muted');}

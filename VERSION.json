@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev365",
-  "build": 3071,
+  "version": "2.3.3-dev366",
+  "build": 3072,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Prevents manual Live Preview from splitting equal totals by Chief score, YES count or entry order, showing the complete callback or alternate boundary group as Tie Pending before server calculation",
     "Makes direct-Final advancement visibly role-specific on manual Heats sheets for every 5, 10 and 15 callback tier, excluding the qualifying role from scoring while the larger role continues through Heats",
     "Prompts submitted Heats rosters to go directly to Final when both Leader and Follower counts fit within the tier callback quota, creating callback records internally without fake judge marks",
     "Adds role-specific preliminary advancement across Test and Live: a Leader or Follower roster at or below the tier YES quota advances intact to Final without Heats marks, while the larger role keeps the established weights, dynamic A1-A3 positions, ties and callback engine",
