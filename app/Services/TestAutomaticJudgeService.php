@@ -30,7 +30,7 @@ final class TestAutomaticJudgeService
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         try{$pdo->exec("ALTER TABLE bdc_test_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}
         foreach(["criteria_version VARCHAR(32) NULL AFTER submitted_at","criteria_accepted_at DATETIME NULL AFTER criteria_version","unlocked_at DATETIME NULL AFTER criteria_accepted_at","unlocked_by BIGINT UNSIGNED NULL AFTER unlocked_at","unlock_reason VARCHAR(500) NULL AFTER unlocked_by"] as $definition){try{$pdo->exec("ALTER TABLE bdc_test_scoring_judge_sessions ADD COLUMN ".$definition);}catch(\Throwable){}}
-        $pdo->exec("UPDATE bdc_test_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 12 HOUR) WHERE expires_at IS NULL");
+        $pdo->exec("UPDATE bdc_test_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 72 HOUR) WHERE expires_at IS NULL");
     }
 
     public static function syncRound(PDO $pdo, int $roundId): array
@@ -71,7 +71,7 @@ final class TestAutomaticJudgeService
         }
         $token = bin2hex(random_bytes(24));
         $pdo->prepare(
-            "INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 12 HOUR)) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),expires_at=VALUES(expires_at),updated_at=NOW()",
+            "INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 72 HOUR)) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),expires_at=VALUES(expires_at),updated_at=NOW()",
         )->execute([
             "round" => $roundId,
             "judge" => $judgeId,
@@ -461,7 +461,7 @@ final class TestAutomaticJudgeService
             "status" => "not_started",
         ];
         $pdo->prepare(
-            "INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round_id,:judge_id,:token_hash,:token_hint,:status,DATE_ADD(NOW(),INTERVAL 12 HOUR))",
+            "INSERT INTO bdc_test_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round_id,:judge_id,:token_hash,:token_hint,:status,DATE_ADD(NOW(),INTERVAL 72 HOUR))",
         )->execute($session);
         $session["id"] = (int) $pdo->lastInsertId();
         return [$session, $token];

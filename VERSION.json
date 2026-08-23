@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev385",
-  "build": 3091,
+  "version": "2.3.3-dev386",
+  "build": 3092,
   "status": "development",
   "release_date": "2026-08-24",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Prevents Automatic Final judge rank saves from exposing raw JSON parser errors, identifies refreshed or expired Test and Live judge links, extends new secure judge links to 72 hours and reduces completed Final polling",
     "Live-synchronizes Automatic Final judge marks, submitted locks, progress and calculated placements into the open Testing and Live scorer matrix without page refresh or scroll loss",
     "Loads Final pairing synchronization on the actual Testing and Live dashboard footer so Emcee pair status updates without refreshing",
     "Makes dashboard Emcee Random Match a one-click POST that starts randomization and countdown, then locks Save and Confirm until every synchronized couple is complete",

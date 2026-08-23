@@ -84,7 +84,7 @@ final class AutomaticJudgeBrowserService
         $hash = hash("sha256", $token);
         $hint = substr($token, 0, 8);
         $pdo->prepare(
-            "INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 12 HOUR)) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),expires_at=VALUES(expires_at),updated_at=NOW()",
+            "INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 72 HOUR)) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),expires_at=VALUES(expires_at),updated_at=NOW()",
         )->execute([
             "round" => $roundId,
             "judge" => $judgeId,
@@ -346,7 +346,7 @@ final class AutomaticJudgeBrowserService
         $hash = hash("sha256", $token);
         $hint = substr($token, 0, 8);
         $pdo->prepare(
-            "INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 12 HOUR))",
+            "INSERT INTO bdc_scoring_judge_sessions(round_id,judge_id,token_hash,token_hint,status,expires_at) VALUES(:round,:judge,:hash,:hint,'not_started',DATE_ADD(NOW(),INTERVAL 72 HOUR))",
         )->execute([
             "round" => $roundId,
             "judge" => $judgeId,
@@ -365,7 +365,7 @@ final class AutomaticJudgeBrowserService
             $token,
         ];
     }
-    private static function ensureExpiry(PDO $pdo):void{try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}foreach(["criteria_version VARCHAR(32) NULL AFTER submitted_at","criteria_accepted_at DATETIME NULL AFTER criteria_version","unlocked_at DATETIME NULL AFTER criteria_accepted_at","unlocked_by BIGINT UNSIGNED NULL AFTER unlocked_at","unlock_reason VARCHAR(500) NULL AFTER unlocked_by"] as $definition){try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN ".$definition);}catch(\Throwable){}}$pdo->exec("UPDATE bdc_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 12 HOUR) WHERE expires_at IS NULL");}
+    private static function ensureExpiry(PDO $pdo):void{try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN expires_at DATETIME NULL AFTER token_hint");}catch(\Throwable){}foreach(["criteria_version VARCHAR(32) NULL AFTER submitted_at","criteria_accepted_at DATETIME NULL AFTER criteria_version","unlocked_at DATETIME NULL AFTER criteria_accepted_at","unlocked_by BIGINT UNSIGNED NULL AFTER unlocked_at","unlock_reason VARCHAR(500) NULL AFTER unlocked_by"] as $definition){try{$pdo->exec("ALTER TABLE bdc_scoring_judge_sessions ADD COLUMN ".$definition);}catch(\Throwable){}}$pdo->exec("UPDATE bdc_scoring_judge_sessions SET expires_at=DATE_ADD(COALESCE(created_at,NOW()),INTERVAL 72 HOUR) WHERE expires_at IS NULL");}
     private static function sessionForJudge(PDO $pdo, int $judgeId): ?array
     {
         $stmt = $pdo->prepare(

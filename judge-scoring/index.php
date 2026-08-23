@@ -22,7 +22,10 @@ use App\Services\RoleAdvancementService;
 $pdo=Database::connection();
 $token=trim((string)($_GET['token']??$_POST['token']??''));
 $session=AutomaticJudgeBrowserService::byToken($pdo,$token);
-if(!$session||($session['scoring_mode']??'')!=='automated'){http_response_code(404);exit('Judge scoring link not found or expired.');}
+if(!$session||($session['scoring_mode']??'')!=='automated'){
+ if($_SERVER['REQUEST_METHOD']==='POST'&&isset($_POST['ajax'])){while(ob_get_level()>0)ob_end_clean();http_response_code(409);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode(['ok'=>false,'error'=>'This judge link was refreshed or expired. Open the latest secure judge link and continue scoring.'],JSON_UNESCAPED_SLASHES);exit;}
+ http_response_code(404);exit('This judge link was refreshed or expired. Open the latest secure judge link.');
+}
 $sessionId=(int)$session['id'];$roundId=(int)$session['round_id'];$judgeId=(int)$session['judge_id'];
 $flightSummary=ScoringFlightService::summary($pdo,$roundId,false);$flightCount=(int)($flightSummary['flight_count']??0);$activeFlight=max(1,(int)($flightSummary['active_flight']??1));$flightsEnabled=$flightCount>0;$viewRound=$flightsEnabled?max(1,min($flightCount,(int)($_GET['scoring_round']??$_POST['scoring_round']??1))):1;
 if(isset($_GET['status'])){judgeJson(['status'=>$session['status'],'criteria_required'=>JudgingCriteriaService::requiresAcceptance($session),'active_flight'=>$activeFlight,'flight_count'=>$flightCount]);}
@@ -42,7 +45,7 @@ $roleCountStmt->execute(['round'=>$roundId]);$allRoleCounts=['leader'=>0,'follow
 foreach($roleCountStmt->fetchAll() as $countRow){$countRole=(string)$countRow['dance_role'];if(isset($allRoleCounts[$countRole]))$allRoleCounts[$countRole]=(int)$countRow['total'];}
 $rolePlan=RoleAdvancementService::roundPlan($allRoleCounts['leader'],$allRoleCounts['follower'],$yesLimit);
 
-function judgeJson(array $data,int $status=200):never{http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);exit;}
+function judgeJson(array $data,int $status=200):never{while(ob_get_level()>0)ob_end_clean();http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);exit;}
 
 function heatsSelectionState(PDO $pdo,int $roundId,int $judgeId,string $role):array
 {
@@ -215,7 +218,7 @@ async function saveChoice(button){
  if(card){card.dataset.saving='1';adjustLocalState(card,button.dataset.value);card.querySelectorAll('.choice').forEach(x=>x.classList.remove('active'));button.classList.add('active');updateAvailability(card.dataset.role)}
  if(saved){saved.textContent='Saving…';saved.classList.remove('fail')}
  const body=new URLSearchParams({token:token,action:'save_score',ajax:'1',value:button.dataset.value,scoring_round:String(<?=json_encode($viewRound)?>)});if(button.dataset.entry)body.set('entry_id',button.dataset.entry);if(button.dataset.pair)body.set('pair_id',button.dataset.pair);
- try{const r=await fetch(location.href,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()}),data=await r.json();if(!r.ok||!data.ok)throw new Error(data.error||'Save failed');if(card){const role=card.dataset.role;if(data.selection_state){selectionState[role]=data.selection_state;updateCounter(role)}}if(saved)saved.textContent='Saved '+data.saved_at;updateSubmitReadiness();}
+ try{const r=await fetch(location.href,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},body:body.toString()});if(r.status===429)throw new Error('Server is busy. Please wait a moment and tap the rank again.');const text=await r.text();let data;try{data=JSON.parse(text)}catch(parseError){throw new Error('Score save response was interrupted. Please tap the rank again.')}if(!r.ok||!data.ok)throw new Error(data.error||'Save failed');if(card){const role=card.dataset.role;if(data.selection_state){selectionState[role]=data.selection_state;updateCounter(role)}}if(saved)saved.textContent='Saved '+data.saved_at;updateSubmitReadiness();}
  catch(e){if(card){adjustLocalState(card,oldValue);card.querySelectorAll('.choice').forEach(x=>x.classList.remove('active'));oldButton?.classList.add('active');updateAvailability(card.dataset.role)}if(saved){saved.textContent=e.message;saved.classList.add('fail')}showRuleMessage(e.message)}
  finally{if(card)delete card.dataset.saving;updateSubmitReadiness()}
 }

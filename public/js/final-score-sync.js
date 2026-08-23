@@ -45,10 +45,10 @@
   if(document.hidden||busy)return;busy=true;
   try{
    const response=await fetch(endpoint+(endpoint.includes('?')?'&':'?')+'_='+Date.now(),{cache:'no-store',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}});
-   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Score synchronization failed.');
+   if(response.status===429)throw new Error('Rate limited');const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Score synchronization failed.');
    if(data.hash!==lastHash){lastHash=data.hash;paint(data);}
   }catch(error){if(status){status.className='alert alert-warning py-2 mb-3';status.textContent='Live score updates temporarily unavailable. Saved scores remain safe; retrying automatically.';}}
   finally{busy=false;}
  }
- refresh();setInterval(refresh,3000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+ refresh();setInterval(refresh,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 })();
