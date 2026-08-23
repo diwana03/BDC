@@ -44,8 +44,8 @@ foreach($entryStmt->fetchAll() as $entry)$entries[$entry['dance_role']][]=$entry
 $largestRoleCount=max(count($entries['leader']),count($entries['follower']));
 $pageSize=(!$summaryOnly && $judgeCount<=7 && $largestRoleCount<=20)?'A4 portrait':'A4 landscape';
 $singleColumn=$pageSize==='A4 portrait';
-$paginateReport=!$fitAll&&!$summaryOnly&&($judgeCount>12||$largestRoleCount>24);
-$judgeChunks=$paginateReport?array_chunk($judges,10):[$judges];
+$paginateReport=!$fitAll&&!$summaryOnly&&($judgeCount>7||$largestRoleCount>24);
+$judgeChunks=$paginateReport?array_chunk($judges,14):[$judges];
 
 
 $markStmt=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank,weighted_score FROM bdc_test_scoring_marks WHERE round_id=:r");
@@ -123,7 +123,7 @@ th.result,td.result{width:16mm;font-weight:700}
 .witnesses strong{display:block;margin-bottom:2mm}
 .witness-line{display:inline-block;min-width:48mm;margin:0 5mm 3mm 0;border-bottom:1px solid #111;padding-bottom:1mm}
 .version{text-align:right}
-.page-label{margin:3mm 0 2mm;font-size:9pt;font-weight:700}.paginated-table{font-size:8.8pt}.paginated-table th,.paginated-table td{height:6.5mm;padding:1.2mm}.paginated-table th.name,.paginated-table td.name{width:55mm}.paginated-table th.judge,.paginated-table td.judge{width:14mm}.paginated-key{font-size:8.5pt;margin-top:3mm}.compact-footer{margin-top:3mm;padding-top:2mm}
+.page-label{margin:3mm 0 2mm;font-size:9pt;font-weight:700}.paginated-table{font-size:8.4pt}.paginated-table th,.paginated-table td{height:6.5mm;padding:1.1mm .7mm}.paginated-table th.name,.paginated-table td.name{width:48mm}.paginated-table th.judge,.paginated-table td.judge{width:11mm}.paginated-key{font-size:8.5pt;margin-top:3mm}.compact-footer{margin-top:3mm;padding-top:2mm}
 .fit-shell{overflow-x:auto;padding:8mm}.fit-page{width:max-content;min-width:400mm}.fit-table{width:max-content;min-width:100%;font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-table th,.fit-table td{min-width:9mm;padding:.8mm .5mm;height:5mm}.fit-table th.name,.fit-table td.name{min-width:42mm}.fit-table th.bib,.fit-table td.bib{min-width:11mm}.fit-table th.total,.fit-table td.total{min-width:14mm}.fit-table th.result,.fit-table td.result{min-width:16mm}
 @media print{
  body{background:#fff}
@@ -154,8 +154,8 @@ th.result,td.result{width:16mm;font-weight:700}
  </header>
  <div class="page-label"><?=e($label)?> · Judges <?=e(implode(', ',array_map(fn($judge):string=>'J'.(int)$judge['judge_order'],$judgeChunk)))?></div>
  <table class="paginated-table">
-  <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total">Total</th><th class="result">Result</th></tr></thead>
-  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
+  <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead>
+  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
  </table>
  <div class="judge-key paginated-key"><strong>Judge Key</strong><?php foreach($judgeChunk as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
  <footer class="footer compact-footer"><div class="witnesses"><strong>Scoring Witnesses</strong><?php if($witnesses):foreach($witnesses as $witness):?><span class="witness-line"><?=e($witness)?></span><?php endforeach;else:?><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><?php endif;?></div><div class="version"><strong>Chief Judge:</strong><br><?=e($chiefJudge?:'—')?><br><br><strong>Scoring Administrator:</strong><br><?=e((string)($round['scoring_administrator']??''))?></div></footer>

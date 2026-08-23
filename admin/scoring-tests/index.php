@@ -2199,6 +2199,18 @@ function removeFinalJudge(button){
 }function addJudge(){const w=document.getElementById('judgesWrap');const i=w.querySelectorAll('.judge-row').length;const d=document.createElement('div');d.className='row g-2 mb-2 judge-row align-items-center';d.innerHTML='<div class="col-md-2"><strong>Judge '+(i+1)+'</strong></div><div class="col-md-5"><input class="form-control" name="judge_name[]" placeholder="Judge name" required></div><div class="col-md-3"><select class="form-select" name="judge_scope[]"><option value="all">All</option><option value="leader">Leaders</option><option value="follower">Followers</option></select></div><div class="col-md-2"><label><input type="radio" name="chief_index" value="'+i+'"> Chief</label></div>';w.appendChild(d);}
 const scoreForm=document.getElementById('heatsScoreForm');
 const autosaveStatus=document.getElementById('autosaveStatus');
+const scoreScrollKey='bdc-score-scroll:'+location.pathname+':<?=$roundId?>';
+function rememberScoreScroll(action){
+ if(!['save_scores','calculate_scores','submit_scores'].includes(action))return;
+ try{sessionStorage.setItem(scoreScrollKey,JSON.stringify({y:Math.max(0,window.scrollY),at:Date.now()}));}catch(error){}
+}
+function restoreScoreScroll(){
+ let saved=null;try{saved=JSON.parse(sessionStorage.getItem(scoreScrollKey)||'null');sessionStorage.removeItem(scoreScrollKey);}catch(error){}
+ if(!saved||!Number.isFinite(saved.y)||Date.now()-Number(saved.at||0)>120000)return;
+ if('scrollRestoration' in history)history.scrollRestoration='manual';
+ requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>window.scrollTo({top:saved.y,left:0,behavior:'auto'}),40)));
+}
+restoreScoreScroll();
 const scoreWeights={'1':10,'YES':10,'Y':10,'A1':4.5,'A2':4.3,'A3':4.2,'2':4.5,'3':4.3,'4':4.2,'':0};
 let autosaveTimers=new Map();
 let unsavedScoreChanges=false;
@@ -2273,7 +2285,7 @@ if(scoreForm){
  scoreForm.addEventListener('keyup',event=>{
   if(event.target&&event.target.classList.contains('score-input'))updateLiveScoring();
  });
- scoreForm.addEventListener('submit',event=>{if(event.submitter&&['calculate_scores','submit_scores'].includes(event.submitter.value))showScoringProgress();
+ scoreForm.addEventListener('submit',event=>{const action=event.submitter?.value||'';rememberScoreScroll(action);if(['calculate_scores','submit_scores'].includes(action))showScoringProgress();
   document.getElementById('scorePayload').value=JSON.stringify(buildScorePayload());
   scoreForm.querySelectorAll('.score-input').forEach(input=>input.removeAttribute('name'));
   setAutosaveStatus('Saving full draft…','text-primary');
