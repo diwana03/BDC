@@ -17,6 +17,7 @@ use App\Core\Database;
 use App\Services\AutomaticJudgeBrowserService;
 use App\Services\JudgingCriteriaService;
 use App\Services\ScoringFlightService;
+use App\Services\RoleAdvancementService;
 
 $pdo=Database::connection();
 $token=trim((string)($_GET['token']??$_POST['token']??''));
@@ -35,6 +36,11 @@ $configuredFinalRankLimit=max(1,(int)($weights['callback_count']??10));
 $judgeOrdinal=static function(int $number):string{$mod100=$number%100;if($mod100>=11&&$mod100<=13)return $number.'th';return $number.(match($number%10){1=>'st',2=>'nd',3=>'rd',default=>'th'});};
 $selectionRoundLabel=(string)$session['round_type']==='semifinal'?'Semifinal':'Heats';
 $a1Place=$judgeOrdinal($yesLimit+1);$a2Place=$judgeOrdinal($yesLimit+2);$a3Place=$judgeOrdinal($yesLimit+3);
+
+$roleCountStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role");
+$roleCountStmt->execute(['round'=>$roundId]);$allRoleCounts=['leader'=>0,'follower'=>0];
+foreach($roleCountStmt->fetchAll() as $countRow){$countRole=(string)$countRow['dance_role'];if(isset($allRoleCounts[$countRole]))$allRoleCounts[$countRole]=(int)$countRow['total'];}
+$rolePlan=RoleAdvancementService::roundPlan($allRoleCounts['leader'],$allRoleCounts['follower'],$yesLimit);
 
 function judgeJson(array $data,int $status=200):never{http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);exit;}
 
@@ -112,9 +118,9 @@ function validateJudgeComplete(PDO $pdo,array $session,int $yesLimit,int $rankLi
     foreach(['leader','follower'] as $role){
         if(!in_array($scope,['all',$role],true))continue;
         $totalStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_entries WHERE round_id=:round AND dance_role=:role AND entry_status='active'");$totalStmt->execute(['round'=>$roundId,'role'=>$role]);$total=(int)$totalStmt->fetchColumn();
-        if($total<1)continue;
+        if($total<1||($total<=$yesLimit))continue;
         $state=heatsSelectionState($pdo,$roundId,$judgeId,$role);
-        $requiredYes=min($yesLimit,$total);
+        $requiredYes=$yesLimit;
         if($state['yes']!==$requiredYes)throw new RuntimeException('Select exactly '.$requiredYes.' YES for '.ucfirst($role).'s before submitting. Currently selected: '.$state['yes'].'.');
         $requiredAlternates=min(3,max(0,$total-$requiredYes));
         foreach(['A1','A2','A3'] as $index=>$alt){$required=$index<$requiredAlternates?1:0;if($state[$alt]!==$required)throw new RuntimeException(($required?'Select exactly one ':'Do not select ').$alt.' for '.ucfirst($role).'s before submitting.');}
@@ -159,10 +165,10 @@ if($isFinal){
     $scope=(string)$session['scoring_scope'];
     $flightJoin=$flightsEnabled?' JOIN bdc_scoring_flight_assignments fa ON fa.round_id=e.round_id AND fa.subject_type=\'entry\' AND fa.subject_id=e.id AND fa.flight_number=:flight ':'';
     $stmt=$pdo->prepare("SELECT e.id,e.dance_role,e.bib_number,e.display_name,m.mark_type,m.alt_rank FROM bdc_scoring_entries e {$flightJoin} LEFT JOIN bdc_scoring_marks m ON m.round_id=e.round_id AND m.entry_id=e.id AND m.judge_id=:judge WHERE e.round_id=:round AND e.entry_status='active' AND (:scope='all' OR e.dance_role=:scope2) ORDER BY e.dance_role,e.bib_number");
-    $entryParams=['judge'=>$judgeId,'round'=>$roundId,'scope'=>$scope,'scope2'=>$scope];if($flightsEnabled)$entryParams['flight']=$viewRound;$stmt->execute($entryParams);$allEntries=$stmt->fetchAll();$entries=['leader'=>[],'follower'=>[]];foreach($allEntries as $entry){$entry['current_mark']=$entry['mark_type']==='yes'?'YES':($entry['mark_type']==='alt'?'A'.(int)$entry['alt_rank']:'');$entries[$entry['dance_role']][]=$entry;}
+    $entryParams=['judge'=>$judgeId,'round'=>$roundId,'scope'=>$scope,'scope2'=>$scope];if($flightsEnabled)$entryParams['flight']=$viewRound;$stmt->execute($entryParams);$allEntries=$stmt->fetchAll();$entries=['leader'=>[],'follower'=>[]];foreach($allEntries as $entry){$entryRole=(string)$entry['dance_role'];if($rolePlan[$entryRole]['direct_to_final']??false)continue;$entry['current_mark']=$entry['mark_type']==='yes'?'YES':($entry['mark_type']==='alt'?'A'.(int)$entry['alt_rank']:'');$entries[$entryRole][]=$entry;}
     foreach(['leader','follower'] as $role)if($entries[$role])$initialState[$role]=heatsSelectionState($pdo,$roundId,$judgeId,$role);
 }
-$roleTotals=['leader'=>0,'follower'=>0];if(!$isFinal){$totalQuery=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' AND (:scope='all' OR dance_role=:scope2) GROUP BY dance_role");$totalQuery->execute(['round'=>$roundId,'scope'=>(string)$session['scoring_scope'],'scope2'=>(string)$session['scoring_scope']]);foreach($totalQuery->fetchAll() as $totalRow)if(isset($roleTotals[(string)$totalRow['dance_role']]))$roleTotals[(string)$totalRow['dance_role']]=(int)$totalRow['total'];}
+$roleTotals=['leader'=>0,'follower'=>0];if(!$isFinal){foreach(['leader','follower'] as $totalRole){$allowed=(string)$session['scoring_scope']==='all'||(string)$session['scoring_scope']===$totalRole;if($allowed&&!($rolePlan[$totalRole]['direct_to_final']??false))$roleTotals[$totalRole]=$allRoleCounts[$totalRole];}}
 $category=ucwords(str_replace('_',' ',(string)$session['division']));
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Judge Scoring | BDC</title><style>
@@ -186,6 +192,7 @@ $category=ucwords(str_replace('_',' ',(string)$session['division']));
 <?php foreach($pairs as $pair):?><div class="card final-rank-card" data-final-card="<?=(int)$pair['pair_id']?>"><div class="final-rank-head"><div><div class="small" style="font-weight:900">PAIR #<?=(int)$pair['pair_number']?></div><div class="bib">BIB <?=(int)$pair['leader_bib']?> + BIB <?=(int)$pair['follower_bib']?></div><div class="name"><?=e($pair['leader_name'])?> &amp; <?=e($pair['follower_name'])?></div></div><div class="placement-badge" aria-live="polite">NO RANK</div></div><input class="judge-input" type="hidden" data-pair="<?=(int)$pair['pair_id']?>" data-label="Pair <?=(int)$pair['pair_number']?>" value="<?=e((string)($pair['rank_value']??''))?>"><div class="rank-grid" aria-label="Select rank for Pair <?=(int)$pair['pair_number']?>"><?php for($rankOption=1;$rankOption<=$finalRankLimit;$rankOption++):?><button type="button" class="rank-button" data-rank="<?=$rankOption?>" aria-label="Rank <?=$rankOption?>"><?=$rankOption?></button><?php endfor;?><button type="button" class="rank-clear">NO RANK</button></div><div class="competitor-comment"><label for="comment-<?=(int)$pair['pair_id']?>">Comment <span class="comment-rank-hint">· TOP <?=$finalRankLimit?>: use ranks 1–<?=$finalRankLimit?> once; others NO RANK</span></label><input id="comment-<?=(int)$pair['pair_id']?>" class="competitor-comment-input" data-pair="<?=(int)$pair['pair_id']?>" maxlength="160" placeholder="Tentative rank or quick note"></div><div class="saved final-rank-status"></div></div><?php endforeach;?>
 <form method="post" class="submitbar" onsubmit="return confirm('Submit and lock your Final rankings? You will not be able to change them after submission.')"><input type="hidden" name="token" value="<?=e($token)?>"><input type="hidden" name="action" value="submit"><button class="submit" id="submitScores" disabled>COMPLETE ALL RANKS</button></form>
 <?php else:?>
+<?php $directLabels=[];foreach(['leader'=>'Leaders','follower'=>'Followers'] as $planRole=>$planLabel)if($rolePlan[$planRole]['direct_to_final']??false)$directLabels[]=$planLabel.' ('.$rolePlan[$planRole]['count'].')';if($directLabels):?><div class="alert success"><strong>Direct to Final:</strong> <?=e(implode(' and ',$directLabels))?> do not require Heats scoring.</div><?php endif;?>
 <div class="alert success"><strong><?=e($selectionRoundLabel)?> Instructions</strong><ul style="margin:7px 0 0;padding-left:20px"><li>Choose <strong><?=$yesLimit?> YES</strong> for your <strong>Top <?=$yesLimit?> best dancers</strong>.</li><li>A1 = <strong><?=e($a1Place)?> place</strong>, A2 = <strong><?=e($a2Place)?> place</strong>, A3 = <strong><?=e($a3Place)?> place</strong>.</li><li>Mark everyone else <strong>NO</strong>.</li><li>Comments are optional and private to this judge/device.</li></ul></div>
 <div id="ruleMessage" class="alert warning" style="display:none"></div>
 <div class="tabs"><?php foreach(['leader'=>'LEADERS','follower'=>'FOLLOWERS'] as $role=>$label):if(!$entries[$role])continue;?><button class="tab <?=$role==='leader'?'active':''?>" data-tab="<?=$role?>"><?=$label?></button><?php endforeach;?></div>

@@ -33,7 +33,12 @@ final class HeatsScoringEngine
             'leader'=>self::judgeIdsForRole($judges,'leader'),
             'follower'=>self::judgeIdsForRole($judges,'follower'),
         ];
+        $entryCounts=['leader'=>0,'follower'=>0];
+        foreach($entries as $entry){$entryRole=(string)($entry['dance_role']??'');if(isset($entryCounts[$entryRole]))$entryCounts[$entryRole]++;}
         foreach(['leader','follower'] as $role){
+            // A role at or below the callback quota advances intact. It has no
+            // Heats cut to judge, but remains in the result/transfer dataset.
+            if($entryCounts[$role]>0&&$entryCounts[$role]<=$callbackCount)continue;
             if(count($roleJudgeIds[$role])<ScoringRulesService::MINIMUM_JUDGES_PER_ROLE){
                 throw new RuntimeException(ucfirst($role).' panel requires at least '.ScoringRulesService::MINIMUM_JUDGES_PER_ROLE.' assigned judges.');
             }

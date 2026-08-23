@@ -30,6 +30,7 @@ use App\Services\SpecialCategoryService;
 use App\Services\TestAutomaticJudgeService;
 use App\Services\ScoringBackupService;
 use App\Services\ScoringRosterCheckpointService;
+use App\Services\RoleAdvancementService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -130,6 +131,9 @@ function applyAutomaticTier(PDO $pdo,int $roundId,bool $force=false):array{
 
 function computeResults(PDO $pdo,array $round,int $userId):void{
     $rid=(int)$round['id'];
+    $roleCountStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_test_scoring_entries WHERE round_id=:r AND entry_status='active' GROUP BY dance_role");
+    $roleCountStmt->execute(['r'=>$rid]);$roleCounts=['leader'=>0,'follower'=>0];foreach($roleCountStmt->fetchAll() as $row)$roleCounts[$row['dance_role']]=(int)$row['total'];
+    $rolePlan=RoleAdvancementService::roundPlan($roleCounts['leader'],$roleCounts['follower'],(int)$round['yes_count']);
     $judges=$pdo->prepare('SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order');$judges->execute(['r'=>$rid]);$judges=$judges->fetchAll();
     if(count($judges)<3) throw new RuntimeException('At least 3 judges are required.');
     $chief=array_values(array_filter($judges,fn($j)=>(int)$j['is_chief']===1));
@@ -139,6 +143,7 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
       'follower'=>array_map('intval',array_column(array_values(array_filter($judges,fn($j)=>in_array($j['scoring_scope']??'all',['all','follower'],true))),'id')),
     ];
     foreach(['leader','follower'] as $panelRole){
+      if(!($rolePlan[$panelRole]['requires_judging']??false))continue;
       if(count($roleJudgeIds[$panelRole])<3)throw new RuntimeException(ucfirst($panelRole).' panel requires at least 3 assigned judges.');
     }
     $entries=$pdo->prepare("SELECT * FROM bdc_test_scoring_entries WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number");$entries->execute(['r'=>$rid]);$entries=$entries->fetchAll();
@@ -1416,7 +1421,7 @@ $roundsStmt=$pdo->prepare("
 $roundsStmt->execute(['mode'=>$testMode]);
 $rounds=$roundsStmt->fetchAll();
 $judges=[];$judgeSessionStatus=[];$entries=['leader'=>[],'follower'=>[]];$marks=[];$results=[];$finalPairs=[];$finalMarks=[];$finalResults=[];
-if($round){$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT judge_id,status FROM bdc_test_scoring_judge_sessions WHERE round_id=:r ORDER BY id");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $session)$judgeSessionStatus[(int)$session['judge_id']]=(string)$session['status'];$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_test_scoring_entries se JOIN bdc_test_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
+if($round){$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_judges WHERE round_id=:r ORDER BY judge_order');$s->execute(['r'=>$roundId]);$judges=$s->fetchAll();$s=$pdo->prepare("SELECT judge_id,status FROM bdc_test_scoring_judge_sessions WHERE round_id=:r ORDER BY id");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $session)$judgeSessionStatus[(int)$session['judge_id']]=(string)$session['status'];$s=$pdo->prepare("SELECT se.*,c.bdc_id,c.status AS competitor_status FROM bdc_test_scoring_entries se JOIN bdc_test_competitors c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number");$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $x)$entries[$x['dance_role']][]=$x;$roleAdvancementPlan=RoleAdvancementService::roundPlan(count($entries['leader']),count($entries['follower']),(int)$round['yes_count']);$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_marks WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $m)$marks[$m['entry_id']][$m['judge_id']]=$m;$s=$pdo->prepare('SELECT * FROM bdc_test_scoring_results WHERE round_id=:r');$s->execute(['r'=>$roundId]);foreach($s->fetchAll() as $r)$results[$r['entry_id']]=$r;
 if($results){
  foreach(['leader','follower'] as $sortRole){
   usort($entries[$sortRole],function($a,$b)use($results){

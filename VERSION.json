@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev362",
-  "build": 3068,
+  "version": "2.3.3-dev363",
+  "build": 3069,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds role-specific preliminary advancement across Test and Live: a Leader or Follower roster at or below the tier YES quota advances intact to Final without Heats marks, while the larger role keeps the established weights, dynamic A1-A3 positions, ties and callback engine",
     "Brings the audited Save, Submit, lock and caution-reopen competitor checkpoint into Live manual scoring, blocks manual marks until roster submission and keeps Test and Live tiering automatic from the larger Leader or Follower count",
     "Adds competitor photo re-upload directly to the adjustment screen, exposes Adjust or replace photo from Edit Competitor, preserves the newest original and makes mouse and touch repositioning smooth, bounded and resilient to interrupted pointer gestures",
     "Replaces unreliable native J&J judge suggestions with a shared one-character Judge Database search dropdown across Test and Live manual scoring, and removes the overlapping floating Backups & Recovery shortcut while retaining the full recovery panel",

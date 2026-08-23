@@ -6,6 +6,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
+use App\Services\RoleAdvancementService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -187,6 +188,7 @@ $entries=['leader'=>[],'follower'=>[]];
 foreach($entryStmt->fetchAll() as $entry){
  $entries[$entry['dance_role']][]=$entry;
 }
+$rolePlan=RoleAdvancementService::roundPlan(count($entries['leader']),count($entries['follower']),(int)$round['yes_count']);
 
 function rosterColumns(array $entries):array{
  $count=count($entries);
@@ -263,14 +265,15 @@ th{background:#eee}
   <div class="detail"><strong>Judge:</strong> <?=e($judge['judge_name'])?></div>
  </div>
  <div class="instructions">
-  Select <strong><?=e((string)$round['yes_count'])?> YES</strong> for each role and rank <strong>3 alternates: A1, A2, A3</strong>.
+  Judge only roles marked for scoring. Select <strong><?=e((string)$round['yes_count'])?> YES</strong>; use only the available A1–A3 positions.
  </div>
  <?php foreach([
   ['label'=>'Leaders','columns'=>$leaderColumns],
   ['label'=>'Followers','columns'=>$followerColumns]
- ] as $section):?>
+ ] as $section):$sectionRole=$section['label']==='Leaders'?'leader':'follower';?>
  <div class="role-block">
   <div class="role-title"><?=e($section['label'])?></div>
+  <?php if($rolePlan[$sectionRole]['direct_to_final']??false):?><div class="instructions"><strong>DIRECT TO FINAL</strong> · All <?=$rolePlan[$sectionRole]['count']?> <?=e($section['label'])?> advance. No marks required.</div><?php else:?>
   <div class="role-columns cols-<?=count($section['columns'])?>">
    <?php foreach($section['columns'] as $column):?>
    <table>
@@ -283,6 +286,7 @@ th{background:#eee}
    </table>
    <?php endforeach;?>
   </div>
+  <?php endif;?>
  </div>
  <?php endforeach;?>
  <div class="spacer"></div>

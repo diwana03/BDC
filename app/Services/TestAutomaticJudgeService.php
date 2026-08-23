@@ -162,6 +162,13 @@ final class TestAutomaticJudgeService
     {
         self::syncRound($pdo, $roundId);
         self::repairIncompleteFinalSubmissions($pdo,$roundId);
+        $roundStmt=$pdo->prepare("SELECT round_type FROM bdc_test_scoring_rounds WHERE id=:round");$roundStmt->execute(['round'=>$roundId]);
+        if((string)$roundStmt->fetchColumn()!=='final'){
+            $required=array_values(array_filter(self::progress($pdo,$roundId),static fn(array $row):bool=>(int)($row['total']??0)>0));
+            if(count($required)<3)return false;
+            foreach($required as $row)if((string)($row['session_status']??'not_started')!=='submitted')return false;
+            return true;
+        }
         $count = $pdo->prepare(
             "SELECT COUNT(*) FROM bdc_test_scoring_judges WHERE round_id=:round",
         );
@@ -327,6 +334,10 @@ final class TestAutomaticJudgeService
             self::repairIncompleteFinalSubmissions($pdo, $roundId);
         }
         $yesLimit = max(0, (int) $round["yes_count"]);
+        $roleCountStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_test_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role");
+        $roleCountStmt->execute(['round'=>$roundId]);$roleCounts=['leader'=>0,'follower'=>0];
+        foreach($roleCountStmt->fetchAll() as $countRow){$countRole=(string)$countRow['dance_role'];if(isset($roleCounts[$countRole]))$roleCounts[$countRole]=(int)$countRow['total'];}
+        $rolePlan=RoleAdvancementService::roundPlan($roleCounts['leader'],$roleCounts['follower'],$yesLimit);
         $stmt = $pdo->prepare(
             "SELECT j.id judge_id,j.judge_name,j.judge_order,j.is_chief,j.scoring_scope,COALESCE(s.status,'not_started') session_status,s.token_hint,s.opened_at,s.last_saved_at,s.submitted_at FROM bdc_test_scoring_judges j LEFT JOIN bdc_test_scoring_judge_sessions s ON s.id=(SELECT MAX(s2.id) FROM bdc_test_scoring_judge_sessions s2 WHERE s2.judge_id=j.id) WHERE j.round_id=:round ORDER BY j.is_chief DESC,j.judge_order,j.id",
         );
@@ -360,7 +371,7 @@ final class TestAutomaticJudgeService
                 $counts = [];
                 foreach (["leader", "follower"] as $role) {
                     $allowed = $scope === "all" || $scope === $role;
-                    if (!$allowed) {
+                    if (!$allowed || !($rolePlan[$role]['requires_judging']??false)) {
                         $counts[$role] = [0, 0];
                         continue;
                     }
