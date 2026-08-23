@@ -147,9 +147,10 @@ final class LiveDisplaySessionService
         bool $test,
         array $v,
         int $userId,
+        int $sessionId=0,
     ): array {
         self::ensure($pdo);
-        $current = self::forEvent($pdo, $eventId, $test);
+        $current = $sessionId>0 ? self::byId($pdo,$sessionId,$test) : self::forEvent($pdo, $eventId, $test);
         if (!$current) {
             throw new \RuntimeException(
                 "Live Display link has not been generated.",
@@ -250,12 +251,12 @@ final class LiveDisplaySessionService
             "id" => (int) $current["id"],
             "m" => $test ? "test" : "real",
         ]);
-        return self::forEvent($pdo, $eventId, $test) ?: [];
+        return $sessionId>0 ? (self::byId($pdo,$sessionId,$test)?:[]) : (self::forEvent($pdo, $eventId, $test) ?: []);
     }
-    public static function effect(PDO $pdo,int $eventId,bool $test,string $effect,int $userId):array
+    public static function effect(PDO $pdo,int $eventId,bool $test,string $effect,int $userId,int $sessionId=0):array
     {
         self::ensure($pdo);if(!in_array($effect,['none','countdown','drumroll','drumroll_1','drumroll_2','drumroll_3','drumroll_4','drumroll_5','fireworks','confetti','hearts','balloons','heart_smiles','finger_hearts','gold_rain','laser_sweep','champion_impact'],true))throw new \RuntimeException('Invalid presentation effect.');
-        $session=self::forEvent($pdo,$eventId,$test);if(!$session)throw new \RuntimeException('Generate the Live Display link first.');
+        $session=$sessionId>0?self::byId($pdo,$sessionId,$test):self::forEvent($pdo,$eventId,$test);if(!$session)throw new \RuntimeException('Generate the Live Display link first.');
         // Effects are an overlay channel. Do not increment state_version here:
         // reloading the underlying feed would hide or interrupt the overlay.
         $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'id'=>(int)$session['id'],'m'=>$test?'test':'real']);
