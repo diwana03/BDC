@@ -118,9 +118,9 @@ final class LiveDisplaySessionService
     {
         self::ensure($pdo);
         $s = $pdo->prepare(
-            "SELECT * FROM bdc_live_display_sessions WHERE event_id=:e AND data_mode=:m AND is_enabled=1 LIMIT 1",
+            "SELECT s.* FROM bdc_live_display_sessions s WHERE s.data_mode=:m AND s.is_enabled=1 AND (s.event_id=:e OR EXISTS(SELECT 1 FROM bdc_live_display_session_events se WHERE se.session_id=s.id AND se.event_id=:member)) ORDER BY (s.active_event_id=:active) DESC,(s.group_name IS NOT NULL) DESC,(s.event_id=:primary) DESC,s.id DESC LIMIT 1",
         );
-        $s->execute(["e" => $eventId, "m" => $test ? "test" : "real"]);
+        $s->execute(["e"=>$eventId,"member"=>$eventId,"active"=>$eventId,"primary"=>$eventId,"m"=>$test ? "test" : "real"]);
         return $s->fetch() ?: null;
     }
     public static function setResultsUnlocked(
@@ -233,8 +233,9 @@ final class LiveDisplaySessionService
         }
         $loopEnabled = !empty($v["loop_enabled"]);
         $pdo->prepare(
-            "UPDATE bdc_live_display_sessions SET current_round_id=:r,screen_type=:t,reveal_place=:rp,page_number=:p,auto_page=:a,page_delay_seconds=:d,results_unlocked=:lock,loop_enabled=:le,loop_screens=:ls,loop_delay_seconds=:ld,playlist_enabled=0,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1",
+            "UPDATE bdc_live_display_sessions SET active_event_id=:ae,current_round_id=:r,screen_type=:t,reveal_place=:rp,page_number=:p,auto_page=:a,page_delay_seconds=:d,results_unlocked=:lock,loop_enabled=:le,loop_screens=:ls,loop_delay_seconds=:ld,playlist_enabled=0,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1",
         )->execute([
+            "ae" => $eventId,
             "r" => (int) ($v["round_id"] ?? 0) ?: null,
             "t" => $type,
             "rp" => $reveal,
@@ -246,7 +247,7 @@ final class LiveDisplaySessionService
             "ls" => $loopAllowed ? implode(",", $loopAllowed) : null,
             "ld" => $loopDelay,
             "u" => $userId ?: null,
-            "e" => $eventId,
+            "id" => (int) $current["id"],
             "m" => $test ? "test" : "real",
         ]);
         return self::forEvent($pdo, $eventId, $test) ?: [];
@@ -254,10 +255,11 @@ final class LiveDisplaySessionService
     public static function effect(PDO $pdo,int $eventId,bool $test,string $effect,int $userId):array
     {
         self::ensure($pdo);if(!in_array($effect,['none','countdown','drumroll','drumroll_1','drumroll_2','drumroll_3','drumroll_4','drumroll_5','fireworks','confetti','hearts','balloons','heart_smiles','finger_hearts','gold_rain','laser_sweep','champion_impact'],true))throw new \RuntimeException('Invalid presentation effect.');
+        $session=self::forEvent($pdo,$eventId,$test);if(!$session)throw new \RuntimeException('Generate the Live Display link first.');
         // Effects are an overlay channel. Do not increment state_version here:
         // reloading the underlying feed would hide or interrupt the overlay.
-        $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,updated_by=:u,updated_at=NOW() WHERE event_id=:e AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'e'=>$eventId,'m'=>$test?'test':'real']);
-        return self::forEvent($pdo,$eventId,$test)?:[];
+        $pdo->prepare("UPDATE bdc_live_display_sessions SET effect_type=:fx,effect_version=effect_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1")->execute(['fx'=>$effect==='none'?null:$effect,'u'=>$userId?:null,'id'=>(int)$session['id'],'m'=>$test?'test':'real']);
+        return self::byId($pdo,(int)$session['id'],$test)?:[];
     }
     public static function setTheme(PDO $pdo,int $eventId,bool $test,string $theme,int $userId):array
     {
