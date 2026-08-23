@@ -1,0 +1,111 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__,2).'/bootstrap.php';
+
+use App\Core\Auth;
+use App\Core\Database;
+use App\Services\DanceCupScoringService;
+
+Auth::requireAdmin();
+$pdo=Database::connection();
+$test=(string)($_GET['data_mode']??'')==='test';
+if($test&&!Auth::isSuperAdmin()){http_response_code(403);exit('Super Admin required.');}
+DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
+$tables=DanceCupScoringService::tables($test);
+$prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup';
+$competitionId=(int)($_GET['id']??0);
+
+$query=$pdo->prepare("SELECT c.*,e.name event_name,e.event_date,e.end_date,e.venue,e.country event_country FROM {$tables['competitions']} c JOIN {$tables['events']} e ON e.id=c.event_id WHERE c.id=:id");
+$query->execute(['id'=>$competitionId]);
+$competition=$query->fetch();
+if(!$competition){http_response_code(404);exit('Dance Cup category not found.');}
+
+$query=$pdo->prepare("SELECT * FROM {$tables['criteria']} WHERE competition_id=:id ORDER BY sort_order,id");
+$query->execute(['id'=>$competitionId]);
+$criteria=$query->fetchAll();
+$query=$pdo->prepare("SELECT * FROM {$prefix}_entries WHERE competition_id=:id AND status='active' ORDER BY bib_number,id");
+$query->execute(['id'=>$competitionId]);
+$entries=$query->fetchAll();
+$query=$pdo->prepare("SELECT * FROM {$prefix}_judges WHERE competition_id=:id ORDER BY is_chief DESC,judge_order,id");
+$query->execute(['id'=>$competitionId]);
+$judges=$query->fetchAll();
+$query=$pdo->prepare("SELECT entry_id,judge_id,criterion_id,points FROM {$prefix}_marks WHERE competition_id=:id");
+$query->execute(['id'=>$competitionId]);
+$marks=[];
+foreach($query->fetchAll() as $mark)$marks[(int)$mark['judge_id']][(int)$mark['entry_id']][(int)$mark['criterion_id']]=$mark['points'];
+
+if(!$judges)$judges=[['id'=>0,'judge_name'=>'','is_chief'=>0]];
+$pages=$entries?array_chunk($entries,10):[array_fill(0,10,null)];
+$maximum=(float)$competition['maximum_score'];
+$logo=url('public/assets/img/bdc-logo-header.png');
+$eventDate=$competition['event_date']?date('j M Y',strtotime((string)$competition['event_date'])):'Date pending';
+if(!empty($competition['end_date'])&&$competition['end_date']!==$competition['event_date'])$eventDate.=' – '.date('j M Y',strtotime((string)$competition['end_date']));
+$location=implode(', ',array_filter([trim((string)($competition['venue']??'')),trim((string)($competition['event_country']??''))]));
+function dcSheetNumber(float $value):string{return rtrim(rtrim(number_format($value,2,'.',''),'0'),'.');}
+?><!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><?=e($competition['category_name'])?> · Judge Sheets</title>
+<style>
+*{box-sizing:border-box}
+:root{--ink:#111827;--muted:#596579;--line:#6b7280;--soft:#eef2f6;--navy:#12203a;--wine:#671b38}
+html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#111827;color:#fff}
+.toolbar a,.toolbar button{border:1px solid #fff;border-radius:7px;background:#fff;color:#111827;padding:9px 14px;font-weight:700;text-decoration:none;cursor:pointer}
+.sheet{width:297mm;min-height:210mm;margin:8mm auto;background:#fff;padding:9mm 10mm 8mm;display:flex;flex-direction:column;page-break-after:always;break-after:page;box-shadow:0 6px 24px #1f293733}
+.sheet:last-child{page-break-after:auto;break-after:auto}
+.header{display:grid;grid-template-columns:27mm 1fr 46mm;align-items:center;gap:5mm;border-bottom:2px solid var(--navy);padding-bottom:3mm}
+.logo{width:25mm;height:18mm;object-fit:contain}
+.title{text-align:center}.title h1{font-size:18pt;line-height:1.05;margin:0;color:var(--navy)}.title h2{font-size:12pt;margin:1.5mm 0 0;text-transform:uppercase;letter-spacing:.5px}.title p{font-size:8pt;margin:1.5mm 0 0;color:var(--muted)}
+.meta{text-align:right;font-size:8pt;line-height:1.45}.badge{display:inline-block;border-radius:999px;background:var(--wine);color:#fff;padding:1.2mm 2.6mm;font-size:7pt;font-weight:700;letter-spacing:.3px}
+.identity{display:grid;grid-template-columns:1fr 1fr 36mm;gap:5mm;margin:4mm 0 3mm;font-size:9pt}.field{border-bottom:1px solid var(--ink);min-height:7mm;padding:1.7mm 1mm}.field b{font-size:7pt;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.7mm}.page-count{text-align:right}
+.score-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}
+.score-table th,.score-table td{border:1px solid var(--line);padding:1.4mm 1mm;text-align:center;vertical-align:middle}
+.score-table thead th{background:var(--soft);font-weight:700;line-height:1.12;height:17mm}
+.score-table .number{width:18mm}.score-table .contestant{width:48mm;text-align:left}.score-table .total{width:19mm;font-weight:800}
+.score-table tbody td{height:12.5mm}.score-table tbody .contestant{font-size:9pt;font-weight:700}
+.maximum{display:block;margin-top:1mm;font-size:7pt;color:var(--muted)}
+.footer{margin-top:auto;padding-top:4mm;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;font-size:8pt}.signature{border-top:1px solid var(--ink);padding-top:1.5mm}.signature b{display:block}.note{text-align:center;color:var(--muted);font-size:7pt;line-height:1.35}
+.test{color:#b42318;font-weight:800}
+@page{size:A4 landscape;margin:0}
+@media print{html,body{background:#fff}.toolbar{display:none}.sheet{width:297mm;min-height:210mm;margin:0;box-shadow:none}.score-table thead{display:table-header-group}.score-table tr{break-inside:avoid;page-break-inside:avoid}}
+@media(max-width:900px){.sheet{transform-origin:top left}.toolbar{position:relative}}
+</style>
+</head>
+<body>
+<div class="toolbar"><div><strong><?=$test?'TEST · ':''?>Dance Cup Judge Sheets</strong><br><small>One printable sheet per assigned judge</small></div><div><a href="category.php?id=<?=$competitionId?><?=$test?'&data_mode=test':''?>">Back</a> <button type="button" onclick="window.print()">Print / Save PDF</button></div></div>
+<?php foreach($judges as $judge):foreach($pages as $pageIndex=>$pageEntries):?>
+<section class="sheet">
+ <header class="header">
+  <img class="logo" src="<?=e($logo)?>" alt="BDC">
+  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Dance Cup Judgement Sheet</h2><p><?=e($competition['category_name'])?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['dance_style'])))?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['competition_level'])))?></p></div>
+  <div class="meta"><span class="badge"><?=$test?'TEST ONLY':'OFFICIAL'?></span><br><strong><?=e($eventDate)?></strong><?php if($location):?><br><?=e($location)?><?php endif;?></div>
+ </header>
+ <div class="identity">
+  <div class="field"><b>Judge Name</b><?=e((string)$judge['judge_name'])?><?=(int)$judge['is_chief']?' · Chief Judge':''?></div>
+  <div class="field"><b>Category</b><?=e($competition['category_name'])?></div>
+  <div class="field page-count"><b>Sheet</b><?=($pageIndex+1)?> of <?=count($pages)?></div>
+ </div>
+ <table class="score-table">
+  <colgroup><col class="number"><col class="contestant"><?php foreach($criteria as $_):?><col><?php endforeach;?><col class="total"></colgroup>
+  <thead><tr><th>Contestant No.</th><th class="contestant">Participant / Team</th><?php foreach($criteria as $criterion):?><th><?=e($criterion['criterion_name'])?><span class="maximum">/ <?=e(dcSheetNumber((float)$criterion['maximum_points']))?></span></th><?php endforeach;?><th>Total<span class="maximum">/ <?=e(dcSheetNumber($maximum))?></span></th></tr></thead>
+  <tbody>
+  <?php foreach($pageEntries as $entry):?>
+   <?php if($entry):$judgeId=(int)$judge['id'];$entryId=(int)$entry['id'];$sum=0.0;$hasMark=false;?>
+   <tr><td><strong><?=e((string)$entry['bib_number'])?></strong></td><td class="contestant"><?=e($entry['display_name'])?></td><?php foreach($criteria as $criterion):$value=$marks[$judgeId][$entryId][(int)$criterion['id']]??'';if($value!==''){$sum+=(float)$value;$hasMark=true;}?><td><?=$value===''?'':e(dcSheetNumber((float)$value))?></td><?php endforeach;?><td class="total"><?=$hasMark?e(dcSheetNumber($sum)):''?></td></tr>
+   <?php else:?><tr><td></td><td class="contestant"></td><?php foreach($criteria as $_):?><td></td><?php endforeach;?><td class="total"></td></tr><?php endif;?>
+  <?php endforeach;?>
+  </tbody>
+ </table>
+ <footer class="footer">
+  <div class="signature"><b>Judge Signature</b><?=e((string)$judge['judge_name'])?></div>
+  <div class="signature"><b>Scoring Administrator / Witness</b></div>
+  <div class="note">Score each criterion within its stated maximum.<br>Final total is calculated from the saved criterion marks. <?=$test?'<span class="test">TEST DATA</span>':''?></div>
+ </footer>
+</section>
+<?php endforeach;endforeach;?>
+</body>
+</html>

@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev388",
-  "build": 3094,
+  "version": "2.3.3-dev389",
+  "build": 3095,
   "status": "development",
   "release_date": "2026-08-24",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the unusable Dance Cup workspace printout with dedicated A4 landscape judge sheets, one judge at a time, with clean contestant pagination, dynamic custom criteria, saved marks, per-judge totals and signature fields across isolated Testing and Live",
     "Makes the official 100-point SBTA judgment sheet the default Dance Cup criteria template for Solo, Couple/Duo and Team categories across isolated Testing and Live, while keeping all criteria editable and preserving custom work when Entry Type changes",
     "Restores the complete Salsa approval review with Heats scores and callbacks, Final judge rankings and Relative Placement, fixed progression points, publication status and rejection context, and prevents report tables or summary cards splitting incorrectly when printed",
     "Prevents Automatic Final judge rank saves from exposing raw JSON parser errors, identifies refreshed or expired Test and Live judge links, extends new secure judge links to 72 hours and reduces completed Final polling",
