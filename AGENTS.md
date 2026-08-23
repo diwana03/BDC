@@ -59,6 +59,28 @@ The release gate has two stages:
 
 Never silently omit a counterpart, defer it to a later release, or describe a partial scoring change as complete.
 
+
+## Mandatory new-feature sanity gate
+
+This is a **hard release-blocking rule for every new feature and every modification to an existing feature**, including UI-only, JavaScript, PHP, API, scoring, judge, Emcee, projector, report, mobile, save, refresh, lock, and navigation changes.
+
+A feature must not be described as fixed, complete, validated, ready, or published until all applicable checks below pass:
+
+1. **Trace the real runtime path before editing.** Identify the actual rendered page, conditional branch, form action, endpoint, shared service, JavaScript/CSS asset load, database write/read path, and downstream projector/report consumers. Finding matching text somewhere in a source file is not proof that the active runtime path uses it.
+2. **Record the pre-change baseline.** Confirm the affected workflow currently works on Testing and Live before adding the feature, or explicitly record the existing failure being corrected.
+3. **Test the new feature itself.** Cover normal use, refresh/reload, repeated clicks, empty/incomplete state, validation errors, duplicate input, save/reopen, locked/completed state, and mobile layout whenever applicable.
+4. **Run regression checks on connected workflows.** At minimum verify applicable Heats, Semifinal, Final, Manual, Automatic, judge selection and links, Emcee matching, projection, score submission, reports/PDF, scroll restoration, round progression, backups, and permissions.
+5. **Verify Testing and Live together.** Test both real entry points and their real runtime render branches. Shared code does not remove the requirement to verify both consumers.
+6. **Verify projector parity whenever displayed data or commands can change.** Confirm the open audience display updates correctly, including refresh/polling, holding-screen safety, reveal state, and effects where applicable.
+7. **Use executable regression checks.** Add or update a focused automated/static test that asserts the active integration point, not merely the existence of a file, function, string, or early unused HTML branch.
+8. **Inspect the final diff and published commit.** Confirm no unrelated feature disappeared, no duplicate control or asset was introduced, version/build and release notes are correct, and the exact files fetched from the resulting commit contain the intended Test, Live, and projector integration.
+9. **Report truthfully.** The completion report must list Pass, Fail, and Not Runtime-Tested items. “Not Runtime-Tested” is not a pass and blocks Production approval.
+
+**No-rush rule:** do not bundle another feature while a reported regression remains unresolved. First reproduce and isolate the regression, fix the smallest responsible layer, rerun the affected feature sanity gate, and only then continue.
+
+**Release blocker:** if any applicable sanity check fails, is skipped, or cannot be verified, stop. Do not push the candidate unless the user explicitly authorizes an unverified diagnostic candidate, and never label that candidate complete. Production remains blocked until the exact Staging commit passes runtime sanity checks.
+
+
 ## Branch and deployment safety
 
 - Develop on `develop`; never make feature changes directly on `main`.
