@@ -8,7 +8,7 @@
   if(input.dataset.bdcJudgeSearch==='1')return;
   input.dataset.bdcJudgeSearch='1';input.removeAttribute('list');
   const row=input.closest('.judge-row')||input.parentElement;
-  const hidden=row?.querySelector('input[name="judge_directory_id[]"]')||null;
+  const hidden=row?.querySelector('input[name="judge_directory_id[]"],input[name$="[directory_id]"]')||null;
   const wrap=document.createElement('div');wrap.className='bdc-judge-search';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);
   const menu=document.createElement('div');menu.className='bdc-judge-menu';menu.hidden=true;wrap.appendChild(menu);
   let timer,controller;
@@ -19,6 +19,6 @@
   input.addEventListener('keydown',event=>{const buttons=[...menu.querySelectorAll('button')];if(event.key==='ArrowDown'&&buttons.length){event.preventDefault();buttons[0].focus()}else if(event.key==='Escape')close()});
   document.addEventListener('click',event=>{if(!wrap.contains(event.target))close()});
  }
- const scan=()=>document.querySelectorAll('input[name="judge_name[]"]').forEach(attach);
+ const scan=()=>document.querySelectorAll('input[name="judge_name[]"],input[name^="final_judges["][name$="[name]"]').forEach(attach);
  document.addEventListener('DOMContentLoaded',()=>{scan();new MutationObserver(scan).observe(document.body,{childList:true,subtree:true})});
 })();
