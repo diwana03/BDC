@@ -1727,7 +1727,7 @@ $csrf=Csrf::token();
    <div class="input-group mb-2 judge-row" data-judge-row><span class="input-group-text final-judge-number">Judge <?=$i+1?></span><input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>"><input type="hidden" name="final_judges[<?=$judgeKey?>][directory_id]" value="<?=(int)($judge['judge_id']??0)?>"><input class="form-control" list="judgeDirectorySuggestions" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Search or type a new judge" required><span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span><button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button></div>
   <?php endforeach;?>
   </div>
-  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button><button class="btn btn-dark btn-sm">Save Final Judges</button></div>
+  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button><button class="btn btn-dark btn-sm">Save Final Judges</button></div><div data-final-judge-status hidden></div><?php if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='save_final_judges'&&$error!==''):?><div class="alert alert-danger py-2 mt-2 mb-0"><?=e($error)?></div><?php elseif($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='save_final_judges'&&$notice!==''):?><div class="alert alert-success py-2 mt-2 mb-0"><?=e($notice)?></div><?php endif;?>
  </form>
 </div></div>
 <?php endif;?>
@@ -2292,4 +2292,4 @@ async function refreshRegistrationDeskSync(){
 }
 refreshRegistrationDeskSync();
 setInterval(refreshRegistrationDeskSync,3000);
-</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=380"></script></body></html>
+</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>

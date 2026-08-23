@@ -21,5 +21,24 @@
   document.addEventListener('click',event=>{if(!wrap.contains(event.target))close()});
  }
  const scan=()=>document.querySelectorAll('input[name="judge_name[]"],input[name^="final_judges["][name$="[name]"]').forEach(attach);
- document.addEventListener('DOMContentLoaded',()=>{scan();new MutationObserver(scan).observe(document.body,{childList:true,subtree:true})});
+ function setupFinalForm(){
+  const form=document.getElementById('finalJudgesForm');if(!form||form.dataset.bdcJudgeValidation==='1')return;
+  form.dataset.bdcJudgeValidation='1';
+  const status=form.querySelector('[data-final-judge-status]');
+  const show=(message,type='danger')=>{if(status){status.className='alert alert-'+type+' py-2 mt-2 mb-0';status.textContent=message;status.hidden=false;}};
+  form.addEventListener('submit',event=>{
+   const rows=[...form.querySelectorAll('[data-judge-row]')];
+   const names=rows.map(row=>row.querySelector('input[name^="final_judges["][name$="[name]"]')).filter(Boolean);
+   const seenNames=new Map(),seenIds=new Map();let duplicate=null;
+   for(const input of names){const normal=input.value.trim().replace(/\s+/g,' ').toLocaleLowerCase();const row=input.closest('[data-judge-row]');const id=row?.querySelector('input[name$="[directory_id]"]')?.value||'0';if(normal&&seenNames.has(normal)){duplicate=input;break;}if(id!=='0'&&seenIds.has(id)){duplicate=input;break;}if(normal)seenNames.set(normal,input);if(id!=='0')seenIds.set(id,input);}
+   if(duplicate){event.preventDefault();show('The same judge cannot be selected more than once. Remove the duplicate before saving.');duplicate.focus();duplicate.scrollIntoView({behavior:'smooth',block:'center'});return;}
+   if(names.filter(input=>input.value.trim()).length<3){event.preventDefault();show('Minimum 3 Final judges required.');return;}
+   if(!form.querySelector('input[name="final_chief_key"]:checked')){event.preventDefault();show('Select one Final Chief Judge before saving.');return;}
+   try{sessionStorage.setItem('bdc-final-judge-scroll:'+location.pathname+':'+(form.querySelector('[name="round_id"]')?.value||''),JSON.stringify({y:scrollY,at:Date.now()}));}catch(error){}
+   show('Saving Final judges…','info');
+  });
+  const key='bdc-final-judge-scroll:'+location.pathname+':'+(form.querySelector('[name="round_id"]')?.value||'');let saved=null;try{saved=JSON.parse(sessionStorage.getItem(key)||'null');sessionStorage.removeItem(key);}catch(error){}
+  if(saved&&Number.isFinite(saved.y)&&Date.now()-Number(saved.at||0)<120000)requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo({top:saved.y,behavior:'auto'})));
+ }
+ document.addEventListener('DOMContentLoaded',()=>{scan();setupFinalForm();new MutationObserver(()=>{scan();setupFinalForm()}).observe(document.body,{childList:true,subtree:true})});
 })();

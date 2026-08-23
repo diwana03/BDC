@@ -1122,74 +1122,11 @@ try{
    $roundId=(int)($_POST['round_id']??0);
    $finalRound=loadRound($pdo,$roundId);
    if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Final round not found.');
-
-   $rows=$_POST['final_judges']??[];
-   $chiefKey=(string)($_POST['final_chief_key']??'');
-   $clean=[];
-   foreach($rows as $key=>$row){
-    $name=trim((string)($row['name']??''));
-    if($name==='')continue;
-    $id=(int)($row['id']??0);
-    $clean[(string)$key]=['id'=>$id,'name'=>$name];
-   }
-   if(count($clean)<3)throw new RuntimeException('Minimum 3 Final judges required.');
-   $lower=array_map(fn($row)=>mb_strtolower($row['name']),array_values($clean));
-   if(count($lower)!==count(array_unique($lower)))throw new RuntimeException('Final judge names must be unique.');
-   if(!isset($clean[$chiefKey]))throw new RuntimeException('Select one Final Chief Judge.');
-   $chiefRow=$clean[$chiefKey];unset($clean[$chiefKey]);$clean=array_merge([$chiefKey=>$chiefRow],$clean);
-
-   $existingStmt=$pdo->prepare("SELECT id FROM bdc_test_scoring_judges WHERE round_id=:r");
-   $existingStmt->execute(['r'=>$roundId]);
-   $existingIds=array_map('intval',$existingStmt->fetchAll(PDO::FETCH_COLUMN));
-
-   $pdo->beginTransaction();
-   try{
-    $pdo->prepare("UPDATE bdc_test_scoring_judges SET judge_order=judge_order+10000 WHERE round_id=:r")->execute(['r'=>$roundId]);
-    $keptIds=[];
-    $chiefId=0;
-    $order=1;
-
-    $update=$pdo->prepare("UPDATE bdc_test_scoring_judges SET judge_name=:name,judge_order=:ord,is_chief=:chief,scoring_scope='all' WHERE id=:id AND round_id=:r");
-    $insert=$pdo->prepare("INSERT INTO bdc_test_scoring_judges(round_id,judge_name,judge_order,is_chief,scoring_scope) VALUES(:r,:name,:ord,:chief,'all')");
-
-    foreach($clean as $key=>$row){
-     $isChief=$key===$chiefKey?1:0;
-     if($row['id']>0 && in_array($row['id'],$existingIds,true)){
-      $update->execute(['name'=>$row['name'],'ord'=>$order,'chief'=>$isChief,'id'=>$row['id'],'r'=>$roundId]);
-      $judgeId=$row['id'];
-     }else{
-      $insert->execute(['r'=>$roundId,'name'=>$row['name'],'ord'=>$order,'chief'=>$isChief]);
-      $judgeId=(int)$pdo->lastInsertId();
-     }
-     $keptIds[]=$judgeId;
-     if($isChief)$chiefId=$judgeId;
-     $order++;
-    }
-
-    $removeIds=array_values(array_diff($existingIds,$keptIds));
-    if($removeIds){
-     $placeholders=implode(',',array_fill(0,count($removeIds),'?'));
-     $pdo->prepare("DELETE FROM bdc_test_scoring_final_marks WHERE round_id=? AND judge_id IN ($placeholders)")
-         ->execute(array_merge([$roundId],$removeIds));
-     $pdo->prepare("DELETE FROM bdc_test_scoring_judges WHERE round_id=? AND id IN ($placeholders)")
-         ->execute(array_merge([$roundId],$removeIds));
-     $pdo->prepare("DELETE FROM bdc_test_scoring_final_results WHERE round_id=:r")->execute(['r'=>$roundId]);
-    }
-
-    $pdo->prepare("UPDATE bdc_test_scoring_rounds SET chief_judge_id=:chief WHERE id=:r")
-        ->execute(['chief'=>$chiefId,'r'=>$roundId]);
-
-    auditScoring($pdo,$roundId,$userId,'final_judges_saved',[
-      'count'=>count($clean),
-      'chief_judge_id'=>$chiefId,
-      'removed_judge_ids'=>$removeIds
-    ]);
-    $pdo->commit();
-    $notice='Final judges saved. Existing judges were updated and new judges were appended.';
-   }catch(Throwable $e){
-    if($pdo->inTransaction())$pdo->rollBack();
-    throw $e;
-   }
+   $posted=$_POST['final_judges']??[];$rows=[];
+   foreach($posted as $key=>$row)$rows[(string)$key]=['name'=>(string)($row['name']??''),'scope'=>'all','assignment_id'=>(int)($row['id']??0),'directory_id'=>(int)($row['directory_id']??0),'original_index'=>(string)$key];
+   $saved=\App\Services\ScoringJudgeAssignmentService::save($pdo,$roundId,$rows,(string)($_POST['final_chief_key']??''),'bdc_test_scoring_judges','bdc_test_scoring_rounds');
+   testAudit($pdo,$roundId,$userId,'final_judges_saved',['count'=>$saved['count'],'chief_judge_id'=>$saved['chief_id'],'judge_profiles_created'=>$saved['created_directory_count']]);
+   $notice='Test Final judges saved and linked to the Judge Database.';
 
   }elseif($action==='save_final_rank_count'){
    $roundId=(int)($_POST['round_id']??0);$roundForFinal=loadRound($pdo,$roundId);if(!$roundForFinal||$roundForFinal['round_type']!=='final')throw new RuntimeException('Final round not found.');
@@ -1800,7 +1737,7 @@ $csrf=Csrf::token();
    <div class="input-group mb-2 judge-row" data-judge-row><span class="input-group-text final-judge-number">Judge <?=$i+1?></span><input type="hidden" name="final_judges[<?=$judgeKey?>][id]" value="<?=e((string)($judge['id']??0))?>"><input class="form-control" name="final_judges[<?=$judgeKey?>][name]" value="<?=e($judge['judge_name'])?>" placeholder="Final judge name" required><span class="input-group-text"><input type="radio" name="final_chief_key" value="<?=$judgeKey?>" <?=(int)$judge['is_chief']?'checked':''?>> Chief</span><button type="button" class="btn btn-outline-danger" onclick="removeFinalJudge(this)">Remove</button></div>
   <?php endforeach;?>
   </div>
-  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button><button class="btn btn-dark btn-sm">Save Test Final Judges</button></div>
+  <div class="d-flex gap-2 flex-wrap"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFinalJudge()">+ Add Final Judge</button><button class="btn btn-dark btn-sm">Save Test Final Judges</button></div><div data-final-judge-status hidden></div><?php if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='save_final_judges'&&$error!==''):?><div class="alert alert-danger py-2 mt-2 mb-0"><?=e($error)?></div><?php elseif($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='save_final_judges'&&$notice!==''):?><div class="alert alert-success py-2 mt-2 mb-0"><?=e($notice)?></div><?php endif;?>
  </form>
 </div></div>
 <?php endif;?>
@@ -2323,4 +2260,4 @@ document.querySelectorAll('.final-judge-page-button').forEach(button=>{
   });
  });
 });
-</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=380"></script></body></html>
+</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>
