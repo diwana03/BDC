@@ -25,9 +25,9 @@ $checks = [
     'five card maximum' => str_contains($feed, '$coupleColumns = min(5'),
     'incomplete row expands' => str_contains($feed, 'display:flex;flex-wrap:wrap'),
     'bib remains larger' => str_contains($feed, 'font-size:clamp(19px,1.55vw,38px)'),
-    'five second reveal' => str_contains($presenter, 'let seconds=5'),
+    'five second countdown retained' => str_contains($presenter, 'let seconds=5'),
     'projector countdown visual' => str_contains($display, 'function countdown()'),
-    'blast reveal' => str_contains($presenter, "'champion_impact'"),
+    'random match has no automatic blast' => !str_contains($presenter, "'champion_impact'"),
 ];
 foreach ($checks as $label => $ok) {
     if (!$ok) {
