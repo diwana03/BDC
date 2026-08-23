@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const style=document.createElement('style');
- style.textContent='.bdc-judge-search{position:relative;min-width:0}.bdc-judge-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1090;max-height:280px;overflow:auto;padding:6px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,.18)}.bdc-judge-menu button{display:block;width:100%;border:0;border-radius:7px;background:transparent;padding:9px 10px;text-align:left;color:#172033}.bdc-judge-menu button:hover,.bdc-judge-menu button:focus{background:#edf4ff;outline:0}.bdc-judge-menu small{display:block;color:#64748b}.bdc-judge-empty{padding:10px;color:#64748b;font-size:.875rem}';
+ style.textContent='.bdc-judge-search{position:relative;min-width:0}.input-group>.bdc-judge-search{flex:1 1 auto;width:1%;min-width:0}.input-group>.bdc-judge-search>.form-control{width:100%;min-width:0;border-radius:0}.bdc-judge-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1090;max-height:280px;overflow:auto;padding:6px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,.18)}.bdc-judge-menu button{display:block;width:100%;border:0;border-radius:7px;background:transparent;padding:9px 10px;text-align:left;color:#172033}.bdc-judge-menu button:hover,.bdc-judge-menu button:focus{background:#edf4ff;outline:0}.bdc-judge-menu small{display:block;color:#64748b}.bdc-judge-empty{padding:10px;color:#64748b;font-size:.875rem}';
  document.head.appendChild(style);
  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  function attach(input){
