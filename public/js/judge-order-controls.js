@@ -32,7 +32,18 @@
     const controls = document.createElement('span');
     controls.dataset.judgeOrderControls = '1';
     controls.className = 'd-inline-flex gap-1 align-items-center ms-2';
-    controls.innerHTML = '<button type="button" class="btn btn-sm btn-outline-secondary" data-move="up" aria-label="Move judge up">↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-move="down" aria-label="Move judge down">↓</button><button type="button" class="btn btn-sm btn-outline-danger" data-remove-judge aria-label="Remove judge">Remove</button><span class="badge text-bg-warning d-none" data-pinned>Chief · Pinned first</span>';
+    controls.innerHTML = '<button type="button" class="btn btn-sm btn-outline-secondary" data-move="up" aria-label="Move judge up">↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-move="down" aria-label="Move judge down">↓</button><span class="badge text-bg-warning d-none" data-pinned>Chief · Pinned first</span>';
+    const existingRemove = row.querySelector('button[onclick*="removeFinalJudge"]');
+    if(existingRemove){
+      existingRemove.removeAttribute('onclick');
+      existingRemove.setAttribute('data-remove-judge','');
+      existingRemove.setAttribute('aria-label','Remove judge');
+      controls.insertBefore(existingRemove,controls.querySelector('[data-pinned]'));
+    }else{
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='btn btn-sm btn-outline-danger';remove.setAttribute('data-remove-judge','');remove.setAttribute('aria-label','Remove judge');remove.textContent='Remove';
+      controls.insertBefore(remove,controls.querySelector('[data-pinned]'));
+    }
     const target = row.querySelector('.col-md-2:last-child, .input-group-text:last-of-type') || row;
     target.appendChild(controls);
     controls.addEventListener('click', (event) => {

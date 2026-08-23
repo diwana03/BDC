@@ -2323,4 +2323,4 @@ document.querySelectorAll('.final-judge-page-button').forEach(button=>{
   });
  });
 });
-</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=348"></script><script src="../../public/js/scoring-judge-directory.js?v=379"></script></body></html>
+</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=380"></script></body></html>
