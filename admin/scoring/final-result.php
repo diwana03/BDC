@@ -150,7 +150,7 @@ th{background:#eef1f4}
 .signature-line{display:inline-block;min-width:52mm;margin:0 4mm 5mm 0;border-bottom:1px solid #111;padding-bottom:1mm;font-size:8.5pt}
 .footer{display:flex;justify-content:space-between;margin-top:4mm;padding-top:2mm;border-top:1px solid #cfd4da;font-size:8pt}
 .fit-all .page{width:max-content;min-width:400mm;page-break-after:always}.fit-all .judge-ranking-table,.fit-all .placement-count-table{width:max-content;min-width:100%;font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-all .judge-ranking-table th,.fit-all .judge-ranking-table td,.fit-all .placement-count-table th,.fit-all .placement-count-table td{min-width:9mm;padding:.8mm .5mm}.fit-all .name-cell{width:55mm!important;min-width:55mm!important;max-width:55mm;white-space:normal}.fit-all .rank-col,.fit-all .couple-col{width:14mm!important;min-width:14mm!important}.fit-all .summary-col{width:18mm!important;min-width:18mm!important;font-weight:700}
-@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:0;margin:0;padding:0}}
+@media print{@page{margin:10mm}body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:0;margin:0;padding:0;overflow:visible;break-after:page;page-break-after:always}.page:last-of-type{break-after:auto;page-break-after:auto}.header,.details,.final-ranking,.judge-key,.witness-panel,.signature-box,.rank-card,.summary-list li{break-inside:avoid;page-break-inside:avoid}.panel{overflow:visible}.panel h3{break-after:avoid;page-break-after:avoid}table{break-inside:auto;page-break-inside:auto}thead{display:table-header-group}tfoot{display:table-footer-group}tr{break-inside:avoid;page-break-inside:avoid}}
 </style>
 </head>
 <body class="<?=$fitAll?'fit-all layout-fit':''?>">
