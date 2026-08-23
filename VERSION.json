@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev366",
-  "build": 3072,
+  "version": "2.3.3-dev367",
+  "build": 3073,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a dedicated secure Emcee Matching Link to Test and Live Final dashboards with Generate or Regenerate, Copy, Open and expiry controls while reusing the existing event projector and protected random-pairing engine",
     "Prevents manual Live Preview from splitting equal totals by Chief score, YES count or entry order, showing the complete callback or alternate boundary group as Tie Pending before server calculation",
     "Makes direct-Final advancement visibly role-specific on manual Heats sheets for every 5, 10 and 15 callback tier, excluding the qualifying role from scoring while the larger role continues through Heats",
     "Prompts submitted Heats rosters to go directly to Final when both Leader and Follower counts fit within the tier callback quota, creating callback records internally without fake judge marks",

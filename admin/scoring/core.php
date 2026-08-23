@@ -593,7 +593,7 @@ try{
     throw new RuntimeException($message);
    }
   }
-  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups'],true) && !empty($_POST['round_id'])){
+  if($action!=='create_round' && !in_array($action,['create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups','generate_emcee_link'],true) && !empty($_POST['round_id'])){
    ScoringBackupService::create($pdo,(int)$_POST['round_id'],false,$userId,'automatic',$action,'Before '.str_replace('_',' ',$action));
   }
   if($action==='create_scoring_backup'){
@@ -1228,6 +1228,13 @@ try{
   }elseif($action==='random_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    $random=App\Services\RandomPairingService::randomize($pdo,$roundId,false,$userId?:null);auditScoring($pdo,$roundId,$userId,'final_pairing_randomized',['algorithm'=>$random['algorithm'],'hash'=>$random['hash']]);$notice='Secure random Final pairing generated. Review before confirming.';
+  }elseif($action==='generate_emcee_link'){
+   $roundId=(int)($_POST['round_id']??0);$finalRound=loadRound($pdo,$roundId);
+   if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Final round not found.');
+   if(!App\Services\LiveDisplaySessionService::forEvent($pdo,(int)$finalRound['event_id'],false))App\Services\LiveDisplaySessionService::generate($pdo,(int)$finalRound['event_id'],false,$userId);
+   App\Services\RandomPairingService::generateLink($pdo,$roundId,false,$userId);
+   auditScoring($pdo,$roundId,$userId,'emcee_matching_link_generated',['data_mode'=>'real','expires_in_hours'=>12]);
+   $notice='Restricted Emcee Matching Link generated. It expires in 12 hours and uses this event\'s existing projector.';
   }elseif($action==='unlock_random_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can unlock Random Match.');
@@ -1707,7 +1714,18 @@ $csrf=Csrf::token();
 </div>
 
 <div class="card shadow-sm mb-4"><div class="card-body">
- <?php $randomMatchLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,false);?>
+ <?php $randomMatchLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,false);$emceeLink=App\Services\RandomPairingService::activeLink($pdo,$roundId,false);?>
+ <div class="border border-danger-subtle rounded p-3 mb-3 bg-danger-subtle bg-opacity-10">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+   <div><h2 class="h5 mb-1">Emcee Matching Link</h2><div class="text-muted small">Restricted link for the Emcee to randomize and reveal Final couples on this event's existing projector.</div></div>
+   <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="../live-screen/control.php?round_id=<?=$roundId?>#emcee-match">Manage Event Projection</a>
+  </div>
+  <?php if($emceeLink):?>
+   <div class="input-group mt-3"><input id="emceeMatchingUrl" class="form-control" readonly value="<?=e((string)$emceeLink['url'])?>"><button type="button" class="btn btn-outline-primary" onclick="navigator.clipboard.writeText(document.getElementById('emceeMatchingUrl').value)">Copy Link</button><a class="btn btn-danger" target="_blank" rel="noopener" href="<?=e((string)$emceeLink['url'])?>">Open Emcee Matching</a></div>
+   <div class="small text-muted mt-1">Secure access expires <?=e((string)$emceeLink['expires_at'])?>.</div>
+  <?php else:?><p class="text-muted small mt-3 mb-0">Generate the restricted link when the Emcee is ready. Final scoring must not have started.</p><?php endif;?>
+  <form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="generate_emcee_link"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-outline-danger" <?=$randomMatchLocked?'disabled':''?>><?=$emceeLink?'Regenerate':'Generate'?> Emcee Matching Link</button></form>
+ </div>
  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
   <form method="post">
@@ -1715,7 +1733,7 @@ $csrf=Csrf::token();
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
    <button class="btn btn-warning" <?=$randomMatchLocked?'disabled':''?>><?=$randomMatchLocked?'Random Match Locked':'Random Match'?></button>
-  </form><a class="btn btn-outline-danger" target="_blank" rel="noopener" href="../live-screen/control.php?round_id=<?=$roundId?>#emcee-match">Event Projection &amp; Emcee Match</a>
+  </form>
  </div>
  <?php if($randomMatchLocked):?><div class="alert alert-warning"><strong>Random Match locked:</strong> Final scoring has started, so the current couples are protected.</div><?php if(Auth::canOverrideCompletedScores()):?><details class="border border-danger-subtle rounded p-3 mb-3"><summary class="fw-bold text-danger">Emergency REMATCH override</summary><p class="small text-muted mt-2">This clears all existing Final placements and calculated Final results, reopens every judge session, and revokes the current Emcee match link.</p><form method="post" class="row g-2" onsubmit="return confirm('Emergency REMATCH will clear every existing Final placement and result. Continue?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="unlock_random_pairing"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-md-7"><input class="form-control" name="rematch_reason" minlength="8" maxlength="500" required placeholder="Reason for emergency rematch"></div><div class="col-md-3"><input class="form-control" name="rematch_confirmation" required autocomplete="off" placeholder="Type REMATCH"></div><div class="col-md-2"><button class="btn btn-outline-danger w-100">Unlock</button></div></form></details><?php endif;?><?php endif;?>
 
@@ -2276,4 +2294,4 @@ async function refreshRegistrationDeskSync(){
 }
 refreshRegistrationDeskSync();
 setInterval(refreshRegistrationDeskSync,3000);
-</script><script src="../../public/js/judge-order-controls.js?v=348"></script><script src="../../public/js/scoring-judge-directory.js?v=360"></script></body></html>
+</script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=348"></script><script src="../../public/js/scoring-judge-directory.js?v=360"></script></body></html>
