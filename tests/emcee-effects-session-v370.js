@@ -21,6 +21,14 @@ for(const action of actions){
 }
 if(!state.includes('"effect_type" => $s["effect_type"]')||!state.includes('"effect_version" => (int)'))throw new Error('Projector state does not publish effect data');
 if(!display.includes("['hearts','balloons','heart_smiles','finger_hearts'].includes(s.effect_type)"))throw new Error('Four-effect renderer dispatch missing');
+if(!display.includes('id="emojiLayer"')||!display.includes("document.createElement('span')"))throw new Error('Native emoji overlay renderer missing');
+if(!display.includes('"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"'))throw new Error('Cross-platform color emoji fonts missing');
+if(!display.includes('count=Math.min(48,Math.max(24'))throw new Error('Native emoji overlay must remain performance capped');
+const emojiStart=display.indexOf('function emojiFloat');
+const emojiEnd=display.indexOf('function rankedDrum',emojiStart);
+const emojiBlock=display.slice(emojiStart,emojiEnd);
+if(emojiBlock.includes('requestAnimationFrame')||emojiBlock.includes('ctx.fillText'))throw new Error('Four emoji effects must not depend on a canvas animation loop');
+if(!display.includes('emojiLayer.replaceChildren()'))throw new Error('Native emoji overlay cleanup missing');
 if(!presenter.includes('Random Matching Method: Secure Fisher–Yates Shuffle'))throw new Error('Approved Emcee algorithm heading missing');
 if(!presenter.includes('Leaders remain in bib order while Followers are securely and randomly shuffled'))throw new Error('Approved Emcee algorithm explanation missing');
 if(presenter.includes('using PHP random_int()')||presenter.includes('Pairing remains Draft until Chief Judge/Admin confirms it'))throw new Error('Technical or non-Emcee note remains');
