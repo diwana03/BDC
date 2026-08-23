@@ -81,7 +81,7 @@ if(
    </div>
   </div>
  </main>
- <script src="../../public/js/final-pairing-sync.js?v=382" defer></script></body>
+ <script src="../../public/js/final-pairing-sync.js?v=383" defer></script></body>
  </html>
  <?php
  exit;
@@ -1747,7 +1747,7 @@ $csrf=Csrf::token();
  </div>
  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
-  <?php if($emceeLink):?><a class="btn btn-warning" target="_blank" rel="noopener" href="<?=e((string)$emceeLink['url'])?>">Open Emcee Random Match</a><?php else:?><form method="post">
+  <?php if($emceeLink):?><form method="post" target="_blank" action="<?=e((string)$emceeLink['url'])?>" onsubmit="return confirm('Start the secure Emcee Random Match and projector countdown now?');"><input type="hidden" name="action" value="randomize"><button class="btn btn-warning">Start Emcee Random Match</button></form><?php else:?><form method="post">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">

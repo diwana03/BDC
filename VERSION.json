@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev382",
-  "build": 3088,
+  "version": "2.3.3-dev383",
+  "build": 3089,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes dashboard Emcee Random Match a one-click POST that starts randomization and countdown, then locks Save and Confirm until every synchronized couple is complete",
     "Unifies Final Random Match with the active Emcee link and live-synchronizes saved pairings between Emcee, Testing and Live dashboards",
     "Repairs Final judge saving with shared Testing and Live assignment logic, immediate duplicate prevention, inline save feedback and scroll-position restoration",
     "Keeps Final Judge Database results above the following matching card and removes the duplicate Final Remove control while preserving judge ordering and Chief pinning",

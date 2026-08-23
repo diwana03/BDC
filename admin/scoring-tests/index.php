@@ -542,7 +542,7 @@ function buildResultHtml(PDO $pdo,array $round):string{
  SCORING TESTS DASHBOARD · ISOLATED TEST DATA · NEVER PUBLISHED TO OFFICIAL RESULTS
 </div>
 <div class="no-print"><button onclick="window.print()">Print / Save as PDF</button></div><div class="head"><div><div class="title"><?=e($round['event_name'])?></div><div class="sub"><?=strtoupper(e($round['division']))?> DIVISION - HEATS</div><div><?=e((string)$round['event_date'])?></div></div><img class="logo" src="<?=e($logo)?>"></div><div class="grid"><section><?=$table('leader',$by['leader'])?></section><section><?=$table('follower',$by['follower'])?></section></div><div class="foot"><div>Witness(es): ______________________________</div><div>Bachata Dance Council · Version <?= (int)$round['generated_version'] ?></div></div><script src="<?=e(url('admin/scoring/heats-live-v230.js?v=230'))?>"></script>
-<div id="scoringProgressOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:10000;align-items:center;justify-content:center;color:#fff"><div style="background:#111827;padding:28px;border-radius:14px;min-width:320px;text-align:center"><div class="spinner-border mb-3" role="status"></div><h3 class="h5">Processing Scores</h3><div id="scoringProgressText">Saving scores…</div><div class="progress mt-3" style="height:10px"><div id="scoringProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:20%"></div></div></div></div><script src="../../public/js/final-pairing-sync.js?v=382" defer></script></body></html><?php return ob_get_clean();
+<div id="scoringProgressOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:10000;align-items:center;justify-content:center;color:#fff"><div style="background:#111827;padding:28px;border-radius:14px;min-width:320px;text-align:center"><div class="spinner-border mb-3" role="status"></div><h3 class="h5">Processing Scores</h3><div id="scoringProgressText">Saving scores…</div><div class="progress mt-3" style="height:10px"><div id="scoringProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:20%"></div></div></div></div><script src="../../public/js/final-pairing-sync.js?v=383" defer></script></body></html><?php return ob_get_clean();
 }
 
 $roundId=(int)($_GET['round_id']??$_POST['round_id']??0);
@@ -1757,7 +1757,7 @@ $csrf=Csrf::token();
  </div>
  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
-  <?php if($emceeLink):?><a class="btn btn-warning" target="_blank" rel="noopener" href="<?=e((string)$emceeLink['url'])?>">Open Test Emcee Random Match</a><?php else:?><form method="post">
+  <?php if($emceeLink):?><form method="post" target="_blank" action="<?=e((string)$emceeLink['url'])?>" onsubmit="return confirm('Start the secure Emcee Random Match and projector countdown now?');"><input type="hidden" name="action" value="randomize"><button class="btn btn-warning">Start Test Emcee Random Match</button></form><?php else:?><form method="post">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
