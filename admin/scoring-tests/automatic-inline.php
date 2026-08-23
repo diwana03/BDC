@@ -64,7 +64,7 @@ $items=TestAutomaticJudgeService::syncRound($pdo,$roundId);
 foreach($items as $item){$jid=(int)$item['id'];if(($item['plain_token']??'')!=='')$_SESSION['bdc_test_auto_urls'][$roundId][$jid]=TestAutomaticJudgeService::publicUrl((string)$item['plain_token']);}
 $progress=TestAutomaticJudgeService::progress($pdo,$roundId);$urls=$_SESSION['bdc_test_auto_urls'][$roundId]??[];$contacts=[];foreach($progress as $progressJudge){try{$contacts[(int)$progressJudge['judge_id']]=JudgeLinkDeliveryService::contact($pdo,(int)$progressJudge['judge_id'],$roundId,true);}catch(Throwable){}}$error=(string)($_SESSION['bdc_test_auto_error']??'');unset($_SESSION['bdc_test_auto_error']);$csrf=Csrf::token();
 $allJudgesSubmitted=!empty($progress)&&count(array_filter($progress,fn($row)=>(string)($row['session_status']??'')==='submitted'))===count($progress);
-$scoresCompleted=in_array((string)$round['status'],['awaiting_decision','scores_submitted','tie_pending'],true);
+$scoresCompleted=in_array((string)$round['status'],['awaiting_decision','scores_submitted','tie_pending','completed'],true);
 $tieStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_test_scoring_results WHERE round_id=:r AND result_status='tie_pending'");
 $tieStmt->execute(['r'=>$roundId]);
 $hasCallbackTies=(int)$tieStmt->fetchColumn()>0;

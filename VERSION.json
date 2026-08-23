@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev372",
-  "build": 3078,
+  "version": "2.3.3-dev373",
+  "build": 3079,
   "status": "development",
   "release_date": "2026-08-23",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps the locked Heats score report visibly accessible for review, printing and PDF saving after a completed Test or Live round is reopened from history, without reopening scoring",
     "Adds a secure 12-hour event-specific Mobile Projection Remote for scorers and projector operators with safe screens, live status, page navigation, Auto Page and four lightweight effects across Testing and Live",
     "Replaces canvas-dependent emoji drawing for Hearts, Balloons, Smiling Hearts and Korean Finger Hearts with native color-emoji DOM overlays and GPU-friendly CSS animation for reliable Firefox, macOS and projector rendering",
     "Repairs all four Emcee celebration effects by targeting the resolved standalone or Festival projector session, adds the same manual effects to Test and Live J&J Projection Control, and replaces technical Emcee copy with a clear Secure Fisher–Yates Shuffle explanation",
