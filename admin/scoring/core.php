@@ -81,7 +81,7 @@ if(
    </div>
   </div>
  </main>
- </body>
+ <script src="../../public/js/final-pairing-sync.js?v=382" defer></script></body>
  </html>
  <?php
  exit;
@@ -1747,16 +1747,16 @@ $csrf=Csrf::token();
  </div>
  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div><h2 class="h5 mb-1">Match Competitors</h2><div class="text-muted small">Choose one Follower beside each Leader, or generate a random match.</div></div>
-  <form method="post">
+  <?php if($emceeLink):?><a class="btn btn-warning" target="_blank" rel="noopener" href="<?=e((string)$emceeLink['url'])?>">Open Emcee Random Match</a><?php else:?><form method="post">
    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
    <input type="hidden" name="action" value="random_final_pairing">
    <input type="hidden" name="round_id" value="<?=$roundId?>">
    <button class="btn btn-warning" <?=$randomMatchLocked?'disabled':''?>><?=$randomMatchLocked?'Random Match Locked':'Random Match'?></button>
-  </form>
+  </form><?php endif;?>
  </div>
  <?php if($randomMatchLocked):?><div class="alert alert-warning"><strong>Random Match locked:</strong> Final scoring has started, so the current couples are protected.</div><?php if(Auth::canOverrideCompletedScores()):?><details class="border border-danger-subtle rounded p-3 mb-3"><summary class="fw-bold text-danger">Emergency REMATCH override</summary><p class="small text-muted mt-2">This clears all existing Final placements and calculated Final results, reopens every judge session, and revokes the current Emcee match link.</p><form method="post" class="row g-2" onsubmit="return confirm('Emergency REMATCH will clear every existing Final placement and result. Continue?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="unlock_random_pairing"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-md-7"><input class="form-control" name="rematch_reason" minlength="8" maxlength="500" required placeholder="Reason for emergency rematch"></div><div class="col-md-3"><input class="form-control" name="rematch_confirmation" required autocomplete="off" placeholder="Type REMATCH"></div><div class="col-md-2"><button class="btn btn-outline-danger w-100">Unlock</button></div></form></details><?php endif;?><?php endif;?>
 
- <form method="post">
+ <form method="post" id="finalPairingForm" data-pairing-state-url="final-pairing-state.php?round_id=<?=$roundId?>">
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
   <input type="hidden" name="round_id" value="<?=$roundId?>">
   <div class="table-responsive"><table class="table align-middle">
@@ -1771,7 +1771,7 @@ $csrf=Csrf::token();
      <td>#<?=$i+1?></td>
      <td><strong>Bib <?=$leader['bib_number']?></strong><br><?=e($leader['display_name'])?></td>
      <td>
-      <select class="form-select" name="pair[<?=$leader['id']?>]">
+      <select class="form-select" data-final-leader-id="<?=$leader['id']?>" name="pair[<?=$leader['id']?>]">
        <option value="0">Select Follower</option>
        <?php foreach($entries['follower'] as $follower):?>
         <option value="<?=$follower['id']?>" <?=$current && (int)$current['follower_entry_id']===(int)$follower['id']?'selected':''?>>
@@ -1780,11 +1780,12 @@ $csrf=Csrf::token();
        <?php endforeach;?>
       </select>
      </td>
-     <td><?=e($current['pairing_status']??'draft')?></td>
+     <td data-final-pair-status="<?=$leader['id']?>"><?=e($current['pairing_status']??'draft')?></td>
     </tr>
    <?php endforeach;?>
    </tbody>
   </table></div>
+  <div class="small text-muted mb-2" data-pairing-sync-status>Waiting for Emcee Random Match…</div>
   <div class="d-flex gap-2 flex-wrap">
    <button class="btn btn-outline-primary" name="action" value="save_final_pairing">Save Pairing Draft</button>
    <button class="btn btn-success" name="action" value="confirm_final_pairing" onclick="return confirm('Confirm these fixed Final couples?')">Confirm Final Pairing</button>
