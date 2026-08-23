@@ -1818,10 +1818,11 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
   <a class="btn btn-outline-primary" href="print.php?round_id=<?=$roundId?>" target="_blank">Print Final Judge Sheets</a>
  </div>
 
- <form method="post" id="finalScoreForm">
+ <form method="post" id="finalScoreForm" <?php if(($round['scoring_mode']??'manual')==='automated'):?>data-final-score-state-url="../scoring/final-score-state.php?round_id=<?=$roundId?>&amp;data_mode=test"<?php endif;?>>
   <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
   <input type="hidden" name="round_id" value="<?=$roundId?>">
   <input type="hidden" name="final_rank_payload" id="finalRankPayload" value="">
+  <?php if(($round['scoring_mode']??'manual')==='automated'):?><div class="alert alert-info py-2 mb-3" data-final-score-sync-status>Live judge-score updates are connecting…</div><?php endif;?>
   <?php $finalJudgePageSize=10;$finalJudgePageCount=max(1,(int)ceil(count($judges)/$finalJudgePageSize));?>
   <?php if(count($judges)>10):?><div class="d-flex flex-wrap align-items-center gap-2 mb-3">
    <strong>Judge columns:</strong>
@@ -1833,20 +1834,20 @@ $pairingConfirmed=$finalPairs && count(array_filter($finalPairs,fn($pair)=>$pair
   <div class="table-responsive"><table class="table table-bordered align-middle final-scoring-table">
    <thead><tr>
     <th>Final Rank</th><th>Couple</th><th>Leader</th><th>Follower</th>
-    <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?><th class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?><?=$judgeLocked?' 🔒':''?></th><?php endforeach;?>
+    <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?><th class="final-judge-column" data-final-judge-header="<?=$judge['id']?>" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?><?=$judgeLocked?' 🔒':''?></th><?php endforeach;?>
     <th>Relative Placement</th>
    </tr></thead>
    <tbody>
    <?php foreach($finalPairs as $pair):$finalResult=$finalResults[(int)$pair['id']]??null;?>
     <tr>
-     <td class="fw-bold"><?= $finalResult ? (int)$finalResult['final_rank'] : '—' ?></td>
+     <td class="fw-bold" data-final-rank="<?=$pair['id']?>"><?= $finalResult ? (int)$finalResult['final_rank'] : '—' ?></td>
      <td>Couple <?=$pair['pair_number']?></td>
      <td><strong>Bib <?=$pair['leader_bib']?></strong><br><?=e($pair['leader_name'])?></td>
      <td><strong>Bib <?=$pair['follower_bib']?></strong><br><?=e($pair['follower_name'])?></td>
      <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?>
-      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input <?=$judgeLocked?'bg-light':''?>" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" <?=$judgeLocked?'readonly aria-label="Submitted judge placement locked" title="Submitted placement locked. Use the audited RESUBMIT control to reopen this judge."':''?>></td>
+      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input <?=$judgeLocked?'bg-light':''?>" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" data-server-value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" <?=$judgeLocked?'readonly aria-label="Submitted judge placement locked" title="Submitted placement locked. Use the audited RESUBMIT control to reopen this judge."':''?>></td>
      <?php endforeach;?>
-     <td>
+     <td data-final-result="<?=$pair['id']?>">
       <?php if($finalResult):?>
        <div class="fw-semibold">Relative Placement Summary</div>
        <div>✓ Majority achieved in Top <?=$finalResult['majority_level']?></div>
@@ -2261,4 +2262,4 @@ document.querySelectorAll('.final-judge-page-button').forEach(button=>{
   });
  });
 });
-</script><script src="../../public/js/final-pairing-sync.js?v=384" defer></script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>
+</script><script src="../../public/js/final-pairing-sync.js?v=384" defer></script><script src="../../public/js/final-score-sync.js?v=385" defer></script><script src="../../public/js/bdc-copy-link-v345.js?v=345"></script><script src="../../public/js/judge-order-controls.js?v=380"></script><script src="../../public/js/scoring-judge-directory.js?v=381"></script></body></html>
