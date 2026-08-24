@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const service=fs.readFileSync('app/Services/ScoringParityTestService.php','utf8');
+const runner=fs.readFileSync('admin/scoring-tests/system-test.php','utf8');
+for(const marker of ["foreach(['live','test'] as $scope)","$scope==='test'?'bdc_test_':'bdc_'",'ScoringCalculationService::PRODUCTION','ScoringCalculationService::TEST',"status) VALUES(:name,:normalised,:slug,CURDATE(),'draft')",'Every Live result matches its Test mirror exactly.'])assert((service+runner).includes(marker),marker+' missing');
+assert(service.includes("'differences'=>$differences"));
+assert(service.includes("name LIKE :pattern"));
+assert(!service.includes('bdc_point_transactions'));
+assert(!service.includes('bdc_scoring_publications'));
+assert(!service.includes("status='published'"));
+assert(runner.includes('run_nonce'));
+assert(runner.includes("this.querySelector('button').disabled=true"));
+console.log('Live/Test parity runner v393 safety and comparison checks passed.');
