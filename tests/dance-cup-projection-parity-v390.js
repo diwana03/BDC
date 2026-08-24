@@ -11,7 +11,7 @@ const files = {
 
 assert(files.service.includes("page_number") && files.service.includes("auto_page") && files.service.includes("page_delay"), 'projection paging columns missing');
 assert(files.service.includes("$prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup'"), 'Testing/Live table isolation missing');
-assert(/projection-control\.php[^"'<>]*["'][^>]*target="_blank"[^>]*rel="noopener"/.test(files.category), 'score-sheet projection must open in a new tab');
+assert(/<a[^>]*target="_blank"[^>]*rel="noopener"[^>]*href="projection-control\.php/.test(files.category), 'score-sheet projection must open in a new tab');
 assert(files.control.includes('projector-launch.php?token='), 'safe projector launch URL missing');
 assert(files.control.includes("update_page") && files.control.includes('Screen Paging'), 'remote paging control missing');
 assert(files.control.includes("screen_type='holding'") && files.control.includes("active_entry_id=NULL"), 'category switch must force Holding');
