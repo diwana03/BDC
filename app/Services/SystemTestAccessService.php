@@ -78,6 +78,12 @@ final class SystemTestAccessService
         return $q->fetch(PDO::FETCH_ASSOC)?:null;
     }
 
+    public static function canStartRun(array $approvedAccess,int $minimumSeconds=120):bool
+    {
+        $expires=strtotime((string)($approvedAccess['expires_at']??''));
+        return $expires!==false&&$expires>=time()+max(30,$minimumSeconds);
+    }
+
     public static function consume(PDO $pdo,int $id):void
     {
         $pdo->prepare("UPDATE bdc_system_test_access_requests SET status='used',used_at=NOW() WHERE id=:id AND status='approved'")->execute(['id'=>$id]);

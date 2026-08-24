@@ -1,12 +1,15 @@
 const assert = require('assert');
+const fs = require('fs');
+
+const source = (environmentName, path) => process.env[environmentName] || fs.readFileSync(path, 'utf8');
 
 const files = {
-  service: process.env.DC_SERVICE || '',
-  category: process.env.DC_CATEGORY || '',
-  control: process.env.DC_CONTROL || '',
-  launch: process.env.DC_LAUNCH || '',
-  projector: process.env.DC_PROJECTOR || '',
-  feed: process.env.DC_FEED || ''
+  service: source('DC_SERVICE', 'app/Services/DanceCupScoringService.php'),
+  category: source('DC_CATEGORY', 'admin/dance-cup/category.php'),
+  control: source('DC_CONTROL', 'admin/dance-cup/projection-control.php'),
+  launch: source('DC_LAUNCH', 'admin/dance-cup/projector-launch.php'),
+  projector: source('DC_PROJECTOR', 'admin/dance-cup/projector.php'),
+  feed: source('DC_FEED', 'admin/dance-cup/projection-feed.php')
 };
 
 assert(files.service.includes("page_number") && files.service.includes("auto_page") && files.service.includes("page_delay"), 'projection paging columns missing');

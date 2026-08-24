@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev393",
-  "build": 3099,
+  "version": "2.3.3-dev394",
+  "build": 3100,
   "status": "development",
   "release_date": "2026-08-24",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes controlled isolated and Live/Test parity runs idempotent, durable and recoverable with stale-access preflight, HTTP 303 Post/Redirect/Get and reopenable run history",
     "Adds a controlled unpublished Live versus isolated Test scoring parity runner with identical inputs, exact result comparison, duplicate-run protection and paired archiving",
     "Adds Super Admin dashboard approval for short-lived browser-bound access to the isolated bdc_test System Test Runner without creating an Admin login",
     "Adds a Super Admin-only one-click Production-hosted system test runner that creates, scores, verifies and archives isolated bdc_test data without touching Live events",
