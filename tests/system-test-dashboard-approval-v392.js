@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const service=fs.readFileSync('app/Services/SystemTestAccessService.php','utf8');
+const request=fs.readFileSync('admin/scoring-tests/request-access.php','utf8');
+const runner=fs.readFileSync('admin/scoring-tests/system-test.php','utf8');
+const admin=fs.readFileSync('admin/index.php','utf8');
+const dashboard=fs.readFileSync('app/Views/admin/dashboard.php','utf8');
+for(const marker of ["status ENUM('pending','approved','denied','used','expired')",'DATE_ADD(NOW(),INTERVAL 15 MINUTE)','DATE_ADD(NOW(),INTERVAL 20 MINUTE)','requester_agent_hash'])assert(service.includes(marker),marker+' missing');
+assert(request.includes('Request dashboard approval'));
+assert(request.includes('system-test.php?access='));
+assert(runner.includes('verifyApproved'));
+assert(runner.includes("bdc_test_events"));
+assert(!runner.includes('INSERT INTO bdc_events'));
+assert(admin.includes('decide_system_test_access'));
+assert(admin.includes('Auth::isSuperAdmin()'));
+assert(dashboard.includes('Approve Test Only'));
+assert(dashboard.includes('bdc_test_*'));
+console.log('System test dashboard approval v392 security checks passed.');
