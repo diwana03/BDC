@@ -65,23 +65,21 @@ return [
                 foreach(['bdc_claims','bdc_event_registrations','bdc_participant_results','bdc_point_adjustment_requests','bdc_point_transactions','bdc_profile_requests','bdc_form_sync_submissions'] as $table){
                     $pdo->prepare("UPDATE {$table} SET competitor_id=:keep WHERE competitor_id=:duplicate")->execute(['keep'=>$keepId,'duplicate'=>$duplicateId]);
                 }
-                $pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) SELECT :keep,dance_style,dance_role,current_division FROM bdc_competitor_discipline_profiles WHERE competitor_id=:duplicate ON DUPLICATE KEY UPDATE dance_role=IF(dance_role='unknown',VALUES(dance_role),dance_role),current_division=IF(current_division IN('unknown','novice'),VALUES(current_division),current_division)")->execute(['keep'=>$keepId,'duplicate'=>$duplicateId]);
+                $pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division,special_category) SELECT :keep,dance_style,dance_role,current_division,special_category FROM bdc_competitor_discipline_profiles WHERE competitor_id=:duplicate ON DUPLICATE KEY UPDATE dance_role=IF(dance_role='unknown',VALUES(dance_role),dance_role),current_division=IF(current_division IN('unknown','novice'),VALUES(current_division),current_division),special_category=COALESCE(special_category,VALUES(special_category))")->execute(['keep'=>$keepId,'duplicate'=>$duplicateId]);
                 $pdo->prepare("UPDATE bdc_competitors k JOIN bdc_competitors d ON d.id=:duplicate SET k.country=COALESCE(NULLIF(TRIM(k.country),''),d.country),k.instagram=COALESCE(NULLIF(TRIM(k.instagram),''),d.instagram),k.email=COALESCE(NULLIF(TRIM(k.email),''),d.email),k.phone=COALESCE(NULLIF(TRIM(k.phone),''),d.phone),k.photo_url=COALESCE(NULLIF(TRIM(k.photo_url),''),d.photo_url),k.career_group_id=COALESCE(k.career_group_id,d.career_group_id),k.admin_notes=TRIM(CONCAT(COALESCE(k.admin_notes,''),'\nVerified form duplicate ',d.bdc_id,' consolidated on ',NOW())) WHERE k.id=:keep")->execute(['keep'=>$keepId,'duplicate'=>$duplicateId]);
                 $pdo->prepare('DELETE FROM bdc_competitor_discipline_profiles WHERE competitor_id=:duplicate')->execute(['duplicate'=>$duplicateId]);
                 $pdo->prepare('DELETE FROM bdc_competitors WHERE id=:duplicate')->execute(['duplicate'=>$duplicateId]);
             }
 
-            $profile=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:competitor,:dance,:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division),updated_at=NOW()");
-            $legacy=$pdo->prepare('UPDATE bdc_competitors SET dance_role=:role,current_division=:division,status=IF(status=\'archived\',status,\'active\') WHERE id=:competitor');
+            $profile=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division,special_category) VALUES(:competitor,:dance,:role,'novice',:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),special_category=VALUES(special_category),updated_at=NOW()");
             $record=$pdo->prepare("INSERT INTO bdc_special_category_recovery(audit_log_id,competitor_id,dance_style,recovered_category,audit_created_at,source_kind,source_name,before_category,applied_at) VALUES(NULL,:competitor,:dance,:division,NULL,'data_entry','2026-08-26 verified 28-profile correction',:before,NOW())");
-            $current=$pdo->prepare('SELECT current_division FROM bdc_competitor_discipline_profiles WHERE competitor_id=:competitor AND dance_style=:dance');
+            $current=$pdo->prepare('SELECT special_category FROM bdc_competitor_discipline_profiles WHERE competitor_id=:competitor AND dance_style=:dance');
             foreach($profiles as $row){
                 $find->execute(['bdc'=>$row['bdc_id']]);$competitor=$find->fetch(PDO::FETCH_ASSOC);
                 if(!$competitor)throw new RuntimeException('Verified identity is missing: '.$row['bdc_id']);
                 if(CompetitorIdentityService::normaliseCompetitorName((string)$competitor['exact_name'])!==CompetitorIdentityService::normaliseCompetitorName($row['name']))throw new RuntimeException('Verified identity name mismatch: '.$row['bdc_id']);
                 $id=(int)$competitor['id'];$current->execute(['competitor'=>$id,'dance'=>$row['dance']]);$before=(string)($current->fetchColumn()?:'unknown');
                 $profile->execute(['competitor'=>$id,'dance'=>$row['dance'],'role'=>$row['role'],'division'=>$row['division']]);
-                if($row['dance']==='bachata')$legacy->execute(['role'=>$row['role'],'division'=>$row['division'],'competitor'=>$id]);
                 $record->execute(['competitor'=>$id,'dance'=>$row['dance'],'division'=>$row['division'],'before'=>$before]);
             }
             $pdo->commit();

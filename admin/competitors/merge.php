@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'bdc_point_adjustment_requests',
                     'bdc_point_transactions',
                     'bdc_profile_requests',
+                    'bdc_form_sync_submissions',
                 ];
                 $moved = [];
                 foreach ($tables as $table) {
@@ -74,6 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
                     $moved[$table] = $stmt->rowCount();
                 }
+
+                // Career progression and Special Competition Category are
+                // separate profile axes. Preserve both before removing the
+                // duplicate identity.
+                $profileMerge=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division,special_category) SELECT :keep_id,dance_style,dance_role,current_division,special_category FROM bdc_competitor_discipline_profiles WHERE competitor_id=:merge_id ON DUPLICATE KEY UPDATE dance_role=IF(dance_role='unknown',VALUES(dance_role),dance_role),current_division=IF(current_division IN('unknown','novice'),VALUES(current_division),current_division),special_category=COALESCE(special_category,VALUES(special_category)),updated_at=NOW()");
+                $profileMerge->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
+                $moved['bdc_competitor_discipline_profiles']=$profileMerge->rowCount();
+                $pdo->prepare('DELETE FROM bdc_competitor_discipline_profiles WHERE competitor_id=:merge_id')->execute(['merge_id'=>$mergeId]);
 
                 // Preserve useful profile data when the kept profile is blank or unknown.
                 $stmt = $pdo->prepare("UPDATE bdc_competitors k JOIN bdc_competitors d ON d.id=:merge_id
@@ -84,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         k.photo_url=COALESCE(NULLIF(TRIM(k.photo_url),''),d.photo_url),
                         k.dance_role=IF(k.dance_role='unknown',d.dance_role,k.dance_role),
                         k.current_division=IF(k.current_division='unknown',d.current_division,k.current_division),
+                        k.career_group_id=COALESCE(k.career_group_id,d.career_group_id),
                         k.admin_notes=TRIM(CONCAT(COALESCE(k.admin_notes,''), '\nMerged duplicate ', d.bdc_id, ' / ', d.exact_name, ' on ', NOW()))
                     WHERE k.id=:keep_id");
                 $stmt->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
