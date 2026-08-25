@@ -54,6 +54,10 @@ final class CompetitorIdentityService
   $exactName=trim($exactName);
   if($exactName==='')throw new RuntimeException('Competitor name is required.');
   if(!in_array($danceRole,['leader','follower','both'],true))throw new RuntimeException('Invalid competitor dance role.');
+  // A scoring/event entry may request any competition category, but a new
+  // identity remains provisional Novice until approved competition history
+  // establishes career progression.
+  $initialDivision=DivisionProgressionService::initialDivisionForUnapprovedEntry();
   $normalised=self::normaliseCompetitorName($exactName);
 
   $find=$pdo->prepare("SELECT id,bdc_id,exact_name,normalised_name,dance_role,current_division,status,is_historical FROM bdc_competitors WHERE normalised_name=:name AND dance_role IN(:role,'both') ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");

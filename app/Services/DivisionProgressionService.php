@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use PDO;
+
 final class DivisionProgressionService
 {
     public const ORDER=[
@@ -98,6 +100,75 @@ final class DivisionProgressionService
             return ['eligible'=>false,'reason'=>'this dancer has fewer than 40 Advanced points and no recorded All Star competition history.','promoted_to'=>null];
         }
         return ['eligible'=>false,'reason'=>'the selected division is not valid for BDC eligibility.','promoted_to'=>null];
+    }
+
+    /**
+     * Career state is derived only from approved result and point ledgers.
+     * Event entries, draft rounds, Test rounds and website category requests
+     * never appear in these ledgers and therefore cannot promote a dancer.
+     *
+     * @return array<string,mixed>
+     */
+    public static function approvedCareerState(PDO $pdo,int $competitorId,string $danceRole,string $danceStyle='bachata'):array
+    {
+        if(!in_array($danceRole,['leader','follower','both'],true))$danceRole='unknown';
+        if(!in_array($danceStyle,['bachata','salsa'],true))$danceStyle='bachata';
+
+        $competitorStmt=$pdo->prepare("SELECT current_division,novice_manual_out,intermediate_manual_out FROM bdc_competitors WHERE id=:id LIMIT 1");
+        $competitorStmt->execute(['id'=>$competitorId]);
+        $competitor=$competitorStmt->fetch()?:[];
+
+        $profileStmt=$pdo->prepare("SELECT current_division FROM bdc_competitor_discipline_profiles WHERE competitor_id=:id AND dance_style=:dance LIMIT 1");
+        $profileStmt->execute(['id'=>$competitorId,'dance'=>$danceStyle]);
+        $profileDivision=(string)($profileStmt->fetchColumn()?:'');
+        $committed=$danceStyle==='bachata'
+            ?(string)($competitor['current_division']??'unknown')
+            :($profileDivision?:'unknown');
+
+        $pointsStmt=$pdo->prepare("SELECT COALESCE(SUM(CASE WHEN division='novice' THEN points ELSE 0 END),0) novice_points,COALESCE(SUM(CASE WHEN division='intermediate' THEN points ELSE 0 END),0) intermediate_points,COALESCE(SUM(CASE WHEN division='advanced' THEN points ELSE 0 END),0) advanced_points FROM bdc_point_transactions WHERE competitor_id=:competitor AND dance_style=:dance AND dance_role IN(:role,'both')");
+        $pointsStmt->execute(['competitor'=>$competitorId,'dance'=>$danceStyle,'role'=>$danceRole]);
+        $points=$pointsStmt->fetch()?:[];
+
+        $historyStmt=$pdo->prepare("SELECT MAX(CASE WHEN division='intermediate' THEN 1 ELSE 0 END) competed_intermediate,MAX(CASE WHEN division='advanced' THEN 1 ELSE 0 END) competed_advanced,MAX(CASE WHEN division='all_star' THEN 1 ELSE 0 END) competed_all_star FROM bdc_participant_results WHERE competitor_id=:competitor AND dance_style=:dance AND dance_role IN(:role,'both')");
+        $historyStmt->execute(['competitor'=>$competitorId,'dance'=>$danceStyle,'role'=>$danceRole]);
+        $history=$historyStmt->fetch()?:[];
+
+        return [
+            'novice_points'=>(float)($points['novice_points']??0),
+            'intermediate_points'=>(float)($points['intermediate_points']??0),
+            'advanced_points'=>(float)($points['advanced_points']??0),
+            'committed_division'=>$committed,
+            'competed_intermediate'=>!empty($history['competed_intermediate']),
+            'competed_advanced'=>!empty($history['competed_advanced']),
+            'competed_all_star'=>!empty($history['competed_all_star']),
+            'novice_manual_out'=>$danceStyle==='bachata'&&!empty($competitor['novice_manual_out']),
+            'intermediate_manual_out'=>$danceStyle==='bachata'&&!empty($competitor['intermediate_manual_out']),
+        ];
+    }
+
+    public static function eligibilityFromApprovedHistory(PDO $pdo,int $competitorId,string $danceRole,string $danceStyle,string $enteredDivision):array
+    {
+        if(SpecialCategoryService::isSpecial($enteredDivision)){
+            $special=SpecialCategoryService::entryEligibility($enteredDivision);
+            return ['eligible'=>(bool)$special['eligible'],'reason'=>(string)$special['reason'],'promoted_to'=>null];
+        }
+        $state=self::approvedCareerState($pdo,$competitorId,$danceRole,$danceStyle);
+        return self::eligibilityFor(
+            $enteredDivision,
+            $state['novice_points'],
+            $state['intermediate_points'],
+            $state['advanced_points'],
+            $state['committed_division'],
+            $state['competed_intermediate'],
+            $state['competed_advanced'],
+            $state['competed_all_star']
+        );
+    }
+
+    /** Unapproved registration never selects a permanent career division. */
+    public static function initialDivisionForUnapprovedEntry():string
+    {
+        return 'novice';
     }
 
     public static function statusLabel(string $selectedDivision,string $effectiveDivision):string
