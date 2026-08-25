@@ -1,7 +1,7 @@
 # BDC v2.3.3-dev411
 
-Release date: 26 August 2026  
-Build: 3117  
+Release date: 26 August 2026
+Build: 3117
 Branch: `develop`
 
 ## Competitor database export
