@@ -31,8 +31,8 @@ requireText(migration,'repairLegacySpecialCategoryAssignments','migration invoke
 requireText(migration,"'novice','intermediate','advanced','semi_pro','pro','professional','all_star','unknown'",'permanent enum');
 for(const special of ['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'])forbidText(migration,special,'permanent enum special category');
 
-requireText(formSync,"VALUES(:id,:style,:role,'novice')",'Google Form provisional profile');
 requireText(formSync,'requested_categories','Google Form event category retention');
+forbidText(formSync,'upsertProfile($pdo','Google Form pre-publication profile write');
 forbidText(formSync,'current_division=VALUES(current_division)','Google Form permanent overwrite');
 forbidText(formSync,'SET dance_role=:role,current_division=:division','Google Form legacy overwrite');
 

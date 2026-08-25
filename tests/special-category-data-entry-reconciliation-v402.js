@@ -7,5 +7,5 @@ for(const token of ['dataEntryManifest','previewDataEntryManifest','restoreDataE
 for(const token of ["$source==='open'",'createDatabaseBackup','beginTransaction',"'data_entry'",'already_special','conflict','unmatched'])if(!service.includes(token))throw new Error('Reconciliation safety missing '+token);
 for(const token of ['Official data-entry reconciliation','Amateur J&amp;J responses CSV','4th Asia Open responses CSV','Compare Data Entry','RESTORE DATA ENTRY CATEGORIES','Missing assignments','Conflicts'])if(!page.includes(token))throw new Error('Reconciliation UI missing '+token);
 for(const forbidden of ['bdc_participant_results','bdc_point_transactions','bdc_scoring_entries'])if(service.includes(forbidden))throw new Error('Reconciliation must not infer categories from '+forbidden);
-if(version.version!=='2.3.3-dev402'||version.build!==3108)throw new Error('VERSION.json is not dev402 build 3108');
+if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3108)throw new Error('VERSION.json predates dev402 build 3108');
 console.log('PASS official data-entry Special Category reconciliation v402');

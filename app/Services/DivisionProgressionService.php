@@ -199,6 +199,17 @@ final class DivisionProgressionService
         return $division;
     }
 
+    /** Persist visible career state only after Super Admin publication. */
+    public static function syncProfileAfterApproval(PDO $pdo,int $competitorId,string $danceRole,string $danceStyle):string
+    {
+        if(!in_array($danceStyle,['bachata','salsa'],true))throw new \RuntimeException('Invalid approved dance style.');
+        $division=self::approvedPermanentDivision($pdo,$competitorId,$danceRole,$danceStyle);
+        $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:competitor,:dance,:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division),updated_at=NOW()");
+        $stmt->execute(['competitor'=>$competitorId,'dance'=>$danceStyle,'role'=>$danceRole,'division'=>$division]);
+        if($danceStyle==='bachata')$pdo->prepare('UPDATE bdc_competitors SET current_division=:division WHERE id=:competitor')->execute(['division'=>$division,'competitor'=>$competitorId]);
+        return $division;
+    }
+
     /**
      * Repair only invalid legacy special-category assignments. Normal career
      * divisions and event/result category history are never rewritten.

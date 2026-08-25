@@ -29,7 +29,7 @@ assert(registration.includes('SELECT event_id,division,dance_style FROM {$roundT
 assert(registration.includes('eligibilityFromApprovedHistory'),'event entry must use approved history only');
 assert(registration.includes("'entered_division'=>(string)$round['division']")&&registration.includes("'permanent_division_changed'=>false"),'entry audit must distinguish category from permanent division');
 assert(registration.includes("$roundTable=$isTest?'bdc_test_scoring_rounds':'bdc_scoring_rounds'"),'Testing and Live registration must share the gate');
-assert(registration.includes('mirrorOfficialToTest'),'Test identity mirror must remain active');
+assert(registration.includes('findOrCreateTest'),'Test identity creation must remain isolated');
 
 assert(publicRegister.includes('Competition category'),'website must not call an event category a permanent division');
 assert(publicRegister.includes('This does not change your permanent BDC division'),'website must explain the approval rule');

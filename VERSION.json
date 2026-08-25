@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev402",
-  "build": 3108,
+  "version": "2.3.3-dev403",
+  "build": 3109,
   "status": "development",
   "release_date": "2026-08-25",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Enforces Super Admin publication as the only event-driven Bachata or Salsa profile boundary, isolates Test identities, prevents rosters and form registrations from creating permanent divisions, synchronizes profiles inside approval, and provides backed-up preview-first repair of unapproved Salsa profiles",
     "Reconciles the official Amateur and 4th Asia Open Google Forms CSV exports against unique BDC competitors, gives Open precedence by dance style, previews exact-name or safe email matches and restores only verified missing Special Category assignments behind a fresh safety backup",
     "Allows the immutable dev399 Special Category recovery migration to pass checksum verification after its reusable recovery service evolved in dev400, while retaining strict known-checksum validation and making both recovery wrappers file-only for future releases",
     "Adds targeted pre-dev397 database-backup preview and Special Category-only recovery with BDC ID matching, fresh safety backup, explicit confirmation and evidence history so pre-audit manual assignments can be restored without rolling back newer Production data",

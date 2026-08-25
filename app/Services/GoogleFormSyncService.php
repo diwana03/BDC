@@ -80,7 +80,8 @@ final class GoogleFormSyncService
             }
             $photo=self::storePhoto($data,$submissionId);
             self::updateCompetitor($pdo,$competitorId,$data,$photo);
-            foreach($data['styles'] as $style)self::upsertProfile($pdo,$competitorId,$style,$data['role']);
+            // Requested event categories stay in the submission payload. They
+            // do not create a permanent profile before result publication.
             $pdo->prepare("UPDATE bdc_form_sync_submissions SET status='completed',competitor_id=:cid,processed_at=NOW() WHERE id=:id")
                 ->execute(['cid'=>$competitorId,'id'=>$submissionId]);
             $pdo->commit();
@@ -137,16 +138,6 @@ final class GoogleFormSyncService
     {
         $stmt=$pdo->prepare("UPDATE bdc_competitors SET email=COALESCE(NULLIF(:email,''),email),phone=COALESCE(NULLIF(:phone,''),phone),instagram=COALESCE(NULLIF(:instagram,''),instagram),country=COALESCE(NULLIF(:country,''),country),photo_url=COALESCE(NULLIF(:photo,''),photo_url),status=IF(status='archived',status,'active') WHERE id=:id");
         $stmt->execute(['email'=>$data['email'],'phone'=>$data['phone'],'instagram'=>$data['instagram'],'country'=>$data['country'],'photo'=>$photo??'','id'=>$id]);
-    }
-
-    private static function upsertProfile(PDO $pdo,int $id,string $style,string $role):void
-    {
-        // Open/Amateur is the requested event category in payload_json. It is
-        // never a permanent career division. Preserve an existing approved
-        // division and initialise a new discipline profile as Novice.
-        $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:id,:style,:role,'novice') ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role)");
-        $stmt->execute(['id'=>$id,'style'=>$style,'role'=>$role]);
-        if($style==='bachata')$pdo->prepare('UPDATE bdc_competitors SET dance_role=:role WHERE id=:id')->execute(['role'=>$role,'id'=>$id]);
     }
 
     private static function storePhoto(array $data,int $submissionId):?string

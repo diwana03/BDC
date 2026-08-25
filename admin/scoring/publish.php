@@ -8,6 +8,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\ResultStorageService;
+use App\Services\DivisionProgressionService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -480,6 +481,7 @@ try{
        'transaction_id'=>$transactionId,
        'participant_result_id'=>$participantResultId,
       ]);
+      DivisionProgressionService::syncProfileAfterApproval($pdo,$person['competitor_id'],$person['dance_role'],'bachata');
      }
     }
     $docs=[
