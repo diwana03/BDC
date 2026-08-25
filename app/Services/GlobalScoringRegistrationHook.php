@@ -10,10 +10,10 @@ final class GlobalScoringRegistrationHook
   $isDesk=preg_match('#/registration-desk(?:/index\.php)?/?$#',$path)===1;
   $isTest=preg_match('#/admin/scoring-tests(?:/index\.php)?/?$#',$path)===1;
   $isManual=preg_match('#/admin/scoring(?:/index\.php|/core\.php)?/?$#',$path)===1;
-  $isAutomatic=preg_match('#/admin/scoring/automatic-round\.php/?$#',$path)===1;
+  $isAutomatic=preg_match('#/admin/scoring/(?:automatic-round|automatic-setup-action)\.php/?$#',$path)===1;
+  $isDiscipline=preg_match('#/admin/scoring/discipline-actions\.php/?$#',$path)===1;
   $create=(string)($_POST['entry_mode']??'existing')==='create';
-  if(!$isDesk&&!$create)return;
-  if(!$isDesk&&!$isTest&&!$isManual&&!$isAutomatic)return;
+  if(!$isDesk&&!$isTest&&!$isManual&&!$isAutomatic&&!$isDiscipline)return;
   if(!$isDesk)Auth::requireAdmin();
   if(!Csrf::verify($_POST['_csrf']??null)){http_response_code(419);exit('Invalid security token.');}
   $pdo=Database::connection();$roundId=(int)($_POST['round_id']??0);$role=(string)($_POST['dance_role']??'');$name=trim((string)($_POST['competitor_search']??''));
@@ -24,7 +24,7 @@ final class GlobalScoringRegistrationHook
   if($isDesk){$token=trim((string)($_POST['token']??''));$ls=$pdo->prepare("SELECT id,event_id,division FROM bdc_registration_desk_links WHERE token_hash=:hash AND is_enabled=1 AND (expires_at IS NULL OR expires_at>NOW()) LIMIT 1");$ls->execute(['hash'=>hash('sha256',$token)]);$link=$ls->fetch();if(!$link||(int)$link['event_id']!==(int)$round['event_id']||(string)$link['division']!==(string)$round['division']){http_response_code(403);exit('Registration Desk link is invalid for this round.');}}
   if($bib!==null){$bs=$pdo->prepare("SELECT display_name FROM {$entryTable} WHERE round_id=:round AND dance_role=:role AND bib_number=:bib AND entry_status='active' LIMIT 1");$bs->execute(['round'=>$roundId,'role'=>$role,'bib'=>$bib]);if($taken=$bs->fetchColumn()){http_response_code(409);exit('Bib '.$bib.' is already assigned to '.$taken.'.');}}
   try{
-   if($isDesk&&!$create){
+   if(!$create){
     $selected='';if(preg_match('/^(BDC-\d+)/i',$name,$m))$selected=strtoupper($m[1]);$cs=$pdo->prepare("SELECT * FROM bdc_competitors WHERE status<>'archived' AND dance_role IN(:role,'both') AND (bdc_id=:bdc OR LOWER(exact_name)=LOWER(:exact)) ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");$cs->execute(['role'=>$role,'bdc'=>$selected!==''?$selected:$name,'exact'=>$name,'preferred'=>$role]);$competitor=$cs->fetch();if(!$competitor)throw new \RuntimeException('Competitor not found. Choose Add New BDC Competitor for a genuinely new dancer.');
     $danceStyle=in_array((string)($round['dance_style']??'bachata'),['bachata','salsa'],true)?(string)$round['dance_style']:'bachata';
     $elig=DivisionProgressionService::eligibilityFromApprovedHistory($pdo,(int)$competitor['id'],$role,$danceStyle,(string)$round['division']);

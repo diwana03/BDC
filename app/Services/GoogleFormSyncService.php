@@ -80,11 +80,11 @@ final class GoogleFormSyncService
             }
             $photo=self::storePhoto($data,$submissionId);
             self::updateCompetitor($pdo,$competitorId,$data,$photo);
-            foreach($data['styles'] as $style)self::upsertProfile($pdo,$competitorId,$style,$data['role'],self::DIVISIONS[$data['form_kind']][$style]);
+            foreach($data['styles'] as $style)self::upsertProfile($pdo,$competitorId,$style,$data['role']);
             $pdo->prepare("UPDATE bdc_form_sync_submissions SET status='completed',competitor_id=:cid,processed_at=NOW() WHERE id=:id")
                 ->execute(['cid'=>$competitorId,'id'=>$submissionId]);
             $pdo->commit();
-            return ['status'=>'completed','submission_id'=>$submissionId,'competitor_id'=>$competitorId,'styles'=>$data['styles']];
+            return ['status'=>'completed','submission_id'=>$submissionId,'competitor_id'=>$competitorId,'styles'=>$data['styles'],'requested_categories'=>array_map(static fn(string $style):string=>self::DIVISIONS[$data['form_kind']][$style],$data['styles'])];
         }catch(Throwable $e){
             if($pdo->inTransaction())$pdo->rollBack();
             try{
@@ -139,11 +139,14 @@ final class GoogleFormSyncService
         $stmt->execute(['email'=>$data['email'],'phone'=>$data['phone'],'instagram'=>$data['instagram'],'country'=>$data['country'],'photo'=>$photo??'','id'=>$id]);
     }
 
-    private static function upsertProfile(PDO $pdo,int $id,string $style,string $role,string $division):void
+    private static function upsertProfile(PDO $pdo,int $id,string $style,string $role):void
     {
-        $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:id,:style,:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division)");
-        $stmt->execute(['id'=>$id,'style'=>$style,'role'=>$role,'division'=>$division]);
-        if($style==='bachata')$pdo->prepare('UPDATE bdc_competitors SET dance_role=:role,current_division=:division WHERE id=:id')->execute(['role'=>$role,'division'=>$division,'id'=>$id]);
+        // Open/Amateur is the requested event category in payload_json. It is
+        // never a permanent career division. Preserve an existing approved
+        // division and initialise a new discipline profile as Novice.
+        $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:id,:style,:role,'novice') ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role)");
+        $stmt->execute(['id'=>$id,'style'=>$style,'role'=>$role]);
+        if($style==='bachata')$pdo->prepare('UPDATE bdc_competitors SET dance_role=:role WHERE id=:id')->execute(['role'=>$role,'id'=>$id]);
     }
 
     private static function storePhoto(array $data,int $submissionId):?string

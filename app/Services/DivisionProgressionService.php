@@ -165,6 +165,90 @@ final class DivisionProgressionService
         );
     }
 
+    /**
+     * Resolve a permanent career division from approved official history.
+     * Special event categories are deliberately ignored as committed state.
+     */
+    public static function approvedPermanentDivision(PDO $pdo,int $competitorId,string $danceRole,string $danceStyle='bachata'):string
+    {
+        if(in_array($danceRole,['both','unknown'],true)){
+            $leader=self::approvedPermanentDivision($pdo,$competitorId,'leader',$danceStyle);
+            $follower=self::approvedPermanentDivision($pdo,$competitorId,'follower',$danceStyle);
+            if($leader===$follower)return $leader;
+            foreach(['professional','pro','semi_pro'] as $legacyDivision){
+                if($leader===$legacyDivision||$follower===$legacyDivision)return $legacyDivision;
+            }
+            return self::higher($leader,$follower);
+        }
+        $state=self::approvedCareerState($pdo,$competitorId,$danceRole,$danceStyle);
+        $committed=SpecialCategoryService::isSpecial((string)$state['committed_division'])
+            ?'unknown'
+            :(string)$state['committed_division'];
+        if(in_array($committed,['semi_pro','pro','professional'],true))return $committed;
+        $division=self::effectiveDivision(
+            $state['novice_points'],
+            $state['intermediate_points'],
+            $state['advanced_points'],
+            $committed,
+            $state['novice_manual_out'],
+            $state['intermediate_manual_out']
+        );
+        if($state['competed_all_star'])return self::higher($division,'all_star');
+        if($state['competed_advanced'])return self::higher($division,'advanced');
+        if($state['competed_intermediate'])return self::higher($division,'intermediate');
+        return $division;
+    }
+
+    /**
+     * Repair only invalid legacy special-category assignments. Normal career
+     * divisions and event/result category history are never rewritten.
+     *
+     * @return array{profiles:int,competitors:int,test_competitors:int}
+     */
+    public static function repairLegacySpecialCategoryAssignments(PDO $pdo):array
+    {
+        $counts=['profiles'=>0,'competitors'=>0,'test_competitors'=>0];
+        $special=array_keys(SpecialCategoryService::categories());
+        $placeholders=implode(',',array_fill(0,count($special),'?'));
+
+        if(self::tableExists($pdo,'bdc_competitor_discipline_profiles')){
+            $stmt=$pdo->prepare("SELECT competitor_id,dance_style,dance_role FROM bdc_competitor_discipline_profiles WHERE current_division IN ($placeholders) ORDER BY competitor_id,dance_style");
+            $stmt->execute($special);
+            $update=$pdo->prepare('UPDATE bdc_competitor_discipline_profiles SET current_division=:division WHERE competitor_id=:competitor AND dance_style=:dance');
+            foreach($stmt->fetchAll() as $row){
+                $division=self::approvedPermanentDivision($pdo,(int)$row['competitor_id'],(string)$row['dance_role'],(string)$row['dance_style']);
+                $update->execute(['division'=>$division,'competitor'=>$row['competitor_id'],'dance'=>$row['dance_style']]);
+                $counts['profiles']+=$update->rowCount();
+            }
+        }
+
+        if(self::tableExists($pdo,'bdc_competitors')){
+            $stmt=$pdo->prepare("SELECT id,dance_role FROM bdc_competitors WHERE current_division IN ($placeholders) ORDER BY id");
+            $stmt->execute($special);
+            $update=$pdo->prepare('UPDATE bdc_competitors SET current_division=:division WHERE id=:id');
+            foreach($stmt->fetchAll() as $row){
+                $division=self::approvedPermanentDivision($pdo,(int)$row['id'],(string)$row['dance_role'],'bachata');
+                $update->execute(['division'=>$division,'id'=>$row['id']]);
+                $counts['competitors']+=$update->rowCount();
+            }
+        }
+
+        if(self::tableExists($pdo,'bdc_test_competitors')){
+            $stmt=$pdo->prepare("SELECT id,bdc_id FROM bdc_test_competitors WHERE current_division IN ($placeholders) ORDER BY id");
+            $stmt->execute($special);
+            $official=$pdo->prepare("SELECT current_division FROM bdc_competitors WHERE id=:id OR (bdc_id IS NOT NULL AND bdc_id=:bdc) ORDER BY CASE WHEN id=:preferred THEN 0 ELSE 1 END,id LIMIT 1");
+            $update=$pdo->prepare('UPDATE bdc_test_competitors SET current_division=:division WHERE id=:id');
+            foreach($stmt->fetchAll() as $row){
+                $official->execute(['id'=>$row['id'],'bdc'=>$row['bdc_id'],'preferred'=>$row['id']]);
+                $division=(string)($official->fetchColumn()?:'novice');
+                if(!in_array($division,['novice','intermediate','advanced','semi_pro','pro','professional','all_star'],true))$division='novice';
+                $update->execute(['division'=>$division,'id'=>$row['id']]);
+                $counts['test_competitors']+=$update->rowCount();
+            }
+        }
+        return $counts;
+    }
+
     /** Unapproved registration never selects a permanent career division. */
     public static function initialDivisionForUnapprovedEntry():string
     {
@@ -205,5 +289,12 @@ final class DivisionProgressionService
     {
         $a=self::normaliseDivision($a);$b=self::normaliseDivision($b);
         return (self::ORDER[$a]??0)>=(self::ORDER[$b]??0)?$a:$b;
+    }
+
+    private static function tableExists(PDO $pdo,string $table):bool
+    {
+        $stmt=$pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:table');
+        $stmt->execute(['table'=>$table]);
+        return (int)$stmt->fetchColumn()===1;
     }
 }
