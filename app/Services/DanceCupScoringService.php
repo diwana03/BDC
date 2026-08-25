@@ -165,4 +165,108 @@ final class DanceCupScoringService
             throw $e;
         }
     }
+    /** @return array<int,array<string,mixed>> */
+    public static function calculateResults(PDO $pdo, int $competitionId, bool $test = false): array
+    {
+        self::ensureWorkspaceTables($pdo, $test);
+        $tables = self::tables($test);
+        $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $count = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_marks WHERE competition_id=:competition");
+        $count->execute(['competition' => $competitionId]);
+        if ((int) $count->fetchColumn() < 1) throw new RuntimeException('Save at least one score before calculating results.');
+
+        $query = $pdo->prepare("SELECT e.id,COALESCE(SUM(m.points),0) total FROM {$prefix}_entries e LEFT JOIN {$prefix}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id ORDER BY total DESC,e.bib_number,e.id");
+        $query->execute(['competition' => $competitionId]);
+        $rows = $query->fetchAll();
+        if (!$rows) throw new RuntimeException('Add competitors before calculating results.');
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("DELETE FROM {$prefix}_scoring_results WHERE competition_id=:competition")->execute(['competition' => $competitionId]);
+            $insert = $pdo->prepare("INSERT INTO {$prefix}_scoring_results(competition_id,entry_id,total_score,placement) VALUES(:competition,:entry,:total,:placement)");
+            $placement = 0;
+            $lastTotal = null;
+            foreach ($rows as $index => $row) {
+                $total = (float) $row['total'];
+                if ($lastTotal === null || $total < $lastTotal) $placement = $index + 1;
+                $insert->execute(['competition' => $competitionId, 'entry' => (int) $row['id'], 'total' => $total, 'placement' => $placement]);
+                $lastTotal = $total;
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return self::results($pdo, $competitionId, $test);
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public static function results(PDO $pdo, int $competitionId, bool $test = false): array
+    {
+        $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $query = $pdo->prepare("SELECT r.*,e.bib_number,e.display_name FROM {$prefix}_scoring_results r JOIN {$prefix}_entries e ON e.id=r.entry_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number,e.id");
+        $query->execute(['competition' => $competitionId]);
+        return $query->fetchAll();
+    }
+
+    /** @return array<string,mixed> */
+    public static function workflowState(PDO $pdo, int $competitionId, bool $test = false): array
+    {
+        self::ensureAutomation($pdo, $competitionId, $test);
+        $tables = self::tables($test);
+        $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $competition = $pdo->prepare("SELECT id,status FROM {$tables['competitions']} WHERE id=:competition");
+        $competition->execute(['competition' => $competitionId]);
+        $competitionRow = $competition->fetch();
+        if (!$competitionRow) throw new RuntimeException('Dance Cup category not found.');
+
+        $entryCount = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active'");
+        $entryCount->execute(['competition' => $competitionId]);
+        $entries = (int) $entryCount->fetchColumn();
+        $criterionCount = $pdo->prepare("SELECT COUNT(*) FROM {$tables['criteria']} WHERE competition_id=:competition");
+        $criterionCount->execute(['competition' => $competitionId]);
+        $criteria = (int) $criterionCount->fetchColumn();
+        $judgeCount = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_judges WHERE competition_id=:competition");
+        $judgeCount->execute(['competition' => $competitionId]);
+        $judges = (int) $judgeCount->fetchColumn();
+        $markCount = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_marks WHERE competition_id=:competition");
+        $markCount->execute(['competition' => $competitionId]);
+        $marks = (int) $markCount->fetchColumn();
+
+        $sessions = $pdo->prepare("SELECT s.id,s.status,s.started_at,s.submitted_at,s.last_seen_at,j.id judge_assignment_id,j.judge_name,j.judge_order,j.is_chief,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id WHERE s.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id");
+        $sessions->execute(['competition' => $competitionId]);
+        $sessionRows = $sessions->fetchAll();
+        $perJudgeRequired = $entries * $criteria;
+        $submitted = 0;
+        foreach ($sessionRows as &$session) {
+            $session['required_count'] = $perJudgeRequired;
+            $session['completed_count'] = min($perJudgeRequired, (int) $session['mark_count']);
+            if ($session['status'] === 'submitted' && (int) $session['completed_count'] >= $perJudgeRequired && $perJudgeRequired > 0) $submitted++;
+        }
+        unset($session);
+
+        $totals = $pdo->prepare("SELECT entry_id,judge_id,SUM(points) total FROM {$prefix}_marks WHERE competition_id=:competition GROUP BY entry_id,judge_id");
+        $totals->execute(['competition' => $competitionId]);
+        $rowTotals = [];
+        foreach ($totals->fetchAll() as $row) $rowTotals[(int) $row['entry_id']][(int) $row['judge_id']] = (float) $row['total'];
+
+        $results = self::results($pdo, $competitionId, $test);
+        $requiredMarks = $entries * $judges * $criteria;
+        return [
+            'competition_status' => (string) $competitionRow['status'],
+            'entry_count' => $entries,
+            'judge_count' => $judges,
+            'criterion_count' => $criteria,
+            'required_marks' => $requiredMarks,
+            'mark_count' => $marks,
+            'all_marks_complete' => $requiredMarks > 0 && $marks >= $requiredMarks,
+            'submitted_judges' => $submitted,
+            'all_judges_submitted' => $judges > 0 && $submitted === $judges,
+            'sessions' => $sessionRows,
+            'row_totals' => $rowTotals,
+            'results' => $results,
+            'results_current' => $entries > 0 && count($results) === $entries,
+        ];
+    }
+
 }

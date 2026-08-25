@@ -24,7 +24,7 @@ $q->execute(['competition'=>$competition]);$results=$q->fetchAll();
 if(!$results){
     $q=$pdo->prepare("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,COALESCE(SUM(m.points),0) total_score FROM {$p}_entries e LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id ORDER BY total_score DESC,e.bib_number");
     $q->execute(['competition'=>$competition]);$results=$q->fetchAll();
-    foreach($results as $i=>&$row)$row['placement']=$i+1;unset($row);
+    $place=0;$lastTotal=null;foreach($results as $i=>&$row){$total=(float)$row['total_score'];if($lastTotal===null||$total<$lastTotal){$place=$i+1;}$row['placement']=$place;$lastTotal=$total;}unset($row);
 }
 $active=null;foreach($entries as $entry)if((int)$entry['id']===(int)$state['active_entry_id']){$active=$entry;break;}
 echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$results,'active_entry'=>$active],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);

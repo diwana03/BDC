@@ -1,11 +1,14 @@
 {
-  "version": "2.3.3-dev394",
-  "build": 3100,
+  "version": "2.3.3-dev395",
+  "build": 3101,
   "status": "development",
-  "release_date": "2026-08-24",
+  "release_date": "2026-08-25",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Completes the isolated Dance Cup Automatic workflow from secure judge links through live submission progress, calculated ranking review and final round lock across Testing and Live",
+    "Removes full-page refresh and scroll loss from Dance Cup Manual and judge scoring with debounced autosave, explicit action updates, cleared-mark deletion and stale-result invalidation",
+    "Live-refreshes Dance Cup projection from current marks and judge state with competition-ranking tie parity, safe projector launch and separate-tab projection control",
     "Makes controlled isolated and Live/Test parity runs idempotent, durable and recoverable with stale-access preflight, HTTP 303 Post/Redirect/Get and reopenable run history",
     "Adds a controlled unpublished Live versus isolated Test scoring parity runner with identical inputs, exact result comparison, duplicate-run protection and paired archiving",
     "Adds Super Admin dashboard approval for short-lived browser-bound access to the isolated bdc_test System Test Runner without creating an Admin login",
