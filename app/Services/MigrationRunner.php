@@ -21,6 +21,7 @@ final class MigrationRunner
         '20260825_0300_restore_manual_special_categories',
         '20260825_0400_special_category_backup_recovery',
         '20260825_0500_remove_unapproved_salsa_profiles',
+        '20260825_0100_repair_permanent_division_categories',
     ];
 
     /**
@@ -29,6 +30,14 @@ final class MigrationRunner
      * stable file-only checksum; every other mismatch still fails closed.
      */
     private const COMPATIBLE_APPLIED_CHECKSUMS = [
+        '20260825_0100_repair_permanent_division_categories' => [
+            // Dependency-aware checksum recorded when the repair first shipped.
+            'df0325cd74ef31b3792a8abe3e01280a981317a92146a5ac680441773d1285ab',
+            // Dependency-aware checksum after the publication-only profile gate.
+            '4370bce0224d77c4718953fa425cc7fcf8e741bb1d2e3694379a4350db8c630d',
+            // Stable checksum of the immutable migration wrapper only.
+            '224b9199f9430cfc7d597aa90b5ef83013f39efd6e6765acc526aefc7a3b645f',
+        ],
         '20260803_2200' => [
             'cfa863294a58e28726f9a778fddac0bfe7dc00a4b5a8005aaba337f632fd7d6e',
             '9df39af8349b364ffa924350440a082bd02fa30d9a37fbc6e22b3ef7b20ccdb8',

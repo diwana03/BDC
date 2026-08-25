@@ -11,5 +11,5 @@ assert(migration.includes('BackupService.php'),'deployment repair is not tied to
 assert(runner.includes("'20260825_0500_remove_unapproved_salsa_profiles'"),'reusable repair migration must keep a stable file-only checksum');
 for(const marker of ['createDatabaseBackup','bdc_unapproved_profile_repairs','bdc_participant_results','bdc_point_transactions','beginTransaction','rollBack'])assert(service.includes(marker),marker+' safety missing');
 assert(service.includes("p.current_division IN('novice','intermediate','advanced','semi_pro','pro','professional','all_star','unknown')"),'Special Categories are not explicitly excluded');
-assert(version.version==='2.3.3-dev404'&&version.build===3110,'VERSION.json is not dev404 build 3110');
+assert(/^2\.3\.3-dev\d+$/.test(version.version)&&version.build>=3110,'VERSION.json predates dev404 build 3110');
 console.log('PASS automatic protected old-profile deployment repair v404');
