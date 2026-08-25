@@ -99,8 +99,14 @@ final class GoogleFormSyncService
     public static function resolveIdentity(array $data,array $candidates):array
     {
         if(!$candidates)return ['status'=>'new','competitor_id'=>null];
+        // Leader and Follower are separate BDC identities. Contact details may
+        // legitimately be shared, so an opposite-role identifier match must
+        // never absorb a new registration into the wrong role record.
+        $roleCompatible=static fn(array $candidate):bool=>in_array((string)($candidate['dance_role']??''),[$data['role'],'both'],true);
+        $compatible=array_values(array_filter($candidates,$roleCompatible));
+        if(!$compatible)return ['status'=>'new','competitor_id'=>null];
         $strong=[];
-        foreach($candidates as $candidate){
+        foreach($compatible as $candidate){
             $matches=0;
             if($data['email']!==''&&strtolower(trim((string)($candidate['email']??'')))===$data['email'])$matches++;
             if(self::digits($data['phone'])!==''&&self::digits((string)($candidate['phone']??''))===self::digits($data['phone']))$matches++;
@@ -110,7 +116,7 @@ final class GoogleFormSyncService
         $strong=array_values(array_unique($strong));
         if(count($strong)===1)return ['status'=>'existing','competitor_id'=>$strong[0]];
         if(count($strong)>1)return ['status'=>'pending_review','competitor_id'=>null];
-        $exact=array_values(array_filter($candidates,static fn(array $candidate):bool=>(string)($candidate['normalised_name']??'')===CompetitorIdentityService::normaliseCompetitorName($data['full_name'])));
+        $exact=array_values(array_filter($compatible,static fn(array $candidate):bool=>(string)($candidate['normalised_name']??'')===CompetitorIdentityService::normaliseCompetitorName($data['full_name'])));
         if(count($exact)===1){
             $candidate=$exact[0];
             $conflict=($data['email']!==''&&trim((string)($candidate['email']??''))!==''&&strtolower(trim((string)$candidate['email']))!==$data['email'])
@@ -125,7 +131,7 @@ final class GoogleFormSyncService
     {
         $name=CompetitorIdentityService::normaliseCompetitorName($data['full_name']);
         $email=$data['email'];$phone=self::digits($data['phone']);$instagram=$data['instagram'];
-        $sql="SELECT id,bdc_id,exact_name,normalised_name,email,phone,instagram,country FROM bdc_competitors WHERE status<>'archived' AND (normalised_name=:name";
+        $sql="SELECT id,bdc_id,exact_name,normalised_name,email,phone,instagram,country,dance_role FROM bdc_competitors WHERE status<>'archived' AND (normalised_name=:name";
         $params=['name'=>$name];
         if($email!==''){$sql.=' OR LOWER(TRIM(email))=:email';$params['email']=$email;}
         if($phone!==''){$sql.=" OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-',''),'(',''),')','')=:phone";$params['phone']=$phone;}

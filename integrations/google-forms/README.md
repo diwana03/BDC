@@ -17,17 +17,18 @@ For each response spreadsheet, open **Extensions → Apps Script**, paste `Code.
 - `BDC_SYNC_SECRET`: the same server secret
 - `BDC_FORM_KIND`: `open` for 4th Asia Open or `amateur` for 1st Asia Amateur
 
-Run `installBdcTrigger()` once and approve Google Sheets, Drive and external-request access.
+Run `installBdcTriggers()` once and approve Google Sheets, Drive and external-request access. It installs both the immediate form-submit trigger and a 15-minute reconciliation trigger. The reconciliation trigger safely retries failed rows and catches responses missed during temporary trigger, network or server failures.
 
-For existing rows, run `syncRowsFrom(78)` on the Open sheet or `syncRowsFrom(61)` on the Amateur sheet after Staging verification. The API's source-key and payload-hash checks make this safe to repeat.
+The first reconciliation starts at row 2 in batches of 40, so it also backfills historical responses without creating duplicate BDC identities. `syncRowsFrom(firstRow)` remains available for an authorised manual replay. The API's source-key and payload-hash checks make every replay idempotent.
 
 ## Identity and category rules
 
 - Exact duplicates are ignored using both the source row key and a canonical payload hash.
-- A unique match by email, phone or Instagram reuses the existing BDC ID.
+- A unique same-role match by email, phone or Instagram reuses the existing BDC ID.
+- Leader and Follower remain separate BDC identities even when contact information is shared.
 - A single exact-name match is reused when no identifier contradicts it.
 - Ambiguous candidates remain in `bdc_form_sync_submissions` with `pending_review` status.
-- Open registrations map to Bachata Open / Salsa Open.
-- Amateur registrations map to Bachata Rising / Salsa Rising.
-- Both styles are attached to one BDC competitor through separate discipline profiles.
+- Open and Amateur categories remain event-registration evidence only.
+- New identities start provisionally at Novice and no permanent dance division is changed before Super Admin result publication.
 - Photos are auto-oriented when EXIF is available and centre-cropped to an unstretched 800×800 JPEG.
+- An inaccessible or malformed Drive photo is logged and skipped without losing the competitor registration.

@@ -14,15 +14,20 @@ expect($open['styles']===['salsa','bachata'],'Dual-style mapping failed.');
 expect($open['instagram']==='test.person','Instagram normalisation failed.');
 expect($open['email']==='test@example.com','Email normalisation failed.');
 
-$candidate=['id'=>8,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>''];
+$candidate=['id'=>8,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>'','dance_role'=>'follower'];
 $decision=GoogleFormSyncService::resolveIdentity($open,[$candidate]);
 expect($decision['status']==='existing'&&$decision['competitor_id']===8,'Unique identifier match must reuse the BDC identity.');
 
 $ambiguous=GoogleFormSyncService::resolveIdentity($open,[
-    ['id'=>8,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>''],
-    ['id'=>9,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>''],
+    ['id'=>8,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>'','dance_role'=>'follower'],
+    ['id'=>9,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'','instagram'=>'','dance_role'=>'follower'],
 ]);
 expect($ambiguous['status']==='pending_review','Ambiguous duplicate identities must remain pending.');
+
+$oppositeRole=GoogleFormSyncService::resolveIdentity($open,[
+    ['id'=>10,'normalised_name'=>'test person','email'=>'test@example.com','phone'=>'+65 9123 4567','instagram'=>'test.person','dance_role'=>'leader'],
+]);
+expect($oppositeRole['status']==='new'&&$oppositeRole['competitor_id']===null,'Opposite roles must receive separate BDC identities.');
 
 $new=GoogleFormSyncService::resolveIdentity($open,[]);
 expect($new['status']==='new','No candidates must create a new identity.');

@@ -25,7 +25,14 @@ function onFormSubmit(e) {
   const styles = [];
   if (/bachata/i.test(category)) styles.push('bachata');
   if (/salsa/i.test(category)) styles.push('salsa');
-  const photo = loadDrivePhoto_(photoUrl);
+  let photo = {base64: '', mime: ''};
+  try {
+    photo = loadDrivePhoto_(photoUrl);
+  } catch (error) {
+    // Identity/contact registration must not be lost because one Drive photo
+    // is inaccessible or malformed. The photo can be added from BDC later.
+    console.error('BDC photo skipped: ' + error);
+  }
   const sheet = e.range.getSheet();
   const spreadsheet = sheet.getParent();
   const payload = {
@@ -57,6 +64,65 @@ function onFormSubmit(e) {
   if (code < 200 || code >= 300) throw new Error('BDC sync failed (' + code + '): ' + response.getContentText());
 }
 
+/**
+ * Reconcile response rows automatically so a temporary trigger, network or
+ * server failure cannot leave a registration permanently missing from BDC.
+ * Failed rows remain in a retry queue; successful rows are idempotent at BDC.
+ */
+function reconcileBdcRows() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const spreadsheetId = properties.getProperty('BDC_SPREADSHEET_ID');
+    if (!spreadsheetId) throw new Error('Run installBdcTriggers() once to bind scheduled reconciliation.');
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = responseSheet_(spreadsheet);
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2 || lastColumn < 1) return;
+    const suffix = spreadsheet.getId() + '_' + sheet.getSheetId();
+    const cursorKey = 'BDC_SYNC_CURSOR_' + suffix;
+    const retryKey = 'BDC_SYNC_RETRY_ROWS_' + suffix;
+    let cursor = Math.max(2, Number(properties.getProperty(cursorKey)) || 2);
+    const retryRows = JSON.parse(properties.getProperty(retryKey) || '[]')
+      .map(Number).filter(row => row >= 2 && row <= lastRow);
+    const rows = [...new Set(retryRows.concat(
+      Array.from({length: Math.max(0, Math.min(40, lastRow - cursor + 1))}, (_, index) => cursor + index)
+    ))];
+    const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0];
+    const failed = [];
+    rows.forEach(row => {
+      const values = sheet.getRange(row, 1, 1, lastColumn).getDisplayValues()[0];
+      if (!values.some(Boolean)) return;
+      const namedValues = {};
+      headers.forEach((header, index) => namedValues[header] = [values[index]]);
+      try {
+        onFormSubmit({range: sheet.getRange(row, 1, 1, lastColumn), namedValues: namedValues});
+      } catch (error) {
+        failed.push(row);
+        console.error('BDC row ' + row + ' failed: ' + error);
+      }
+    });
+    const processedNewRows = rows.filter(row => row >= cursor);
+    if (processedNewRows.length) cursor = Math.max(...processedNewRows) + 1;
+    properties.setProperty(cursorKey, String(cursor));
+    properties.setProperty(retryKey, JSON.stringify([...new Set(failed)]));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function responseSheet_(spreadsheet) {
+  const configured = PropertiesService.getScriptProperties().getProperty('BDC_RESPONSE_SHEET');
+  if (configured) {
+    const selected = spreadsheet.getSheetByName(configured);
+    if (!selected) throw new Error('BDC_RESPONSE_SHEET does not match a sheet tab.');
+    return selected;
+  }
+  return spreadsheet.getSheets().find(sheet => sheet.getLastColumn() > 1) || spreadsheet.getActiveSheet();
+}
+
 function loadDrivePhoto_(url) {
   if (!url) return {base64: '', mime: ''};
   const match = String(url).match(/[-\w]{20,}/);
@@ -66,11 +132,20 @@ function loadDrivePhoto_(url) {
   return {base64: Utilities.base64Encode(blob.getBytes()), mime: blob.getContentType()};
 }
 
-function installBdcTrigger() {
+function installBdcTriggers() {
   const spreadsheet = SpreadsheetApp.getActive();
-  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'onFormSubmit').forEach(t => ScriptApp.deleteTrigger(t));
+  if (!spreadsheet) throw new Error('Open the response spreadsheet before installing BDC triggers.');
+  PropertiesService.getScriptProperties().setProperty('BDC_SPREADSHEET_ID', spreadsheet.getId());
+  ScriptApp.getProjectTriggers()
+    .filter(t => ['onFormSubmit', 'reconcileBdcRows'].includes(t.getHandlerFunction()))
+    .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('onFormSubmit').forSpreadsheet(spreadsheet).onFormSubmit().create();
+  ScriptApp.newTrigger('reconcileBdcRows').timeBased().everyMinutes(15).create();
+  reconcileBdcRows();
 }
+
+/** Backward-compatible installer name. */
+function installBdcTrigger() { installBdcTriggers(); }
 
 /** Re-send existing response rows safely; BDC idempotency prevents duplicates. */
 function syncRowsFrom(firstRow) {

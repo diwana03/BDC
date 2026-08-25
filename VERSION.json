@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev411",
-  "build": 3117,
+  "version": "2.3.3-dev412",
+  "build": 3118,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Preserves separate Leader and Follower BDC identities during Google Form synchronization and leaves permanent divisions unchanged until Super Admin publication",
+    "Adds 15-minute Google Form reconciliation with retry queues and cursor-based historical catch-up so temporary trigger, network or server failures cannot permanently omit registrations",
     "Adds a Super Admin-only UTF-8 competitor CSV export that uses the exact Competitor Management filters and sorting, exports every matching row with private contact details, both dance profiles and style points, records an audit event and protects spreadsheet cells from formula injection",
     "Applies the source-sheet-verified one-time correction to exactly 27 unsupported permanent profiles, with an exact BDC ID/name/style/division allowlist, fresh database backup, transactional publication and manual-history rechecks, audit evidence and explicit protection of every confirmed Open or Amateur registration",
     "Adds a read-only exact-test-event profile evidence report and disables automatic historical deletion so missing baseline data is reconstructed from publication, manual/import and recovery evidence before any correction",
