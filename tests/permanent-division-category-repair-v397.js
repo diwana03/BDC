@@ -42,7 +42,9 @@ requireText(hook,'eligibilityFromApprovedHistory','approved eligibility');
 requireText(hook,'initialDivisionForUnapprovedEntry','provisional new identity');
 forbidText(hook,'if(!$isDesk&&!$create)return','legacy create-only bypass');
 
-for(const special of ['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'])forbidText(editor,special,'permanent competitor editor');
+// dev399 restores intentional manual Special Category assignments while the
+// registration/progression gates above still prevent automatic promotion.
+for(const special of ['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'])requireText(editor,special,'manual special category editor');
 
 if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3103)throw new Error('VERSION.json predates dev397 build 3103');
 requireText(release,'Production: **blocked','release deployment gate');

@@ -197,7 +197,7 @@ $currentListReturn = '?' . http_build_query($_GET);
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
         </div>
         <?php if (Auth::can('competitors.edit')): ?>
-            <div class="d-flex gap-2"><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a></div>
+            <div class="d-flex gap-2"><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a></div>
         <?php endif; ?>
     </div>
 

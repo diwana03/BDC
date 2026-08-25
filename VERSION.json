@@ -1,13 +1,14 @@
 {
-  "version": "2.3.3-dev398",
-  "build": 3104,
+  "version": "2.3.3-dev399",
+  "build": 3105,
   "status": "development",
   "release_date": "2026-08-25",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Recovers manually assigned Bachata and Salsa special categories from the latest competitor-edit audit state, restores Special Category editing and filtering, records every recovered assignment and preserves competitors with no completed or published event history",
     "Isolates Dance Cup Manual and Automatic scoring at event and category creation, adds a dedicated Automatic roster and judge setup, enforces saved workflow mode on every scorer route, and preserves shared projection without changing Dance Cup fields or calculation rules across Test and Live",
-    "Repairs legacy Test and Live competitor profiles that stored Rising, Open or Invitational as a permanent division, derives replacements only from approved official history, blocks special categories at the identity-schema level and prevents every event-entry or Google Form category from changing career state",
+    "Prevents Test, Live, event-entry and Google Form imports from automatically changing a manually maintained competitor category while keeping approved-history eligibility checks separate",
     "Separates Jack & Jill event-entry categories from permanent competitor divisions so website requests, draft rosters and isolated Test entries never promote a dancer; only Super Admin-approved style-specific competition history can establish progression",
     "Completes the isolated Dance Cup Automatic workflow from secure judge links through live submission progress, calculated ranking review and final round lock across Testing and Live",
     "Removes full-page refresh and scroll loss from Dance Cup Manual and judge scoring with debounced autosave, explicit action updates, cleared-mark deletion and stale-result invalidation",
