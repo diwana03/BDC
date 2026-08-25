@@ -13,6 +13,6 @@ for(const category of ['bachata_rising','bachata_open','bachata_invitational','s
 for(const token of ["action IN ('competitor_created','competitor_updated')",'details_json',"$details['division']",'$latest[(int)$row[\'entity_id\']',"bdc_special_category_recovery",'ON DUPLICATE KEY UPDATE'])if(!service.includes(token))throw new Error('Recovery evidence/idempotency missing: '+token);
 if(service.includes('bdc_participant_results')||service.includes('bdc_point_transactions')||service.includes('bdc_scoring_entries'))throw new Error('Manual recovery must not infer from competitions');
 if(!migration.includes('SpecialCategoryRecoveryService::recoverManualAssignments($pdo,true)'))throw new Error('Migration does not apply audited recovery');
-if(!list.includes('special-category-recovery.php')||!report.includes('RECOVERY AUDIT'))throw new Error('Super Admin recovery report is not connected');
-if(version.version!=='2.3.3-dev399'||version.build!==3105)throw new Error('VERSION.json is not dev399 build 3105');
+if(!list.includes('special-category-recovery.php')||(!report.includes('RECOVERY AUDIT')&&!report.includes('TARGETED RECOVERY')))throw new Error('Super Admin recovery report is not connected');
+if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3105)throw new Error('VERSION.json predates dev399 build 3105');
 console.log('PASS audited manual Special Category recovery v399');

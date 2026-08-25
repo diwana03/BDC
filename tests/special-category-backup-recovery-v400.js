@@ -1,0 +1,14 @@
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const service=read('app/Services/SpecialCategoryRecoveryService.php');
+const page=read('admin/competitors/special-category-recovery.php');
+const migration=read('database/migrations/20260825_0400_special_category_backup_recovery.php');
+const version=JSON.parse(read('VERSION.json'));
+for(const token of ['availableBackups','previewBackup','restoreFromBackup','backupSql','tableRows','tuples','BDC Competitor Dashboard database backup','bdc_competitor_discipline_profiles','bdc_competitors'])if(!service.includes(token))throw new Error('Backup recovery missing '+token);
+for(const token of ['createDatabaseBackup','beginTransaction','before_category','source_name',"source_kind","findByBdc","findById","needs_restore","already_special"])if(!service.includes(token))throw new Error('Backup safety/evidence missing '+token);
+for(const forbidden of ['bdc_participant_results','bdc_point_transactions','bdc_scoring_entries'])if(service.includes(forbidden))throw new Error('Backup recovery must not infer from '+forbidden);
+for(const token of ['Preview Backup','RESTORE SPECIAL CATEGORIES','Remaining to restore','Already correct','Missing competitors','TARGETED RECOVERY'])if(!page.includes(token))throw new Error('Recovery UI missing '+token);
+if(service.includes("WHERE (bdc_id<>'' AND bdc_id=:bdc) OR id=:legacy"))throw new Error('Numeric fallback must not match a different nonempty BDC ID');
+if(!migration.includes('SpecialCategoryRecoveryService::ensureSchema($pdo)'))throw new Error('Recovery schema migration missing');
+if(version.version!=='2.3.3-dev400'||version.build!==3106)throw new Error('VERSION.json is not dev400 build 3106');
+console.log('PASS targeted Special Category backup recovery v400');
