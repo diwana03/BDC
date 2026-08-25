@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev407",
-  "build": 3113,
+  "version": "2.3.3-dev408",
+  "build": 3114,
   "status": "development",
-  "release_date": "2026-08-25",
+  "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs profiles only for the exact Super Admin-confirmed test J&J events, with a strict event allowlist, same-dance evidence recheck, backup, audit evidence and protection for every unrelated or independently supported historical record",
     "Completes backed-up historical cleanup across Bachata and Salsa unpublished J&J rounds, protects style-specific published and explicit Special Category evidence, clears unsupported legacy Bachata values, and verifies Dance Cup roster isolation",
     "Removes unpublished Test or Live Salsa Open/Rising profiles in a backed-up second-pass migration while preserving matching manual, backup and official data-entry recovery evidence plus every published Salsa result",
     "Repairs the permanent-division migration checksum failure with a narrow exact-checksum compatibility list and stable immutable-wrapper hashing while preserving fail-closed protection for every unrelated migration",

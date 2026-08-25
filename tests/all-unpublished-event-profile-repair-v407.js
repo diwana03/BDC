@@ -10,5 +10,5 @@ for(const token of ["p.dance_style IN('bachata','salsa')",'pr.dance_style=p.danc
 assert(migration.includes('UnapprovedProfileRepairService::repair($pdo,0)'),'complete deployment repair missing');
 assert(runner.includes("'20260826_0200_remove_all_unpublished_event_profiles'"),'complete repair lacks stable wrapper checksum');
 assert(!danceCup.includes('bdc_competitor_discipline_profiles'),'Dance Cup roster must not mutate J&J discipline profiles');
-assert(version.version==='2.3.3-dev407'&&version.build===3113,'VERSION.json is not dev407 build 3113');
+assert(/^2\.3\.3-dev\d+$/.test(version.version)&&version.build>=3113,'VERSION.json predates dev407 build 3113');
 console.log('PASS complete unpublished event profile repair v407');
