@@ -20,6 +20,7 @@ final class MigrationRunner
         '20260806_1700',
         '20260825_0300_restore_manual_special_categories',
         '20260825_0400_special_category_backup_recovery',
+        '20260825_0500_remove_unapproved_salsa_profiles',
     ];
 
     /**
