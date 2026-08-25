@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev410",
-  "build": 3116,
+  "version": "2.3.3-dev411",
+  "build": 3117,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a Super Admin-only UTF-8 competitor CSV export that uses the exact Competitor Management filters and sorting, exports every matching row with private contact details, both dance profiles and style points, records an audit event and protects spreadsheet cells from formula injection",
     "Applies the source-sheet-verified one-time correction to exactly 27 unsupported permanent profiles, with an exact BDC ID/name/style/division allowlist, fresh database backup, transactional publication and manual-history rechecks, audit evidence and explicit protection of every confirmed Open or Amateur registration",
     "Adds a read-only exact-test-event profile evidence report and disables automatic historical deletion so missing baseline data is reconstructed from publication, manual/import and recovery evidence before any correction",
     "Repairs profiles only for the exact Super Admin-confirmed test J&J events, with a strict event allowlist, same-dance evidence recheck, backup, audit evidence and protection for every unrelated or independently supported historical record",

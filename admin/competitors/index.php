@@ -101,6 +101,74 @@ $sort = array_key_exists($sort, $sortMap) ? $sort : 'name';
 $orderSql = strtoupper($order);
 $whereSql = implode(' AND ', $where);
 
+$baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,
+        sp.dance_role salsa_role,sp.current_division salsa_division,
+        COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.salsa_points,0) salsa_points,
+        COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
+    FROM bdc_competitors c
+    LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
+    LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
+    LEFT JOIN (SELECT competitor_id,SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,SUM(CASE WHEN dance_style='salsa' THEN points ELSE 0 END) salsa_points FROM bdc_point_transactions GROUP BY competitor_id) pp ON pp.competitor_id=c.id
+    WHERE {$whereSql}";
+
+if ((string)($_GET['export'] ?? '') === 'csv') {
+    Auth::requireSuperAdmin();
+    $exportStmt = $pdo->prepare($baseListSql . " ORDER BY {$orderBy} {$orderSql}, c.id ASC");
+    foreach ($params as $key => $value) {
+        $exportStmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    $exportStmt->execute();
+    $exportRows = $exportStmt->fetchAll();
+
+    Auth::audit((int)(Auth::user()['id'] ?? 0), 'competitors_exported', [
+        'format' => 'csv',
+        'row_count' => count($exportRows),
+        'filters' => array_intersect_key($_GET, array_flip(['q','filter','country','dance_style','role','division','status','sort','order'])),
+    ], 'competitor_export');
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="bdc-competitors-' . date('Y-m-d-His') . '.csv"');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('X-Content-Type-Options: nosniff');
+    $out = fopen('php://output', 'wb');
+    if ($out === false) {
+        http_response_code(500);
+        exit('Unable to create competitor export.');
+    }
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, [
+        'BDC ID','Exact Name','Email','Phone','Instagram','Country',
+        'Bachata Role','Bachata Division','Salsa Role','Salsa Division',
+        'Bachata Points','Salsa Points','Total Points','Status','Created At','Updated At',
+    ]);
+    $safeCsv = static function ($value) {
+        $text = (string)($value ?? '');
+        return preg_match('/^[=+\-@]/u', $text) === 1 ? "'" . $text : $text;
+    };
+    foreach ($exportRows as $exportRow) {
+        fputcsv($out, [
+            $safeCsv($exportRow['bdc_id'] ?? ''),
+            $safeCsv($exportRow['exact_name'] ?? ''),
+            $safeCsv($exportRow['email'] ?? ''),
+            $safeCsv($exportRow['phone'] ?? ''),
+            $safeCsv($exportRow['instagram'] ?? ''),
+            $safeCsv($exportRow['country'] ?? ''),
+            $safeCsv($exportRow['bachata_role'] ?? ''),
+            $safeCsv($exportRow['bachata_division'] ?? ''),
+            $safeCsv($exportRow['salsa_role'] ?? ''),
+            $safeCsv($exportRow['salsa_division'] ?? ''),
+            (float)($exportRow['bachata_points'] ?? 0),
+            (float)($exportRow['salsa_points'] ?? 0),
+            (float)($exportRow['total_points'] ?? 0),
+            $safeCsv($exportRow['status'] ?? ''),
+            $safeCsv($exportRow['created_at'] ?? ''),
+            $safeCsv($exportRow['updated_at'] ?? ''),
+        ]);
+    }
+    fclose($out);
+    exit;
+}
+
 $countSql = "SELECT COUNT(*) FROM bdc_competitors c WHERE {$whereSql}";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($params);
@@ -109,15 +177,7 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,
-        sp.dance_role salsa_role,sp.current_division salsa_division,
-        COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.salsa_points,0) salsa_points,
-        COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
-    FROM bdc_competitors c
-    LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
-    LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
-    LEFT JOIN (SELECT competitor_id,SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,SUM(CASE WHEN dance_style='salsa' THEN points ELSE 0 END) salsa_points FROM bdc_point_transactions GROUP BY competitor_id) pp ON pp.competitor_id=c.id
-    WHERE {$whereSql}
+$sql = $baseListSql . "
     ORDER BY {$orderBy} {$orderSql}, c.id ASC
     LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($sql);
@@ -196,9 +256,10 @@ $currentListReturn = '?' . http_build_query($_GET);
             <h1 class="h3 mb-1">Competitor Management</h1>
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
         </div>
-        <?php if (Auth::can('competitors.edit')): ?>
-            <div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a></div>
-        <?php endif; ?>
+        <div class="d-flex flex-wrap gap-2">
+            <?php if (Auth::isSuperAdmin()): ?><a class="btn btn-outline-success" href="<?= e(queryUrl(['export' => 'csv', 'page' => null])) ?>">Export Competitors CSV</a><?php endif; ?>
+            <?php if (Auth::can('competitors.edit')): ?><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a><?php endif; ?>
+        </div>
     </div>
 
     <div class="row g-3 mb-4">

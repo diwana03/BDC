@@ -15,5 +15,5 @@ assert((service.match(/\['bdc_id'=>'BDC-/g)||[]).length===27,'allowlist must con
 for(const token of ['repairConfirmedUnsupportedProfiles','createDatabaseBackup','strcasecmp','published_or_manual_evidence','recovery_history_retained'])assert(service.includes(token),token+' safety missing');
 assert(migration.includes('repairConfirmedUnsupportedProfiles'),'migration does not call exact correction');
 assert(runner.includes('20260826_0400_apply_source_verified_profile_correction'),'migration checksum mode missing');
-assert(version.version==='2.3.3-dev410'&&version.build===3116,'VERSION.json is not dev410 build 3116');
+assert(version.build>=3116&&/^2\.3\.3-dev\d+$/.test(version.version),'VERSION.json predates dev410 build 3116');
 console.log('PASS source-verified exact profile correction v410');
