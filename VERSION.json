@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev401",
-  "build": 3107,
+  "version": "2.3.3-dev402",
+  "build": 3108,
   "status": "development",
   "release_date": "2026-08-25",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Reconciles the official Amateur and 4th Asia Open Google Forms CSV exports against unique BDC competitors, gives Open precedence by dance style, previews exact-name or safe email matches and restores only verified missing Special Category assignments behind a fresh safety backup",
     "Allows the immutable dev399 Special Category recovery migration to pass checksum verification after its reusable recovery service evolved in dev400, while retaining strict known-checksum validation and making both recovery wrappers file-only for future releases",
     "Adds targeted pre-dev397 database-backup preview and Special Category-only recovery with BDC ID matching, fresh safety backup, explicit confirmation and evidence history so pre-audit manual assignments can be restored without rolling back newer Production data",
     "Recovers manually assigned Bachata and Salsa special categories from the latest competitor-edit audit state, restores Special Category editing and filtering, records every recovered assignment and preserves competitors with no completed or published event history",

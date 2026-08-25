@@ -8,5 +8,5 @@ for(const token of [
  'a9c44cb2dd10923afcedfaa4ba364e56b73f33f74f4c2e82a20fc9fc75e467da',
 ])if(!runner.includes(token))throw new Error('Migration checksum compatibility missing '+token);
 if(!runner.includes('hash_equals($storedChecksum, $checksum)'))throw new Error('Strict checksum verification was removed');
-if(version.version!=='2.3.3-dev401'||version.build!==3107)throw new Error('VERSION.json is not dev401 build 3107');
+if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3107)throw new Error('VERSION.json predates dev401 build 3107');
 console.log('PASS Special Category migration checksum repair v401');

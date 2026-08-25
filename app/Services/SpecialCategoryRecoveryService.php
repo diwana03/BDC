@@ -11,6 +11,61 @@ final class SpecialCategoryRecoveryService
 {
     private const SPECIAL=['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'];
 
+    /** @return array<int,array{name:string,email:string,dance_style:string,category:string,source:string}> */
+    public static function dataEntryManifest(string $amateurCsv,string $openCsv):array
+    {
+        $merged=[];
+        foreach([[$amateurCsv,'amateur'],[$openCsv,'open']] as [$path,$source]){
+            if($path===''||!is_file($path))continue;
+            $handle=fopen($path,'rb');if($handle===false)throw new RuntimeException('The '.$source.' data-entry CSV could not be opened.');
+            $headers=fgetcsv($handle);if(!is_array($headers)){fclose($handle);throw new RuntimeException('The '.$source.' data-entry CSV has no header row.');}
+            $headers=array_map(static fn($value):string=>ltrim(trim((string)$value),"\xEF\xBB\xBF"),$headers);
+            $nameIndex=array_search('FULL NAME',$headers,true);$emailIndex=array_search('Email',$headers,true);
+            $styleHeader=$source==='amateur'?'Lead or Follow':'Please Select The Right Category';$styleIndex=array_search($styleHeader,$headers,true);
+            if($nameIndex===false||$emailIndex===false||$styleIndex===false){fclose($handle);throw new RuntimeException('The '.$source.' CSV is not the expected official response export.');}
+            while(($row=fgetcsv($handle))!==false){
+                $name=trim((string)($row[$nameIndex]??''));$email=strtolower(trim((string)($row[$emailIndex]??'')));$selection=strtolower((string)($row[$styleIndex]??''));if($name==='')continue;
+                $identity=self::normaliseName($name);$styles=[];if(str_contains($selection,'bachata'))$styles[]='bachata';if(str_contains($selection,'salsa'))$styles[]='salsa';
+                foreach($styles as $dance){$key=$identity.'|'.$dance;$category=$dance.'_'.($source==='open'?'open':'rising');$candidate=['name'=>$name,'email'=>$email,'dance_style'=>$dance,'category'=>$category,'source'=>$source];
+                    if(!isset($merged[$key])||$source==='open')$merged[$key]=$candidate;
+                }
+            }fclose($handle);
+        }
+        if($merged===[])throw new RuntimeException('No Salsa or Bachata data-entry assignments were found in the uploaded CSV files.');
+        return array_values($merged);
+    }
+
+    /** @param array<int,array<string,string>> $manifest */
+    public static function previewDataEntryManifest(PDO $pdo,array $manifest):array
+    {
+        $byName=$pdo->prepare('SELECT id,bdc_id,exact_name,email FROM bdc_competitors WHERE LOWER(TRIM(exact_name))=:name');
+        $byEmail=$pdo->prepare("SELECT id,bdc_id,exact_name,email FROM bdc_competitors WHERE email<>'' AND LOWER(TRIM(email))=:email");
+        $category=$pdo->prepare('SELECT current_division FROM bdc_competitor_discipline_profiles WHERE competitor_id=:competitor AND dance_style=:dance LIMIT 1');
+        $rows=[];$matched=0;$recoverable=0;$already=0;$unmatched=0;$conflicts=0;$people=[];
+        foreach($manifest as $item){$name=self::normaliseName((string)$item['name']);$email=strtolower(trim((string)($item['email']??'')));$byName->execute(['name'=>$name]);$nameRows=$byName->fetchAll();$emailRows=[];if($nameRows===[]&&$email!==''){$byEmail->execute(['email'=>$email]);$emailRows=$byEmail->fetchAll();}
+            $matches=[];foreach($nameRows!==[]?$nameRows:$emailRows as $match)$matches[(int)$match['id']]=$match;$matchCount=count($matches);$row=$item+['competitor_id'=>0,'bdc_id'=>'','current_category'=>'','status'=>'unmatched'];
+            if($matchCount===1){$current=reset($matches);$row['competitor_id']=(int)$current['id'];$row['bdc_id']=(string)$current['bdc_id'];$row['matched_name']=(string)$current['exact_name'];$people[$row['competitor_id']]=true;$matched++;$category->execute(['competitor'=>$row['competitor_id'],'dance'=>$item['dance_style']]);$row['current_category']=(string)($category->fetchColumn()?:'unknown');
+                if(in_array($row['current_category'],self::SPECIAL,true)){$row['status']='already_special';$already++;}else{$row['status']='restore';$recoverable++;}
+            }elseif($matchCount>1){$row['status']='conflict';$conflicts++;}else$unmatched++;$rows[]=$row;
+        }
+        return ['assignments'=>count($manifest),'unique_people'=>count(array_unique(array_map(static fn(array $row):string=>self::normaliseName((string)$row['name']),$manifest))),'matched_people'=>count($people),'matched'=>$matched,'recoverable'=>$recoverable,'already_special'=>$already,'unmatched'=>$unmatched,'conflicts'=>$conflicts,'candidates'=>$rows];
+    }
+
+    /** @param array<int,array<string,string>> $manifest */
+    public static function restoreDataEntryManifest(PDO $pdo,array $manifest,?int $userId):array
+    {
+        self::ensureSchema($pdo);$preview=self::previewDataEntryManifest($pdo,$manifest);if($preview['recoverable']<1)return ['restored'=>0,'safety_backup'=>'not required']+ $preview;
+        if($preview['conflicts']>0)throw new RuntimeException('Resolve every duplicate database match before restoring data-entry assignments.');
+        $safety=(new BackupService())->createDatabaseBackup($userId);$profile=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:competitor,:dance,'unknown',:category) ON DUPLICATE KEY UPDATE current_division=VALUES(current_division),updated_at=NOW()");$legacy=$pdo->prepare('UPDATE bdc_competitors SET current_division=:category WHERE id=:competitor');$record=$pdo->prepare("INSERT INTO bdc_special_category_recovery(audit_log_id,competitor_id,dance_style,recovered_category,audit_created_at,source_kind,source_name,before_category,applied_at) VALUES(NULL,:competitor,:dance,:category,NULL,'data_entry',:source,:before,NOW())");$restored=0;
+        $pdo->beginTransaction();try{foreach($preview['candidates'] as $candidate){if($candidate['status']!=='restore')continue;$profile->execute(['competitor'=>$candidate['competitor_id'],'dance'=>$candidate['dance_style'],'category'=>$candidate['category']]);if($candidate['dance_style']==='bachata')$legacy->execute(['category'=>$candidate['category'],'competitor'=>$candidate['competitor_id']]);$record->execute(['competitor'=>$candidate['competitor_id'],'dance'=>$candidate['dance_style'],'category'=>$candidate['category'],'source'=>'Official '.$candidate['source'].' data-entry CSV','before'=>$candidate['current_category']]);$restored++;}$pdo->commit();}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['restored'=>$restored,'safety_backup'=>$safety['name']]+$preview;
+    }
+
+    private static function normaliseName(string $name):string
+    {
+        return strtolower(trim((string)preg_replace('/\s+/u',' ',$name)));
+    }
+
     /** @return array{candidates:int,restored:int,skipped:int} */
     public static function recoverManualAssignments(PDO $pdo,bool $apply=true):array
     {
