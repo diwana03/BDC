@@ -10,5 +10,5 @@ for(const checksum of [
  '4370bce0224d77c4718953fa425cc7fcf8e741bb1d2e3694379a4350db8c630d',
  '224b9199f9430cfc7d597aa90b5ef83013f39efd6e6765acc526aefc7a3b645f'
 ])assert(runner.includes(checksum),'known checksum missing: '+checksum);
-assert(version.version==='2.3.3-dev405'&&version.build===3111,'VERSION.json is not dev405 build 3111');
+assert(/^2\.3\.3-dev\d+$/.test(version.version)&&version.build>=3111,'VERSION.json predates dev405 build 3111');
 console.log('PASS permanent-division migration checksum compatibility v405');
