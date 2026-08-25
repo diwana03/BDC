@@ -23,6 +23,7 @@ final class MigrationRunner
         '20260825_0500_remove_unapproved_salsa_profiles',
         '20260825_0100_repair_permanent_division_categories',
         '20260826_0100_remove_unpublished_salsa_special_categories',
+        '20260826_0200_remove_all_unpublished_event_profiles',
     ];
 
     /**
