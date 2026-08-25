@@ -10,5 +10,5 @@ for(const forbidden of ['bdc_participant_results','bdc_point_transactions','bdc_
 for(const token of ['Preview Backup','RESTORE SPECIAL CATEGORIES','Remaining to restore','Already correct','Missing competitors','TARGETED RECOVERY'])if(!page.includes(token))throw new Error('Recovery UI missing '+token);
 if(service.includes("WHERE (bdc_id<>'' AND bdc_id=:bdc) OR id=:legacy"))throw new Error('Numeric fallback must not match a different nonempty BDC ID');
 if(!migration.includes('SpecialCategoryRecoveryService::ensureSchema($pdo)'))throw new Error('Recovery schema migration missing');
-if(version.version!=='2.3.3-dev400'||version.build!==3106)throw new Error('VERSION.json is not dev400 build 3106');
+if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3106)throw new Error('VERSION.json predates dev400 build 3106');
 console.log('PASS targeted Special Category backup recovery v400');

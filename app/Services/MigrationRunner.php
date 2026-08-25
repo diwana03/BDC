@@ -18,6 +18,8 @@ final class MigrationRunner
     private const FILE_ONLY_CHECKSUM_MIGRATIONS = [
         '20260803_2200',
         '20260806_1700',
+        '20260825_0300_restore_manual_special_categories',
+        '20260825_0400_special_category_backup_recovery',
     ];
 
     /**
@@ -38,6 +40,12 @@ final class MigrationRunner
             'f08a2045fffb22bcedf516b1b08dd75b24fea949ff2e42fcb9ecce002c795d34',
             '1c710ae1c5c4accc1b5d245235d145aa12e6c4515e66022e6a5d269a5630db29',
             'd948b9cc2c9ebde5f7cd36aa684627e7feb4b941d65f6663a22df2f620f77714',
+        ],
+        '20260825_0300_restore_manual_special_categories' => [
+            // dev399 dependency-aware checksum recorded in Production.
+            '5da67a98bba0a16199ce6c0e5dea2d65729b9efd2104a68ef005edf3db4cea41',
+            // Stable checksum of the immutable migration wrapper only.
+            'a9c44cb2dd10923afcedfaa4ba364e56b73f33f74f4c2e82a20fc9fc75e467da',
         ],
     ];
 
