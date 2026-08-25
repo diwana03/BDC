@@ -6,6 +6,45 @@ use RuntimeException;
 
 final class UnapprovedProfileRepairService
 {
+    /**
+     * Profiles confirmed unsupported after comparing the named test-event
+     * evidence with both original SBTA Open and Amateur Google Form exports.
+     * This is intentionally an exact allowlist: never broaden it to inferred
+     * event participants.
+     */
+    private static function confirmedUnsupportedProfiles():array
+    {
+        return [
+            ['bdc_id'=>'BDC-000446','name'=>'ANDREA AVERSA','dance'=>'bachata','division'=>'bachata_rising'],
+            ['bdc_id'=>'BDC-000208','name'=>'Aaron Then','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000205','name'=>'Abhi N','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000492','name'=>'Abhishek Khurana','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000315','name'=>'Aditya Ahluwalia','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000501','name'=>'Adrienn Marton','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000309','name'=>'Alethea Chua','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000355','name'=>'Alexandria Wong','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000398','name'=>'Angela Bok','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000295','name'=>'Angela Lim','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000468','name'=>'Anna Nguyen','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000216','name'=>'Antoine Michel','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000410','name'=>'Arsh','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000290','name'=>'Asef Purwanti','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000345','name'=>'Ashish Diwan','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000287','name'=>'Astrid Nicole','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000477','name'=>'Atlee Afroz','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000272','name'=>'Atsuko Hamada','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000236','name'=>'Aya Alimkulova','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000337','name'=>'Caius Chew','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000363','name'=>'Candice Le','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000391','name'=>'Cecilia Koh','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000214','name'=>'Celstine Chen','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000288','name'=>'Chitralekha Makhija','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000400','name'=>'Derrick Lye','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000245','name'=>'Jadyn Chua','dance'=>'salsa','division'=>'salsa_open'],
+            ['bdc_id'=>'BDC-000438','name'=>'James Chan','dance'=>'salsa','division'=>'salsa_open'],
+        ];
+    }
+
     private static function targetEventsSql():string
     {
         return "(e.name LIKE 'BDC LIVE PARITY TEST - DO NOT PUBLISH%'
@@ -105,6 +144,57 @@ final class UnapprovedProfileRepairService
                 $delete->execute(['competitor'=>$row['competitor_id'],'dance'=>$dance,'division'=>$row['current_division']]);if($delete->rowCount()!==1){$skipped++;continue;}
                 if($dance==='bachata')$clearLegacy->execute(['competitor'=>$row['competitor_id'],'division'=>$row['current_division']]);
                 $history->execute(['competitor'=>$row['competitor_id'],'dance'=>$dance,'division'=>$row['current_division'],'evidence'=>$evidence,'user'=>$userId?:null]);$repaired++;
+            }
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['repaired'=>$repaired,'skipped'=>$skipped,'safety_backup'=>(string)($backup['name']??'created')];
+    }
+
+    /** Apply only the source-sheet-verified correction approved on 26 Aug 2026. */
+    public static function repairConfirmedUnsupportedProfiles(PDO $pdo,?int $userId=null):array
+    {
+        self::ensureSchema($pdo);
+        $targets=self::confirmedUnsupportedProfiles();
+        $lookup=$pdo->prepare("SELECT c.id,c.bdc_id,c.exact_name,p.dance_style,p.current_division,p.updated_at
+          FROM bdc_competitors c
+          JOIN bdc_competitor_discipline_profiles p ON p.competitor_id=c.id
+          WHERE c.bdc_id=:bdc AND p.dance_style=:dance
+          LIMIT 1");
+        $supported=$pdo->prepare("SELECT
+          (SELECT COUNT(*) FROM bdc_participant_results pr WHERE pr.competitor_id=:c1 AND pr.dance_style=:d1 AND (pr.source IN('historical_import','manual') OR EXISTS(SELECT 1 FROM bdc_scoring_publication_points spp JOIN bdc_scoring_publications sp ON sp.id=spp.publication_id AND sp.status='published' WHERE spp.participant_result_id=pr.id)))
+          +(SELECT COUNT(*) FROM bdc_point_transactions pt WHERE pt.competitor_id=:c2 AND pt.dance_style=:d2 AND (pt.source_type IN('manual','csv_import','correction') OR EXISTS(SELECT 1 FROM bdc_scoring_publication_points spp JOIN bdc_scoring_publications sp ON sp.id=spp.publication_id AND sp.status='published' WHERE spp.point_transaction_id=pt.id)))");
+        $eligible=[];$skipped=0;
+        foreach($targets as $target){
+            $lookup->execute(['bdc'=>$target['bdc_id'],'dance'=>$target['dance']]);$row=$lookup->fetch(PDO::FETCH_ASSOC);
+            if(!$row || !hash_equals($target['division'],(string)$row['current_division']) || strcasecmp(trim($target['name']),trim((string)$row['exact_name']))!==0){$skipped++;continue;}
+            $supported->execute(['c1'=>$row['id'],'d1'=>$target['dance'],'c2'=>$row['id'],'d2'=>$target['dance']]);
+            if((int)$supported->fetchColumn()>0){$skipped++;continue;}
+            $eligible[]=$row+$target;
+        }
+        if(!$eligible)return ['repaired'=>0,'skipped'=>$skipped,'safety_backup'=>'none'];
+        $backup=(new BackupService())->createDatabaseBackup($userId);
+        $delete=$pdo->prepare("DELETE FROM bdc_competitor_discipline_profiles WHERE competitor_id=:competitor AND dance_style=:dance AND current_division=:division");
+        $clearLegacy=$pdo->prepare("UPDATE bdc_competitors SET current_division='unknown' WHERE id=:competitor AND current_division=:division");
+        $history=$pdo->prepare("INSERT INTO bdc_unapproved_profile_repairs(competitor_id,dance_style,removed_division,evidence_json,repaired_by) VALUES(:competitor,:dance,:division,:evidence,:user)");
+        $repaired=0;$pdo->beginTransaction();
+        try{
+            foreach($eligible as $row){
+                // Recheck inside the transaction so a newly published/manual
+                // record always wins over this one-time correction.
+                $supported->execute(['c1'=>$row['id'],'d1'=>$row['dance'],'c2'=>$row['id'],'d2'=>$row['dance']]);
+                if((int)$supported->fetchColumn()>0){$skipped++;continue;}
+                $delete->execute(['competitor'=>$row['id'],'dance'=>$row['dance'],'division'=>$row['division']]);
+                if($delete->rowCount()!==1){$skipped++;continue;}
+                if($row['dance']==='bachata')$clearLegacy->execute(['competitor'=>$row['id'],'division'=>$row['division']]);
+                $evidence=json_encode([
+                    'bdc_id'=>$row['bdc_id'],'exact_name'=>$row['exact_name'],'dance_style'=>$row['dance'],
+                    'removed_division'=>$row['division'],'profile_updated_at'=>$row['updated_at'],
+                    'verification'=>'SBTA Open and Amateur source sheets checked 2026-08-26',
+                    'published_or_manual_evidence'=>0,'recovery_history_retained'=>true,
+                ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+                if($evidence===false)throw new RuntimeException('Unable to encode confirmed repair evidence.');
+                $history->execute(['competitor'=>$row['id'],'dance'=>$row['dance'],'division'=>$row['division'],'evidence'=>$evidence,'user'=>$userId]);
+                $repaired++;
             }
             $pdo->commit();
         }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}

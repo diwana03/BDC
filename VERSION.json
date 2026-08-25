@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev409",
-  "build": 3115,
+  "version": "2.3.3-dev410",
+  "build": 3116,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Applies the source-sheet-verified one-time correction to exactly 27 unsupported permanent profiles, with an exact BDC ID/name/style/division allowlist, fresh database backup, transactional publication and manual-history rechecks, audit evidence and explicit protection of every confirmed Open or Amateur registration",
     "Adds a read-only exact-test-event profile evidence report and disables automatic historical deletion so missing baseline data is reconstructed from publication, manual/import and recovery evidence before any correction",
     "Repairs profiles only for the exact Super Admin-confirmed test J&J events, with a strict event allowlist, same-dance evidence recheck, backup, audit evidence and protection for every unrelated or independently supported historical record",
     "Completes backed-up historical cleanup across Bachata and Salsa unpublished J&J rounds, protects style-specific published and explicit Special Category evidence, clears unsupported legacy Bachata values, and verifies Dance Cup roster isolation",
