@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev397",
-  "build": 3103,
+  "version": "2.3.3-dev398",
+  "build": 3104,
   "status": "development",
   "release_date": "2026-08-25",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Isolates Dance Cup Manual and Automatic scoring at event and category creation, adds a dedicated Automatic roster and judge setup, enforces saved workflow mode on every scorer route, and preserves shared projection without changing Dance Cup fields or calculation rules across Test and Live",
     "Repairs legacy Test and Live competitor profiles that stored Rising, Open or Invitational as a permanent division, derives replacements only from approved official history, blocks special categories at the identity-schema level and prevents every event-entry or Google Form category from changing career state",
     "Separates Jack & Jill event-entry categories from permanent competitor divisions so website requests, draft rosters and isolated Test entries never promote a dancer; only Super Admin-approved style-specific competition history can establish progression",
     "Completes the isolated Dance Cup Automatic workflow from secure judge links through live submission progress, calculated ranking review and final round lock across Testing and Live",

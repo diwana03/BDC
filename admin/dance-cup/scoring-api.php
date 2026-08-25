@@ -36,11 +36,13 @@ function dcApiSnapshot(PDO $pdo,string $prefix,int $competition):array{
 }
 
 try{
-    DanceCupScoringService::ensureAutomation($pdo,$id,$test);
-    $competition=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");
+    DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
+    $competition=$pdo->prepare("SELECT status,scoring_mode FROM {$tables['competitions']} WHERE id=:competition");
     $competition->execute(['competition'=>$id]);
-    $status=$competition->fetchColumn();
-    if($status===false)throw new RuntimeException('Dance Cup category not found.');
+    $competitionRow=$competition->fetch();
+    if(!$competitionRow)throw new RuntimeException('Dance Cup category not found.');
+    $status=(string)$competitionRow['status'];$savedWorkflow=(string)$competitionRow['scoring_mode'];
+    if($savedWorkflow==='automatic')DanceCupScoringService::ensureAutomation($pdo,$id,$test);
 
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Security check failed. Reload and try again.');
@@ -87,7 +89,7 @@ try{
             $query->execute(['competition'=>$id,'label'=>$label,'snapshot'=>json_encode(dcApiSnapshot($pdo,$prefix,$id),JSON_UNESCAPED_SLASHES),'user'=>(int)(Auth::user()['id']??0)?:null]);
             $message='Checkpoint saved.';
         }elseif($action==='submit'){
-            $workflow=(string)($_POST['workflow']??'manual');
+            $workflow=$savedWorkflow;
             $state=DanceCupScoringService::workflowState($pdo,$id,$test);
             if(!$state['all_marks_complete'])throw new RuntimeException('Complete every judge score before submitting the competition.');
             if(!$state['results_current'])throw new RuntimeException('Calculate and review the current results before submitting.');

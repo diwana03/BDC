@@ -23,6 +23,13 @@ final class DanceCupScoringService
     public static function ensureWorkspaceTables(PDO $pdo, bool $test = false): void
     {
         $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
+        $tables = self::tables($test);
+        foreach ([
+            "ALTER TABLE {$tables['events']} ADD COLUMN scoring_mode VARCHAR(20) NOT NULL DEFAULT 'manual' AFTER country",
+            "ALTER TABLE {$tables['competitions']} ADD COLUMN scoring_mode VARCHAR(20) NOT NULL DEFAULT 'manual' AFTER round_name",
+        ] as $definition) {
+            try { $pdo->exec($definition); } catch (\Throwable) {}
+        }
         $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_entries(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,competitor_id BIGINT UNSIGNED NULL,bib_number INT UNSIGNED NOT NULL,display_name VARCHAR(190) NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_entry_bib(competition_id,bib_number),UNIQUE KEY uq_dc_entry_competitor(competition_id,competitor_id),INDEX idx_dc_entry_comp(competition_id,status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_judges(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,competition_id BIGINT UNSIGNED NOT NULL,judge_id BIGINT UNSIGNED NULL,judge_name VARCHAR(190) NOT NULL,judge_order INT UNSIGNED NOT NULL DEFAULT 1,is_chief TINYINT(1) NOT NULL DEFAULT 0,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_dc_judge_name(competition_id,judge_name),INDEX idx_dc_judge_comp(competition_id,judge_order)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("CREATE TABLE IF NOT EXISTS {$prefix}_marks(competition_id BIGINT UNSIGNED NOT NULL,entry_id BIGINT UNSIGNED NOT NULL,judge_id BIGINT UNSIGNED NOT NULL,criterion_id BIGINT UNSIGNED NOT NULL,points DECIMAL(8,2) NOT NULL DEFAULT 0,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(competition_id,entry_id,judge_id,criterion_id),INDEX idx_dc_marks_comp(competition_id,judge_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
@@ -119,12 +126,17 @@ final class DanceCupScoringService
         $danceStyle = (string) ($data['dance_style'] ?? 'bachata');
         $level = (string) ($data['competition_level'] ?? 'open');
         $performanceType = (string) ($data['performance_type'] ?? 'showcase');
+        $scoringMode = (string) ($data['scoring_mode'] ?? 'manual');
         if ($eventId < 1 || $category === '') throw new RuntimeException('Event and category name are required.');
         if (!in_array($entryType, ['solo', 'couple', 'duo', 'team'], true)) throw new RuntimeException('Invalid entry type.');
         if (!in_array($roundName, ['qualifier', 'quarterfinal', 'semifinal', 'final'], true)) throw new RuntimeException('Invalid Dance Cup round.');
         if (!in_array($danceStyle, ['salsa', 'bachata', 'cha_cha', 'other'], true)) throw new RuntimeException('Invalid dance style.');
         if (!in_array($level, ['amateur', 'intermediate', 'pro_am', 'professional', 'open'], true)) throw new RuntimeException('Invalid competition level.');
         if (!in_array($performanceType, ['showcase', 'classic', 'cabaret', 'shines', 'just_dance'], true)) throw new RuntimeException('Invalid performance type.');
+        if (!in_array($scoringMode, ['manual', 'automatic'], true)) throw new RuntimeException('Invalid scoring workflow.');
+        $eventMode = $pdo->prepare("SELECT scoring_mode FROM {$tables['events']} WHERE id=:event");
+        $eventMode->execute(['event' => $eventId]);
+        if ((string) $eventMode->fetchColumn() !== $scoringMode) throw new RuntimeException('Choose an event created for this scoring workflow.');
         if (!$criteria) throw new RuntimeException('Add at least one scoring criterion.');
         $maximum = 0.0;
         $seen = [];
@@ -141,7 +153,7 @@ final class DanceCupScoringService
 
         $pdo->beginTransaction();
         try {
-            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,competition_level,performance_type,round_name,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:level,:performance_type,:round_name,:maximum,:user)");
+            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,competition_level,performance_type,round_name,scoring_mode,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:level,:performance_type,:round_name,:scoring_mode,:maximum,:user)");
             $insert->execute([
                 'event' => $eventId,
                 'category' => $category,
@@ -150,6 +162,7 @@ final class DanceCupScoringService
                 'level' => $level,
                 'performance_type' => $performanceType,
                 'round_name' => $roundName,
+                'scoring_mode' => $scoringMode,
                 'maximum' => $maximum,
                 'user' => $userId ?: null,
             ]);
@@ -164,6 +177,18 @@ final class DanceCupScoringService
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $e;
         }
+    }
+
+    public static function assertScoringMode(PDO $pdo, int $competitionId, string $mode, bool $test = false): void
+    {
+        if (!in_array($mode, ['manual', 'automatic'], true)) throw new RuntimeException('Invalid scoring workflow.');
+        self::ensureWorkspaceTables($pdo, $test);
+        $table = self::tables($test)['competitions'];
+        $query = $pdo->prepare("SELECT scoring_mode FROM {$table} WHERE id=:competition");
+        $query->execute(['competition' => $competitionId]);
+        $saved = $query->fetchColumn();
+        if ($saved === false) throw new RuntimeException('Dance Cup category not found.');
+        if (!hash_equals($mode, (string) $saved)) throw new RuntimeException('This category belongs to the '.ucfirst((string) $saved).' Scoring workflow.');
     }
     /** @return array<int,array<string,mixed>> */
     public static function calculateResults(PDO $pdo, int $competitionId, bool $test = false): array

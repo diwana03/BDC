@@ -1,0 +1,30 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+
+const service=read('app/Services/DanceCupScoringService.php');
+const migration=read('database/migrations/20260825_0200_isolate_dance_cup_scoring_modes.php');
+const index=read('admin/dance-cup/index.php');
+const workflow=read('admin/dance-cup/workflow.php');
+const manual=read('admin/dance-cup/category.php');
+const automaticSetup=read('admin/dance-cup/automatic-setup.php');
+const automatic=read('admin/dance-cup/automation.php');
+const api=read('admin/dance-cup/scoring-api.php');
+const modeScript=read('public/js/dance-cup-mode-isolation.js');
+
+assert(migration.includes('bdc_dance_cup_events')&&migration.includes('bdc_test_dance_cup_events'),'migration must cover Live and Test events');
+assert(migration.includes('bdc_dance_cup_competitions')&&migration.includes('bdc_test_dance_cup_competitions'),'migration must cover Live and Test categories');
+assert((migration.match(/DEFAULT 'manual'/g)||[]).length===2,'legacy events and categories must default safely to Manual');
+assert(migration.includes("s.status<>'not_started'")&&migration.includes("c.scoring_mode='automatic'"),'migration must preserve categories with proven Automatic judge activity');
+assert(service.includes('assertScoringMode')&&service.includes("['manual', 'automatic']"),'service must enforce the two stored scoring modes');
+assert(service.includes("SELECT scoring_mode FROM {$tables['events']}")&&service.includes("Choose an event created for this scoring workflow"),'category creation must match its parent event workflow');
+assert(index.includes("scoring_mode=:mode")&&index.includes("$_POST['scoring_mode']=$workflow"),'event/category creation must be workflow scoped');
+assert(workflow.includes("c.scoring_mode=:mode")&&workflow.includes("$workflow!=='projection'"),'Manual and Automatic lists must be isolated while projection remains shared');
+assert(manual.includes("assertScoringMode($pdo,$id,'manual'")&&automatic.includes("assertScoringMode($pdo,$id,'automatic'"),'direct routes must reject the wrong workflow');
+assert(automaticSetup.includes("assertScoringMode($pdo,$id,'automatic'")&&automaticSetup.includes('Open Judge Links &amp; Progress'),'Automatic must have an independent setup route');
+assert(api.includes("$savedWorkflow=(string)$competitionRow['scoring_mode']")&&api.includes("if($savedWorkflow==='automatic')DanceCupScoringService::ensureAutomation"),'API must use stored mode and never create judge sessions for Manual');
+assert(modeScript.includes("automation.php?id=")&&modeScript.includes("automatic-setup.php"),'cross-workflow navigation must be removed or redirected');
+assert(index.includes('criterion_name')&&index.includes('criterion_max')&&index.includes('performance_type'),'existing Dance Cup fields and custom criteria must remain');
+console.log('Dance Cup Manual/Automatic isolation v398: PASS');
