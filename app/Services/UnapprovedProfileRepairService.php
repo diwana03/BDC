@@ -79,6 +79,9 @@ final class UnapprovedProfileRepairService
 
     public static function repair(PDO $pdo,int $userId):array
     {
+        // Deployment migrations call with system user 0. Historical repair is
+        // now preview-only because the pre-test baseline backup is unavailable.
+        if($userId<1){$preview=self::diagnostic($pdo);return ['repaired'=>0,'skipped'=>count($preview['rows']),'safety_backup'=>'preview only'];}
         $preview=self::preview($pdo);if(!$preview['rows'])return ['repaired'=>0,'skipped'=>0,'safety_backup'=>'none'];
         $backup=(new BackupService())->createDatabaseBackup($userId);
         $history=$pdo->prepare("INSERT INTO bdc_unapproved_profile_repairs(competitor_id,dance_style,removed_division,evidence_json,repaired_by) VALUES(:competitor,:dance,:division,:evidence,:user)");
@@ -106,5 +109,28 @@ final class UnapprovedProfileRepairService
             $pdo->commit();
         }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         return ['repaired'=>$repaired,'skipped'=>$skipped,'safety_backup'=>(string)($backup['name']??'created')];
+    }
+
+    /** Non-destructive evidence report for only the named test events. */
+    public static function diagnostic(PDO $pdo):array
+    {
+        self::ensureSchema($pdo);SpecialCategoryRecoveryService::ensureSchema($pdo);$targets=self::targetEventsSql();
+        $sql="SELECT DISTINCT x.competitor_id,x.bdc_id,x.exact_name,x.dance_style,p.dance_role,p.current_division,p.updated_at
+          FROM (
+            SELECT c.id competitor_id,c.bdc_id,c.exact_name,r.dance_style
+            FROM bdc_scoring_entries se JOIN bdc_scoring_rounds r ON r.id=se.round_id JOIN bdc_events e ON e.id=r.event_id JOIN bdc_competitors c ON c.id=se.competitor_id
+            WHERE {$targets}
+            UNION
+            SELECT c.id,c.bdc_id,c.exact_name,r.dance_style
+            FROM bdc_test_scoring_entries te JOIN bdc_test_scoring_rounds r ON r.id=te.round_id JOIN bdc_events e ON e.id=r.event_id JOIN bdc_test_competitors tc ON tc.id=te.competitor_id JOIN bdc_competitors c ON c.bdc_id=tc.bdc_id
+            WHERE {$targets}
+          ) x LEFT JOIN bdc_competitor_discipline_profiles p ON p.competitor_id=x.competitor_id AND p.dance_style=x.dance_style
+          ORDER BY x.exact_name,x.dance_style";
+        $rows=$pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $published=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_publication_points spp JOIN bdc_scoring_publications sp ON sp.id=spp.publication_id AND sp.status='published' LEFT JOIN bdc_participant_results pr ON pr.id=spp.participant_result_id LEFT JOIN bdc_point_transactions pt ON pt.id=spp.point_transaction_id WHERE COALESCE(pr.competitor_id,pt.competitor_id)=:competitor AND COALESCE(pr.dance_style,pt.dance_style)=:dance");
+        $manual=$pdo->prepare("SELECT (SELECT COUNT(*) FROM bdc_participant_results WHERE competitor_id=:c1 AND dance_style=:d1 AND source IN('historical_import','manual'))+(SELECT COUNT(*) FROM bdc_point_transactions WHERE competitor_id=:c2 AND dance_style=:d2 AND source_type IN('manual','csv_import','correction'))");
+        $recovery=$pdo->prepare("SELECT COUNT(*) FROM bdc_special_category_recovery WHERE competitor_id=:competitor AND dance_style=:dance AND recovered_category=:division AND applied_at IS NOT NULL");
+        foreach($rows as &$row){$published->execute(['competitor'=>$row['competitor_id'],'dance'=>$row['dance_style']]);$row['published_evidence']=(int)$published->fetchColumn();$manual->execute(['c1'=>$row['competitor_id'],'d1'=>$row['dance_style'],'c2'=>$row['competitor_id'],'d2'=>$row['dance_style']]);$row['manual_history']=(int)$manual->fetchColumn();$row['recovery_evidence']=0;if((string)($row['current_division']??'')!==''){$recovery->execute(['competitor'=>$row['competitor_id'],'dance'=>$row['dance_style'],'division'=>$row['current_division']]);$row['recovery_evidence']=(int)$recovery->fetchColumn();}$row['classification']=$row['current_division']===null?'no_profile':($row['published_evidence']>0?'published_protected':($row['manual_history']>0?'manual_history_protected':($row['recovery_evidence']>0?'recovery_evidence_review':'test_event_only_candidate')));}
+        unset($row);return ['rows'=>$rows,'total'=>count($rows),'candidates'=>count(array_filter($rows,static fn(array $r):bool=>$r['classification']==='test_event_only_candidate'))];
     }
 }
