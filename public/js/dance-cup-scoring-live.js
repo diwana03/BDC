@@ -35,7 +35,9 @@ function renderResults(state){
 function renderState(state){
  renderResults(state);
  document.querySelectorAll('[data-dc-last-updated]').forEach(node=>node.textContent='Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+ document.querySelectorAll('[data-dc-matrix-mark]').forEach(cell=>{const value=state.mark_matrix?.[cell.dataset.entry]?.[cell.dataset.judge]?.[cell.dataset.criterion];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
  document.querySelectorAll('[data-dc-matrix-total]').forEach(cell=>{const value=state.row_totals?.[cell.dataset.entry]?.[cell.dataset.judge];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
+ document.querySelectorAll('[data-dc-matrix-place]').forEach(cell=>{const row=state.results.find(item=>Number(item.entry_id)===Number(cell.dataset.entry));cell.innerHTML=row?'<strong>#'+escapeHtml(row.placement)+'</strong>':'<span class="text-muted">Not calculated</span>';});
  document.querySelectorAll('[data-dc-status]').forEach(node=>{
   node.textContent=String(state.competition_status||'draft').toUpperCase();
   node.classList.toggle('text-bg-success',state.competition_status==='submitted');

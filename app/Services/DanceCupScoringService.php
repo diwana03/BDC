@@ -73,39 +73,14 @@ final class DanceCupScoringService
     {
         $technique = 'Dance Style Technique / Authenticity';
         $presentation = 'Overall Presentation (Costume & Showmanship)';
-        return [
-            'solo' => [
+        $official = [
                 ['name' => 'Timing', 'max' => 20.0],
                 ['name' => 'Musicality & Choreography', 'max' => 20.0],
                 ['name' => 'Difficulty', 'max' => 20.0],
                 ['name' => $technique, 'max' => 20.0],
                 ['name' => $presentation, 'max' => 20.0],
-            ],
-            'couple' => [
-                ['name' => 'Timing', 'max' => 20.0],
-                ['name' => 'Musicality & Choreography', 'max' => 20.0],
-                ['name' => 'Connection & Partnering', 'max' => 20.0],
-                ['name' => $technique, 'max' => 20.0],
-                ['name' => 'Difficulty', 'max' => 10.0],
-                ['name' => $presentation, 'max' => 10.0],
-            ],
-            'duo' => [
-                ['name' => 'Timing', 'max' => 20.0],
-                ['name' => 'Musicality & Choreography', 'max' => 20.0],
-                ['name' => 'Connection & Partnering', 'max' => 20.0],
-                ['name' => $technique, 'max' => 20.0],
-                ['name' => 'Difficulty', 'max' => 10.0],
-                ['name' => $presentation, 'max' => 10.0],
-            ],
-            'team' => [
-                ['name' => 'Timing', 'max' => 20.0],
-                ['name' => 'Musicality & Choreography', 'max' => 20.0],
-                ['name' => 'Synchronization & Teamwork', 'max' => 20.0],
-                ['name' => $technique, 'max' => 20.0],
-                ['name' => 'Difficulty', 'max' => 10.0],
-                ['name' => $presentation, 'max' => 10.0],
-            ],
         ];
+        return ['solo' => $official, 'couple' => $official, 'duo' => $official, 'team' => $official];
     }
 
     /** @return array<int,array{name:string,max:float}> */
@@ -248,9 +223,10 @@ final class DanceCupScoringService
         $entryCount = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active'");
         $entryCount->execute(['competition' => $competitionId]);
         $entries = (int) $entryCount->fetchColumn();
-        $criterionCount = $pdo->prepare("SELECT COUNT(*) FROM {$tables['criteria']} WHERE competition_id=:competition");
-        $criterionCount->execute(['competition' => $competitionId]);
-        $criteria = (int) $criterionCount->fetchColumn();
+        $criterionQuery = $pdo->prepare("SELECT id,criterion_name,maximum_points,sort_order FROM {$tables['criteria']} WHERE competition_id=:competition ORDER BY sort_order,id");
+        $criterionQuery->execute(['competition' => $competitionId]);
+        $criterionRows = $criterionQuery->fetchAll();
+        $criteria = count($criterionRows);
         $judgeCount = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_judges WHERE competition_id=:competition");
         $judgeCount->execute(['competition' => $competitionId]);
         $judges = (int) $judgeCount->fetchColumn();
@@ -277,6 +253,11 @@ final class DanceCupScoringService
         $rowTotals = [];
         foreach ($totals->fetchAll() as $row) $rowTotals[(int) $row['entry_id']][(int) $row['judge_id']] = (float) $row['total'];
 
+        $markQuery = $pdo->prepare("SELECT entry_id,judge_id,criterion_id,points FROM {$prefix}_marks WHERE competition_id=:competition");
+        $markQuery->execute(['competition' => $competitionId]);
+        $markMatrix = [];
+        foreach ($markQuery->fetchAll() as $row) $markMatrix[(int) $row['entry_id']][(int) $row['judge_id']][(int) $row['criterion_id']] = (float) $row['points'];
+
         $results = self::results($pdo, $competitionId, $test);
         $requiredMarks = $entries * $judges * $criteria;
         return [
@@ -291,6 +272,8 @@ final class DanceCupScoringService
             'submitted_judges' => $submitted,
             'all_judges_submitted' => $judges > 0 && $submitted === $judges,
             'sessions' => $sessionRows,
+            'criteria' => $criterionRows,
+            'mark_matrix' => $markMatrix,
             'row_totals' => $rowTotals,
             'results' => $results,
             'results_current' => $entries > 0 && count($results) === $entries,

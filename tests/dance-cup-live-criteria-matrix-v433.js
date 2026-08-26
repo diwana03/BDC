@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const service=fs.readFileSync('app/Services/DanceCupScoringService.php','utf8');
+const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const client=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+for(const marker of ['criterion_name','maximum_points','sort_order','mark_matrix'])assert(service.includes(marker),'workflow state must expose '+marker);
+assert(service.includes("$prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup'"),'score state must preserve Test/Live table isolation');
+for(const marker of ['rowspan="2"','colspan="<?=$judgeSpan?>"','data-dc-matrix-mark','data-criterion','data-dc-matrix-total','data-dc-matrix-place'])assert(view.includes(marker),'live criterion matrix missing '+marker);
+assert(client.includes("state.mark_matrix?.[cell.dataset.entry]?.[cell.dataset.judge]?.[cell.dataset.criterion]"),'two-second refresh must update each criterion mark');
+assert(client.includes("[data-dc-matrix-place]"),'calculated place must refresh without navigation');
+assert(view.includes('dance-cup-scoring-live.js?v=433'),'matrix client cache key must advance');
+assert(setup.includes("require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-workspace.php'"),'Test and Live must render the shared matrix view');
+console.log('Dance Cup live criterion matrix and Test/Live parity passed.');
