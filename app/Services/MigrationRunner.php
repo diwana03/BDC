@@ -26,6 +26,7 @@ final class MigrationRunner
         '20260826_0200_remove_all_unpublished_event_profiles',
         '20260826_0300_repair_named_test_event_profiles',
         '20260826_0400_apply_source_verified_profile_correction',
+        '20260826_0500_publish_verified_form_profiles',
     ];
 
     /**
@@ -60,6 +61,12 @@ final class MigrationRunner
             '5da67a98bba0a16199ce6c0e5dea2d65729b9efd2104a68ef005edf3db4cea41',
             // Stable checksum of the immutable migration wrapper only.
             'a9c44cb2dd10923afcedfaa4ba364e56b73f33f74f4c2e82a20fc9fc75e467da',
+        ],
+        '20260826_0500_publish_verified_form_profiles' => [
+            // Dependency-aware checksum recorded when dev413 ran in Production.
+            '05879cf08f3131f0a33c0ec38ada73b5e8a08481602ec4c662fb8e887c6dab31',
+            // Stable checksum of the immutable migration file only.
+            '064f1c3a9332383b301663ad43000a088af5e1f45d2bc364c8a572c69902dfd8',
         ],
     ];
 

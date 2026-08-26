@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev415",
-  "build": 3121,
+  "version": "2.3.3-dev416",
+  "build": 3122,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Accepts only the exact dependency-aware checksum recorded when verified-profile migration 0500 ran and its immutable file-only checksum, allowing the forward Special Category migration while every unrelated checksum mismatch remains blocked",
     "Restores the already-applied verified-profile migration byte-for-byte so the migration integrity gate passes, while retaining the progression and Special Category separation exclusively in a new forward migration",
     "Separates career progression, per-division point history and Special Competition Category so Advanced dancers can remain Advanced while appearing in Bachata Open, makes point totals explicit, preserves both axes during duplicate merges, and safely converts legacy mixed profile values",
     "Publishes the exact 28 verified Google Form identities as 29 Bachata/Salsa Open or Rising profiles, consolidates three duplicate BDC IDs into their established identities, preserves linked history and career data, and records backed-up transactional recovery evidence",
