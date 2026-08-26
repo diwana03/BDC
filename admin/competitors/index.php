@@ -192,11 +192,13 @@ $stmt->execute();
 $rows = $stmt->fetchAll();
 
 $counts = [
+    'all_participants' => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors")->fetchColumn(),
     'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE photo_url IS NULL OR TRIM(photo_url)='' ")->fetchColumn(),
     'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE country IS NULL OR TRIM(country)='' ")->fetchColumn(),
     'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE dance_role='unknown' OR current_division='unknown'")->fetchColumn(),
     'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE special_category IN ('bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open')")->fetchColumn(),
 ];
+$hasListFilters=$q!==''||$filter!==''||$country!==''||$danceStyle!==''||$role!==''||$division!==''||$status!=='';
 
 $countries = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
 
@@ -238,6 +240,7 @@ $currentListReturn = '?' . http_build_query($_GET);
         .sortable { color: inherit; text-decoration: none; white-space: nowrap; }
         .sortable:hover { text-decoration: underline; }
         .filter-card.active { outline: 2px solid #212529; }
+        .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; }
         .competitor-photo { width:48px; height:48px; object-fit:cover; border-radius:8px; }
         .table thead th { vertical-align: middle; }
         .profile-box { min-width:190px; padding:.55rem .7rem; border:1px solid #dee2e6; border-radius:.55rem; background:#fff; }
@@ -264,10 +267,11 @@ $currentListReturn = '?' . http_build_query($_GET);
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="summary-grid mb-4">
         <?php foreach ($counts as $key => $count): ?>
-            <div class="col-6 col-lg-3">
-                <a class="card filter-card <?= $filter === $key ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?= e(queryUrl(['filter' => $filter === $key ? '' : $key, 'page' => 1])) ?>">
+            <?php $isAll=$key==='all_participants';$isActive=$isAll?!$hasListFilters:$filter===$key; ?>
+            <div>
+                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?= $isAll?'?':e(queryUrl(['filter' => $filter === $key ? '' : $key, 'page' => 1])) ?>">
                     <div class="card-body">
                         <div class="small text-muted"><?= e(ucwords(str_replace('_', ' ', $key))) ?></div>
                         <div class="fs-2 fw-bold"><?= $count ?></div>
