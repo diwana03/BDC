@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev440",
-  "build": 3146,
+  "version": "2.3.3-dev441",
+  "build": 3147,
   "status": "development",
   "release_date": "2026-08-27",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Emergency-repairs Jack and Jill Automatic event creation by routing it through a clean dedicated action instead of the corrupted discipline handler, and makes Dance Cup Participant Management tolerate an incomplete result-history migration without HTTP 500",
     "Hotfixes the shared Jack and Jill scoring workspace by removing the dev439 open-round navigation injection while retaining Automatic event creation on the established all-round dashboard and leaving Dance Cup scoring calculations unchanged",
     "Adds the Dance Cup participant dashboard, visible automatic draft protection, two-stage scorer lock and Super Admin result publication, permanent approved history, always-available Jack and Jill event creation, and Profile Request status counts",
     "Restores bulk Profile Request review with row selection, Select All, sequential audited Approve or Reject processing, per-request failure reporting and exact scroll restoration after refresh or review actions",
