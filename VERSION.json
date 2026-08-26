@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev421",
-  "build": 3127,
+  "version": "2.3.3-dev423",
+  "build": 3129,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Combines the Dance Cup Automatic Live Projection action with a compact non-overlapping BDC header, responsive contestant and judge setup grids, and unclipped database suggestion dropdowns",
+    "Cleans the Dance Cup Automatic setup into one compact BDC header, removes duplicate Back/Dashboard actions and gives competitor and judge database search fields a spacious responsive roster layout",
     "Adds the official BDC header plus database-backed competitor and judge suggestions to Dance Cup Automatic setup in both Testing and Live, preserving canonical profile links and blocking duplicate assignments",
     "Moves the shared Theme selector into a reserved responsive toolbar on pages without a dockable header so it never covers Back to Dashboard or other navigation controls",
     "Supports multiple Special Competition Categories per competitor, style and role so the same identity can retain both Open and Amateur/Rising registrations and appear under either filter",

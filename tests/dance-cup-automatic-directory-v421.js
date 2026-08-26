@@ -19,8 +19,8 @@ assert(setup.includes('INSERT INTO {$prefix}_entries(competition_id,competitor_i
 assert(setup.includes('INSERT INTO {$prefix}_judges(competition_id,judge_id,judge_name,judge_order,is_chief)'), 'Automatic judges must persist the judge profile link.');
 assert(setup.includes('This BDC competitor is already assigned') && setup.includes('This Judge Database profile is already assigned'), 'Canonical duplicates must be blocked before insert.');
 assert(setup.includes('data-directory-type="competitor"') && setup.includes('data-directory-type="judge"'), 'Both Automatic roster fields must activate type-ahead.');
-assert(setup.includes('dance-cup-directory.js?v=421') && manual.includes('dance-cup-directory.js?v=421'), 'Automatic and Manual must share the current directory client.');
-assert(setup.includes('class="navbar-brand"') && setup.includes('Back to Dashboard'), 'Automatic setup must render the shared BDC header navigation.');
+assert(setup.includes('dance-cup-directory.js?v=423') && manual.includes('dance-cup-directory.js?v=423'), 'Automatic and Manual must share the current directory client.');
+assert(setup.includes('class="navbar-brand"') && setup.includes('data-bdc-nav-compact="1"'), 'Automatic setup must render the compact shared BDC header navigation.');
 assert(endpoint.includes("$type === 'judge'") && endpoint.includes('FROM bdc_competitors'), 'The authenticated endpoint must search both canonical directories.');
 assert(directory.includes("new URL('directory-search.php',location.href)") && directory.includes("hidden.value=''"), 'Typing must query the active endpoint and clear stale selected IDs.');
 assert(directory.includes('BDC Directory search could not load. Please retry.'), 'Directory failures must show a neutral retry message for competitors and judges.');

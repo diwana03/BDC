@@ -317,6 +317,8 @@ if ($bdcAdminHtmlCandidate) {
   var onDashboard=cleanPath===cleanDashboard;
   var onScoringTests=/\/admin\/scoring-tests(?:\/index\.php)?$/.test(cleanPath);
   var onParity=cleanPath===parityPath;
+  var pageNavbar=document.querySelector('nav.navbar');
+  var compactNavigation=pageNavbar&&pageNavbar.getAttribute('data-bdc-nav-compact')==='1';
 
   function button(label,kind){
     var el=document.createElement(kind==='back'?'button':'a');
@@ -341,7 +343,7 @@ if ($bdcAdminHtmlCandidate) {
   var controls=document.createElement('div');
   controls.className='bdc-universal-admin-nav';
   controls.setAttribute('data-bdc-admin-navigation','1');
-  controls.appendChild(button('Back','back'));
+  if(!compactNavigation)controls.appendChild(button('Back','back'));
   if((onScoringTests||onParity) && !onParity)controls.appendChild(button('Automatic Parity Test','test'));
   if(!onDashboard)controls.appendChild(button('Dashboard','dashboard'));
 
