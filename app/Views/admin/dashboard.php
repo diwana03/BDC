@@ -106,7 +106,10 @@ if (
  const readState=name=>{try{return localStorage.getItem('bdc-admin-nav-'+name)}catch(e){return null}};
  const saveState=(name,value)=>{try{localStorage.setItem('bdc-admin-nav-'+name,value)}catch(e){}};
  const groups={
-  'Live Operations':['Live Projection','Events & Tickets','Registrations','Jack & Jill Scoring','Dance Cup Scoring','Scoring Backups'],
+  'Live Operations':['Live Projection','Events & Tickets','Registrations'],
+  'Jack & Jill':['Jack & Jill Scoring'],
+  'Dance Cup':['Dance Cup Scoring','Dance Cup Participants','Dance Cup Approvals'],
+  'Operations Safety':['Scoring Backups'],
   'People':['Competitors','Judge Database','Identity Matches','Profile Requests'],
   'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],
   'Testing & System':['Jack & Jill Scoring Tests','Dance Cup Scoring Tests','Backup & Recovery','Storage Usage','Release Manager'],

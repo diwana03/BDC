@@ -16,4 +16,7 @@ assert(dashboard.includes('scoring_create_error'));
 for(const marker of ['information_schema.TABLES','bdc_dance_cup_result_history','$historyReady','0 events_entered','current database migration completes'])assert(participants.includes(marker),'Participant fallback missing '+marker);
 assert(legacyAutomation.includes("automatic-setup.php?id='.$id")&&legacyAutomation.includes('#automatic-workspace'),'Legacy Dance Cup automation URL must redirect into the complete workspace');
 for(const marker of ['<!doctype html>','scoring-premium.css','$automaticWorkspace'])assert(automaticSetup.includes(marker),'Automatic workspace shell missing '+marker);
+const automaticView=read('app/Views/admin/dance-cup-automatic-workspace.php');
+for(const marker of ['dc-automatic-emergency-shell','#automatic-workspace .card','#automatic-workspace .dc-workflow-steps'])assert(automaticView.includes(marker),'Automatic standalone style fallback missing '+marker);
+assert(participants.includes('http_response_code(200)')&&participants.includes('No participant or scoring data was deleted.'),'Participants migration fallback must render a normal recovery page');
 console.log('PASS emergency scoring entrypoints v441');

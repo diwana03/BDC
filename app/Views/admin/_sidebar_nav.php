@@ -14,10 +14,19 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php $sidebarLink('admin/live-screen/', '▣', 'Live Projection', 'TOP'); ?>
     <?php $sidebarLink('admin/events/', '▣', 'Events & Tickets'); ?>
     <?php $sidebarLink('admin/registrations/', '☷', 'Registrations'); ?>
+</div></details>
+
+<details class="admin-nav-group-v203" open><summary>Jack &amp; Jill</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/scoring/', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
+</div></details>
+
+<details class="admin-nav-group-v203" open><summary>Dance Cup</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/dance-cup/participants.php', '◎', 'Dance Cup Participants', 'NEW'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/dance-cup/approvals.php', '✓', 'Dance Cup Approvals', 'NEW'); ?>
+</div></details>
+
+<details class="admin-nav-group-v203"><summary>Operations Safety</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/scoring-backups/', '↶', 'Scoring Backups'); ?>
 </div></details>
 
