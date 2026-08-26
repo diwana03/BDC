@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev443",
-  "build": 3149,
+  "version": "2.3.3-dev444",
+  "build": 3150,
   "status": "development",
   "release_date": "2026-08-27",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces fragile Dance Cup Automatic fragment composition with a complete server-rendered page containing the event header, contestant roster, judge roster and full scoring workflow",
     "Opens the complete Dance Cup Automatic workspace at its event header and roster instead of skipping contestant and judge setup by jumping directly to Step 2",
     "Separates Jack and Jill, Dance Cup, shared live operations and scoring backups into distinct admin sidebar navigation groups",
     "Emergency-repairs Jack and Jill Automatic event creation by routing it through a clean dedicated action instead of the corrupted discipline handler, and makes Dance Cup Participant Management tolerate an incomplete result-history migration without HTTP 500",

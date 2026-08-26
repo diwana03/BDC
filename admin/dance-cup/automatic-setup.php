@@ -94,6 +94,8 @@ $q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,(SELECT COUNT
 $state=DanceCupScoringService::workflowState($pdo,$id,$test);
 $q=$pdo->prepare("SELECT * FROM {$prefix}_checkpoints WHERE competition_id=:id ORDER BY id DESC LIMIT 10");$q->execute(['id'=>$id]);$automaticCheckpoints=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM {$prefix}_event_projection WHERE event_id=:event");$q->execute(['event'=>$competition['event_id']]);$projection=$q->fetch();$projectorUrl=url('admin/dance-cup/projector-launch.php?token='.rawurlencode((string)($projection['access_token']??'')).($test?'&data_mode=test':''));
+require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-page.php';
+exit;
 ob_start();require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-workspace.php';$automaticWorkspace=ob_get_clean();
 ob_start(static function(string $html)use($test,$automaticWorkspace,$id,$suffix):string{
     $html=str_replace('scoring-premium.css?v=398','scoring-premium.css?v=434',$html);
