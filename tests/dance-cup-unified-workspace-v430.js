@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const automatic=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+const panel=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const manual=fs.readFileSync('admin/dance-cup/category.php','utf8');
+const client=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
+assert(automatic.includes("$automaticWorkspace")&&automatic.includes("str_replace('</main>',$automaticWorkspace.'</main>'"),'Automatic Setup must render the complete workflow on the same page');
+for(const marker of ['Judge Scoring &amp; Live Progress','Live Judge Score Matrix','Save Checkpoint','Print Judge Sheets','Calculate &amp; Sort Ranking','Submit Scores &amp; Lock','Calculated Ranking','Live Projection'])assert(panel.includes(marker),'unified Automatic workspace missing '+marker);
+for(const marker of ['data-dc-automatic','data-session-progress','data-dc-matrix-total','data-dc-api-action="calculate"','data-dc-api-action="submit"','data-dc-results'])assert(panel.includes(marker),'Automatic live workflow missing '+marker);
+assert(automatic.includes("$action==='checkpoint'")&&automatic.includes('dcAutomaticWorkspaceSnapshot'),'Automatic checkpoint must preserve the full workspace state');
+assert(automatic.includes("$action==='reopen'")&&automatic.includes("$action==='regenerate'")&&automatic.includes("$action==='reset_projection'"),'all judge and projector controls must remain on the unified page');
+assert(manual.includes('dc-workflow-steps')&&manual.includes('manual-round-controls')&&manual.includes('manual-ranking'),'Manual must expose the same ordered workflow on one page');
+assert(!manual.includes('>Automatic Scoring</a>'),'Manual must not jump into the Automatic workflow');
+assert(client.includes('[data-dc-matrix-total]')&&client.includes('calculateButton'),'live marks and calculate readiness must update without page navigation');
+assert(css.includes('.dc-workflow-steps')&&css.includes('.dc-unified-actions'),'shared workflow controls must be responsive');
+console.log('Dance Cup unified Manual and Automatic workspace v430 regression passed');

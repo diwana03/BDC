@@ -20,7 +20,7 @@ assert(service.includes("$placement = $index + 1"),'calculation must use competi
 assert(api.includes("if($raw==='')")&&api.includes('DELETE FROM {$prefix}_marks'),'manual API must delete cleared marks');
 assert(api.includes('DELETE FROM {$prefix}_scoring_results'),'score changes must invalidate stale results');
 assert(api.includes("workflow==='automatic'")&&api.includes('all_judges_submitted'),'automatic final lock must require submitted judge sheets');
-assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=395'),'manual dashboard must use no-refresh scorer');
+assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=430'),'manual dashboard must use no-refresh scorer');
 assert(manual.includes('target="_blank" rel="noopener" href="projection-control.php'),'manual projection must open separately');
 assert(judge.includes("($_POST['ajax']??'')==='1'")&&judge.includes('dance-cup-judge-live.js?v=429'),'judge scoring must save without page refresh');
 assert(judge.includes('DELETE FROM {$p}_scoring_results'),'judge changes must invalidate stale results');

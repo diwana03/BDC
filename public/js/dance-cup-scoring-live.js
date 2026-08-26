@@ -34,6 +34,7 @@ function renderResults(state){
 }
 function renderState(state){
  renderResults(state);
+ document.querySelectorAll('[data-dc-matrix-total]').forEach(cell=>{const value=state.row_totals?.[cell.dataset.entry]?.[cell.dataset.judge];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
  document.querySelectorAll('[data-dc-status]').forEach(node=>{
   node.textContent=String(state.competition_status||'draft').toUpperCase();
   node.classList.toggle('text-bg-success',state.competition_status==='submitted');
@@ -54,6 +55,8 @@ function renderState(state){
  document.querySelectorAll('[data-dc-lock-on-submit]').forEach(button=>button.disabled=submitted);
  const finalButton=document.querySelector('[data-dc-api-action="submit"]');
  if(finalButton)finalButton.disabled=submitted||!state.all_judges_submitted||!state.results_current;
+ const calculateButton=document.querySelector('[data-dc-api-action="calculate"]');
+ if(calculateButton)calculateButton.disabled=submitted||Number(state.mark_count)<1;
 }
 if(manual){
  const scoreForm=[...manual.querySelectorAll('form')].find(form=>form.querySelector('input[name="action"][value="save_scores"]'));

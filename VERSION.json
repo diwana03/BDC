@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev429",
-  "build": 3135,
+  "version": "2.3.3-dev430",
+  "build": 3136,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Unifies Manual and Automatic Dance Cup scoring into ordered single-page workspaces with roster, judge progress, live score matrix, checkpoints, printing, ranking, submit-and-lock and projection controls",
     "Adds touch-friendly Dance Cup judge scoring sliders with live selected marks and contestant totals, mandatory rules acceptance, clear judge notifications and unchanged Test/Live scoring calculations",
     "Makes the BDC admin portal mobile friendly with an accessible off-canvas Dashboard menu, responsive action bars and forms, labeled Competitor and Judge record cards, touch-sized controls and safe Dance Cup/scoring table scrolling",
     "Aligns every Automatic Dance Cup Add, Chief, roster management, Judge Links and Live Projection button to consistent input baselines and control heights",
