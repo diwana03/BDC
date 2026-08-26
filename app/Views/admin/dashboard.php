@@ -11,7 +11,7 @@ $bdcEnvironmentClass =
     url("public/assets/css/app.css?v=204"),
 ) ?>"><link rel="stylesheet" href="<?= e(
     url("public/assets/css/bdc-brand-theme.css?v=8"),
-) ?>"><link rel="stylesheet" data-bdc-theme-styles href="<?= e(url("public/assets/css/bdc-theme.css?v=325")) ?>"><script defer src="<?= e(url("public/assets/js/bdc-theme.js?v=325")) ?>"></script></head><body class="admin-v203 <?= e(
+) ?>"><link rel="stylesheet" data-bdc-theme-styles href="<?= e(url("public/assets/css/bdc-theme.css?v=420")) ?>"><script defer src="<?= e(url("public/assets/js/bdc-theme.js?v=420")) ?>"></script></head><body class="admin-v203 <?= e(
     $bdcEnvironmentClass,
 ) ?>"><div class="admin-layout-v203"><header class="admin-topbar-v203"><div class="admin-topbar-brand-v203"><span class="admin-topbar-logo-v203"><img src="<?= e(
     url("public/assets/bdc-logo.png"),

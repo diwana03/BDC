@@ -3,6 +3,8 @@ html,body,button,input,select,textarea{font-family:var(--bdc-ui-font)}
 body{transition:background-color .18s ease,color .18s ease}
 .bdc-theme-control{position:fixed;z-index:2147483000;top:12px;right:12px;display:flex;align-items:center;gap:3px;padding:4px;border:1px solid rgba(201,164,92,.55);border-radius:12px;background:rgba(17,23,37,.94);box-shadow:0 10px 26px rgba(0,0,0,.24);backdrop-filter:blur(14px);color:#fff}
 .bdc-theme-control-inline{position:static;z-index:auto;box-shadow:none;background:rgba(7,10,17,.22)}
+.bdc-theme-fallback-bar{position:relative;z-index:2147482999;display:flex;align-items:center;justify-content:flex-end;min-height:54px;padding:8px 12px;background:linear-gradient(108deg,#101b31 0%,#182640 58%,#541c35 100%);border-bottom:2px solid #c9a45c;box-shadow:0 5px 16px rgba(15,23,42,.14)}
+.bdc-theme-fallback-bar>.bdc-theme-control{position:static;z-index:auto;inset:auto;box-shadow:none;background:rgba(7,10,17,.3)}
 .bdc-theme-label{padding:0 7px;font-size:.72rem;font-weight:800;color:#ead7aa;text-transform:uppercase;letter-spacing:.06em}
 .bdc-theme-control button{display:flex;align-items:center;gap:5px;min-height:30px;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.72);font-size:.76rem;font-weight:750;line-height:1;cursor:pointer}
 .bdc-theme-control button:hover{background:rgba(255,255,255,.1);color:#fff}
@@ -51,7 +53,7 @@ html[data-bdc-theme=dark] .admin-v203.admin-env-production .admin-quick-actions-
 html[data-bdc-theme=dark] .admin-v203.admin-env-production .admin-date-chip-v203{background:var(--bdc-theme-surface)!important;color:#e6c978!important;border-color:#7c6840!important}
 html[data-bdc-theme=dark] .dc-roster-card{background:linear-gradient(135deg,#182033,#121a2b)!important}html[data-bdc-theme=dark] .dc-directory-menu{background:#182033;border-color:#39455c}html[data-bdc-theme=dark] .dc-directory-menu button{color:#f7f3ea}html[data-bdc-theme=dark] .dc-directory-menu button:hover,html[data-bdc-theme=dark] .dc-directory-menu button:focus{background:#2a2030}html[data-bdc-theme=dark] .dc-directory-hint,html[data-bdc-theme=dark] .dc-roster-heading small,html[data-bdc-theme=dark] .dc-directory-menu button small,html[data-bdc-theme=dark] .dc-directory-empty{color:#aeb7c6!important}
 
-@media(max-width:700px){.bdc-theme-control:not(.bdc-theme-control-inline){top:auto;right:8px;bottom:8px}.bdc-theme-label{display:none}.bdc-theme-control button span:last-child{display:none}.bdc-theme-control button{min-width:36px;justify-content:center;font-size:1rem}}
+@media(max-width:700px){.bdc-theme-control:not(.bdc-theme-control-inline):not(.bdc-theme-control-fallback){top:auto;right:8px;bottom:8px}.bdc-theme-fallback-bar{min-height:50px;padding:6px 8px}.bdc-theme-label{display:none}.bdc-theme-control button span:last-child{display:none}.bdc-theme-control button{min-width:36px;justify-content:center;font-size:1rem}}
 @media(prefers-reduced-motion:reduce){body{transition:none}}
 
 /* Compact premium judge header shared by Test and Live judge surfaces. */

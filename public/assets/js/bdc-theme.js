@@ -9,7 +9,7 @@
   if (!document.querySelector('link[data-bdc-theme-styles], link[href*="/css/bdc-theme.css"]')) {
     var stylesheet = document.createElement('link');
     stylesheet.rel = 'stylesheet';
-    stylesheet.href = assetBase + '/css/bdc-theme.css?v=341';
+    stylesheet.href = assetBase + '/css/bdc-theme.css?v=420';
     stylesheet.dataset.bdcThemeStyles = '1';
     document.head.appendChild(stylesheet);
   }
@@ -68,7 +68,13 @@
       control.classList.add('bdc-theme-control-inline', 'bdc-theme-control-judge');
       judgeHeaderMeta.appendChild(control);
     } else {
-      document.body.appendChild(control);
+      var fallbackBar = document.createElement('div');
+      fallbackBar.className = 'bdc-theme-fallback-bar';
+      fallbackBar.setAttribute('role', 'toolbar');
+      fallbackBar.setAttribute('aria-label', 'Page appearance');
+      control.classList.add('bdc-theme-control-fallback');
+      fallbackBar.appendChild(control);
+      document.body.insertBefore(fallbackBar, document.body.firstChild);
     }
     control.querySelectorAll('[data-bdc-theme-option]').forEach(function (button) {
       button.addEventListener('click', function () { save(button.dataset.bdcThemeOption); });

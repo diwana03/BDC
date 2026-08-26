@@ -94,15 +94,21 @@
     const control = document.querySelector('.bdc-theme-control');
     const actions = document.querySelector('.bdc-premium-navbar .bdc-premium-nav-actions');
     if (!control || !actions || actions.contains(control)) return;
+    const fallbackBar = control.closest('.bdc-theme-fallback-bar');
+    control.classList.remove('bdc-theme-control-fallback');
     control.classList.add('bdc-theme-control-inline', 'bdc-theme-control-navbar');
     actions.appendChild(control);
+    fallbackBar?.remove();
   }
 
   function dockJudgeThemeControl(meta) {
     const control = document.querySelector('.bdc-theme-control');
     if (!control || !meta || meta.contains(control)) return;
+    const fallbackBar = control.closest('.bdc-theme-fallback-bar');
+    control.classList.remove('bdc-theme-control-fallback');
     control.classList.add('bdc-theme-control-inline', 'bdc-theme-control-judge');
     meta.appendChild(control);
+    fallbackBar?.remove();
   }
 
   const brandTarget = document.querySelector('.navbar-brand, .admin-topbar-brand-v203, .portal-brand, header.top .wrap');
