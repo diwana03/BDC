@@ -32,7 +32,7 @@ try{
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
         $action=(string)($_POST['action']??'');
         $statusQuery=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");$statusQuery->execute(['competition'=>$id]);$currentStatus=(string)$statusQuery->fetchColumn();
-        if($currentStatus==='submitted'&&!in_array($action,['checkpoint','reset_projection'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
+        if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
             $name=trim((string)($_POST['display_name']??''));$number=(int)($_POST['bib_number']??0);
             if($directoryCompetitorId>0){

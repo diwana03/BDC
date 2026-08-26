@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-ob_start(static function(string $html):string{
+$profileRequestStatusCounts=['pending'=>0,'under_review'=>0,'more_info'=>0,'approved'=>0,'rejected'=>0,'all'=>0];
+try{$countRows=$pdo->query('SELECT status,COUNT(*) total FROM bdc_profile_requests GROUP BY status')->fetchAll();foreach($countRows as $countRow){$key=(string)$countRow['status'];if(isset($profileRequestStatusCounts[$key])){$profileRequestStatusCounts[$key]=(int)$countRow['total'];$profileRequestStatusCounts['all']+=(int)$countRow['total'];}}}catch(Throwable $exception){error_log('Profile Request status counts unavailable: '.$exception->getMessage());}
+ob_start(static function(string $html)use($profileRequestStatusCounts):string{
     $csrf=e(\App\Core\Csrf::token());
     $html=preg_replace_callback('#<section class="card border-0 shadow-sm mb-3">(.*?)</section>#s',static function(array $match):string{
         if(!preg_match('/name="request_id" value="(\d+)"/',$match[1],$id)||!str_contains($match[1],'value="approve"'))return $match[0];
@@ -10,6 +12,8 @@ ob_start(static function(string $html):string{
     },$html)??$html;
     $toolbar='<section id="bulk-profile-review" class="card border-0 shadow-sm mb-3"><div class="card-body py-3 d-flex flex-wrap align-items-center gap-2"><label class="form-check me-2 mb-0"><input class="form-check-input" type="checkbox" id="selectAllProfileRequests"> <span class="form-check-label">Select All</span></label><strong id="selectedProfileRequestCount">0 selected</strong><button type="button" class="btn btn-success ms-md-auto" id="approveSelectedProfileRequests" disabled>Approve Selected</button><button type="button" class="btn btn-outline-danger" id="rejectSelectedProfileRequests" disabled>Reject Selected</button></div></section><div id="bulkProfileReviewResult"></div>';
     $html=str_replace('<div class="btn-group flex-wrap mb-4">',$toolbar.'<div class="btn-group flex-wrap mb-4">',$html);
+    foreach(['pending'=>'Pending','under_review'=>'Under Review','more_info'=>'More Info','approved'=>'Approved','rejected'=>'Rejected','all'=>'All'] as $key=>$label)$html=str_replace('>'.$label.'</a>','>'.$label.' <span class="badge text-bg-light border ms-1">'.$profileRequestStatusCounts[$key].'</span></a>',$html);
+    if($profileRequestStatusCounts['all']>0)$html=str_replace('No profile requests found.</div>','No requests in this status. <a href="?status=all">View all '.$profileRequestStatusCounts['all'].' requests</a>.</div>',$html);
     $script=<<<HTML
 <script>
 (()=>{const boxes=[...document.querySelectorAll('.profile-request-select')],all=document.getElementById('selectAllProfileRequests'),count=document.getElementById('selectedProfileRequestCount'),approve=document.getElementById('approveSelectedProfileRequests'),reject=document.getElementById('rejectSelectedProfileRequests'),result=document.getElementById('bulkProfileReviewResult');const scrollKey='bdc-profile-requests-scroll:'+location.pathname+location.search,reportKey='bdc-profile-requests-bulk-report';

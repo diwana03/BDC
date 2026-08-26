@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('fs'),path=require('path'),root=path.resolve(__dirname,'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+const api=read('admin/dance-cup/scoring-api.php'),service=read('app/Services/DanceCupScoringService.php'),view=read('app/Views/admin/dance-cup-automatic-workspace.php'),live=read('public/js/dance-cup-scoring-live.js'),judge=read('public/js/dance-cup-judge-live.js'),participants=read('admin/dance-cup/participants.php'),approvals=read('admin/dance-cup/approvals.php'),migration=read('database/migrations/20260827_0400_dance_cup_result_approval.php'),jj=read('admin/scoring/core.php'),requests=read('admin/profile-requests/bulk-review-controls.php');
+for(const marker of ["status='pending_approval'",'submitted_by',"$action==='approve_results'",'Auth::isSuperAdmin()'])assert(api.includes(marker),'Dance Cup approval API missing '+marker);
+assert(api.includes("if($test)throw new RuntimeException('Test results remain isolated"),'Test result publication must fail closed');
+for(const marker of ['approveResults','bdc_dance_cup_result_history',"status='approved'",'FOR UPDATE'])assert(service.includes(marker),'Permanent Dance Cup publication missing '+marker);
+for(const marker of ['submitted_by','approved_by','approved_at','bdc_dance_cup_result_history','UNIQUE KEY uq_dc_history_entry'])assert(migration.includes(marker),'Additive migration missing '+marker);
+assert(view.includes('Approve &amp; Publish Result')&&view.includes('Super Admin approval'),'Automatic workspace must show the two-stage workflow');
+assert(live.includes("['submitted','pending_approval','approved']")&&live.includes('approve_results'),'Live UI must lock legacy submitted, pending and approved scoring and support approval');
+assert(judge.includes('Automatic draft saving is on')&&judge.includes('scheduleSave'),'Judge score selection must visibly auto-save');
+for(const marker of ['Dance Cup Participant Management','All Participants','Active Profiles','Published Results','Winning Results','dance_style','entry_type','competition_level'])assert(participants.includes(marker),'Dance Cup participant dashboard missing '+marker);
+for(const marker of ['requireSuperAdmin','Pending Dance Cup Result Approval','Review Scoring','Approve &amp; Publish','approveResults'])assert(approvals.includes(marker),'Manual and Automatic approval queue missing '+marker);
+assert(jj.includes('Create Another Event / Round')&&jj.includes('new_event_name'),'Jack & Jill must retain event creation while a round is open');
+assert(requests.includes('profileRequestStatusCounts')&&requests.includes('View all '),'Profile Request records must remain discoverable across statuses');
+console.log('Dance Cup approval, participant dashboard, autosave and J&J event creation v439 passed');

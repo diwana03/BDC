@@ -28,6 +28,7 @@ function updateEntryTotal(article){
  if(target)target.textContent=(scored.length?format(total):'—')+' / '+format(maximum);
 }
 function scheduleSave(){dirty=true;clearTimeout(timer);timer=setTimeout(()=>queued('save',true).catch(error=>show(error.message,'danger')),900);}
+function showAutosaveProtection(){const dock=form.querySelector('.submit-dock');if(!dock||locked)return;const note=document.createElement('div');note.className='small text-center text-muted mb-2';note.setAttribute('data-dc-autosave-state','');note.textContent='Automatic draft saving is on · changes save after every selection';dock.prepend(note);}
 function buildSliders(){
  scoreInputs.forEach(input=>{
   const box=input.closest('.score-box'),maximum=Number(input.max||100),value=input.value;
@@ -64,7 +65,7 @@ async function send(action,silent=false){
  return payload;
 }
 function queued(action,silent=false){const operation=chain.then(()=>send(action,silent));chain=operation.catch(()=>{});return operation;}
-buildRules();buildSliders();setScoringEnabled(accepted);
+buildRules();buildSliders();showAutosaveProtection();setScoringEnabled(accepted);
 form.addEventListener('submit',event=>{event.preventDefault();clearTimeout(timer);const action=event.submitter?.value==='submit'?'submit':'save';if(action==='submit'&&!confirm('Review every live value, then submit and lock all your Dance Cup scores?'))return;queued(action,false).catch(error=>show(error.message,'danger'));});
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
 })();

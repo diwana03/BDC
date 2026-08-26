@@ -47,7 +47,7 @@ try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Security check failed. Reload and try again.');
         $action=(string)($_POST['action']??'status');
-        if($status==='submitted'&&!in_array($action,['checkpoint'],true))throw new RuntimeException('Competition is submitted and locked.');
+        if(in_array($status,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','approve_results'],true))throw new RuntimeException('Competition is submitted and locked.');
 
         if($action==='save_scores'){
             $marks=(array)($_POST['mark']??[]);
@@ -94,8 +94,15 @@ try{
             if(!$state['all_marks_complete'])throw new RuntimeException('Complete every judge score before submitting the competition.');
             if(!$state['results_current'])throw new RuntimeException('Calculate and review the current results before submitting.');
             if($workflow==='automatic')$pdo->prepare("UPDATE {$prefix}_judge_sessions SET status='submitted',submitted_at=COALESCE(submitted_at,NOW()),last_seen_at=NOW(),started_at=COALESCE(started_at,NOW()) WHERE competition_id=:competition")->execute(['competition'=>$id]);
-            $pdo->prepare("UPDATE {$tables['competitions']} SET status='submitted' WHERE id=:competition")->execute(['competition'=>$id]);
-            $message=$workflow==='automatic'?'Competition and all completed judge sheets submitted and locked.':'Competition submitted and locked.';
+            $pdo->prepare("UPDATE {$tables['competitions']} SET status='pending_approval',submitted_by=:user,submitted_at=NOW(),approved_by=NULL,approved_at=NULL WHERE id=:competition")->execute(['competition'=>$id,'user'=>(int)(Auth::user()['id']??0)?:null]);
+            $message=$workflow==='automatic'?'Competition and all completed judge sheets submitted and locked. Waiting for Super Admin approval.':'Competition submitted and locked. Waiting for Super Admin approval.';
+        }elseif($action==='approve_results'){
+            if(!Auth::isSuperAdmin())throw new RuntimeException('Only a Super Admin can approve and publish Dance Cup results.');
+            if($test)throw new RuntimeException('Test results remain isolated and cannot be published.');
+            $pdo->beginTransaction();
+            DanceCupScoringService::approveResults($pdo,$id,(int)(Auth::user()['id']??0),false,trim((string)($_POST['approval_notes']??''))?:null);
+            $pdo->commit();
+            $message='Dance Cup result approved and published to permanent history.';
         }else{
             throw new RuntimeException('Unknown Dance Cup scoring action.');
         }

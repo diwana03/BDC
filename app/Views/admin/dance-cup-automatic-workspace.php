@@ -1,6 +1,6 @@
 <?php
 /** @var array $sessions @var array $state @var array $entries @var array $judges @var array $automaticCheckpoints */
-$automaticLocked=(string)$competition['status']==='submitted';
+$automaticLocked=in_array((string)$competition['status'],['submitted','pending_approval','approved'],true);
 ?>
 <section id="automatic-workspace" class="mt-4" data-dc-automatic data-api="scoring-api.php?id=<?=$id?><?=$suffix?>" data-csrf="<?=e($csrf)?>" data-competition="<?=$id?>" data-mode="<?=$test?'test':'real'?>">
   <nav class="dc-workflow-steps mb-4" aria-label="Automatic scoring workflow">
@@ -38,8 +38,9 @@ $automaticLocked=(string)$competition['status']==='submitted';
       <a class="btn btn-outline-dark" target="_blank" rel="noopener" href="judge-sheet.php?id=<?=$id?><?=$suffix?>">Print Judge Sheets</a>
       <button type="button" class="btn btn-warning" data-dc-api-action="calculate" <?=$state['mark_count']<1||$automaticLocked?'disabled':''?>>Calculate &amp; Sort Ranking</button>
       <button type="button" class="btn btn-success" data-dc-api-action="submit" data-dc-lock-on-submit <?=(!$state['all_marks_complete']||!$state['results_current']||$automaticLocked)?'disabled':''?>>Submit Scores &amp; Lock</button>
+      <?php if(!$test&&Auth::isSuperAdmin()):?><button type="button" class="btn btn-dark" data-dc-api-action="approve_results" <?=((string)$competition['status']!=='pending_approval')?'disabled':''?>>Approve &amp; Publish Result</button><?php endif;?>
     </div>
-    <div class="alert alert-info mt-3 mb-0" data-dc-notice><?=$automaticLocked?'Round locked. Results and checkpoints remain available for review.':'Judge Submit is optional. When every required mark is complete, calculate and review the ranking; final Submit Scores & Lock will lock every judge sheet together.'?></div>
+    <div class="alert alert-info mt-3 mb-0" data-dc-notice><?=((string)$competition['status']==='approved'?'Approved and published to permanent Dance Cup history.':((string)$competition['status']==='pending_approval'?'Scores are locked and waiting for Super Admin approval.':'Scores auto-save while judges work. Judge Submit is optional. When every required mark is complete, Submit Scores & Lock will lock every judge sheet together and send the result to Super Admin for approval.'))?></div>
     <div class="mt-3"><strong>Saved checkpoints</strong><div class="mt-2"><?php foreach($automaticCheckpoints as $checkpoint):?><span class="badge text-bg-light border me-2 mb-2"><?=e($checkpoint['label'])?> · <?=e($checkpoint['created_at'])?></span><?php endforeach;?><?php if(!$automaticCheckpoints):?><span class="text-muted small">No checkpoints saved yet.</span><?php endif;?></div></div>
   </div></section>
 

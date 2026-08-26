@@ -16,6 +16,8 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
     <?php $sidebarLink('admin/registrations/', '☷', 'Registrations'); ?>
     <?php $sidebarLink('admin/scoring/', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
+    <?php $sidebarLink('admin/dance-cup/participants.php', '◎', 'Dance Cup Participants', 'NEW'); ?>
+    <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/dance-cup/approvals.php', '✓', 'Dance Cup Approvals', 'NEW'); ?>
     <?php $sidebarLink('admin/scoring-backups/', '↶', 'Scoring Backups'); ?>
 </div></details>
 

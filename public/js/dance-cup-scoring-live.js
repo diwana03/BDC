@@ -40,8 +40,9 @@ function renderState(state){
  document.querySelectorAll('[data-dc-matrix-place]').forEach(cell=>{const row=state.results.find(item=>Number(item.entry_id)===Number(cell.dataset.entry));cell.innerHTML=row?'<strong>#'+escapeHtml(row.placement)+'</strong>':'<span class="text-muted">Not calculated</span>';});
  document.querySelectorAll('[data-dc-status]').forEach(node=>{
   node.textContent=String(state.competition_status||'draft').toUpperCase();
-  node.classList.toggle('text-bg-success',state.competition_status==='submitted');
-  node.classList.toggle('text-bg-secondary',state.competition_status!=='submitted');
+  const lockedStatus=['submitted','pending_approval','approved'].includes(state.competition_status);
+  node.classList.toggle('text-bg-success',lockedStatus);
+  node.classList.toggle('text-bg-secondary',!lockedStatus);
  });
  document.querySelectorAll('[data-dc-round-summary]').forEach(node=>{
   node.textContent=state.mark_count+' / '+state.required_marks+' marks · '+state.completed_judges+' / '+state.judge_count+' judges complete';
@@ -55,12 +56,14 @@ function renderState(state){
   const badge=card.querySelector('[data-session-state]');if(badge){badge.textContent=status;badge.className='badge text-bg-'+(status==='Submitted'?'success':status==='Complete'?'primary':status==='Scoring'?'warning':'secondary');}
   card.classList.toggle('submitted',session.status==='submitted');card.classList.toggle('scoring',session.status==='scoring');
  });
- const submitted=state.competition_status==='submitted';
+ const submitted=['submitted','pending_approval','approved'].includes(state.competition_status);
  document.querySelectorAll('[data-dc-lock-on-submit]').forEach(button=>button.disabled=submitted);
  const finalButton=document.querySelector('[data-dc-api-action="submit"]');
  if(finalButton)finalButton.disabled=submitted||!state.all_marks_complete||!state.results_current;
  const calculateButton=document.querySelector('[data-dc-api-action="calculate"]');
  if(calculateButton)calculateButton.disabled=submitted||Number(state.mark_count)<1;
+ const approveButton=document.querySelector('[data-dc-api-action="approve_results"]');
+ if(approveButton)approveButton.disabled=state.competition_status!=='pending_approval';
 }
 if(manual){
  const scoreForm=[...manual.querySelectorAll('form')].find(form=>form.querySelector('input[name="action"][value="save_scores"]'));
@@ -105,7 +108,8 @@ if(automatic){
  };
  automatic.querySelectorAll('[data-dc-api-action]').forEach(button=>button.addEventListener('click',()=>{
   const action=button.dataset.dcApiAction;
-  if(action==='submit'&&!confirm('Submit and lock this Dance Cup competition?'))return;
+  if(action==='submit'&&!confirm('Submit and lock this Dance Cup competition for Super Admin approval?'))return;
+  if(action==='approve_results'&&!confirm('Approve and publish this result to permanent Dance Cup history?'))return;
   button.disabled=true;postAction(action).catch(error=>message(error.message,'danger')).finally(()=>{if(action!=='submit')button.disabled=false});
  }));
  const poll=async()=>{

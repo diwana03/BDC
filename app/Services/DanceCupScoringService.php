@@ -221,6 +221,25 @@ final class DanceCupScoringService
         return $query->fetchAll();
     }
 
+    /** Super Admin publication is the only path from locked Live scoring into permanent Dance Cup history. */
+    public static function approveResults(PDO $pdo,int $competitionId,int $userId,bool $test=false,?string $notes=null):void
+    {
+        if($test)throw new RuntimeException('Test Dance Cup results cannot be published to permanent history.');
+        $tables=self::tables(false);$prefix='bdc_dance_cup';
+        $competition=$pdo->prepare("SELECT * FROM {$tables['competitions']} WHERE id=:competition FOR UPDATE");
+        $competition->execute(['competition'=>$competitionId]);$row=$competition->fetch();
+        if(!$row)throw new RuntimeException('Dance Cup category not found.');
+        if((string)$row['status']!=='pending_approval')throw new RuntimeException('Only a submitted Dance Cup result awaiting approval can be published.');
+        $results=$pdo->prepare("SELECT r.entry_id,r.total_score,r.placement,e.competitor_id,e.display_name FROM {$prefix}_scoring_results r JOIN {$prefix}_entries e ON e.id=r.entry_id AND e.competition_id=r.competition_id WHERE r.competition_id=:competition AND e.status='active' ORDER BY r.placement,e.id");
+        $results->execute(['competition'=>$competitionId]);$rows=$results->fetchAll();
+        if(!$rows)throw new RuntimeException('No calculated Dance Cup results are available for approval.');
+        $active=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active'");$active->execute(['competition'=>$competitionId]);
+        if(count($rows)!==(int)$active->fetchColumn())throw new RuntimeException('Recalculate every active contestant before approval.');
+        $save=$pdo->prepare("INSERT INTO bdc_dance_cup_result_history(competition_id,event_id,entry_id,competitor_id,display_name,dance_style,entry_type,competition_level,gender_eligibility,placement,total_score,approved_by,approved_at) VALUES(:competition,:event,:entry,:competitor,:name,:style,:entry_type,:level,:gender,:placement,:total,:user,NOW()) ON DUPLICATE KEY UPDATE competitor_id=VALUES(competitor_id),display_name=VALUES(display_name),placement=VALUES(placement),total_score=VALUES(total_score),approved_by=VALUES(approved_by),approved_at=NOW()");
+        foreach($rows as $result)$save->execute(['competition'=>$competitionId,'event'=>$row['event_id'],'entry'=>$result['entry_id'],'competitor'=>$result['competitor_id']?:null,'name'=>$result['display_name'],'style'=>$row['dance_style'],'entry_type'=>$row['entry_type'],'level'=>$row['competition_level'],'gender'=>$row['gender_eligibility']??'mixed','placement'=>$result['placement'],'total'=>$result['total_score'],'user'=>$userId]);
+        $pdo->prepare("UPDATE {$tables['competitions']} SET status='approved',approved_by=:user,approved_at=NOW(),approval_notes=:notes WHERE id=:competition")->execute(['user'=>$userId,'notes'=>$notes,'competition'=>$competitionId]);
+    }
+
     /** @return array<string,mixed> */
     public static function workflowState(PDO $pdo, int $competitionId, bool $test = false): array
     {
