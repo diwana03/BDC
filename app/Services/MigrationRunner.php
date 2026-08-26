@@ -67,6 +67,9 @@ final class MigrationRunner
         '20260826_0500_publish_verified_form_profiles' => [
             // Dependency-aware checksum recorded when dev413 ran in Production.
             '05879cf08f3131f0a33c0ec38ada73b5e8a08481602ec4c662fb8e887c6dab31',
+            // Exact dependency-aware checksum of the short-lived dev414 form
+            // that Staging applied before the immutable dev413 file was restored.
+            '7460868867a0824456439f7fd386b626880f2294c61bbada19d702a01e3dc068',
             // Stable checksum of the immutable migration file only.
             '064f1c3a9332383b301663ad43000a088af5e1f45d2bc364c8a572c69902dfd8',
         ],
