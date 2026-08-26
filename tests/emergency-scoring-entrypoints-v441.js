@@ -14,7 +14,8 @@ assert(!index.includes("in_array($action,['create_round','create_next_round','de
 for(const marker of ['bdc_scoring_rounds','dance_style','scheduled_at','bdc_registration_desk_links','round_created','beginTransaction','rollBack'])assert(create.includes(marker),'Clean event creation missing '+marker);
 assert(dashboard.includes('scoring_create_error'));
 for(const marker of ['information_schema.TABLES','bdc_dance_cup_result_history','$historyReady','0 events_entered','current database migration completes'])assert(participants.includes(marker),'Participant fallback missing '+marker);
-assert(legacyAutomation.includes("automatic-setup.php?id='.$id")&&legacyAutomation.includes('#automatic-workspace'),'Legacy Dance Cup automation URL must redirect into the complete workspace');
+assert(legacyAutomation.includes("automatic-setup.php?id='.$id"),'Legacy Dance Cup automation URL must redirect into the complete workspace');
+assert(!legacyAutomation.includes("').'#automatic-workspace'"),'Legacy Dance Cup redirect must open at the event header and roster, not skip directly to Step 2');
 for(const marker of ['<!doctype html>','scoring-premium.css','$automaticWorkspace'])assert(automaticSetup.includes(marker),'Automatic workspace shell missing '+marker);
 const automaticView=read('app/Views/admin/dance-cup-automatic-workspace.php');
 for(const marker of ['dc-automatic-emergency-shell','#automatic-workspace .card','#automatic-workspace .dc-workflow-steps'])assert(automaticView.includes(marker),'Automatic standalone style fallback missing '+marker);

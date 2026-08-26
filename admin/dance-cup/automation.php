@@ -7,7 +7,7 @@ Auth::requireAdmin();$pdo=Database::connection();$test=(string)($_GET['data_mode
 // The complete Automatic workflow now lives in automatic-setup.php. Keep this
 // legacy URL working without rendering a second, easily-divergent dashboard.
 if($_SERVER['REQUEST_METHOD']==='GET'){
-    header('Location: automatic-setup.php?id='.$id.($test?'&data_mode=test':'').'#automatic-workspace',true,302);
+    header('Location: automatic-setup.php?id='.$id.($test?'&data_mode=test':''),true,302);
     exit;
 }
 try{DanceCupScoringService::assertScoringMode($pdo,$id,'automatic',$test);}catch(Throwable $e){http_response_code(409);exit(e($e->getMessage()));}
