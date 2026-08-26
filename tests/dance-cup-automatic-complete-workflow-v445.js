@@ -11,5 +11,5 @@ assert(workspace.includes('Marks autosave')&&workspace.includes('every two secon
 assert(workspace.includes('Super Admin must then approve'),'approval rule missing');
 assert((workspace.match(/Open Projection Control/g)||[]).length>=2,'prominent and detailed projection controls missing');
 assert(workspace.includes('Calculated Ranking')&&workspace.includes('Saved checkpoints'),'ranking/checkpoints missing');
-assert(version.version==='2.3.3-dev445'&&version.build===3151,'release version mismatch');
+assert(Number((version.version.match(/dev(\d+)$/)||[])[1])>=445&&version.build>=3151,'release version predates dev445');
 console.log('Dance Cup Automatic complete workflow v445 checks passed.');
