@@ -6,6 +6,7 @@ const progression=read('app/Services/DivisionProgressionService.php');
 const identity=read('app/Services/CompetitorIdentityService.php');
 const registration=read('app/Services/GlobalScoringRegistrationHook.php');
 const publicRegister=read('register/index.php');
+const publicFields=read('register/dance-cup-fields.php');
 const requests=read('admin/profile-requests/index.php');
 const publications=[
  read('admin/scoring/publish.php'),
@@ -32,7 +33,7 @@ assert(registration.includes("$roundTable=$isTest?'bdc_test_scoring_rounds':'bdc
 assert(registration.includes('findOrCreateTest'),'Test identity creation must remain isolated');
 
 assert(publicRegister.includes('Competition category'),'website must not call an event category a permanent division');
-assert(publicRegister.includes('This does not change your permanent BDC division'),'website must explain the approval rule');
+assert(publicFields.includes("$html=str_replace('<div class=\"form-text\">Choose the category you may enter."),'active public render path must remove the internal progression explanation');
 assert(publicRegister.includes("'permanent_division_change_requested'=>false"),'website request must record non-progression intent');
 
 assert(requests.includes("current_division) VALUES(:cid,:dance,:role,'novice')"),'new approved profile identity must remain provisional Novice');

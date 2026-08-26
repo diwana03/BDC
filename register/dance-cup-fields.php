@@ -38,6 +38,7 @@ ob_start(static function(string $html)use(&$success,&$error,$pdo,$danceCupGender
         }catch(Throwable $exception){$pdo->prepare('DELETE FROM bdc_profile_requests WHERE id=:id')->execute(['id'=>$requestId]);$success='';$error='Dance Cup registration could not be saved. Please try again after the portal update is complete.';$html=preg_replace('#<div class="alert alert-success">.*?</div>#s','',$html,1)??$html;$html=str_replace('<div class="btn-group mb-4">','<div class="alert alert-danger">'.e($error).'</div><div class="btn-group mb-4">',$html);}
     }
     $html=str_replace('<div id="danceCupNote" class="col-12 d-none"></div>',$markup,$html);
+    $html=str_replace('<div class="form-text">Choose the category you may enter. This does not change your permanent BDC division. Permanent progression is recorded only after an actual competition result is approved by a Super Admin.</div>','',$html);
     $script="const dcEntries=[...document.querySelectorAll('.dc-cup-entry')],dcDetails=document.getElementById('dcCupGroupDetails');function syncDcDetails(){if(!dcDetails)return;dcDetails.classList.toggle('d-none',!dcEntries.some(x=>x.checked&&['couple','pro_am','team'].includes(x.value)));}dcEntries.forEach(x=>x.addEventListener('change',syncDcDetails));syncDcDetails();";
     return str_replace('</script></body>',$script.'</script></body>',$html);
 });
