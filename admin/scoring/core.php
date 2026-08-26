@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 49280)
+Warning: truncated output (original token count: 49239)
 Total output lines: 2297
 
 <?php
@@ -666,7 +666,235 @@ try{
    $existingId=(int)$existing->fetchColumn();
    if($existingId>0){$roundId=$existingId;$notice=ucfirst($roundType).' round already exists. Existing round opened.';}
    else{
-    $s=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,roun…29280 tokens truncated…d" value="<?=$roundId?>">
+    $s=$pdo->prepare("INSERT INTO bdc_scoring_rounds(event_id,round_type,scoring_mode,division,yes_count,callback_count,yes_weight,alt1_weight,alt2_weight,alt3_weight,created_by) VALUES(:e,:rt,:mode,:d,10,10,10.00,4.50,4.30,4.20,:u)");
+    $s->execute(['e'=>$eventId,'rt'=>$roundType,'mode'=>$createMode,'d'=>$division,'u'=>$userId]);
+    $roundId=(int)$pdo->lastInsertId();
+    auditScoring($pdo,$roundId,$userId,'round_created',['round_type'=>$roundType,'new_event'=>$newEventName!=='']);
+    $deskLink=ensureRegistrationDeskLink($pdo,$eventId,$division,$userId);
+    if(!empty($deskLink['plain_token']))$_SESSION['registration_desk_tokens'][(int)$deskLink['id']]=$deskLink['plain_token'];
+    $notice=ucfirst($roundType).' round created. Registration Desk link is ready below.';
+   }
+  }elseif($action==='automatic_save_scores' || $action==='automatic_calculate_scores'){
+   $roundId=(int)($_POST['round_id']??0);
+   $automaticRound=loadRound($pdo,$roundId);
+   if(!$automaticRound || ($automaticRound['scoring_mode']??'manual')!=='automated')throw new RuntimeException('Automated scoring round not found.');
+   if(!in_array((string)$automaticRound['round_type'],['heats','semifinal'],true))throw new RuntimeException('Numeric automatic calculation applies only to Heats and Semi-Finals.');
+
+   $entryStmt=$pdo->prepare("SELECT id,dance_role FROM bdc_scoring_entries WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number");
+   $entryStmt->execute(['r'=>$roundId]);$automaticEntries=$entryStmt->fetchAll();
+   if(!$automaticEntries)throw new RuntimeException('Add active competitors through the Registration Desk before scoring.');
+   $judgeStmt=$pdo->prepare("SELECT id,is_chief,scoring_scope FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order");
+   $judgeStmt->execute(['r'=>$roundId]);$automaticJudges=$judgeStmt->fetchAll();
+   if(count($automaticJudges)<3)throw new RuntimeException('Configure at least three judges before scoring.');
+
+   $postedMarks=$_POST['automatic_mark']??[];
+   $validEntryIds=array_map('intval',array_column($automaticEntries,'id'));
+   $validJudgeIds=array_map('intval',array_column($automaticJudges,'id'));
+   $upsert=$pdo->prepare("INSERT INTO bdc_scoring_marks(round_id,entry_id,judge_id,mark_type,alt_rank,weighted_score,updated_by) VALUES(:r,:e,:j,'blank',NULL,:score,:u) ON DUPLICATE KEY UPDATE mark_type='blank',alt_rank=NULL,weighted_score=VALUES(weighted_score),updated_by=VALUES(updated_by),updated_at=NOW()");
+   $normalisedMarks=[];
+   $pdo->beginTransaction();
+   try{
+    foreach($postedMarks as $entryId=>$judgeMarks){
+     $entryId=(int)$entryId;if(!in_array($entryId,$validEntryIds,true)||!is_array($judgeMarks))continue;
+     foreach($judgeMarks as $judgeId=>$rawScore){
+      $judgeId=(int)$judgeId;if(!in_array($judgeId,$validJudgeIds,true))continue;
+      $rawScore=trim((string)$rawScore);if($rawScore==='')continue;
+      if(!is_numeric($rawScore))throw new RuntimeException('Automatic scores must be numeric.');
+      $score=round((float)$rawScore,2);if($score<0||$score>100)throw new RuntimeException('Automatic scores must be between 0 and 100.');
+      $upsert->execute(['r'=>$roundId,'e'=>$entryId,'j'=>$judgeId,'score'=>$score,'u'=>$userId?:null]);
+      $normalisedMarks[$entryId][$judgeId]=$score;
+     }
+    }
+
+    if($action==='automatic_calculate_scores'){
+     $savedStmt=$pdo->prepare("SELECT entry_id,judge_id,weighted_score FROM bdc_scoring_marks WHERE round_id=:r");
+     $savedStmt->execute(['r'=>$roundId]);foreach($savedStmt->fetchAll() as $saved)$normalisedMarks[(int)$saved['entry_id']][(int)$saved['judge_id']]=(float)$saved['weighted_score'];
+     $calculated=AutomaticScoringEngine::calculateHeats($automaticEntries,$automaticJudges,$normalisedMarks,(int)$automaticRound['callback_count']);
+     $pdo->prepare("DELETE FROM bdc_scoring_results WHERE round_id=:r")->execute(['r'=>$roundId]);
+     $version=(int)$automaticRound['generated_version']+1;
+     $resultInsert=$pdo->prepare("INSERT INTO bdc_scoring_results(round_id,entry_id,total_score,chief_score,rank_number,result_status,alternate_rank,generated_version) VALUES(:r,:e,:average,:chief,:rank,:status,:alternate,:version)");
+     $hasPendingTie=false;
+     foreach($calculated as $result){
+      if($result['status']==='tie_pending')$hasPendingTie=true;
+      $resultInsert->execute(['r'=>$roundId,'e'=>$result['entry_id'],'average'=>$result['average_score'],'chief'=>$result['chief_score']??0,'rank'=>$result['rank'],'status'=>$result['status'],'alternate'=>$result['alternate_rank'],'version'=>$version]);
+     }
+     $pdo->prepare("UPDATE bdc_scoring_rounds SET status=:status,generated_version=:version WHERE id=:r")->execute(['status'=>$hasPendingTie?'tie_pending':'awaiting_decision','version'=>$version,'r'=>$roundId]);
+     auditScoring($pdo,$roundId,$userId,'automatic_results_calculated',['method'=>'average_then_judge_majority_then_chief','callback_count'=>(int)$automaticRound['callback_count'],'pending_tie'=>$hasPendingTie,'entry_count'=>count($automaticEntries),'judge_count'=>count($automaticJudges)]);
+     $notice=$hasPendingTie?'Automatic calculation complete. A callback-boundary tie requires Chief Judge review.':'Automatic calculation complete. Results are ready for authorized review.';
+    }else{
+     auditScoring($pdo,$roundId,$userId,'automatic_scores_saved',['saved_cells'=>array_sum(array_map('count',$normalisedMarks))]);
+     $notice='Automatic scoring draft saved.';
+    }
+    $pdo->commit();
+   }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+  }elseif($action==='delete_scoring_workflow'){
+   if(!Auth::isSuperAdmin())throw new RuntimeException('Only the Super Admin can delete a complete scoring workflow.');
+   $eventId=(int)($_POST['event_id']??0);
+   $division=(string)($_POST['division']??'');
+   $confirmation=trim((string)($_POST['delete_confirmation']??''));
+
+   if($eventId<1 || !in_array($division,['novice','intermediate','advanced','all_star'],true)){
+    throw new RuntimeException('Invalid scoring workflow.');
+   }
+   if($confirmation!=='DELETE'){
+    throw new RuntimeException('Type DELETE to confirm removal of the complete scoring workflow.');
+   }
+
+   $published=$pdo->prepare("
+    SELECT COUNT(*)
+    FROM bdc_scoring_publications p
+    JOIN bdc_scoring_rounds r ON r.id=p.final_round_id
+    WHERE r.event_id=:e AND r.division=:d AND p.status='published'
+   ");
+   $published->execute(['e'=>$eventId,'d'=>$division]);
+   if((int)$published->fetchColumn()>0){
+    throw new RuntimeException('This workflow is published. Use Super Admin rollback before deleting it.');
+   }
+
+   $roundStmt=$pdo->prepare("SELECT id FROM bdc_scoring_rounds WHERE event_id=:e AND division=:d ORDER BY id");
+   $roundStmt->execute(['e'=>$eventId,'d'=>$division]);
+   $ids=array_map('intval',$roundStmt->fetchAll(PDO::FETCH_COLUMN));
+   if(!$ids)throw new RuntimeException('No scoring rounds found.');
+
+   $ph=implode(',',array_fill(0,count($ids),'?'));
+   $pdo->beginTransaction();
+   try{
+    $pairStmt=$pdo->prepare("SELECT id FROM bdc_scoring_final_pairs WHERE round_id IN ($ph)");
+    $pairStmt->execute($ids);
+    $pairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
+    if($pairIds){
+     $pph=implode(',',array_fill(0,count($pairIds),'?'));
+     $pdo->prepare("DELETE FROM bdc_scoring_final_results WHERE pair_id IN ($pph)")->execute($pairIds);
+     $pdo->prepare("DELETE FROM bdc_scoring_final_marks WHERE pair_id IN ($pph)")->execute($pairIds);
+    }
+
+    foreach([
+     'bdc_scoring_final_results',
+     'bdc_scoring_final_marks',
+     'bdc_scoring_final_pairs',
+     'bdc_scoring_results',
+     'bdc_scoring_marks',
+     'bdc_scoring_judges',
+     'bdc_scoring_entries',
+     'bdc_scoring_audit'
+    ] as $table){
+     $pdo->prepare("DELETE FROM {$table} WHERE round_id IN ($ph)")->execute($ids);
+    }
+
+    $pubStmt=$pdo->prepare("
+      SELECT p.id
+      FROM bdc_scoring_publications p
+      JOIN bdc_scoring_rounds r ON r.id=p.final_round_id
+      WHERE r.event_id=? AND r.division=? AND p.status='rolled_back'
+    ");
+    $pubStmt->execute([$eventId,$division]);
+    $pubIds=array_map('intval',$pubStmt->fetchAll(PDO::FETCH_COLUMN));
+    if($pubIds){
+     $pubPh=implode(',',array_fill(0,count($pubIds),'?'));
+     $pdo->prepare("DELETE FROM bdc_scoring_publication_points WHERE publication_id IN ($pubPh)")->execute($pubIds);
+     $pdo->prepare("DELETE FROM bdc_scoring_publications WHERE id IN ($pubPh)")->execute($pubIds);
+    }
+
+    $pdo->prepare("DELETE FROM bdc_scoring_rounds WHERE id IN ($ph)")->execute($ids);
+    $pdo->commit();
+    $roundId=0;
+    $notice='Complete '.ucfirst($division).' test scoring workflow deleted. Event and competitor records were preserved.';
+   }catch(Throwable $e){
+    if($pdo->inTransaction())$pdo->rollBack();
+    throw $e;
+   }
+
+  }elseif(in_array($action,['special_settings_lock','special_settings_unlock'],true)){
+   $roundId=(int)($_POST['round_id']??0);$specialRound=loadRound($pdo,$roundId);
+   if(!$specialRound||!SpecialCategoryService::isSpecial((string)$specialRound['division']))throw new RuntimeException('Special-category round not found.');
+   $started=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks WHERE round_id=:round AND (mark_type<>'blank' OR weighted_score>0)");$started->execute(['round'=>$roundId]);
+   if((int)$started->fetchColumn()>0)throw new RuntimeException('The YES count cannot be changed or unlocked after judging has started.');
+   if($action==='special_settings_lock'){$yes=(int)($_POST['special_yes_count']??0);if(!in_array($yes,[5,10,15],true))throw new RuntimeException('Select 5, 10 or 15 YES per judge.');$pdo->prepare('UPDATE bdc_scoring_rounds SET yes_count=:yes,callback_count=:yes,tier_manual_override=1,yes_weight=10.00,alt1_weight=4.50,alt2_weight=4.30,alt3_weight=4.20 WHERE id=:id')->execute(['yes'=>$yes,'id'=>$roundId]);auditScoring($pdo,$roundId,$userId,'special_yes_count_locked',['yes_count'=>$yes,'alternates'=>[4.5,4.3,4.2]]);$notice='Special-category YES count saved and locked at '.$yes.' per judge.';…24239 tokens truncated…$judgePage++):$start=$judgePage*$finalJudgePageSize+1;$end=min(count($judges),($judgePage+1)*$finalJudgePageSize);?>
+    <button type="button" class="btn btn-sm <?=$judgePage===0?'btn-dark':'btn-outline-dark'?> final-judge-page-button" data-page="<?=$judgePage?>">J<?=$start?>–J<?=$end?></button>
+   <?php endfor;?>
+   <span class="text-muted small">Only one judge group is shown at a time. All scores remain saved.</span>
+  </div><?php endif;?>
+  <div class="table-responsive"><table class="table table-bordered align-middle final-scoring-table">
+   <thead><tr>
+    <th>Final Rank</th><th>Couple</th><th>Leader</th><th>Follower</th>
+    <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?><th class="final-judge-column" data-final-judge-header="<?=$judge['id']?>" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?><?=$judgeLocked?' 🔒':''?></th><?php endforeach;?>
+    <th>Relative Placement</th>
+   </tr></thead>
+   <tbody>
+   <?php foreach($finalPairs as $pair):$finalResult=$finalResults[(int)$pair['id']]??null;?>
+    <tr>
+     <td class="fw-bold" data-final-rank="<?=$pair['id']?>"><?= $finalResult ? (int)$finalResult['final_rank'] : '—' ?></td>
+     <td>Couple <?=$pair['pair_number']?></td>
+     <td><strong>Bib <?=$pair['leader_bib']?></strong><br><?=e($pair['leader_name'])?></td>
+     <td><strong>Bib <?=$pair['follower_bib']?></strong><br><?=e($pair['follower_name'])?></td>
+     <?php foreach($judges as $judgeIndex=>$judge):$judgeLocked=($round['scoring_mode']??'manual')==='automated'&&($judgeSessionStatus[(int)$judge['id']]??'')==='submitted';?>
+      <td class="final-judge-column" data-judge-page="<?=intdiv($judgeIndex,$finalJudgePageSize)?>" <?=$judgeIndex>=$finalJudgePageSize?'style="display:none"':''?>><input class="form-control form-control-sm text-center final-rank-input <?=$judgeLocked?'bg-light':''?>" type="number" min="1" max="<?=$finalRankCount?>" data-pair-id="<?=$pair['id']?>" data-judge-id="<?=$judge['id']?>" data-server-value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" name="final_rank[<?=$pair['id']?>][<?=$judge['id']?>]" value="<?=e((string)($finalMarks[(int)$pair['id']][(int)$judge['id']]??''))?>" <?=$judgeLocked?'readonly aria-label="Submitted judge placement locked" title="Submitted placement locked. Use the audited RESUBMIT control to reopen this judge."':''?>></td>
+     <?php endforeach;?>
+     <td data-final-result="<?=$pair['id']?>">
+      <?php if($finalResult):?>
+       <div class="fw-semibold">Relative Placement Summary</div>
+       <div>✓ Majority achieved in Top <?=$finalResult['majority_level']?></div>
+       <div>✓ <?=$finalResult['majority_count']?> of <?=count($judges)?> judges ranked this couple in the Top <?=$finalResult['majority_level']?></div>
+       <div>✓ Best placement score among qualifying couples</div>
+      <?php else:?>Not calculated<?php endif;?>
+     </td>
+    </tr>
+   <?php endforeach;?>
+   </tbody>
+  </table></div>
+  <div class="border rounded bg-light p-3 mb-3">
+   <div class="fw-semibold mb-2">Final Judge Key</div>
+   <div class="d-flex flex-wrap gap-3 small">
+    <?php foreach($judges as $judgeIndex=>$judge):?>
+     <span><strong>J<?=$judgeIndex+1?></strong> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span>
+    <?php endforeach;?>
+   </div>
+  </div>
+  <div class="card border-0 bg-light mb-3"><div class="card-body">
+   <h3 class="h6 mb-3">Final Scoring Witnesses</h3>
+   <div class="row g-2">
+    <div class="col-md-3"><label class="form-label">Witness 1</label><input class="form-control" name="witness_1" maxlength="190" value="<?=e((string)($round['witness_1']??''))?>" placeholder="Witness name"></div>
+    <div class="col-md-3"><label class="form-label">Witness 2</label><input class="form-control" name="witness_2" maxlength="190" value="<?=e((string)($round['witness_2']??''))?>" placeholder="Witness name"></div>
+    <div class="col-md-3"><label class="form-label">Witness 3</label><input class="form-control" name="witness_3" maxlength="190" value="<?=e((string)($round['witness_3']??''))?>" placeholder="Witness name"></div>
+    <div class="col-md-3"><label class="form-label">Scoring Administrator</label><input class="form-control" name="scoring_administrator" maxlength="190" value="<?=e((string)($round['scoring_administrator']??''))?>" placeholder="Administrator name"></div>
+   </div>
+  </div></div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+   <button class="btn btn-outline-dark" name="action" value="save_final_scores">Save Final Draft</button>
+   <button class="btn btn-success" name="action" value="calculate_final_ranking" <?=($round['scoring_mode']??'manual')==='automated'?'formnovalidate':''?>>Calculate &amp; Sort Final Ranking</button>
+   <button class="btn btn-primary" name="action" value="submit_final_scores" <?=($round['scoring_mode']??'manual')==='automated'?'formnovalidate':''?>>Submit Final Scores</button>
+   <?php if($finalResults):?>
+    <a class="btn btn-outline-primary" target="_blank" href="final-result.php?round_id=<?=$roundId?>">Print Final Scoring Sheet</a>
+    <a class="btn btn-danger" href="publish-gate.php?round_id=<?=$roundId?>">Review &amp; Publish Competition</a>
+   <?php endif;?>
+  </div>
+ </form>
+ <?php $lockedFinalJudgeCount=count(array_filter($judges,fn(array $judge):bool=>($judgeSessionStatus[(int)$judge['id']]??'')==='submitted'));?>
+ <?php if(($round['scoring_mode']??'manual')==='automated'&&$lockedFinalJudgeCount>0&&Auth::canOverrideCompletedScores()):?>
+ <section class="border border-danger rounded p-3 mt-3"><div class="fw-bold text-danger">Emergency Scoring Control</div><div class="small text-muted mb-2">Reopens all <?=$lockedFinalJudgeCount?> submitted judge columns together. Existing placements are preserved and every affected judge must resubmit.</div><form method="post" class="row g-2 align-items-end" onsubmit="return confirm('Emergency unlock all <?=$lockedFinalJudgeCount?> submitted judge score columns? Existing placements stay saved, but every affected judge must resubmit.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="unlock_all_final_judges"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-lg-6"><label class="form-label small fw-semibold">Required emergency reason</label><input class="form-control" name="unlock_all_reason" maxlength="500" required></div><div class="col-lg-3"><label class="form-label small fw-semibold">Type UNLOCK ALL</label><input class="form-control" name="unlock_all_confirmation" autocomplete="off" required></div><div class="col-lg-3"><button class="btn btn-danger w-100">Unlock All Locked Scores (<?=$lockedFinalJudgeCount?>)</button></div></form></section>
+ <?php endif;?>
+</div></div>
+<?php else:?>
+<div class="alert alert-secondary">
+ <strong>Next step:</strong> confirm fixed couples to open <?=($round['scoring_mode']??'manual')==='automated'?'Automatic Final Judge Scoring':'manual Relative Placement scoring'?>.
+</div>
+<?php endif;?>
+<?php else:?>
+<?php
+$currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);$specialSettings=SpecialCategoryService::isSpecial((string)$round['division']);$specialSuggestedYes=(int)$round['yes_count'];if($specialSettings&&(int)$round['tier_manual_override']!==1){$countStmt=$pdo->prepare("SELECT COALESCE(MAX(total),0) FROM (SELECT COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role) role_counts");$countStmt->execute(['round'=>$roundId]);$largest=(int)$countStmt->fetchColumn();$specialSuggestedYes=$largest<=15?5:($largest<=30?10:15);}
+?>
+<div class="row g-3 mb-4"><div class="col-lg-4"><div class="card shadow-sm h-100"><div class="card-body">
+<h2 class="h5"><?=e(ucfirst($round['round_type']))?> Settings</h2>
+<?php if($specialSettings):?>
+<form method="post" class="row g-3"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>">
+<div class="col-12"><label class="form-label">YES Tier per Judge</label><select class="form-select" name="special_yes_count" <?=((int)$round['tier_manual_override']===1)?'disabled':''?>><option value="5" <?=$specialSuggestedYes===5?'selected':''?>>Tier 1 · 5 YES</option><option value="10" <?=$specialSuggestedYes===10?'selected':''?>>Tier 2 · 10 YES</option><option value="15" <?=$specialSuggestedYes===15?'selected':''?>>Tier 3 · 15 YES</option></select><?php if((int)$round['tier_manual_override']===1):?><input type="hidden" name="special_yes_count" value="<?=(int)$round['yes_count']?>"><?php endif;?><div class="form-text">Recommended automatically from the larger Leader or Follower count. You may amend it before locking.</div></div>
+<div class="col-12"><div class="border rounded p-3 bg-light"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row g-2 text-center"><div class="col-4"><small class="text-muted d-block">ALT 1</small><strong>4.5</strong></div><div class="col-4"><small class="text-muted d-block">ALT 2</small><strong>4.3</strong></div><div class="col-4"><small class="text-muted d-block">ALT 3</small><strong>4.2</strong></div></div></div></div>
+<div class="col-12"><?php if((int)$round['tier_manual_override']===1):?><button class="btn btn-outline-warning btn-sm" name="action" value="special_settings_unlock">Unlock YES Count</button><?php else:?><button class="btn btn-dark btn-sm" name="action" value="special_settings_lock">Save &amp; Lock YES Count</button><?php endif;?></div></form>
+<?php else:?>
+<form method="post" class="row g-3">
+<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
+<input type="hidden" name="action" value="settings">
+<input type="hidden" name="round_id" value="<?=$roundId?>">
 <div class="col-12">
 <label class="form-label">Competition Tier</label>
 <select class="form-select" name="competition_tier" id="competitionTier" onchange="updateTierSummary()">
