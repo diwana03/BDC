@@ -1,0 +1,10 @@
+const fs=require('fs');
+const source=fs.readFileSync('admin/dance-cup/participants.php','utf8');
+const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
+const assert=(ok,message)=>{if(!ok)throw new Error(message)};
+assert(source.includes('0 events_entered,0 wins,0 podiums'),'base participant query lacks safe career defaults');
+assert(!source.includes('$historyJoin='),'optional history is still joined into the core participant query');
+assert(source.includes('if($historyReady){try{'),'history enrichment is not isolated');
+assert(source.includes('if(Auth::isSuperAdmin()&&$approvalReady){try{'),'approval query is not isolated');
+assert(version.version==='2.3.3-dev448'&&version.build===3154,'release mismatch');
+console.log('Dance Cup participant-first query v448 checks passed.');
