@@ -1,51 +1,7 @@
-(function () {
-  'use strict';
-  const roster = document.querySelector('[data-dc-judge-roster]');
-  const scoreTable = Array.from(document.querySelectorAll('table')).find((table) => table.textContent.includes('Judge Total'));
-  if (!roster && !scoreTable) return;
-  const csrf = document.querySelector('input[name="_csrf"]')?.value;
-  const competitionId = document.querySelector('input[name="id"]')?.value;
-  if (!csrf || !competitionId) return;
-  const seen = new Map();
-  roster?.querySelectorAll('[data-judge-id]').forEach((row) => {
-    const id = row.dataset.judgeId || '';
-    if (id) seen.set(id, {id, name: row.dataset.judgeName || '', chief: row.dataset.chief === '1'});
-  });
-  scoreTable?.querySelectorAll('tbody tr').forEach((row) => {
-    const input = row.querySelector('input[name^="mark["]');
-    const match = input?.name.match(/^mark\[\d+\]\[(\d+)\]/);
-    const name = row.cells[1]?.textContent.trim() || '';
-    if (match && !seen.has(match[1])) seen.set(match[1], {id: match[1], name, chief: name.includes('★')});
-  });
-  if (seen.size < 2) return;
-  const judges = Array.from(seen.values()).sort((a, b) => Number(b.chief) - Number(a.chief));
-  const panel = document.createElement('section');
-  panel.className = 'card border-warning shadow-sm my-4 no-print';
-  panel.innerHTML = '<div class="card-body"><h2 class="h5">Judge Display Order</h2><p class="text-muted small">Chief Judge is pinned first. This order controls scoring, printed sheets and Live Projection.</p><div data-order-list></div><button type="button" class="btn btn-warning mt-2" data-save-order>Save Judge Order</button><span class="ms-2 small" data-status></span></div>';
-  if (roster) roster.after(panel);
-  else scoreTable?.closest('form')?.before(panel);
-  const list = panel.querySelector('[data-order-list]');
-  function paint() {
-    list.replaceChildren();
-    judges.forEach((judge, index) => {
-      const row = document.createElement('div');
-      row.className = 'd-flex align-items-center gap-2 border rounded p-2 mb-2' + (judge.chief ? ' border-warning bg-warning-subtle' : '');
-      row.innerHTML = '<strong class="me-auto"></strong><button type="button" class="btn btn-sm btn-outline-secondary" data-up>↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-down>↓</button>';
-      row.querySelector('strong').textContent = (index + 1) + '. ' + judge.name + (judge.chief ? ' · Chief · Pinned first' : '');
-      row.querySelector('[data-up]').disabled = judge.chief || index <= 1;
-      row.querySelector('[data-down]').disabled = judge.chief || index === judges.length - 1;
-      row.querySelector('[data-up]').onclick = () => {const moved=judges.splice(index,1)[0];judges.splice(index-1,0,moved);paint();};
-      row.querySelector('[data-down]').onclick = () => {const moved=judges.splice(index,1)[0];judges.splice(index+1,0,moved);paint();};
-      list.appendChild(row);
-    });
-  }
-  panel.querySelector('[data-save-order]').onclick = async () => {
-    const body = new URLSearchParams({_csrf: csrf, competition_id: competitionId, data_mode: new URLSearchParams(location.search).get('data_mode') || 'real'});
-    judges.forEach((judge) => body.append('judge_ids[]', judge.id));
-    const status = panel.querySelector('[data-status]');
-    status.textContent = 'Saving…';
-    try {const response=await fetch('judge-order.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Save failed.');status.textContent='Saved. Reloading…';location.reload();}
-    catch(error){status.textContent=error.message;status.className='ms-2 small text-danger';}
-  };
-  paint();
-})();
+(function(){'use strict';if(!document.body.matches('[data-dc-manual]'))return;const csrf=document.querySelector('input[name="_csrf"]')?.value,id=document.querySelector('input[name="id"]')?.value,addRow=document.querySelector('.row.g-3.no-print');if(!csrf||!id||!addRow)return;const mode=new URLSearchParams(location.search).get('data_mode')==='test'?'test':'real',endpoint=new URL('roster-api.php',location.href);endpoint.searchParams.set('id',id);endpoint.searchParams.set('data_mode',mode);const panel=document.createElement('section');panel.className='card border-0 shadow-sm mt-3 no-print';panel.innerHTML='<div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2 flex-wrap"><div><h2 class="h5 mb-1">Contestants & Judge Panel</h2><p class="text-muted small mb-0">Reorder or remove roster members before scoring. Select exactly one Chief Judge at any time.</p></div><span class="small" data-status></span></div><div class="row g-3 mt-1"><div class="col-xl-6"><h3 class="h6">Contestants</h3><div class="list-group" data-contestants></div></div><div class="col-xl-6"><h3 class="h6">Judges</h3><div class="list-group" data-judges></div></div></div></div>';addRow.after(panel);const status=panel.querySelector('[data-status]'),esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const duplicatePanels=[...document.querySelectorAll('section.card.no-print')].filter(section=>/Contestants & Judge Panel/.test(section.textContent||''));if(duplicatePanels.length>1){panel.remove();return}
+async function mutate(action,values){status.textContent='Saving…';status.className='small text-muted';const body=new URLSearchParams({_csrf:csrf,competition_id:id,data_mode:mode,action,...values}),response=await fetch('roster-api.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body}),data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Roster update failed.');status.textContent=data.message||'Saved.';status.className='small text-success';paint(data)}
+function controls(kind,item,locked){if(locked)return'<span class="badge text-bg-secondary">Locked</span>';const idName=kind==='judge'?'judge_assignment_id':'entry_id',itemId=item.id;return'<div class="d-flex gap-1 flex-wrap justify-content-end"><button class="btn btn-sm btn-outline-secondary" data-action="move_'+kind+'" data-'+idName+'="'+itemId+'" data-direction="up">↑</button><button class="btn btn-sm btn-outline-secondary" data-action="move_'+kind+'" data-'+idName+'="'+itemId+'" data-direction="down">↓</button>'+(kind==='judge'&&!Number(item.is_chief)?'<button class="btn btn-sm btn-outline-warning" data-action="set_chief_judge" data-judge_assignment_id="'+itemId+'">Make Chief</button>':'')+'<button class="btn btn-sm btn-outline-danger" data-action="remove_'+kind+'" data-'+idName+'="'+itemId+'">Remove</button></div>'}
+function wire(root){root.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{if(button.dataset.action.startsWith('remove_')&&!confirm('Remove this roster member? This is blocked after scoring starts.'))return;const values={};for(const[key,value]of Object.entries(button.dataset))if(key!=='action')values[key.replace(/[A-Z]/g,m=>'_'+m.toLowerCase())]=value;try{await mutate(button.dataset.action,values)}catch(error){status.textContent=error.message;status.className='small text-danger'}})}
+function paint(data){const contestants=panel.querySelector('[data-contestants]');contestants.innerHTML=data.entries.length?data.entries.map(item=>'<div class="list-group-item d-flex align-items-center justify-content-between gap-2"><span><strong>#'+Number(item.bib_number)+'</strong> · '+esc(item.display_name)+'</span>'+controls('competitor',item,data.locked)+'</div>').join(''):'<div class="text-muted small">No contestants assigned.</div>';const judges=panel.querySelector('[data-judges]');judges.innerHTML=data.judges.length?data.judges.map(item=>'<div class="list-group-item d-flex align-items-center justify-content-between gap-2"><span><strong>J'+Number(item.judge_order)+'</strong> · '+esc(item.judge_name)+(Number(item.is_chief)?' <span class="badge text-bg-warning">Chief</span>':'')+'</span>'+controls('judge',item,data.locked)+'</div>').join(''):'<div class="text-muted small">No judges assigned.</div>';wire(contestants);wire(judges)}
+fetch(endpoint,{cache:'no-store',headers:{Accept:'application/json'}}).then(response=>response.json().then(data=>({response,data}))).then(({response,data})=>{if(!response.ok||!data.ok)throw new Error(data.error||'Roster could not load.');paint(data)}).catch(error=>{status.textContent=error.message;status.className='small text-danger'})})();

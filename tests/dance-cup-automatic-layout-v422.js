@@ -19,7 +19,7 @@ assert(setup.includes("$workflowHref='workflow.php?workflow=automatic'.($test?'&
 assert(setup.includes('grid-template-columns:92px minmax(250px,1fr) auto'), 'Competitor number, database search and Add action need a spacious desktop grid.');
 assert(setup.includes('grid-template-columns:minmax(250px,1fr) auto auto'), 'Judge search, Chief toggle and Add action need a spacious desktop grid.');
 assert(setup.includes('@media(max-width:767px)') && setup.includes('grid-template-columns:1fr'), 'Roster forms must stack cleanly on mobile.');
-assert(setup.includes('dance-cup-directory.js?v=423') && manual.includes('dance-cup-directory.js?v=423'), 'Manual and Automatic must share the current directory client cache.');
+assert(setup.includes('dance-cup-directory.js?v=426') && manual.includes('dance-cup-directory.js?v=426'), 'Manual and Automatic must share the current directory client cache.');
 assert(setup.includes('data-directory-type="competitor"') && setup.includes('data-directory-type="judge"'), 'Layout cleanup must preserve both database suggestion fields.');
 const directory = read('public/js/dance-cup-directory.js');
 const theme = read('public/assets/css/bdc-theme.css');
