@@ -14,7 +14,7 @@ assert(index.includes("$action==='create_round'){require __DIR__.'/create-round-
 assert(!index.includes("in_array($action,['create_round','create_next_round','delete_scoring_workflow']"));
 for(const marker of ['bdc_scoring_rounds','dance_style','scheduled_at','bdc_registration_desk_links','round_created','beginTransaction','rollBack'])assert(create.includes(marker),'Clean event creation missing '+marker);
 assert(dashboard.includes('scoring_create_error'));
-for(const marker of ['information_schema.TABLES','bdc_dance_cup_result_history','$historyReady','0 events_entered','current database migration completes'])assert(participants.includes(marker),'Participant fallback missing '+marker);
+for(const marker of ['information_schema.TABLES','bdc_dance_cup_result_history','$historyReady','$requestsReady','Registration Categories'])assert(participants.includes(marker),'Participant fallback missing '+marker);
 assert(legacyAutomation.includes("automatic-setup.php?id='.$id"),'Legacy Dance Cup automation URL must redirect into the complete workspace');
 assert(!legacyAutomation.includes("').'#automatic-workspace'"),'Legacy Dance Cup redirect must open at the event header and roster, not skip directly to Step 2');
 for(const marker of ['<!doctype html>','scoring-premium.css','$automaticWorkspace'])assert(automaticSetup.includes(marker),'Automatic workspace shell missing '+marker);
@@ -22,5 +22,5 @@ for(const marker of ['STEP 1','Roster','Contestants','Judges','Make Chief','danc
 assert(automaticSetup.includes("dance-cup-automatic-page.php';")&&automaticSetup.includes("dance-cup-automatic-page.php';\nexit;"),'Automatic setup must render the complete page directly before legacy composition');
 const automaticView=read('app/Views/admin/dance-cup-automatic-workspace.php');
 for(const marker of ['dc-automatic-emergency-shell','#automatic-workspace .card','#automatic-workspace .dc-workflow-steps'])assert(automaticView.includes(marker),'Automatic standalone style fallback missing '+marker);
-assert(participants.includes('http_response_code(200)')&&participants.includes('No participant or scoring data was deleted.'),'Participants migration fallback must render a normal recovery page');
+assert(participants.includes('The Dance Cup registration-category migration has not completed yet.')&&participants.includes('Some Dance Cup dashboard data could not be loaded:'),'Participants migration fallback must render a normal recovery page');
 console.log('PASS emergency scoring entrypoints v441');
