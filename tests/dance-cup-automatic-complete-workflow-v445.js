@@ -1,0 +1,15 @@
+const fs=require('fs');
+const page=fs.readFileSync('app/Views/admin/dance-cup-automatic-page.php','utf8');
+const workspace=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
+const assert=(ok,message)=>{if(!ok)throw new Error(message)};
+assert(page.includes('Confirm Roster &amp; Start Scoring'),'roster confirmation missing');
+assert(setup.includes("$action==='confirm_roster'"),'roster validation handler missing');
+assert(workspace.includes('SCORING RULES')&&workspace.includes("$state['criteria']"),'criteria summary missing');
+assert(workspace.includes('Marks autosave')&&workspace.includes('every two seconds'),'live status guidance missing');
+assert(workspace.includes('Super Admin must then approve'),'approval rule missing');
+assert((workspace.match(/Open Projection Control/g)||[]).length>=2,'prominent and detailed projection controls missing');
+assert(workspace.includes('Calculated Ranking')&&workspace.includes('Saved checkpoints'),'ranking/checkpoints missing');
+assert(version.version==='2.3.3-dev445'&&version.build===3151,'release version mismatch');
+console.log('Dance Cup Automatic complete workflow v445 checks passed.');

@@ -77,6 +77,14 @@ try{
             $pdo->prepare("UPDATE {$prefix}_judge_sessions SET status='scoring',submitted_at=NULL WHERE id=:session AND competition_id=:competition")->execute(['session'=>(int)($_POST['session_id']??0),'competition'=>$id]);$notice='Judge scores reopened; existing marks were preserved.';
         }elseif($action==='checkpoint'){
             $label=trim((string)($_POST['checkpoint_label']??''))?:'Automatic checkpoint '.date('Y-m-d H:i');$query=$pdo->prepare("INSERT INTO {$prefix}_checkpoints(competition_id,label,snapshot_json,created_by) VALUES(:competition,:label,:snapshot,:user)");$query->execute(['competition'=>$id,'label'=>$label,'snapshot'=>json_encode(dcAutomaticWorkspaceSnapshot($pdo,$prefix,$id),JSON_UNESCAPED_SLASHES),'user'=>(int)(Auth::user()['id']??0)?:null]);$notice='Automatic scoring checkpoint saved.';
+        }elseif($action==='confirm_roster'){
+            $entryCount=(int)$pdo->query("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=".$id." AND status='active'")->fetchColumn();
+            $judgeCount=(int)$pdo->query("SELECT COUNT(*) FROM {$prefix}_judges WHERE competition_id=".$id)->fetchColumn();
+            $chiefCount=(int)$pdo->query("SELECT COUNT(*) FROM {$prefix}_judges WHERE competition_id=".$id." AND is_chief=1")->fetchColumn();
+            if($entryCount<1)throw new RuntimeException('Add at least one contestant before opening scoring.');
+            if($judgeCount<1)throw new RuntimeException('Add at least one judge before opening scoring.');
+            if($chiefCount!==1)throw new RuntimeException('Select exactly one Chief Judge before opening scoring.');
+            DanceCupScoringService::ensureAutomation($pdo,$id,$test);$notice='Roster confirmed. Judge scoring is ready.';
         }elseif($action==='reset_projection'){
             $event=$pdo->prepare("SELECT event_id FROM {$tables['competitions']} WHERE id=:competition");$event->execute(['competition'=>$id]);$pdo->prepare("UPDATE {$prefix}_event_projection SET access_token=:token,screen_type='holding',auto_cycle=0,state_version=state_version+1 WHERE event_id=:event")->execute(['token'=>bin2hex(random_bytes(32)),'event'=>(int)$event->fetchColumn()]);$notice='Projector link regenerated.';
         }else{throw new RuntimeException('Unsupported setup action.');}
