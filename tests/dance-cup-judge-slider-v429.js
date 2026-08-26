@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
+assert(judge.includes('dance-cup-judge-live.js?v=429')&&judge.includes('scoring-premium.css?v=429'),'judge slider assets must be cache-busted together');
+for(const marker of ['type="range"','dc-score-output','Not scored','data-entry-live-total','step="0.1"'])assert(live.includes(marker),'missing live slider marker '+marker);
+for(const marker of ['Judge Scoring Rules','Accept Rules &amp; Start Scoring','I have read, understood and agree','sessionStorage'])assert(live.includes(marker),'missing mandatory rule acknowledgement '+marker);
+assert(live.includes('score every contestant'.replace(/^s/,'S'))&&live.includes('Do not discuss or compare marks'),'judge briefing must require independent scoring');
+assert(live.includes("show('Selected ")&&live.includes("show(payload.message||'Scores saved.'"),'selection, save and submission notifications must remain live');
+assert(live.includes("input.value=slider.value")&&live.includes("setTimeout(()=>queued('save'"),'sliders must write through the existing autosave payload');
+assert(css.includes('.dc-score-slider')&&css.includes('.dc-entry-live-total')&&css.includes('.dc-rule-accept'),'shared responsive slider presentation must be active');
+console.log('Dance Cup judge slider and rules v429 regression passed');

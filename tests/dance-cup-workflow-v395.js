@@ -22,7 +22,7 @@ assert(api.includes('DELETE FROM {$prefix}_scoring_results'),'score changes must
 assert(api.includes("workflow==='automatic'")&&api.includes('all_judges_submitted'),'automatic final lock must require submitted judge sheets');
 assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=395'),'manual dashboard must use no-refresh scorer');
 assert(manual.includes('target="_blank" rel="noopener" href="projection-control.php'),'manual projection must open separately');
-assert(judge.includes("($_POST['ajax']??'')==='1'")&&judge.includes('dance-cup-judge-live.js?v=395'),'judge scoring must save without page refresh');
+assert(judge.includes("($_POST['ajax']??'')==='1'")&&judge.includes('dance-cup-judge-live.js?v=429'),'judge scoring must save without page refresh');
 assert(judge.includes('DELETE FROM {$p}_scoring_results'),'judge changes must invalidate stale results');
 assert(judgeLive.includes("event.preventDefault()")&&judgeLive.includes("setTimeout(()=>queued('save'"),'judge autosave must intercept forms');
 assert(automatic.includes('data-dc-automatic')&&automatic.includes('Automatic Round Completion'),'automatic workflow must include completion stage');
