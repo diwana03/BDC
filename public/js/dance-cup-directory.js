@@ -20,7 +20,7 @@
  `;
  document.head.appendChild(style);
 
- function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]))}
+ function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))}
 
  function attach(input){
   const type=input.dataset.directoryType,hidden=document.getElementById(input.dataset.directoryTarget),wrap=input.closest('.dc-directory-field');
