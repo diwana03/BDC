@@ -259,8 +259,10 @@ $currentListReturn = '?' . http_build_query($_GET);
         .profile-box { min-width:190px; padding:.55rem .7rem; border:1px solid #dee2e6; border-radius:.55rem; background:#fff; }
         .profile-box.special { border-color:#0dcaf0; background:#f0fbff; }
     </style>
+    <link rel="stylesheet" href="<?= e(url('public/assets/css/admin-mobile-v428.css?v=428')) ?>">
+    <script defer src="<?= e(url('public/assets/js/admin-mobile-v428.js?v=428')) ?>"></script>
 </head>
-<body class="bg-light">
+<body class="bg-light bdc-mobile-admin">
 <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="<?= e(url('admin/')) ?>">BDC Admin</a>
@@ -274,7 +276,7 @@ $currentListReturn = '?' . http_build_query($_GET);
             <h1 class="h3 mb-1">Competitor Management</h1>
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 bdc-mobile-actions">
             <?php if (Auth::isSuperAdmin()): ?><a class="btn btn-outline-success" href="<?= e(queryUrl(['export' => 'csv', 'page' => null])) ?>">Export Competitors CSV</a><?php endif; ?>
             <?php if (Auth::can('competitors.edit')): ?><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a><?php endif; ?>
         </div>
@@ -394,7 +396,7 @@ $currentListReturn = '?' . http_build_query($_GET);
 
     <div class="card border-0 shadow-sm">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" data-mobile-cards>
                 <thead>
                 <tr>
                     <th>Photo</th>

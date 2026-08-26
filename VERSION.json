@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev427",
-  "build": 3133,
+  "version": "2.3.3-dev428",
+  "build": 3134,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes the BDC admin portal mobile friendly with an accessible off-canvas Dashboard menu, responsive action bars and forms, labeled Competitor and Judge record cards, touch-sized controls and safe Dance Cup/scoring table scrolling",
     "Aligns every Automatic Dance Cup Add, Chief, roster management, Judge Links and Live Projection button to consistent input baselines and control heights",
     "Completes Manual and Automatic Dance Cup roster management with contestant and judge reordering and removal, post-add Chief Judge selection, scoring-safe locks, responsive laptop stacking and protected deletion of mistaken Draft categories",
     "Prevents the Production-only verified 28-profile publication from replaying against an incomplete Staging competitor dataset while retaining its checksum record and leaving every schema migration and Production execution unchanged",
