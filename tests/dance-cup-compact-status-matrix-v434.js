@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const client=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
+const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+for(const marker of ['dc-judge-status-row','dc-judge-actions','Copy Link','>Open</a>','>Regenerate</button>','>Reopen</button>'])assert(view.includes(marker),'compact judge status missing '+marker);
+for(const marker of ['data-dc-judge-tab','data-dc-judge-panel','All Judges Summary','dc-judge-matrix-panel'])assert(view.includes(marker),'tabbed judge matrix missing '+marker);
+assert(client.includes("automatic.querySelectorAll('[data-dc-judge-tab]')"),'judge matrix tabs must be interactive');
+for(const marker of ['.dc-judge-status-row','.dc-judge-actions .btn','.dc-status-pill','.dc-judge-tabs','.dc-unified-actions>.btn,.dc-checkpoint-form .btn','@media(max-width:767.98px)'])assert(css.includes(marker),'compact responsive styling missing '+marker);
+assert(view.includes('dance-cup-scoring-live.js?v=434'),'live client cache key must advance');
+assert(setup.includes("str_replace('scoring-premium.css?v=398','scoring-premium.css?v=434'"),'shared compact CSS cache key must advance');
+assert(setup.includes("$test?'test':'real'"),'Test and Live must retain the shared render path');
+console.log('Dance Cup compact judge status, aligned actions and tabbed matrix v434 passed.');

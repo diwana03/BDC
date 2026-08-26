@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev433",
-  "build": 3139,
+  "version": "2.3.3-dev434",
+  "build": 3140,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Compacts Automatic judge status into aligned single-row controls and replaces the oversized all-criteria matrix with judge tabs plus an all-judge totals summary on desktop and mobile",
     "Shows every criterion and live mark under each judge in the Automatic score matrix, keeps totals and calculated place live, and uses the official five-by-20 rubric as the editable default for every new Dance Cup category",
     "Uses one clear Open action across Dance Cup cards, refreshes live judge completion and score totals every two seconds, and blocks submitted scoring deletion in both the interface and a transaction-locked backend guard",
     "Shows all Automatic Dance Cup judges with manual live refresh, treats complete marks as ready without individual judge submission, and locks every completed judge sheet together on final admin submission",

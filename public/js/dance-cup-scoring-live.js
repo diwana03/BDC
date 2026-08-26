@@ -93,6 +93,11 @@ if(manual){
  });
 }
 if(automatic){
+ automatic.querySelectorAll('[data-dc-judge-tab]').forEach(tab=>tab.addEventListener('click',()=>{
+  const selected=tab.dataset.dcJudgeTab;
+  automatic.querySelectorAll('[data-dc-judge-tab]').forEach(button=>{const active=button===tab;button.classList.toggle('btn-primary',active);button.classList.toggle('btn-outline-primary',!active&&button.dataset.dcJudgeTab!=='summary');button.classList.toggle('btn-outline-secondary',!active&&button.dataset.dcJudgeTab==='summary');button.setAttribute('aria-selected',active?'true':'false')});
+  automatic.querySelectorAll('[data-dc-judge-panel]').forEach(panel=>panel.hidden=panel.dataset.dcJudgePanel!==selected);
+ }));
  const csrf=automatic.dataset.csrf;
  const postAction=async(action)=>{
   const data=new FormData();data.set('_csrf',csrf);data.set('id',automatic.dataset.competition);data.set('data_mode',automatic.dataset.mode);data.set('action',action);data.set('workflow','automatic');
