@@ -83,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $profileMerge->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
                 $moved['bdc_competitor_discipline_profiles']=$profileMerge->rowCount();
                 $pdo->prepare('DELETE FROM bdc_competitor_discipline_profiles WHERE competitor_id=:merge_id')->execute(['merge_id'=>$mergeId]);
+                $specialMerge=$pdo->prepare("INSERT IGNORE INTO bdc_competitor_special_categories(competitor_id,dance_style,category,source_kind,source_name) SELECT :keep_id,dance_style,category,source_kind,source_name FROM bdc_competitor_special_categories WHERE competitor_id=:merge_id");
+                $specialMerge->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
+                $moved['bdc_competitor_special_categories']=$specialMerge->rowCount();
+                $pdo->prepare('DELETE FROM bdc_competitor_special_categories WHERE competitor_id=:merge_id')->execute(['merge_id'=>$mergeId]);
 
                 // Preserve useful profile data when the kept profile is blank or unknown.
                 $stmt = $pdo->prepare("UPDATE bdc_competitors k JOIN bdc_competitors d ON d.id=:merge_id

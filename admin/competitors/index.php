@@ -58,7 +58,7 @@ if ($filter === 'missing_photo') {
     $where[] = "EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles ip WHERE ip.competitor_id=c.id AND (:profile_style='' OR ip.dance_style=:profile_style2) AND (ip.dance_role='unknown' OR ip.current_division='unknown'))";
     $params['profile_style'] = $danceStyle; $params['profile_style2'] = $danceStyle;
 } elseif ($filter === 'special_category') {
-    $where[] = "EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles spx WHERE spx.competitor_id=c.id AND (:special_style='' OR spx.dance_style=:special_style2) AND spx.special_category IN ('bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'))";
+    $where[] = "EXISTS (SELECT 1 FROM bdc_competitor_special_categories spx WHERE spx.competitor_id=c.id AND (:special_style='' OR spx.dance_style=:special_style2))";
     $params['special_style'] = $danceStyle; $params['special_style2'] = $danceStyle;
 }
 
@@ -76,9 +76,11 @@ if (in_array($role, $allowedRoles, true)) {
     $params['role_style'] = $danceStyle; $params['role_style2'] = $danceStyle;
 }
 if (in_array($division, $allowedDivisions, true)) {
-    $where[] = 'EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles dp WHERE dp.competitor_id=c.id AND (dp.current_division=:division OR dp.special_category=:division) AND (:division_style="" OR dp.dance_style=:division_style2))';
+    $where[] = '((EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles dp WHERE dp.competitor_id=c.id AND dp.current_division=:division AND (:division_style="" OR dp.dance_style=:division_style2))) OR (EXISTS (SELECT 1 FROM bdc_competitor_special_categories dsc WHERE dsc.competitor_id=c.id AND dsc.category=:special_division AND (:special_division_style="" OR dsc.dance_style=:special_division_style2))))';
     $params['division'] = $division;
     $params['division_style'] = $danceStyle; $params['division_style2'] = $danceStyle;
+    $params['special_division'] = $division;
+    $params['special_division_style'] = $danceStyle; $params['special_division_style2'] = $danceStyle;
 }
 if (in_array($status, $allowedStatuses, true)) {
     $where[] = 'c.status = :status';
@@ -101,14 +103,15 @@ $sort = array_key_exists($sort, $sortMap) ? $sort : 'name';
 $orderSql = strtoupper($order);
 $whereSql = implode(' AND ', $where);
 
-$baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,bp.special_category bachata_special_category,
-        sp.dance_role salsa_role,sp.current_division salsa_division,sp.special_category salsa_special_category,
+$baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,sc.bachata_special_categories,
+        sp.dance_role salsa_role,sp.current_division salsa_division,sc.salsa_special_categories,
         COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.bachata_novice_points,0) bachata_novice_points,COALESCE(pp.bachata_intermediate_points,0) bachata_intermediate_points,COALESCE(pp.bachata_advanced_points,0) bachata_advanced_points,
         COALESCE(pp.salsa_points,0) salsa_points,COALESCE(pp.salsa_novice_points,0) salsa_novice_points,COALESCE(pp.salsa_intermediate_points,0) salsa_intermediate_points,COALESCE(pp.salsa_advanced_points,0) salsa_advanced_points,
         COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
     FROM bdc_competitors c
     LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
     LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
+    LEFT JOIN (SELECT competitor_id,GROUP_CONCAT(CASE WHEN dance_style='bachata' THEN category END ORDER BY category SEPARATOR ',') bachata_special_categories,GROUP_CONCAT(CASE WHEN dance_style='salsa' THEN category END ORDER BY category SEPARATOR ',') salsa_special_categories FROM bdc_competitor_special_categories GROUP BY competitor_id) sc ON sc.competitor_id=c.id
     LEFT JOIN (SELECT competitor_id,
         SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,
         SUM(CASE WHEN dance_style='bachata' AND division='novice' THEN points ELSE 0 END) bachata_novice_points,
@@ -165,10 +168,10 @@ if ((string)($_GET['export'] ?? '') === 'csv') {
             $safeCsv($exportRow['country'] ?? ''),
             $safeCsv($exportRow['bachata_role'] ?? ''),
             $safeCsv($exportRow['bachata_division'] ?? ''),
-            $safeCsv($exportRow['bachata_special_category'] ?? ''),
+            $safeCsv($exportRow['bachata_special_categories'] ?? ''),
             $safeCsv($exportRow['salsa_role'] ?? ''),
             $safeCsv($exportRow['salsa_division'] ?? ''),
-            $safeCsv($exportRow['salsa_special_category'] ?? ''),
+            $safeCsv($exportRow['salsa_special_categories'] ?? ''),
             (float)($exportRow['bachata_points'] ?? 0),
             (float)($exportRow['salsa_points'] ?? 0),
             (float)($exportRow['total_points'] ?? 0),
@@ -206,7 +209,7 @@ $counts = [
     'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE photo_url IS NULL OR TRIM(photo_url)='' ")->fetchColumn(),
     'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE country IS NULL OR TRIM(country)='' ")->fetchColumn(),
     'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE dance_role='unknown' OR current_division='unknown'")->fetchColumn(),
-    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE special_category IN ('bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open')")->fetchColumn(),
+    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_special_categories")->fetchColumn(),
 ];
 $hasListFilters=$q!==''||$filter!==''||$country!==''||$danceStyle!==''||$role!==''||$division!==''||$status!=='';
 
@@ -419,7 +422,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                             <div class="small text-muted"><?= e((string)$row['instagram']) ?></div>
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
-                        <?php foreach (['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$special=(string)($row[$style.'_special_category']??'');?><td><div class="profile-box <?=$special!==''?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php if($special!==''):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endif;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$special===''):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
+                        <?php foreach (['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$specials=array_values(array_filter(explode(',',(string)($row[$style.'_special_categories']??''))));?><td><div class="profile-box <?=$specials!==[]?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php foreach($specials as $special):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endforeach;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$specials===[]):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
                         <td><?php foreach(['bachata'=>'Bachata','salsa'=>'Salsa'] as $style=>$label):?><div class="<?=$style==='salsa'?'mt-2':''?>"><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td>
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">

@@ -27,6 +27,8 @@ final class MigrationRunner
         '20260826_0300_repair_named_test_event_profiles',
         '20260826_0400_apply_source_verified_profile_correction',
         '20260826_0500_publish_verified_form_profiles',
+        '20260826_0600_separate_special_categories',
+        '20260826_0700_multiple_special_category_registrations',
     ];
 
     /**
@@ -67,6 +69,12 @@ final class MigrationRunner
             '05879cf08f3131f0a33c0ec38ada73b5e8a08481602ec4c662fb8e887c6dab31',
             // Stable checksum of the immutable migration file only.
             '064f1c3a9332383b301663ad43000a088af5e1f45d2bc364c8a572c69902dfd8',
+        ],
+        '20260826_0600_separate_special_categories' => [
+            // Dependency-aware checksum recorded when dev416 ran in Production.
+            '7154206b1c2507209320f1a9e9aeb8aaa3a9ceac52b6bd2bdc607bd4a5d7e2b3',
+            // Stable checksum of the immutable migration file only.
+            'afaea532271ec00edaf480a735621fb3c7b0c866165980190454917a3567626b',
         ],
     ];
 

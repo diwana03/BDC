@@ -10,13 +10,13 @@ const files={
  merge:fs.readFileSync('admin/competitors/merge.php','utf8'),
  results:fs.readFileSync('results/index.php','utf8')
 };
-for(const key of ['migration','recovery','list','edit','merge','results'])assert(files[key].includes('special_category'),key+' is not wired to separate Special Category storage');
+for(const key of ['migration','recovery','list','merge'])assert(files[key].includes('special_category'),key+' is not wired to separate Special Category storage');
 assert(files.migration.includes('approvedPermanentDivision'),'legacy Special Categories must restore calculated career progression');
 assert(files.verified.includes("$legacy->execute"),'applied dev413 migration must remain byte-compatible and immutable');
 assert(files.migration.includes('SET special_category=:category'),'new migration must separate categories written by immutable dev413');
-assert(files.list.includes('dp.current_division=:division OR dp.special_category=:division'),'Competitor Management must filter both axes');
-for(const label of ['Novice:','Intermediate:','Advanced:','Total ','Current level:','Special Competition Category:'])assert(files.results.includes(label),'results summary missing '+label);
-assert(files.edit.includes('Current progression level')&&files.edit.includes('Special Competition Category'),'admin editor must expose separate fields');
+assert(files.list.includes('bdc_competitor_special_categories dsc'),'Competitor Management must filter the separate category axis');
+for(const label of ['Novice:','Intermediate:','Advanced:','Total ','Current level:','Special Competition Categories:'])assert(files.results.includes(label),'results summary missing '+label);
+assert(files.edit.includes('Current progression level')&&files.edit.includes('Special Competition Categories'),'admin editor must expose separate fields');
 assert(files.merge.includes('bdc_form_sync_submissions')&&files.merge.includes('bdc_competitor_discipline_profiles'),'duplicate merge must preserve form submissions and both profile axes');
 assert(!files.recovery.includes("$legacy->execute"),'Special Category recovery must never overwrite legacy progression');
 console.log('PASS separate career progression, point breakdown and Special Category v414');

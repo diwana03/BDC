@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const service=fs.readFileSync('app/Services/SpecialCategoryRecoveryService.php','utf8');
+const migration=fs.readFileSync('database/migrations/20260826_0700_multiple_special_category_registrations.php','utf8');
+const list=fs.readFileSync('admin/competitors/index.php','utf8');
+const edit=fs.readFileSync('admin/competitors/edit.php','utf8');
+const merge=fs.readFileSync('admin/competitors/merge.php','utf8');
+const recovery=fs.readFileSync('admin/competitors/special-category-recovery.php','utf8');
+const runner=fs.readFileSync('app/Services/MigrationRunner.php','utf8');
+const results=fs.readFileSync('results/index.php','utf8');
+const publicProfile=fs.readFileSync('competitor/index.php','utf8');
+for(const file of [service,migration,list,edit,merge,results,publicProfile])assert(file.includes('bdc_competitor_special_categories'),'canonical multiple-category table is not wired everywhere');
+assert(service.includes("$identity.'|'.$dance.'|'.$role.'|'.$category"),'Open and Rising role-specific manifest rows must have independent keys');
+assert(service.includes("in_array((string)$match['dance_role']"),'same-name Leader and Follower identities must remain separate');
+assert(!service.includes("||$source==='open'"),'Open must not overwrite Amateur/Rising');
+for(const token of ['bdc_form_sync_submissions',"$dance.'_'.($kind==='open'?'open':'rising')",'bdc_special_category_recovery'])assert(migration.includes(token),'migration evidence source missing '+token);
+assert(migration.includes('SET special_category=NULL'),'legacy scalar must be retired after canonical migration');
+assert(list.includes('GROUP_CONCAT')&&list.includes("explode(',',"),'dashboard must display every category badge');
+assert(results.includes('Special Competition Categories:')&&publicProfile.includes('Special Categories:'),'public results/profile must show every category');
+assert(list.includes('dsc.category=:special_division'),'category filters must match every registration');
+assert(edit.includes('name="special_categories[]"')&&edit.includes('multiple'),'competitor editor must support multiple categories');
+assert(merge.includes("$moved['bdc_competitor_special_categories']"),'duplicate merge must preserve every category');
+assert(recovery.includes('Open and Amateur registrations are both retained'),'recovery UI still describes destructive precedence');
+for(const checksum of ['7154206b1c2507209320f1a9e9aeb8aaa3a9ceac52b6bd2bdc607bd4a5d7e2b3','afaea532271ec00edaf480a735621fb3c7b0c866165980190454917a3567626b'])assert(runner.includes(checksum),'0600 checksum compatibility missing '+checksum);
+console.log('PASS multiple Open and Amateur/Rising registrations per identity v419');
