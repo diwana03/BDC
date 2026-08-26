@@ -20,7 +20,7 @@ assert(service.includes("$placement = $index + 1"),'calculation must use competi
 assert(api.includes("if($raw==='')")&&api.includes('DELETE FROM {$prefix}_marks'),'manual API must delete cleared marks');
 assert(api.includes('DELETE FROM {$prefix}_scoring_results'),'score changes must invalidate stale results');
 assert(api.includes("workflow==='automatic'")&&api.includes("judge_sessions SET status='submitted'"),'automatic final lock must lock all completed judge sheets together');
-assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=431'),'manual dashboard must use no-refresh scorer');
+assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=432'),'manual dashboard must use no-refresh scorer');
 assert(manual.includes('target="_blank" rel="noopener" href="projection-control.php'),'manual projection must open separately');
 assert(judge.includes("($_POST['ajax']??'')==='1'")&&judge.includes('dance-cup-judge-live.js?v=429'),'judge scoring must save without page refresh');
 assert(judge.includes('DELETE FROM {$p}_scoring_results'),'judge changes must invalidate stale results');
@@ -28,7 +28,7 @@ assert(judgeLive.includes("event.preventDefault()")&&judgeLive.includes("setTime
 assert(automatic.includes('data-dc-automatic')&&automatic.includes('Automatic Round Completion'),'automatic workflow must include completion stage');
 assert(automatic.includes('data-session-progress')&&automatic.includes('data-dc-api-action="submit"'),'automatic status and final lock controls must be live');
 assert(automatic.includes('projector-launch.php?token=')&&automatic.includes('target="_blank" rel="noopener" href="projection-control.php'),'automatic projection must use safe launch and a new control tab');
-assert(live.includes("setInterval(poll,5000)")&&live.includes('document.hidden'),'automatic status polling must be throttled and hidden-tab safe');
+assert(live.includes("setInterval(poll,2000)")&&live.includes('document.hidden'),'automatic status polling must be fast and hidden-tab safe');
 assert(feed.includes('$lastTotal')&&!feed.includes("$row['placement']=$i+1"),'provisional projection must preserve equal-score ties');
 assert(projector.includes('data.entries,data.judges,data.results')&&projector.includes('setInterval(poll,5000)'),'projector repaint hash must include live scoring data');
 assert(projector.includes('response.status===429')&&projector.includes('document.hidden'),'projector polling must back off and pause while hidden');

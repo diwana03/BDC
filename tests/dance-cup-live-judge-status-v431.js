@@ -4,11 +4,11 @@ const panel=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php',
 const api=fs.readFileSync('admin/dance-cup/scoring-api.php','utf8');
 const client=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
 const legacy=fs.readFileSync('admin/dance-cup/automation.php','utf8');
-for(const marker of ['All Judges · Live Status','Refresh Live Status','data-dc-last-updated','Not Started','Complete','Submitted'])assert(panel.includes(marker),'live judge status missing '+marker);
+for(const marker of ['All Judges · Live Status','Refresh Now','data-dc-last-updated','Not Started','Complete','Submitted'])assert(panel.includes(marker),'live judge status missing '+marker);
 assert(panel.includes("!$state['all_marks_complete']")&&!panel.includes("!$state['all_judges_submitted']||!$state['results_current']"),'final submit must depend on complete marks, not individual judge submission');
 assert(panel.includes('Judge Submit is optional')&&panel.includes('lock every judge sheet together'),'scorer instructions must explain the simplified final lock');
 assert(api.includes("judge_sessions SET status='submitted'")&&api.includes('all completed judge sheets submitted and locked'),'final submission must lock every judge session atomically with the round');
-assert(client.includes("status=session.status==='submitted'?'Submitted':complete?'Complete'")&&client.includes("setInterval(poll,5000)"),'judge state must derive Complete live and refresh every five seconds');
+assert(client.includes("status=session.status==='submitted'?'Submitted':complete?'Complete'")&&client.includes("setInterval(poll,2000)"),'judge state must derive Complete live and refresh every two seconds');
 assert(client.includes("[data-dc-refresh-status]")&&client.includes("[data-dc-last-updated]"),'manual refresh and timestamp must be wired');
 assert(legacy.includes("!$state['all_marks_complete']")&&!legacy.includes("!$state['all_judges_submitted']||!$state['results_current']"),'legacy direct view must use the same simplified gate');
 console.log('Dance Cup all-judge live status and simplified lock v431 regression passed');

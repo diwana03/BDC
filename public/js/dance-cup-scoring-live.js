@@ -42,7 +42,7 @@ function renderState(state){
   node.classList.toggle('text-bg-secondary',state.competition_status!=='submitted');
  });
  document.querySelectorAll('[data-dc-round-summary]').forEach(node=>{
-  node.textContent=state.mark_count+' / '+state.required_marks+' marks · '+state.submitted_judges+' / '+state.judge_count+' judges submitted';
+  node.textContent=state.mark_count+' / '+state.required_marks+' marks · '+state.completed_judges+' / '+state.judge_count+' judges complete';
  });
  document.querySelectorAll('[data-session-id]').forEach(card=>{
   const session=state.sessions.find(item=>Number(item.id)===Number(card.dataset.sessionId));if(!session)return;
@@ -109,6 +109,6 @@ if(automatic){
   }catch{}
  };
  automatic.querySelector('[data-dc-refresh-status]')?.addEventListener('click',event=>{event.currentTarget.disabled=true;poll().finally(()=>event.currentTarget.disabled=false)});
- poll();setInterval(poll,5000);
+ poll();setInterval(poll,2000);
 }
 })();

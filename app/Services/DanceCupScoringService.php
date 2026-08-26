@@ -263,9 +263,11 @@ final class DanceCupScoringService
         $sessionRows = $sessions->fetchAll();
         $perJudgeRequired = $entries * $criteria;
         $submitted = 0;
+        $completed = 0;
         foreach ($sessionRows as &$session) {
             $session['required_count'] = $perJudgeRequired;
             $session['completed_count'] = min($perJudgeRequired, (int) $session['mark_count']);
+            if ((int) $session['completed_count'] >= $perJudgeRequired && $perJudgeRequired > 0) $completed++;
             if ($session['status'] === 'submitted' && (int) $session['completed_count'] >= $perJudgeRequired && $perJudgeRequired > 0) $submitted++;
         }
         unset($session);
@@ -285,6 +287,7 @@ final class DanceCupScoringService
             'required_marks' => $requiredMarks,
             'mark_count' => $marks,
             'all_marks_complete' => $requiredMarks > 0 && $marks >= $requiredMarks,
+            'completed_judges' => $completed,
             'submitted_judges' => $submitted,
             'all_judges_submitted' => $judges > 0 && $submitted === $judges,
             'sessions' => $sessionRows,

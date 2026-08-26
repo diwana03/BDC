@@ -1,0 +1,20 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const workflow=fs.readFileSync('admin/dance-cup/workflow.php','utf8');
+const index=fs.readFileSync('admin/dance-cup/index.php','utf8');
+const deletion=fs.readFileSync('admin/dance-cup/delete-draft.php','utf8');
+const state=fs.readFileSync('app/Services/DanceCupScoringService.php','utf8');
+const panel=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const client=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+
+assert(!workflow.includes('Set Up & Open')&&!workflow.includes('Open Manual Sheet')&&!workflow.includes('Open Projection'),'workflow cards must use the single Open label');
+assert(workflow.includes("['Automatic Scoring','automatic-setup.php','Open'")&&workflow.includes("['Manual Scoring','category.php','Open'"),'Manual and Automatic cards must both say Open');
+assert(index.includes("$openLabel='Open'"),'event/category cards must also use Open');
+assert(workflow.includes("$category['status']==='draft'"),'Delete Draft must render only for draft categories');
+assert(deletion.includes("if((string)$category['status']!=='draft')")&&deletion.includes('Submitted scoring cannot be deleted'),'direct delete access must reject submitted scoring');
+assert(deletion.includes('FOR UPDATE')&&deletion.includes("rowCount()!==1"),'delete transaction must lock and recheck the draft before removing dependent data');
+assert(state.includes("'completed_judges' => $completed"),'live state must count judges by completed marks rather than optional submission');
+assert(panel.includes('every two seconds')&&panel.includes('judges complete'),'live panel must explain fast completion polling');
+assert(client.includes('setInterval(poll,2000)')&&client.includes('state.completed_judges'),'live client must refresh within two seconds and show completed judges');
+assert(client.includes('document.hidden'),'polling must pause when the tab is hidden');
+console.log('PASS Dance Cup Open labels, fast live completion and submitted-delete lock v432');
