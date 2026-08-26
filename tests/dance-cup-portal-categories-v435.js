@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const portal=fs.readFileSync('register/index.php','utf8');
+const fields=fs.readFileSync('register/dance-cup-fields.php','utf8');
+const admin=fs.readFileSync('admin/profile-requests/index.php','utf8');
+const summary=fs.readFileSync('admin/profile-requests/dance-cup-request-summary.php','utf8');
+const migration=fs.readFileSync('database/migrations/20260827_0100_dance_cup_profile_request_categories.php','utf8');
+assert(portal.includes("require __DIR__.'/dance-cup-fields.php'"),'public portal must load reusable Dance Cup category fields');
+for(const marker of ['bdc_dance_cup_competitions','bdc_dance_cup_events','dance_cup_categories[]','dc-cup-category','partner_or_team_name','team_size','Choose at least one BDC Dance Cup category','Choose categories from one Dance Cup event per registration','Team Choreography requires at least 4 dancers'])assert(fields.includes(marker),'Dance Cup portal flow missing '+marker);
+assert(fields.includes("c.round_name='final'")&&fields.includes("c.status<>'submitted'"),'portal must expose only current final category definitions');
+assert(fields.includes('permanent_division_change_requested')&&fields.includes("'competition_type'=>'dance_cup'"),'category registration must remain separate from permanent progression');
+assert(admin.includes("require __DIR__.'/dance-cup-request-summary.php'"),'admin approval path must load Dance Cup selection evidence');
+for(const marker of ['BDC Dance Cup category requests','event_name','category_name','partner_or_team_name'])assert(summary.includes(marker),'admin category review missing '+marker);
+for(const marker of ['bdc_profile_request_dance_cup_categories','UNIQUE KEY uq_profile_request_dc_category','ON DELETE CASCADE'])assert(migration.includes(marker),'normalized request-category migration missing '+marker);
+assert(portal.includes('<option value="jack_jill">Jack & Jill</option><option value="dance_cup">BDC Dance Cup</option>'),'Jack & Jill and BDC Dance Cup portal modes must remain available');
+console.log('Reusable BDC Dance Cup portal categories and approval evidence v435 passed.');
