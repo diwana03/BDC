@@ -93,9 +93,9 @@ try{
             $state=DanceCupScoringService::workflowState($pdo,$id,$test);
             if(!$state['all_marks_complete'])throw new RuntimeException('Complete every judge score before submitting the competition.');
             if(!$state['results_current'])throw new RuntimeException('Calculate and review the current results before submitting.');
-            if($workflow==='automatic'&&!$state['all_judges_submitted'])throw new RuntimeException('Every automatic judge must submit and lock their score sheet first.');
+            if($workflow==='automatic')$pdo->prepare("UPDATE {$prefix}_judge_sessions SET status='submitted',submitted_at=COALESCE(submitted_at,NOW()),last_seen_at=NOW(),started_at=COALESCE(started_at,NOW()) WHERE competition_id=:competition")->execute(['competition'=>$id]);
             $pdo->prepare("UPDATE {$tables['competitions']} SET status='submitted' WHERE id=:competition")->execute(['competition'=>$id]);
-            $message='Competition submitted and locked.';
+            $message=$workflow==='automatic'?'Competition and all completed judge sheets submitted and locked.':'Competition submitted and locked.';
         }else{
             throw new RuntimeException('Unknown Dance Cup scoring action.');
         }

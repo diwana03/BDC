@@ -19,8 +19,8 @@ assert(service.includes("$prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup
 assert(service.includes("$placement = $index + 1"),'calculation must use competition ranking');
 assert(api.includes("if($raw==='')")&&api.includes('DELETE FROM {$prefix}_marks'),'manual API must delete cleared marks');
 assert(api.includes('DELETE FROM {$prefix}_scoring_results'),'score changes must invalidate stale results');
-assert(api.includes("workflow==='automatic'")&&api.includes('all_judges_submitted'),'automatic final lock must require submitted judge sheets');
-assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=430'),'manual dashboard must use no-refresh scorer');
+assert(api.includes("workflow==='automatic'")&&api.includes("judge_sessions SET status='submitted'"),'automatic final lock must lock all completed judge sheets together');
+assert(manual.includes('data-dc-manual')&&manual.includes('dance-cup-scoring-live.js?v=431'),'manual dashboard must use no-refresh scorer');
 assert(manual.includes('target="_blank" rel="noopener" href="projection-control.php'),'manual projection must open separately');
 assert(judge.includes("($_POST['ajax']??'')==='1'")&&judge.includes('dance-cup-judge-live.js?v=429'),'judge scoring must save without page refresh');
 assert(judge.includes('DELETE FROM {$p}_scoring_results'),'judge changes must invalidate stale results');
@@ -35,8 +35,8 @@ assert(projector.includes('response.status===429')&&projector.includes('document
 
 const competitionRanks=totals=>{let place=0,last=null;return totals.map((total,index)=>{if(last===null||total<last)place=index+1;last=total;return place})};
 assert(JSON.stringify(competitionRanks([100,100,90,80,80]))==='[1,1,3,4,4]','tie ranking model must be 1,1,3,4,4');
-const canLock=state=>state.all_marks_complete&&state.results_current&&state.all_judges_submitted;
-assert(canLock({all_marks_complete:true,results_current:true,all_judges_submitted:true}),'complete automatic workflow should lock');
-assert(!canLock({all_marks_complete:true,results_current:true,all_judges_submitted:false}),'unsubmitted judge must block automatic lock');
+const canLock=state=>state.all_marks_complete&&state.results_current;
+assert(canLock({all_marks_complete:true,results_current:true,all_judges_submitted:false}),'complete marks and reviewed results should lock without individual judge submission');
+assert(!canLock({all_marks_complete:false,results_current:true}),'missing judge marks must block automatic lock');
 
 console.log('Dance Cup automatic/manual/projection workflow v395: PASS');

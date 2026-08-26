@@ -34,6 +34,7 @@ function renderResults(state){
 }
 function renderState(state){
  renderResults(state);
+ document.querySelectorAll('[data-dc-last-updated]').forEach(node=>node.textContent='Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
  document.querySelectorAll('[data-dc-matrix-total]').forEach(cell=>{const value=state.row_totals?.[cell.dataset.entry]?.[cell.dataset.judge];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
  document.querySelectorAll('[data-dc-status]').forEach(node=>{
   node.textContent=String(state.competition_status||'draft').toUpperCase();
@@ -48,13 +49,14 @@ function renderState(state){
   const done=Number(session.completed_count||0),required=Number(session.required_count||0),percent=required?Math.round(done/required*100):0;
   const count=card.querySelector('[data-session-count]');if(count)count.textContent=done+' / '+required+' marks';
   const bar=card.querySelector('[data-session-progress]');if(bar)bar.style.width=percent+'%';
-  const badge=card.querySelector('[data-session-state]');if(badge){badge.textContent=String(session.status||'not_started').replaceAll('_',' ');badge.className='badge text-bg-'+(session.status==='submitted'?'success':session.status==='scoring'?'warning':'secondary');}
+  const complete=required>0&&done>=required,status=session.status==='submitted'?'Submitted':complete?'Complete':session.status==='scoring'?'Scoring':'Not Started';
+  const badge=card.querySelector('[data-session-state]');if(badge){badge.textContent=status;badge.className='badge text-bg-'+(status==='Submitted'?'success':status==='Complete'?'primary':status==='Scoring'?'warning':'secondary');}
   card.classList.toggle('submitted',session.status==='submitted');card.classList.toggle('scoring',session.status==='scoring');
  });
  const submitted=state.competition_status==='submitted';
  document.querySelectorAll('[data-dc-lock-on-submit]').forEach(button=>button.disabled=submitted);
  const finalButton=document.querySelector('[data-dc-api-action="submit"]');
- if(finalButton)finalButton.disabled=submitted||!state.all_judges_submitted||!state.results_current;
+ if(finalButton)finalButton.disabled=submitted||!state.all_marks_complete||!state.results_current;
  const calculateButton=document.querySelector('[data-dc-api-action="calculate"]');
  if(calculateButton)calculateButton.disabled=submitted||Number(state.mark_count)<1;
 }
@@ -106,6 +108,7 @@ if(automatic){
    const payload=await response.json();if(response.ok&&payload.ok)renderState(payload.state);
   }catch{}
  };
+ automatic.querySelector('[data-dc-refresh-status]')?.addEventListener('click',event=>{event.currentTarget.disabled=true;poll().finally(()=>event.currentTarget.disabled=false)});
  poll();setInterval(poll,5000);
 }
 })();
