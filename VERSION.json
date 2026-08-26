@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev417",
-  "build": 3123,
+  "version": "2.3.3-dev418",
+  "build": 3124,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows explicit Bachata and Salsa Novice, Intermediate and Advanced point breakdowns beside each style total in Competitor Management",
     "Adds a first-position All Participants summary card to Competitor Management with the complete database count and a one-click reset to the unfiltered participant list",
     "Accepts only the exact dependency-aware checksum recorded when verified-profile migration 0500 ran and its immutable file-only checksum, allowing the forward Special Category migration while every unrelated checksum mismatch remains blocked",
     "Restores the already-applied verified-profile migration byte-for-byte so the migration integrity gate passes, while retaining the progression and Special Category separation exclusively in a new forward migration",

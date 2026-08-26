@@ -103,12 +103,22 @@ $whereSql = implode(' AND ', $where);
 
 $baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,bp.special_category bachata_special_category,
         sp.dance_role salsa_role,sp.current_division salsa_division,sp.special_category salsa_special_category,
-        COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.salsa_points,0) salsa_points,
+        COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.bachata_novice_points,0) bachata_novice_points,COALESCE(pp.bachata_intermediate_points,0) bachata_intermediate_points,COALESCE(pp.bachata_advanced_points,0) bachata_advanced_points,
+        COALESCE(pp.salsa_points,0) salsa_points,COALESCE(pp.salsa_novice_points,0) salsa_novice_points,COALESCE(pp.salsa_intermediate_points,0) salsa_intermediate_points,COALESCE(pp.salsa_advanced_points,0) salsa_advanced_points,
         COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
     FROM bdc_competitors c
     LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
     LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
-    LEFT JOIN (SELECT competitor_id,SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,SUM(CASE WHEN dance_style='salsa' THEN points ELSE 0 END) salsa_points FROM bdc_point_transactions GROUP BY competitor_id) pp ON pp.competitor_id=c.id
+    LEFT JOIN (SELECT competitor_id,
+        SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,
+        SUM(CASE WHEN dance_style='bachata' AND division='novice' THEN points ELSE 0 END) bachata_novice_points,
+        SUM(CASE WHEN dance_style='bachata' AND division='intermediate' THEN points ELSE 0 END) bachata_intermediate_points,
+        SUM(CASE WHEN dance_style='bachata' AND division='advanced' THEN points ELSE 0 END) bachata_advanced_points,
+        SUM(CASE WHEN dance_style='salsa' THEN points ELSE 0 END) salsa_points,
+        SUM(CASE WHEN dance_style='salsa' AND division='novice' THEN points ELSE 0 END) salsa_novice_points,
+        SUM(CASE WHEN dance_style='salsa' AND division='intermediate' THEN points ELSE 0 END) salsa_intermediate_points,
+        SUM(CASE WHEN dance_style='salsa' AND division='advanced' THEN points ELSE 0 END) salsa_advanced_points
+        FROM bdc_point_transactions GROUP BY competitor_id) pp ON pp.competitor_id=c.id
     WHERE {$whereSql}";
 
 if ((string)($_GET['export'] ?? '') === 'csv') {
@@ -410,7 +420,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
                         <?php foreach (['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$special=(string)($row[$style.'_special_category']??'');?><td><div class="profile-box <?=$special!==''?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php if($special!==''):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endif;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$special===''):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
-                        <td><div><strong>Bachata:</strong> <?=e((string)(float)$row['bachata_points'])?></div><div><strong>Salsa:</strong> <?=e((string)(float)$row['salsa_points'])?></div></td>
+                        <td><?php foreach(['bachata'=>'Bachata','salsa'=>'Salsa'] as $style=>$label):?><div class="<?=$style==='salsa'?'mt-2':''?>"><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td>
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>
