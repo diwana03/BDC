@@ -36,6 +36,7 @@ try{
         if($action==='add_competitor'){
             $name=trim((string)($_POST['display_name']??''));$number=(int)($_POST['bib_number']??0);
             if($directoryCompetitorId>0){
+                DanceCupScoringService::assertDanceCupEligibility($pdo,$directoryCompetitorId,$id,$test);
                 $directory=$pdo->prepare("SELECT exact_name FROM bdc_competitors WHERE id=:id AND status<>'archived' LIMIT 1");
                 $directory->execute(['id'=>$directoryCompetitorId]);
                 $directoryName=trim((string)$directory->fetchColumn());

@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev435",
-  "build": 3141,
+  "version": "2.3.3-dev436",
+  "build": 3142,
   "status": "development",
   "release_date": "2026-08-26",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Separates reusable Dance Cup registration from scoring events: captures competitor gender, style, Solo/Couple/Pro-Am/Team format and level, keeps event Mixed/Female/Male eligibility on the scoring category, and shows the full read-only Automatic judge matrix with two-second live refresh",
     "Connects public BDC Dance Cup profile requests to reusable organiser-configured event categories, supports multiple categories and partner or team details, and preserves normalized approval evidence without changing permanent divisions",
     "Compacts Automatic judge status into aligned single-row controls and replaces the oversized all-criteria matrix with judge tabs plus an all-judge totals summary on desktop and mobile",
     "Shows every criterion and live mark under each judge in the Automatic score matrix, keeps totals and calculated place live, and uses the official five-by-20 rubric as the editable default for every new Dance Cup category",

@@ -100,13 +100,15 @@ final class DanceCupScoringService
         $roundName = (string) ($data['round_name'] ?? 'final');
         $danceStyle = (string) ($data['dance_style'] ?? 'bachata');
         $level = (string) ($data['competition_level'] ?? 'open');
+        $genderEligibility = (string) ($data['gender_eligibility'] ?? 'mixed');
         $performanceType = (string) ($data['performance_type'] ?? 'showcase');
         $scoringMode = (string) ($data['scoring_mode'] ?? 'manual');
         if ($eventId < 1 || $category === '') throw new RuntimeException('Event and category name are required.');
-        if (!in_array($entryType, ['solo', 'couple', 'duo', 'team'], true)) throw new RuntimeException('Invalid entry type.');
+        if (!in_array($entryType, ['solo', 'couple', 'duo', 'pro_am', 'team'], true)) throw new RuntimeException('Invalid entry type.');
         if (!in_array($roundName, ['qualifier', 'quarterfinal', 'semifinal', 'final'], true)) throw new RuntimeException('Invalid Dance Cup round.');
         if (!in_array($danceStyle, ['salsa', 'bachata', 'cha_cha', 'other'], true)) throw new RuntimeException('Invalid dance style.');
         if (!in_array($level, ['amateur', 'intermediate', 'pro_am', 'professional', 'open'], true)) throw new RuntimeException('Invalid competition level.');
+        if (!in_array($genderEligibility, ['mixed', 'female_only', 'male_only'], true)) throw new RuntimeException('Invalid category gender eligibility.');
         if (!in_array($performanceType, ['showcase', 'classic', 'cabaret', 'shines', 'just_dance'], true)) throw new RuntimeException('Invalid performance type.');
         if (!in_array($scoringMode, ['manual', 'automatic'], true)) throw new RuntimeException('Invalid scoring workflow.');
         $eventMode = $pdo->prepare("SELECT scoring_mode FROM {$tables['events']} WHERE id=:event");
@@ -128,13 +130,14 @@ final class DanceCupScoringService
 
         $pdo->beginTransaction();
         try {
-            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,competition_level,performance_type,round_name,scoring_mode,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:level,:performance_type,:round_name,:scoring_mode,:maximum,:user)");
+            $insert = $pdo->prepare("INSERT INTO {$tables['competitions']}(event_id,category_name,entry_type,dance_style,competition_level,gender_eligibility,performance_type,round_name,scoring_mode,maximum_score,created_by) VALUES(:event,:category,:entry_type,:dance_style,:level,:gender_eligibility,:performance_type,:round_name,:scoring_mode,:maximum,:user)");
             $insert->execute([
                 'event' => $eventId,
                 'category' => $category,
                 'entry_type' => $entryType,
                 'dance_style' => $danceStyle,
                 'level' => $level,
+                'gender_eligibility' => $genderEligibility,
                 'performance_type' => $performanceType,
                 'round_name' => $roundName,
                 'scoring_mode' => $scoringMode,
@@ -152,6 +155,15 @@ final class DanceCupScoringService
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $e;
         }
+    }
+
+    public static function assertDanceCupEligibility(PDO $pdo,int $competitorId,int $competitionId,bool $test=false):void
+    {
+        $table=self::tables($test)['competitions'];$q=$pdo->prepare("SELECT dance_style,entry_type,competition_level,gender_eligibility FROM {$table} WHERE id=:id");$q->execute(['id'=>$competitionId]);$category=$q->fetch();if(!$category)throw new RuntimeException('Dance Cup category not found.');
+        $q=$pdo->prepare("SELECT gender FROM bdc_competitors WHERE id=:id AND status<>'archived'");$q->execute(['id'=>$competitorId]);$gender=$q->fetchColumn();if($gender===false)throw new RuntimeException('Competitor profile not found.');
+        if($category['gender_eligibility']==='female_only'&&$gender!=='female')throw new RuntimeException('This category is Female Only.');
+        if($category['gender_eligibility']==='male_only'&&$gender!=='male')throw new RuntimeException('This category is Male Only.');
+        $q=$pdo->prepare("SELECT COUNT(*) FROM bdc_competitor_dance_cup_profiles WHERE competitor_id=:competitor AND dance_style=:style AND entry_type=:entry AND competition_level=:level AND status='active'");$q->execute(['competitor'=>$competitorId,'style'=>$category['dance_style'],'entry'=>$category['entry_type'],'level'=>$category['competition_level']]);if((int)$q->fetchColumn()<1)throw new RuntimeException('This competitor is not approved for the selected Dance Cup style, format and level.');
     }
 
     public static function assertScoringMode(PDO $pdo, int $competitionId, string $mode, bool $test = false): void

@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const fields=fs.readFileSync('register/dance-cup-fields.php','utf8');
+const migration=fs.readFileSync('database/migrations/20260827_0200_reusable_dance_cup_profiles.php','utf8');
+const service=fs.readFileSync('app/Services/DanceCupScoringService.php','utf8');
+const dashboard=fs.readFileSync('admin/dance-cup/index.php','utf8');
+const manual=fs.readFileSync('admin/dance-cup/category.php','utf8'),automatic=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+const matrix=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+assert(fields.includes('BDC Dance Cup registration profile')&&fields.includes('event_assigned_during_scoring'),'registration must be reusable and event-free');
+for(const marker of ['male','female','non_binary','prefer_not_to_say'])assert(fields.includes(marker),'competitor gender missing '+marker);
+for(const marker of ['gender_eligibility','mixed','female_only','male_only'])assert(migration.includes(marker)&&service.includes(marker),'event category gender missing '+marker);
+assert(dashboard.includes('Category Gender')&&dashboard.includes('Mixed Gender'),'category setup must define gender eligibility');
+assert(service.includes('assertDanceCupEligibility')&&manual.includes('assertDanceCupEligibility')&&automatic.includes('assertDanceCupEligibility'),'linked roster assignment must enforce reusable profile and category gender eligibility in Manual and Automatic');
+for(const marker of ['dc-full-automatic-matrix','Contestant No. / Contestant','data-dc-matrix-mark','data-dc-matrix-total','data-dc-matrix-place'])assert(matrix.includes(marker),'Automatic full matrix missing '+marker);
+assert(live.includes('setInterval(poll,2000)'),'Automatic full matrix must retain two-second live refresh');
+console.log('Reusable Dance Cup registration and full Automatic live matrix v436 passed.');
