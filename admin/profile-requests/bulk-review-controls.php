@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+
+ob_start(static function(string $html):string{
+    $csrf=e(\App\Core\Csrf::token());
+    $html=preg_replace_callback('#<section class="card border-0 shadow-sm mb-3">(.*?)</section>#s',static function(array $match):string{
+        if(!preg_match('/name="request_id" value="(\d+)"/',$match[1],$id)||!str_contains($match[1],'value="approve"'))return $match[0];
+        $checkbox='<label class="form-check m-0 me-2" title="Select this request"><input class="form-check-input profile-request-select" type="checkbox" value="'.(int)$id[1].'" aria-label="Select request #'.(int)$id[1].'"></label>';
+        return str_replace('<div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2 align-items-center">','<div id="profile-request-'.(int)$id[1].'" class="card-header bg-white d-flex flex-wrap justify-content-between gap-2 align-items-center">'.$checkbox,$match[0]);
+    },$html)??$html;
+    $toolbar='<section id="bulk-profile-review" class="card border-0 shadow-sm mb-3"><div class="card-body py-3 d-flex flex-wrap align-items-center gap-2"><label class="form-check me-2 mb-0"><input class="form-check-input" type="checkbox" id="selectAllProfileRequests"> <span class="form-check-label">Select All</span></label><strong id="selectedProfileRequestCount">0 selected</strong><button type="button" class="btn btn-success ms-md-auto" id="approveSelectedProfileRequests" disabled>Approve Selected</button><button type="button" class="btn btn-outline-danger" id="rejectSelectedProfileRequests" disabled>Reject Selected</button></div></section><div id="bulkProfileReviewResult"></div>';
+    $html=str_replace('<div class="btn-group flex-wrap mb-4">',$toolbar.'<div class="btn-group flex-wrap mb-4">',$html);
+    $script=<<<HTML
+<script>
+(()=>{const boxes=[...document.querySelectorAll('.profile-request-select')],all=document.getElementById('selectAllProfileRequests'),count=document.getElementById('selectedProfileRequestCount'),approve=document.getElementById('approveSelectedProfileRequests'),reject=document.getElementById('rejectSelectedProfileRequests'),result=document.getElementById('bulkProfileReviewResult');const scrollKey='bdc-profile-requests-scroll:'+location.pathname+location.search,reportKey='bdc-profile-requests-bulk-report';
+function remember(){try{sessionStorage.setItem(scrollKey,JSON.stringify({y:Math.max(0,scrollY),at:Date.now()}))}catch(error){}}
+function restore(){let saved=null;try{saved=JSON.parse(sessionStorage.getItem(scrollKey)||'null');sessionStorage.removeItem(scrollKey)}catch(error){}if(saved&&Number.isFinite(saved.y)&&Date.now()-Number(saved.at||0)<180000){if('scrollRestoration'in history)history.scrollRestoration='manual';requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo({top:saved.y,left:0,behavior:'auto'})))}}
+function sync(){const selected=boxes.filter(x=>x.checked);if(count)count.textContent=selected.length+' selected';if(approve)approve.disabled=!selected.length;if(reject)reject.disabled=!selected.length;if(all){all.indeterminate=selected.length>0&&selected.length<boxes.length;all.checked=boxes.length>0&&selected.length===boxes.length}}
+all?.addEventListener('change',()=>{boxes.forEach(x=>x.checked=all.checked);sync()});boxes.forEach(x=>x.addEventListener('change',sync));
+async function run(action){const selected=boxes.filter(x=>x.checked);if(!selected.length)return;const label=action==='approve'?'approve':'reject';if(!confirm('Confirm '+label+' for '+selected.length+' selected request'+(selected.length===1?'':'s')+'?'))return;approve.disabled=reject.disabled=true;let passed=0,failed=0;for(const box of selected){const body=new FormData();body.set('_csrf','{$csrf}');body.set('request_id',box.value);body.set('action',action);try{const response=await fetch(location.href,{method:'POST',body,credentials:'same-origin',cache:'no-store'}),text=await response.text();if(response.ok&&!text.includes('alert alert-danger'))passed++;else failed++;}catch(error){failed++;}}remember();try{sessionStorage.setItem(reportKey,JSON.stringify({action,passed,failed,at:Date.now()}))}catch(error){}location.reload()}
+approve?.addEventListener('click',()=>run('approve'));reject?.addEventListener('click',()=>run('reject'));document.addEventListener('submit',remember,true);window.addEventListener('beforeunload',remember);try{const reportData=JSON.parse(sessionStorage.getItem(reportKey)||'null');sessionStorage.removeItem(reportKey);if(reportData&&Date.now()-Number(reportData.at||0)<180000&&result)result.innerHTML='<div class="alert '+(reportData.failed?'alert-warning':'alert-success')+'">Bulk '+reportData.action+': '+reportData.passed+' completed'+(reportData.failed?' · '+reportData.failed+' failed and remain unchanged':'')+'.</div>'}catch(error){}restore();sync()})();
+</script>
+HTML;
+    return str_replace('</body>',$script.'</body>',$html);
+});

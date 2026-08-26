@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const page=fs.readFileSync('admin/profile-requests/index.php','utf8');
+const controls=fs.readFileSync('admin/profile-requests/bulk-review-controls.php','utf8');
+assert(page.includes("require __DIR__.'/bulk-review-controls.php'"),'profile requests must load bulk review controls');
+for(const marker of ['profile-request-select','selectAllProfileRequests','Approve Selected','Reject Selected','selectedProfileRequestCount'])assert(controls.includes(marker),'bulk review control missing '+marker);
+for(const marker of ["body.set('_csrf'","body.set('request_id'","body.set('action',action)","fetch(location.href",'passed','failed'])assert(controls.includes(marker),'bulk review must reuse the audited individual handler: '+marker);
+for(const marker of ['sessionStorage.setItem(scrollKey','beforeunload','scrollRestoration','scrollTo({top:saved.y','document.addEventListener(\'submit\',remember'])assert(controls.includes(marker),'scroll restoration missing '+marker);
+assert(controls.includes("text.includes('alert alert-danger')"),'failed individual reviews must remain unchanged and be reported');
+console.log('Profile request bulk review and scroll restoration v438 passed.');
