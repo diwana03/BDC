@@ -3,11 +3,21 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Config;
 use PDO;
 use RuntimeException;
 
 final class MigrationRunner
 {
+    /**
+     * Production data publications that must never be replayed against the
+     * deliberately incomplete isolated Staging competitor dataset. These are
+     * data-only migrations; schema migrations are never skipped.
+     */
+    private const STAGING_ONLY_DATA_MIGRATION_SKIPS = [
+        '20260826_0500_publish_verified_form_profiles',
+    ];
+
     /**
      * These legacy migrations are thin wrappers around the idempotent
      * SchemaUpdater. The updater is expected to evolve in later releases, so
@@ -136,6 +146,12 @@ final class MigrationRunner
                 }
                 continue;
             }
+            if ($this->shouldSkipStagingDataMigration($version)) {
+                $stmt = $this->pdo->prepare('INSERT INTO bdc_schema_migrations(version,checksum) VALUES(:version,:checksum)');
+                $stmt->execute(['version'=>$version,'checksum'=>$checksum]);
+                $completed[] = $version . ' [staging data publication skipped]';
+                continue;
+            }
             if ($version === '20260806_1700') {
                 $this->preparePointAdjustmentTable();
             }
@@ -145,6 +161,12 @@ final class MigrationRunner
             $completed[] = $version;
         }
         return $completed;
+    }
+
+    private function shouldSkipStagingDataMigration(string $version): bool
+    {
+        return strtolower((string) Config::get('app.environment', 'production')) === 'staging'
+            && in_array($version, self::STAGING_ONLY_DATA_MIGRATION_SKIPS, true);
     }
 
     private function ensureMigrationVersionCapacity(): void
