@@ -9,7 +9,7 @@ assert(setup.includes("$action==='confirm_roster'"),'roster validation handler m
 assert(workspace.includes('SCORING RULES')&&workspace.includes("$state['criteria']"),'criteria summary missing');
 assert(workspace.includes('Marks autosave')&&workspace.includes('every two seconds'),'live status guidance missing');
 assert(workspace.includes('Super Admin must then approve'),'approval rule missing');
-assert((workspace.match(/Open Projection Control/g)||[]).length>=2,'prominent and detailed projection controls missing');
+assert((workspace.match(/Open Projection Control/g)||[]).length===1,'Automatic workspace must expose one consolidated Projection control');
 assert(workspace.includes('Calculated Ranking')&&workspace.includes('Saved checkpoints'),'ranking/checkpoints missing');
 assert(Number((version.version.match(/dev(\d+)$/)||[])[1])>=445&&version.build>=3151,'release version predates dev445');
 console.log('Dance Cup Automatic complete workflow v445 checks passed.');
