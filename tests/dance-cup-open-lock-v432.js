@@ -15,6 +15,6 @@ assert(deletion.includes("if((string)$category['status']!=='draft')")&&deletion.
 assert(deletion.includes('FOR UPDATE')&&deletion.includes("rowCount()!==1"),'delete transaction must lock and recheck the draft before removing dependent data');
 assert(state.includes("'completed_judges' => $completed"),'live state must count judges by completed marks rather than optional submission');
 assert(panel.includes('every two seconds')&&panel.includes('judges complete'),'live panel must explain fast completion polling');
-assert(client.includes('setInterval(poll,2000)')&&client.includes('state.completed_judges'),'live client must refresh within two seconds and show completed judges');
+assert(client.includes('setTimeout(poll,2000)')&&client.includes('state.completed_judges'),'live client must refresh within two seconds and show completed judges');
 assert(client.includes('document.hidden'),'polling must pause when the tab is hidden');
 console.log('PASS Dance Cup Open labels, fast live completion and submitted-delete lock v432');

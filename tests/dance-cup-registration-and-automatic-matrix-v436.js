@@ -14,5 +14,5 @@ assert(dashboard.includes('Category Gender')&&dashboard.includes('Mixed Gender')
 assert(service.includes('assertDanceCupEligibility')&&manual.includes('assertDanceCupEligibility')&&automatic.includes('assertDanceCupEligibility'),'linked roster assignment must share active-profile and category-gender validation in Manual and Automatic');
 assert(!service.includes('not approved for the selected Dance Cup style, format and level'),'reusable registration approval must not block scoring roster assignment');
 for(const marker of ['dc-full-automatic-matrix','Contestant No. / Contestant','data-dc-matrix-mark','data-dc-matrix-total','data-dc-matrix-place'])assert(matrix.includes(marker),'Automatic full matrix missing '+marker);
-assert(live.includes('setInterval(poll,2000)'),'Automatic full matrix must retain two-second live refresh');
+assert(live.includes('setTimeout(poll,2000)'),'Automatic full matrix must retain two-second live refresh');
 console.log('Reusable Dance Cup registration and full Automatic live matrix v436 passed.');

@@ -15,7 +15,7 @@ assert(view.includes('WhatsApp number missing from Judge Database'));
 assert(view.includes('Email missing from Judge Database'));
 assert(live.includes("cache:'no-store'"));
 assert(live.includes("'_live='+Date.now()"));
-assert(live.includes('setInterval(poll,2000)'));
+assert(live.includes('setTimeout(poll,2000)'));
 assert(live.includes("document.addEventListener('visibilitychange'"));
 assert(css.includes('grid-template-columns:repeat(5,minmax(0,1fr))!important'));
 assert(css.includes('@media(max-width:991px)'));

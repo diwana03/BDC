@@ -28,8 +28,9 @@ function formatScore(value){
  const number=Number(value||0);return Number.isInteger(number)?String(number):number.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
 }
 function renderResults(state){
+ const results=Array.isArray(state.results)?state.results:[];
  document.querySelectorAll('[data-dc-results]').forEach(body=>{
-  body.innerHTML=state.results.length?state.results.map(row=>'<tr><td><strong>'+escapeHtml(row.placement)+'</strong></td><td>'+escapeHtml(row.bib_number)+'</td><td>'+escapeHtml(row.display_name)+'</td><td>'+escapeHtml(formatScore(row.total_score))+'</td></tr>').join(''):'<tr><td colspan="4" class="text-muted">Save scores, then calculate totals.</td></tr>';
+  body.innerHTML=results.length?results.map(row=>'<tr><td><strong>'+escapeHtml(row.placement)+'</strong></td><td>'+escapeHtml(row.bib_number)+'</td><td>'+escapeHtml(row.display_name)+'</td><td>'+escapeHtml(formatScore(row.total_score))+'</td></tr>').join(''):'<tr><td colspan="4" class="text-muted">Save scores, then calculate totals.</td></tr>';
  });
 }
 function renderState(state){
@@ -37,7 +38,8 @@ function renderState(state){
  document.querySelectorAll('[data-dc-last-updated]').forEach(node=>node.textContent='Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
  document.querySelectorAll('[data-dc-matrix-mark]').forEach(cell=>{const value=state.mark_matrix?.[cell.dataset.entry]?.[cell.dataset.judge]?.[cell.dataset.criterion];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
  document.querySelectorAll('[data-dc-matrix-total]').forEach(cell=>{const value=state.row_totals?.[cell.dataset.entry]?.[cell.dataset.judge];cell.innerHTML=value===undefined?'<span class="text-muted">—</span>':escapeHtml(formatScore(value));});
- document.querySelectorAll('[data-dc-matrix-place]').forEach(cell=>{const row=state.results.find(item=>Number(item.entry_id)===Number(cell.dataset.entry));cell.innerHTML=row?'<strong>#'+escapeHtml(row.placement)+'</strong>':'<span class="text-muted">Not calculated</span>';});
+ const results=Array.isArray(state.results)?state.results:[];
+ document.querySelectorAll('[data-dc-matrix-place]').forEach(cell=>{const row=results.find(item=>Number(item.entry_id)===Number(cell.dataset.entry));cell.innerHTML=row?'<strong>#'+escapeHtml(row.placement)+'</strong>':'<span class="text-muted">Not calculated</span>';});
  document.querySelectorAll('[data-dc-status]').forEach(node=>{
   node.textContent=String(state.competition_status||'draft').toUpperCase();
   const lockedStatus=['submitted','pending_approval','approved'].includes(state.competition_status);
@@ -48,7 +50,7 @@ function renderState(state){
   node.textContent=state.mark_count+' / '+state.required_marks+' marks · '+state.completed_judges+' / '+state.judge_count+' judges complete';
  });
  document.querySelectorAll('[data-session-id]').forEach(card=>{
-  const session=state.sessions.find(item=>Number(item.id)===Number(card.dataset.sessionId));if(!session)return;
+  const session=(Array.isArray(state.sessions)?state.sessions:[]).find(item=>Number(item.id)===Number(card.dataset.sessionId));if(!session)return;
   const done=Number(session.completed_count||0),required=Number(session.required_count||0),percent=required?Math.round(done/required*100):0;
   const count=card.querySelector('[data-session-count]');if(count)count.textContent=done+' / '+required+' marks';
   const bar=card.querySelector('[data-session-progress]');if(bar)bar.style.width=percent+'%';
@@ -96,6 +98,7 @@ if(manual){
  });
 }
 if(automatic){
+ let pollRunning=false,pollTimer=0;
  automatic.querySelectorAll('[data-dc-judge-tab]').forEach(tab=>tab.addEventListener('click',()=>{
   const selected=tab.dataset.dcJudgeTab;
   automatic.querySelectorAll('[data-dc-judge-tab]').forEach(button=>{const active=button===tab;button.classList.toggle('btn-primary',active);button.classList.toggle('btn-outline-primary',!active&&button.dataset.dcJudgeTab!=='summary');button.classList.toggle('btn-outline-secondary',!active&&button.dataset.dcJudgeTab==='summary');button.setAttribute('aria-selected',active?'true':'false')});
@@ -113,16 +116,18 @@ if(automatic){
   button.disabled=true;postAction(action).catch(error=>message(error.message,'danger')).finally(()=>{if(action!=='submit')button.disabled=false});
  }));
  const poll=async()=>{
-  if(document.hidden)return;
+  if(document.hidden||pollRunning)return;
+  pollRunning=true;
   try{
    const separator=endpoint.includes('?')?'&':'?';
    const response=await fetch(endpoint+separator+'_live='+Date.now(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}});
-   const payload=await response.json();if(response.ok&&payload.ok)renderState(payload.state);
-  }catch{}
+   const payload=await response.json();if(!response.ok||!payload.ok)throw new Error(payload.error||'Live scoring status unavailable.');renderState(payload.state);
+  }catch(error){document.querySelectorAll('[data-dc-last-updated]').forEach(node=>node.textContent='Live update disconnected · retrying…');}
+  finally{pollRunning=false;clearTimeout(pollTimer);pollTimer=setTimeout(poll,2000);}
  };
  automatic.querySelector('[data-dc-refresh-status]')?.addEventListener('click',event=>{event.currentTarget.disabled=true;poll().finally(()=>event.currentTarget.disabled=false)});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
  window.addEventListener('focus',poll);
- poll();setInterval(poll,2000);
+ poll();
 }
 })();

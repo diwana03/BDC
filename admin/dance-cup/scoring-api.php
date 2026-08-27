@@ -10,6 +10,8 @@ use App\Services\DanceCupScoringService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+header('Pragma: no-cache');
+header('Expires: 0');
 Auth::requireAdmin();
 
 $pdo=Database::connection();

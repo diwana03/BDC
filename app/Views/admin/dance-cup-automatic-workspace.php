@@ -59,5 +59,5 @@ $automaticLocked=in_array((string)$competition['status'],['submitted','pending_a
   <section id="calculated-ranking" class="card border-0 shadow-sm mb-4"><div class="card-body p-3 p-md-4"><h2 class="h4">Calculated Ranking</h2><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Place</th><th>No.</th><th>Contestant / Team</th><th>Total Score</th></tr></thead><tbody data-dc-results><?php foreach($state['results'] as $result):?><tr><td><strong>#<?=(int)$result['placement']?></strong></td><td>#<?=(int)$result['bib_number']?></td><td><?=e($result['display_name'])?></td><td><?=e(rtrim(rtrim(number_format((float)$result['total_score'],2,'.',''),'0'),'.'))?></td></tr><?php endforeach;?><?php if(!$state['results']):?><tr><td colspan="4" class="text-muted">Judge scores will appear here after Calculate &amp; Sort Ranking.</td></tr><?php endif;?></tbody></table></div></div></section>
 
 </section>
-<script defer src="../../public/js/dance-cup-scoring-live.js?v=454"></script>
+<script defer src="../../public/js/dance-cup-scoring-live.js?v=455"></script>
 <script defer src="../../public/js/dance-cup-unified-workspace-v430.js?v=430"></script>

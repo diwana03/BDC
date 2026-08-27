@@ -8,7 +8,7 @@ for(const marker of ['All Judges · Live Status','Refresh Now','data-dc-last-upd
 assert(panel.includes("!$state['all_marks_complete']")&&!panel.includes("!$state['all_judges_submitted']||!$state['results_current']"),'final submit must depend on complete marks, not individual judge submission');
 assert(panel.includes('Judge Submit is optional')&&panel.includes('lock every judge sheet together'),'scorer instructions must explain the simplified final lock');
 assert(api.includes("judge_sessions SET status='submitted'")&&api.includes('all completed judge sheets submitted and locked'),'final submission must lock every judge session atomically with the round');
-assert(client.includes("status=session.status==='submitted'?'Submitted':complete?'Complete'")&&client.includes("setInterval(poll,2000)"),'judge state must derive Complete live and refresh every two seconds');
+assert(client.includes("status=session.status==='submitted'?'Submitted':complete?'Complete'")&&client.includes("setTimeout(poll,2000)"),'judge state must derive Complete live and refresh every two seconds');
 assert(client.includes("[data-dc-refresh-status]")&&client.includes("[data-dc-last-updated]"),'manual refresh and timestamp must be wired');
 assert(legacy.includes("!$state['all_marks_complete']")&&!legacy.includes("!$state['all_judges_submitted']||!$state['results_current']"),'legacy direct view must use the same simplified gate');
 console.log('Dance Cup all-judge live status and simplified lock v431 regression passed');

@@ -9,6 +9,6 @@ assert(service.includes("$prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup
 for(const marker of ['data-dc-judge-panel','data-dc-matrix-mark','data-criterion','data-dc-matrix-total','data-dc-matrix-place'])assert(view.includes(marker),'live criterion matrix missing '+marker);
 assert(client.includes("state.mark_matrix?.[cell.dataset.entry]?.[cell.dataset.judge]?.[cell.dataset.criterion]"),'two-second refresh must update each criterion mark');
 assert(client.includes("[data-dc-matrix-place]"),'calculated place must refresh without navigation');
-assert(view.includes('dance-cup-scoring-live.js?v=454'),'matrix client cache key must remain current');
+assert(view.includes('dance-cup-scoring-live.js?v=455'),'matrix client cache key must remain current');
 assert(setup.includes("require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-workspace.php'"),'Test and Live must render the shared matrix view');
 console.log('Dance Cup live criterion matrix and Test/Live parity passed.');

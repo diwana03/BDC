@@ -1,0 +1,14 @@
+const fs=require('fs'),assert=require('assert');
+const live=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const api=fs.readFileSync('admin/dance-cup/scoring-api.php','utf8');
+assert(live.includes('pollRunning=false'));
+assert(live.includes('if(document.hidden||pollRunning)return'));
+assert(live.includes('pollTimer=setTimeout(poll,2000)'));
+assert(!live.includes('setInterval(poll,2000)'));
+assert(live.includes("cache:'no-store'")&&live.includes("'_live='+Date.now()"));
+assert(live.includes('Live update disconnected · retrying…'));
+assert(live.includes('Array.isArray(state.results)')&&live.includes('Array.isArray(state.sessions)'));
+assert(view.includes('dance-cup-scoring-live.js?v=455'));
+assert(api.includes("header('Pragma: no-cache')")&&api.includes("header('Expires: 0')"));
+console.log('dev455 serialized live refresh and recovery checks passed');
