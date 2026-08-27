@@ -5,6 +5,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Services\DanceCupJudgingPanelService;
 use App\Services\DanceCupRosterService;
 use App\Services\DanceCupScoringService;
 
@@ -12,6 +13,14 @@ function dcAutomaticWorkspaceSnapshot(PDO $pdo,string $prefix,int $competition):
     $snapshot=[];
     foreach(['entries','judges','marks','scoring_results'] as $name){$query=$pdo->prepare("SELECT * FROM {$prefix}_{$name} WHERE competition_id=:competition");$query->execute(['competition'=>$competition]);$snapshot[$name]=$query->fetchAll();}
     return $snapshot;
+}
+
+function dcPanelJudgeForAssignment(PDO $pdo,string $prefix,int $competitionId,int $assignmentId):array|false{
+    try{$q=$pdo->prepare("SELECT pj.id,pj.access_token,p.panel_name FROM {$prefix}_judging_panel_categories pc JOIN {$prefix}_judging_panels p ON p.id=pc.panel_id AND p.status='active' JOIN {$prefix}_judges j ON j.id=:assignment AND j.competition_id=pc.competition_id JOIN {$prefix}_judging_panel_judges pj ON pj.panel_id=pc.panel_id AND ((pj.judge_id IS NOT NULL AND pj.judge_id=j.judge_id) OR (pj.judge_id IS NULL AND pj.judge_name=j.judge_name)) WHERE pc.competition_id=:competition LIMIT 1");$q->execute(['assignment'=>$assignmentId,'competition'=>$competitionId]);return $q->fetch();}catch(Throwable){return false;}
+}
+
+function dcCompetitionPanelName(PDO $pdo,string $prefix,int $competitionId):string{
+    try{$q=$pdo->prepare("SELECT p.panel_name FROM {$prefix}_judging_panel_categories pc JOIN {$prefix}_judging_panels p ON p.id=pc.panel_id AND p.status='active' WHERE pc.competition_id=:competition LIMIT 1");$q->execute(['competition'=>$competitionId]);return (string)$q->fetchColumn();}catch(Throwable){return '';}
 }
 
 Auth::requireAdmin();
@@ -31,6 +40,7 @@ try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
         $action=(string)($_POST['action']??'');
+        $managedPanel=dcCompetitionPanelName($pdo,$prefix,$id);if($managedPanel!==''&&in_array($action,['add_judge','remove_judge','move_judge','set_chief_judge'],true))throw new RuntimeException('This category uses the '.$managedPanel.' judging panel. Manage its judges once from Judging Panels.');
         $statusQuery=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");$statusQuery->execute(['competition'=>$id]);$currentStatus=(string)$statusQuery->fetchColumn();
         if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection','send_email','open_whatsapp'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
@@ -76,8 +86,9 @@ try{
             $contact=$pdo->prepare("SELECT s.access_token,j.judge_name,d.email,d.phone,d.whatsapp,c.category_name,e.name event_name FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id JOIN {$tables['competitions']} c ON c.id=s.competition_id JOIN {$tables['events']} e ON e.id=c.event_id WHERE s.id=:session AND s.competition_id=:competition LIMIT 1");
             $contact->execute(['session'=>$sessionId,'competition'=>$id]);$judgeContact=$contact->fetch();
             if(!$judgeContact)throw new RuntimeException('Judge session not found.');
+            $panelJudge=dcPanelJudgeForAssignment($pdo,$prefix,$id,(int)$pdo->query("SELECT judge_assignment_id FROM {$prefix}_judge_sessions WHERE id=".$sessionId)->fetchColumn());if($panelJudge)$judgeContact['access_token']=$panelJudge['access_token'];
             $judgeUrl=url('admin/dance-cup/judge-scoring.php?token='.rawurlencode((string)$judgeContact['access_token']).($test?'&data_mode=test':''));
-            $message="BDC Dance Cup judge link\n".$judgeContact['event_name'].' · '.$judgeContact['category_name']."\n".$judgeUrl;
+            $message="BDC Dance Cup judge link\n".$judgeContact['event_name'].' · '.($panelJudge?($panelJudge['panel_name'].' · multiple categories'):$judgeContact['category_name'])."\n".$judgeUrl;
             if($action==='send_email'){
                 $email=trim((string)($judgeContact['email']??''));if(!filter_var($email,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Email is missing from this Judge Database profile.');
                 $sent=mail($email,'BDC Dance Cup Judge Scoring Link',$message,"Content-Type: text/plain; charset=UTF-8\r\n");
@@ -89,7 +100,7 @@ try{
                 $whatsappRedirect='https://wa.me/'.$phone.'?text='.rawurlencode($message);
             }
         }elseif($action==='regenerate'){
-            $pdo->prepare("UPDATE {$prefix}_judge_sessions SET access_token=:token,status='not_started',started_at=NULL,submitted_at=NULL WHERE id=:session AND competition_id=:competition")->execute(['token'=>bin2hex(random_bytes(32)),'session'=>(int)($_POST['session_id']??0),'competition'=>$id]);$notice='Judge link regenerated.';
+            $sessionId=(int)($_POST['session_id']??0);$assignment=$pdo->prepare("SELECT judge_assignment_id FROM {$prefix}_judge_sessions WHERE id=:session AND competition_id=:competition");$assignment->execute(['session'=>$sessionId,'competition'=>$id]);$panelJudge=dcPanelJudgeForAssignment($pdo,$prefix,$id,(int)$assignment->fetchColumn());if($panelJudge){$pdo->prepare("UPDATE {$prefix}_judging_panel_judges SET access_token=:token WHERE id=:judge")->execute(['token'=>bin2hex(random_bytes(32)),'judge'=>$panelJudge['id']]);$notice='Shared panel judge link regenerated for every included category.';}else{$pdo->prepare("UPDATE {$prefix}_judge_sessions SET access_token=:token,status='not_started',started_at=NULL,submitted_at=NULL WHERE id=:session AND competition_id=:competition")->execute(['token'=>bin2hex(random_bytes(32)),'session'=>$sessionId,'competition'=>$id]);$notice='Judge link regenerated.';}
         }elseif($action==='reopen'){
             $pdo->prepare("UPDATE {$prefix}_judge_sessions SET status='scoring',submitted_at=NULL WHERE id=:session AND competition_id=:competition")->execute(['session'=>(int)($_POST['session_id']??0),'competition'=>$id]);$notice='Judge scores reopened; existing marks were preserved.';
         }elseif($action==='checkpoint'){
@@ -116,7 +127,7 @@ $q=$pdo->prepare("SELECT * FROM {$prefix}_entries WHERE competition_id=:id AND s
 $q=$pdo->prepare("SELECT * FROM {$prefix}_judges WHERE competition_id=:id ORDER BY judge_order,id");$q->execute(['id'=>$id]);$judges=$q->fetchAll();$chiefCount=count(array_filter($judges,static fn(array $judge):bool=>(int)$judge['is_chief']===1));
 $csrf=Csrf::token();
 DanceCupScoringService::ensureAutomation($pdo,$id,$test);
-$q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,d.email,d.phone,d.whatsapp,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count,(SELECT COUNT(*) FROM {$prefix}_entries e WHERE e.competition_id=s.competition_id AND e.status='active') entry_count,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=s.competition_id) criterion_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id WHERE s.competition_id=:id ORDER BY j.is_chief DESC,j.judge_order,j.id");$q->execute(['id'=>$id]);$sessions=$q->fetchAll();
+$q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,d.email,d.phone,d.whatsapp,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count,(SELECT COUNT(*) FROM {$prefix}_entries e WHERE e.competition_id=s.competition_id AND e.status='active') entry_count,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=s.competition_id) criterion_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id WHERE s.competition_id=:id ORDER BY j.is_chief DESC,j.judge_order,j.id");$q->execute(['id'=>$id]);$sessions=$q->fetchAll();foreach($sessions as &$sessionRow){$panelJudge=dcPanelJudgeForAssignment($pdo,$prefix,$id,(int)$sessionRow['judge_assignment_id']);if($panelJudge){$sessionRow['access_token']=$panelJudge['access_token'];$sessionRow['panel_name']=$panelJudge['panel_name'];}}unset($sessionRow);
 $state=DanceCupScoringService::workflowState($pdo,$id,$test);
 $q=$pdo->prepare("SELECT * FROM {$prefix}_checkpoints WHERE competition_id=:id ORDER BY id DESC LIMIT 10");$q->execute(['id'=>$id]);$automaticCheckpoints=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM {$prefix}_event_projection WHERE event_id=:event");$q->execute(['event'=>$competition['event_id']]);$projection=$q->fetch();$projectorUrl=url('admin/dance-cup/projector-launch.php?token='.rawurlencode((string)($projection['access_token']??'')).($test?'&data_mode=test':''));
@@ -132,7 +143,7 @@ ob_start(static function(string $html)use($test,$automaticWorkspace,$id,$suffix)
     $html=str_replace('<body class="bg-light"><main class="container py-4"','<body class="bg-light dc-auto-setup">'.$navbar.'<main class="container py-4"',$html);
     $html=str_replace(
         '<div class="d-flex gap-3 mb-3"><a href="'.e($workflowHref).'">← Automatic Categories</a><a href="'.e($scoringHref).'">Scoring Options</a></div>',
-        '<nav class="dc-auto-subnav mb-3" aria-label="Dance Cup setup navigation"><a href="'.e($workflowHref).'">← Automatic Categories</a><a href="'.e($scoringHref).'">Scoring Options</a></nav>',
+        '<nav class="dc-auto-subnav mb-3" aria-label="Dance Cup setup navigation"><a href="'.e($workflowHref).'">← Automatic Categories</a><a href="panels.php'.($test?'?data_mode=test':'').'">Judging Panels</a><a href="'.e($scoringHref).'">Scoring Options</a></nav>',
         $html
     );
     $html=str_replace(

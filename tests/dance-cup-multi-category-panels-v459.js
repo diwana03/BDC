@@ -1,0 +1,18 @@
+const fs=require('fs'),assert=require('assert');
+const migration=fs.readFileSync('database/migrations/20260827_0500_dance_cup_judging_panels.php','utf8');
+const service=fs.readFileSync('app/Services/DanceCupJudgingPanelService.php','utf8');
+const manager=fs.readFileSync('admin/dance-cup/panels.php','utf8');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+const workflow=fs.readFileSync('admin/dance-cup/workflow.php','utf8');
+for(const prefix of ['bdc_dance_cup','bdc_test_dance_cup'])assert(migration.includes(prefix),'missing isolated migration prefix '+prefix);
+for(const table of ['judging_panels','judging_panel_categories','judging_panel_judges'])assert(migration.includes(`{$p}_${table}`),'missing isolated panel table '+table);
+for(const marker of ['Every panel category must belong to the same Dance Cup event','Only Automatic categories','existing marks cannot be moved','categorySessionsForToken','access_token','sync('])assert(service.includes(marker),'missing panel service safeguard '+marker);
+for(const marker of ['Create Judging Panel','Categories using this judge panel','Panel Judges','One panel link','data-directory-type="judge"','submitted_categories','make_chief','remove_judge'])assert(manager.includes(marker),'missing panel manager workflow '+marker);
+for(const marker of ['dc-panel-desk','dc-panel-category-grid','Ready to submit','categories submitted','category_id'])assert(judge.includes(marker),'missing judge category desk '+marker);
+assert(setup.includes('Judging Panels'),'Automatic setup must expose panel management');
+assert(workflow.includes('panels.php')&&workflow.includes("$workflow==='automatic'"),'Automatic Categories must expose panel management before opening a category');
+assert(setup.includes("$sessionRow['access_token']=$panelJudge['access_token']"),'category workspace must display the shared panel link');
+assert(service.includes("scoring_mode']!=='automatic'"));
+assert(!service.includes('bdc_scoring_rounds'),'Dance Cup panels must not touch Jack and Jill');
+console.log('dev459 multi-category Dance Cup judging panel checks passed');
