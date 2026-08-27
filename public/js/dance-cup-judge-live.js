@@ -27,6 +27,14 @@ function updateEntryTotal(article){
  const target=article.querySelector('[data-entry-live-total]');
  if(target)target.textContent=(scored.length?format(total):'—')+' / '+format(maximum);
 }
+function updateSliderVisual(slider){const maximum=Number(slider.max||100),value=Number(slider.value||0);slider.style.setProperty('--dc-score-progress',(maximum?value/maximum*100:0)+'%');}
+function refreshCompletion(){
+ const completed=scoreInputs.filter(input=>input.value!=='').length,required=scoreInputs.length;
+ document.querySelectorAll('.entry-card').forEach(article=>{const inputs=[...article.querySelectorAll('.dc-score-value')],done=inputs.filter(input=>input.value!=='').length,badge=article.querySelector('[data-entry-completion]');if(badge)badge.textContent=done+' / '+inputs.length;article.classList.toggle('dc-entry-complete',done===inputs.length);article.classList.toggle('dc-entry-incomplete',done!==inputs.length)});
+ const submit=form.querySelector('button[value="submit"]');if(submit)submit.disabled=!accepted||locked||completed!==required;
+ const next=form.querySelector('[data-next-missing]');if(next){next.disabled=!accepted||locked||completed===required;next.textContent=completed===required?'All scores complete ✓':'Next missing score · '+(required-completed)+' left';}
+}
+function focusNextMissing(){const missing=scoreInputs.find(input=>input.value==='');if(!missing)return;const box=missing.closest('.score-box');box.classList.add('dc-score-attention');box.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>box.classList.remove('dc-score-attention'),1800);box.querySelector('.dc-score-slider')?.focus();}
 function scheduleSave(){dirty=true;clearTimeout(timer);timer=setTimeout(()=>queued('save',true).catch(error=>show(error.message,'danger')),900);}
 function showAutosaveProtection(){const dock=form.querySelector('.submit-dock');if(!dock||locked)return;const note=document.createElement('div');note.className='small text-center text-muted mb-2';note.setAttribute('data-dc-autosave-state','');note.textContent='Automatic draft saving is on · changes save after every selection';dock.prepend(note);}
 function buildSliders(){
@@ -34,15 +42,17 @@ function buildSliders(){
   const box=input.closest('.score-box'),maximum=Number(input.max||100),value=input.value;
   input.type='hidden';input.classList.add('dc-score-value');input.dataset.maximum=String(maximum);
   const control=document.createElement('div');control.className='dc-score-control';
-  control.innerHTML='<input class="dc-score-slider" type="range" min="0" max="'+maximum+'" step="0.1" value="'+(value===''?'0':value)+'" aria-label="'+escapeAttribute(box.querySelector('label')?.textContent.trim()||'Score')+'"><output class="dc-score-output" aria-live="polite">'+(value===''?'Not scored':format(value))+'</output><div class="dc-score-scale"><span>0</span><span>'+format(maximum)+'</span></div>';
+  control.innerHTML='<div class="dc-score-readout"><span class="dc-score-state">'+(value===''?'Not scored':'Score selected')+'</span><output class="dc-score-output" aria-live="polite">'+(value===''?'—':format(value))+'</output><small>/ '+format(maximum)+'</small></div><input class="dc-score-slider" type="range" min="0" max="'+maximum+'" step="0.1" value="'+(value===''?'0':value)+'" aria-label="'+escapeAttribute(box.querySelector('label')?.textContent.trim()||'Score')+'"><div class="dc-score-scale"><span>0</span><span>'+format(maximum)+'</span></div><button type="button" class="dc-score-zero">Set intentional 0</button>';
   input.after(control);const slider=control.querySelector('.dc-score-slider'),output=control.querySelector('.dc-score-output');
-  slider.disabled=!accepted||locked;box.classList.toggle('is-scored',value!=='');
-  slider.addEventListener('input',()=>{input.value=slider.value;output.textContent=format(slider.value);box.classList.add('is-scored');updateEntryTotal(box.closest('.entry-card'));clientProgress();show('Selected '+format(slider.value)+' / '+format(maximum),'primary');scheduleSave();});
+  const stateLabel=control.querySelector('.dc-score-state'),zero=control.querySelector('.dc-score-zero');slider.disabled=!accepted||locked;zero.disabled=!accepted||locked;box.classList.toggle('is-scored',value!=='');updateSliderVisual(slider);
+  const selectValue=raw=>{slider.value=String(raw);input.value=slider.value;output.textContent=format(slider.value);stateLabel.textContent='Score selected';box.classList.add('is-scored');updateSliderVisual(slider);updateEntryTotal(box.closest('.entry-card'));clientProgress();refreshCompletion();show('Selected '+format(slider.value)+' / '+format(maximum),'primary');scheduleSave();};
+  slider.addEventListener('input',()=>selectValue(slider.value));zero.addEventListener('click',()=>selectValue(0));
  });
- document.querySelectorAll('.entry-card').forEach(article=>{const heading=article.querySelector('.d-flex.align-items-baseline');if(heading){const badge=document.createElement('span');badge.className='dc-entry-live-total ms-auto';badge.innerHTML='<small>Live total</small><strong data-entry-live-total>—</strong>';heading.appendChild(badge);}updateEntryTotal(article);});
- clientProgress();
+ document.querySelectorAll('.entry-card').forEach(article=>{const heading=article.querySelector('.d-flex.align-items-baseline');if(heading){const completion=document.createElement('span');completion.className='dc-entry-completion ms-auto';completion.innerHTML='<strong data-entry-completion>0 / 0</strong><small>criteria scored</small>';heading.appendChild(completion);const badge=document.createElement('span');badge.className='dc-entry-live-total';badge.innerHTML='<small>Live total</small><strong data-entry-live-total>—</strong>';heading.appendChild(badge);}updateEntryTotal(article);});
+ const dock=form.querySelector('.submit-dock .d-flex');if(dock&&!locked){const next=document.createElement('button');next.type='button';next.className='btn btn-dark btn-lg dc-next-missing';next.setAttribute('data-next-missing','');next.addEventListener('click',focusNextMissing);dock.prepend(next);}
+ clientProgress();refreshCompletion();
 }
-function setScoringEnabled(enabled){accepted=enabled;form.querySelectorAll('.dc-score-slider').forEach(input=>input.disabled=!enabled||locked);form.querySelectorAll('button').forEach(button=>button.disabled=!enabled||locked);}
+function setScoringEnabled(enabled){accepted=enabled;form.querySelectorAll('.dc-score-slider,.dc-score-zero').forEach(input=>input.disabled=!enabled||locked);form.querySelectorAll('button').forEach(button=>button.disabled=!enabled||locked);refreshCompletion();}
 function buildRules(){
  if(locked)return;
  const panel=document.createElement('section');panel.className='card border-warning shadow-sm mb-4 dc-judge-rules';panel.innerHTML='<div class="card-body"><span class="badge text-bg-warning">REQUIRED BEFORE SCORING</span><h2 class="h4 mt-2">Judge Scoring Rules</h2><p class="mb-2">Please read and accept before entering any marks.</p><ul><li>Score every contestant independently and only within each displayed maximum.</li><li>Do not discuss or compare marks with another judge while scoring is open.</li><li>Review every selected value before submission.</li><li>Submit Scores is final and locks this judge sheet until the scorer reopens it.</li></ul><label class="dc-rule-accept"><input type="checkbox" class="form-check-input" id="dcJudgeRuleCheck"> I have read, understood and agree to follow these scoring rules.</label><button type="button" class="btn btn-warning btn-lg mt-3" id="dcJudgeRuleAccept" disabled>Accept Rules &amp; Start Scoring</button></div>';
@@ -66,6 +76,6 @@ async function send(action,silent=false){
 }
 function queued(action,silent=false){const operation=chain.then(()=>send(action,silent));chain=operation.catch(()=>{});return operation;}
 buildRules();buildSliders();showAutosaveProtection();setScoringEnabled(accepted);
-form.addEventListener('submit',event=>{event.preventDefault();clearTimeout(timer);const action=event.submitter?.value==='submit'?'submit':'save';if(action==='submit'&&!confirm('Review every live value, then submit and lock all your Dance Cup scores?'))return;queued(action,false).catch(error=>show(error.message,'danger'));});
+form.addEventListener('submit',event=>{event.preventDefault();clearTimeout(timer);const action=event.submitter?.value==='submit'?'submit':'save';if(action==='submit'&&scoreInputs.some(input=>input.value==='')){show('Complete every highlighted score before submitting.','danger');focusNextMissing();return;}if(action==='submit'&&!confirm('All '+scoreInputs.length+' scores are complete. Submit and lock this judge sheet?'))return;queued(action,false).catch(error=>show(error.message,'danger'));});
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
 })();

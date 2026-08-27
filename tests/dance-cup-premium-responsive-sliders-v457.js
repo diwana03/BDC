@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+for(const marker of ['dc-score-readout','Not scored','Set intentional 0','data-entry-completion','data-next-missing','focusNextMissing','dc-score-attention'])assert(live.includes(marker),'missing premium scoring behavior '+marker);
+assert(live.includes("submit.disabled=!accepted||locked||completed!==required"));
+assert(live.includes("scoreInputs.some(input=>input.value==='')"));
+for(const marker of ['--dc-score-progress','.dc-score-slider::-webkit-slider-thumb','.dc-entry-complete','.dc-score-attention','.dc-next-missing','@media(max-width:575.98px)'])assert(css.includes(marker),'missing premium responsive style '+marker);
+assert(judge.includes('scoring-premium.css?v=457'));
+assert(judge.includes('dance-cup-judge-live.js?v=457'));
+console.log('dev457 premium responsive Dance Cup slider checks passed');
