@@ -11,7 +11,8 @@ assert(fields.includes('BDC Dance Cup registration profile')&&fields.includes('e
 for(const marker of ['male','female','non_binary','prefer_not_to_say'])assert(fields.includes(marker),'competitor gender missing '+marker);
 for(const marker of ['gender_eligibility','mixed','female_only','male_only'])assert(migration.includes(marker)&&service.includes(marker),'event category gender missing '+marker);
 assert(dashboard.includes('Category Gender')&&dashboard.includes('Mixed Gender'),'category setup must define gender eligibility');
-assert(service.includes('assertDanceCupEligibility')&&manual.includes('assertDanceCupEligibility')&&automatic.includes('assertDanceCupEligibility'),'linked roster assignment must enforce reusable profile and category gender eligibility in Manual and Automatic');
+assert(service.includes('assertDanceCupEligibility')&&manual.includes('assertDanceCupEligibility')&&automatic.includes('assertDanceCupEligibility'),'linked roster assignment must share active-profile and category-gender validation in Manual and Automatic');
+assert(!service.includes('not approved for the selected Dance Cup style, format and level'),'reusable registration approval must not block scoring roster assignment');
 for(const marker of ['dc-full-automatic-matrix','Contestant No. / Contestant','data-dc-matrix-mark','data-dc-matrix-total','data-dc-matrix-place'])assert(matrix.includes(marker),'Automatic full matrix missing '+marker);
 assert(live.includes('setInterval(poll,2000)'),'Automatic full matrix must retain two-second live refresh');
 console.log('Reusable Dance Cup registration and full Automatic live matrix v436 passed.');

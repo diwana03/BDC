@@ -163,7 +163,8 @@ final class DanceCupScoringService
         $q=$pdo->prepare("SELECT gender FROM bdc_competitors WHERE id=:id AND status<>'archived'");$q->execute(['id'=>$competitorId]);$gender=$q->fetchColumn();if($gender===false)throw new RuntimeException('Competitor profile not found.');
         if($category['gender_eligibility']==='female_only'&&$gender!=='female')throw new RuntimeException('This category is Female Only.');
         if($category['gender_eligibility']==='male_only'&&$gender!=='male')throw new RuntimeException('This category is Male Only.');
-        $q=$pdo->prepare("SELECT COUNT(*) FROM bdc_competitor_dance_cup_profiles WHERE competitor_id=:competitor AND dance_style=:style AND entry_type=:entry AND competition_level=:level AND status='active'");$q->execute(['competitor'=>$competitorId,'style'=>$category['dance_style'],'entry'=>$category['entry_type'],'level'=>$category['competition_level']]);if((int)$q->fetchColumn()<1)throw new RuntimeException('This competitor is not approved for the selected Dance Cup style, format and level.');
+        // Reusable registration categories are organiser reference data, not a scoring-roster gate.
+        // An authorised scorer may assign any active BDC competitor to an event category.
     }
 
     public static function assertScoringMode(PDO $pdo, int $competitionId, string $mode, bool $test = false): void

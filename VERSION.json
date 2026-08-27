@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev452",
-  "build": 3158,
+  "version": "2.3.3-dev453",
+  "build": 3159,
   "status": "development",
   "release_date": "2026-08-27",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Allows authorised Dance Cup scorers to add any active BDC competitor without requiring a matching approved reusable registration profile, while retaining duplicate, archived-profile and event gender protections",
     "Makes the single Dance Cup Automatic Live Projection card immediately visible below the workflow steps and makes the Step 6 button open Projection Control directly in a new tab",
     "Consolidates Dance Cup Automatic projection into one Step 6 section containing live status, operator control, audience screen and link regeneration without changing projector behavior",
     "Restores the complete Jack and Jill scoring entrypoint byte-for-byte from the last clean pre-corruption source after public dev439 embedded truncated tool output in the PHP file",
