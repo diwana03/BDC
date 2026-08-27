@@ -115,11 +115,14 @@ if(automatic){
  const poll=async()=>{
   if(document.hidden)return;
   try{
-   const response=await fetch(endpoint,{credentials:'same-origin',headers:{Accept:'application/json'}});
+   const separator=endpoint.includes('?')?'&':'?';
+   const response=await fetch(endpoint+separator+'_live='+Date.now(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}});
    const payload=await response.json();if(response.ok&&payload.ok)renderState(payload.state);
   }catch{}
  };
  automatic.querySelector('[data-dc-refresh-status]')?.addEventListener('click',event=>{event.currentTarget.disabled=true;poll().finally(()=>event.currentTarget.disabled=false)});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
+ window.addEventListener('focus',poll);
  poll();setInterval(poll,2000);
 }
 })();

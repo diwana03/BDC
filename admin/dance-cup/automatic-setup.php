@@ -22,7 +22,7 @@ $id=(int)($_GET['id']??$_POST['id']??0);
 $suffix=$test?'&data_mode=test':'';
 $tables=DanceCupScoringService::tables($test);
 $prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup';
-$error='';$notice='';
+$error='';$notice='';$whatsappRedirect='';
 $directoryCompetitorId=(int)($_POST['competitor_id']??0);
 $directoryJudgeId=(int)($_POST['judge_id']??0);
 try{
@@ -32,7 +32,7 @@ try{
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
         $action=(string)($_POST['action']??'');
         $statusQuery=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");$statusQuery->execute(['competition'=>$id]);$currentStatus=(string)$statusQuery->fetchColumn();
-        if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
+        if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection','send_email','open_whatsapp'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
             $name=trim((string)($_POST['display_name']??''));$number=(int)($_POST['bib_number']??0);
             if($directoryCompetitorId>0){
@@ -71,6 +71,23 @@ try{
             $notice='Judge added to Automatic Scoring.';
         }elseif(in_array($action,['remove_competitor','move_competitor','remove_judge','move_judge','set_chief_judge'],true)){
             $notice=DanceCupRosterService::apply($pdo,$id,$action,$_POST,$test);
+        }elseif(in_array($action,['send_email','open_whatsapp'],true)){
+            $sessionId=(int)($_POST['session_id']??0);
+            $contact=$pdo->prepare("SELECT s.access_token,j.judge_name,d.email,d.phone,d.whatsapp,c.category_name,e.name event_name FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id JOIN {$tables['competitions']} c ON c.id=s.competition_id JOIN {$tables['events']} e ON e.id=c.event_id WHERE s.id=:session AND s.competition_id=:competition LIMIT 1");
+            $contact->execute(['session'=>$sessionId,'competition'=>$id]);$judgeContact=$contact->fetch();
+            if(!$judgeContact)throw new RuntimeException('Judge session not found.');
+            $judgeUrl=url('admin/dance-cup/judge-scoring.php?token='.rawurlencode((string)$judgeContact['access_token']).($test?'&data_mode=test':''));
+            $message="BDC Dance Cup judge link\n".$judgeContact['event_name'].' · '.$judgeContact['category_name']."\n".$judgeUrl;
+            if($action==='send_email'){
+                $email=trim((string)($judgeContact['email']??''));if(!filter_var($email,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Email is missing from this Judge Database profile.');
+                $sent=mail($email,'BDC Dance Cup Judge Scoring Link',$message,"Content-Type: text/plain; charset=UTF-8\r\n");
+                Auth::audit((int)(Auth::user()['id']??0),$sent?'dance_cup_judge_email_sent':'dance_cup_judge_email_failed',['competition_id'=>$id,'judge_name'=>$judgeContact['judge_name'],'data_mode'=>$test?'test':'live'],'dance_cup_judge_session',$sessionId);
+                if(!$sent)throw new RuntimeException('The server could not send the judge email.');$notice='Judge scoring link emailed.';
+            }else{
+                $phone=preg_replace('/\D+/','',(string)($judgeContact['whatsapp']?:$judgeContact['phone']));if($phone==='')throw new RuntimeException('WhatsApp number is missing from this Judge Database profile.');
+                Auth::audit((int)(Auth::user()['id']??0),'dance_cup_judge_whatsapp_opened',['competition_id'=>$id,'judge_name'=>$judgeContact['judge_name'],'data_mode'=>$test?'test':'live'],'dance_cup_judge_session',$sessionId);
+                $whatsappRedirect='https://wa.me/'.$phone.'?text='.rawurlencode($message);
+            }
         }elseif($action==='regenerate'){
             $pdo->prepare("UPDATE {$prefix}_judge_sessions SET access_token=:token,status='not_started',started_at=NULL,submitted_at=NULL WHERE id=:session AND competition_id=:competition")->execute(['token'=>bin2hex(random_bytes(32)),'session'=>(int)($_POST['session_id']??0),'competition'=>$id]);$notice='Judge link regenerated.';
         }elseif($action==='reopen'){
@@ -88,6 +105,7 @@ try{
         }elseif($action==='reset_projection'){
             $event=$pdo->prepare("SELECT event_id FROM {$tables['competitions']} WHERE id=:competition");$event->execute(['competition'=>$id]);$pdo->prepare("UPDATE {$prefix}_event_projection SET access_token=:token,screen_type='holding',auto_cycle=0,state_version=state_version+1 WHERE event_id=:event")->execute(['token'=>bin2hex(random_bytes(32)),'event'=>(int)$event->fetchColumn()]);$notice='Projector link regenerated.';
         }else{throw new RuntimeException('Unsupported setup action.');}
+        if($whatsappRedirect!==''){header('Location: '.$whatsappRedirect,true,303);exit;}
         header('Location: automatic-setup.php?id='.$id.$suffix.'&saved=1',true,303);exit;
     }
 }catch(Throwable $e){$error=$e->getMessage();}
@@ -98,7 +116,7 @@ $q=$pdo->prepare("SELECT * FROM {$prefix}_entries WHERE competition_id=:id AND s
 $q=$pdo->prepare("SELECT * FROM {$prefix}_judges WHERE competition_id=:id ORDER BY judge_order,id");$q->execute(['id'=>$id]);$judges=$q->fetchAll();$chiefCount=count(array_filter($judges,static fn(array $judge):bool=>(int)$judge['is_chief']===1));
 $csrf=Csrf::token();
 DanceCupScoringService::ensureAutomation($pdo,$id,$test);
-$q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count,(SELECT COUNT(*) FROM {$prefix}_entries e WHERE e.competition_id=s.competition_id AND e.status='active') entry_count,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=s.competition_id) criterion_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id WHERE s.competition_id=:id ORDER BY j.is_chief DESC,j.judge_order,j.id");$q->execute(['id'=>$id]);$sessions=$q->fetchAll();
+$q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,d.email,d.phone,d.whatsapp,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count,(SELECT COUNT(*) FROM {$prefix}_entries e WHERE e.competition_id=s.competition_id AND e.status='active') entry_count,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=s.competition_id) criterion_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id WHERE s.competition_id=:id ORDER BY j.is_chief DESC,j.judge_order,j.id");$q->execute(['id'=>$id]);$sessions=$q->fetchAll();
 $state=DanceCupScoringService::workflowState($pdo,$id,$test);
 $q=$pdo->prepare("SELECT * FROM {$prefix}_checkpoints WHERE competition_id=:id ORDER BY id DESC LIMIT 10");$q->execute(['id'=>$id]);$automaticCheckpoints=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM {$prefix}_event_projection WHERE event_id=:event");$q->execute(['event'=>$competition['event_id']]);$projection=$q->fetch();$projectorUrl=url('admin/dance-cup/projector-launch.php?token='.rawurlencode((string)($projection['access_token']??'')).($test?'&data_mode=test':''));
@@ -106,7 +124,7 @@ require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-page.php';
 exit;
 ob_start();require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-workspace.php';$automaticWorkspace=ob_get_clean();
 ob_start(static function(string $html)use($test,$automaticWorkspace,$id,$suffix):string{
-    $html=str_replace('scoring-premium.css?v=398','scoring-premium.css?v=434',$html);
+    $html=str_replace('scoring-premium.css?v=398','scoring-premium.css?v=454',$html);
     $dashboardHref=$test?'../?data_mode=test':'../';
     $workflowHref='workflow.php?workflow=automatic'.($test?'&data_mode=test':'');
     $scoringHref='./'.($test?'?data_mode=test':'');

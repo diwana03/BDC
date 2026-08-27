@@ -1,0 +1,23 @@
+const fs=require('fs');
+const assert=require('assert');
+const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
+const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-scoring-live.js','utf8');
+const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
+
+assert(setup.includes("['send_email','open_whatsapp']"));
+assert(setup.includes('LEFT JOIN bdc_judges d'));
+assert(setup.includes('https://wa.me/'));
+assert(setup.includes('Auth::audit('));
+assert(view.includes('>WhatsApp</button>'));
+assert(view.includes('>Email</button>'));
+assert(view.includes('WhatsApp number missing from Judge Database'));
+assert(view.includes('Email missing from Judge Database'));
+assert(live.includes("cache:'no-store'"));
+assert(live.includes("'_live='+Date.now()"));
+assert(live.includes('setInterval(poll,2000)'));
+assert(live.includes("document.addEventListener('visibilitychange'"));
+assert(css.includes('grid-template-columns:repeat(5,minmax(0,1fr))!important'));
+assert(css.includes('@media(max-width:991px)'));
+assert(css.includes('@media(max-width:575px)'));
+console.log('dev454 Dance Cup judge delivery, live matrix and PC alignment checks passed');
