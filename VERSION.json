@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev449",
-  "build": 3155,
+  "version": "2.3.3-dev450",
+  "build": 3156,
   "status": "development",
   "release_date": "2026-08-27",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Restores the complete Jack and Jill scoring entrypoint byte-for-byte from the last clean pre-corruption source after public dev439 embedded truncated tool output in the PHP file",
     "Replaces fragile Dance Cup Automatic fragment composition with a complete server-rendered page containing the event header, contestant roster, judge roster and full scoring workflow",
     "Opens the complete Dance Cup Automatic workspace at its event header and roster instead of skipping contestant and judge setup by jumping directly to Step 2",
     "Separates Jack and Jill, Dance Cup, shared live operations and scoring backups into distinct admin sidebar navigation groups",

@@ -6,5 +6,6 @@ assert(source.includes('bdc_profile_request_dance_cup_categories'),'registration
 assert(source.includes('Registration Categories')&&source.includes('Approved Reusable Profiles'),'pending and approved datasets are not separated');
 assert(source.includes('These are the default categories selected on the public registration form'),'default category explanation missing');
 assert(source.includes('Pending assignment')&&source.includes('request_status'),'pending registration status missing');
-assert(version.version==='2.3.3-dev449'&&version.build===3155,'release mismatch');
+const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+assert(releaseNumber>=449&&version.build>=3155,'release must retain dev449 registration-category support');
 console.log('Dance Cup registration categories dashboard v449 checks passed.');
