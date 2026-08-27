@@ -124,7 +124,7 @@ require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-page.php';
 exit;
 ob_start();require dirname(__DIR__,2).'/app/Views/admin/dance-cup-automatic-workspace.php';$automaticWorkspace=ob_get_clean();
 ob_start(static function(string $html)use($test,$automaticWorkspace,$id,$suffix):string{
-    $html=str_replace('scoring-premium.css?v=398','scoring-premium.css?v=454',$html);
+    $html=str_replace('scoring-premium.css?v=398','scoring-premium.css?v=458',$html);
     $dashboardHref=$test?'../?data_mode=test':'../';
     $workflowHref='workflow.php?workflow=automatic'.($test?'&data_mode=test':'');
     $scoringHref='./'.($test?'?data_mode=test':'');

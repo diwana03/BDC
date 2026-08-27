@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev457",
-  "build": 3163,
+  "version": "2.3.3-dev458",
+  "build": 3164,
   "status": "development",
   "release_date": "2026-08-27",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Gives the complete Dance Cup Automatic scorer workspace a premium responsive control-room design across PC and mobile without changing roster, projection, scoring, autosave or live-refresh behavior",
     "Upgrades Dance Cup judge scoring with premium responsive sliders, explicit unscored and intentional-zero states, contestant completion badges and next-missing navigation",
     "Fixes the Dance Cup Automatic included workspace fatal by fully qualifying Super Admin authorization so rendering reaches ranking and the live-refresh scripts",
     "Makes Dance Cup Automatic live refresh resilient with serialized uncached polling, safe partial-state rendering, visible connection recovery and no page reload or scroll jump",

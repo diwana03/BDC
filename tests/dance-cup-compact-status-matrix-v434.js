@@ -9,6 +9,6 @@ for(const marker of ['data-dc-judge-tab','data-dc-judge-panel','All Judges Summa
 assert(client.includes("automatic.querySelectorAll('[data-dc-judge-tab]')"),'judge matrix tabs must be interactive');
 for(const marker of ['.dc-judge-status-row','.dc-judge-actions .btn','.dc-status-pill','.dc-judge-tabs','.dc-unified-actions>.btn,.dc-checkpoint-form .btn','@media(max-width:767.98px)'])assert(css.includes(marker),'compact responsive styling missing '+marker);
 assert(view.includes('dance-cup-scoring-live.js?v=455'),'live client cache key must advance');
-assert(setup.includes("str_replace('scoring-premium.css?v=398','scoring-premium.css?v=454'"),'shared compact CSS cache key must advance');
+assert(setup.includes("str_replace('scoring-premium.css?v=398','scoring-premium.css?v=458'"),'shared compact CSS cache key must advance');
 assert(setup.includes("$test?'test':'real'"),'Test and Live must retain the shared render path');
 console.log('Dance Cup compact judge status, aligned actions and tabbed matrix v434 passed.');
