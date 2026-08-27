@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert');
+const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const page=fs.readFileSync('app/Views/admin/dance-cup-automatic-page.php','utf8');
+assert(page.includes("require __DIR__.'/dance-cup-automatic-workspace.php'"));
+assert(view.includes('\\App\\Core\\Auth::isSuperAdmin()'));
+assert(!view.includes('&&Auth::isSuperAdmin()'));
+assert(view.indexOf('Calculated Ranking')>view.indexOf('Submit Scores &amp; Lock'));
+assert(view.indexOf('dance-cup-scoring-live.js?v=455')>view.indexOf('Calculated Ranking'));
+assert(view.includes('dance-cup-unified-workspace-v430.js?v=430'));
+console.log('dev456 complete Automatic render and live script checks passed');
