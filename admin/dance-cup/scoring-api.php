@@ -6,6 +6,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Services\DanceCupCategoryEditService;
 use App\Services\DanceCupScoringService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -39,7 +40,8 @@ function dcApiSnapshot(PDO $pdo,string $prefix,int $competition):array{
 
 try{
     DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
-    $competition=$pdo->prepare("SELECT status,scoring_mode FROM {$tables['competitions']} WHERE id=:competition");
+    DanceCupCategoryEditService::ensureColumns($pdo,$test);
+    $competition=$pdo->prepare("SELECT status,scoring_mode,edit_unlocked_at FROM {$tables['competitions']} WHERE id=:competition");
     $competition->execute(['competition'=>$id]);
     $competitionRow=$competition->fetch();
     if(!$competitionRow)throw new RuntimeException('Dance Cup category not found.');
@@ -49,6 +51,7 @@ try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Security check failed. Reload and try again.');
         $action=(string)($_POST['action']??'status');
+        if(!empty($competitionRow['edit_unlocked_at'])&&$action!=='checkpoint')throw new RuntimeException('Scoring is temporarily paused while the category is being edited. Existing marks are preserved.');
         if(in_array($status,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','approve_results'],true))throw new RuntimeException('Competition is submitted and locked.');
 
         if($action==='save_scores'){
