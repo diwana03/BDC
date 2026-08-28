@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev465",
-  "build": 3171,
+  "version": "2.3.3-dev466",
+  "build": 3172,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs the Dance Cup multi-category judging panel detail page by replacing its fragile correlated judge-progress query and rendering database errors safely instead of returning HTTP 500",
     "Separates Dance Cup category registration status from profile and identity review so a rejected profile request no longer falsely marks valid category submissions as rejected",
     "Adds persistent BDC dashboard and immediate Super Admin email alerts for local backup or Google Drive upload failure, acknowledgment tracking, repeated-failure counts and automatic recovery notifications",
     "Makes old server backups directly deletable with one confirmed per-file action or checkbox bulk deletion while preserving Super Admin authorization, CSRF protection and strict backup-path validation",

@@ -1,0 +1,10 @@
+const fs=require('fs');
+const source=fs.readFileSync('admin/dance-cup/panels.php','utf8');
+const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+assert(source.includes('SELECT * FROM {$p}_judging_panel_judges WHERE panel_id=:panel'),'panel judges must load with a simple compatible query');
+assert(source.includes('COUNT(DISTINCT pc.competition_id)'),'submitted progress must be calculated separately');
+assert(!source.includes('pc.panel_id=pj.panel_id'),'fragile outer-correlated panel query remains');
+assert(source.includes('Judging panel data could not be loaded:'),'GET-time panel errors must render safely');
+assert(version.version==='2.3.3-dev466'&&version.build===3172,'release must be dev466 build 3172');
+console.log('Dance Cup panel detail v466 checks passed.');
