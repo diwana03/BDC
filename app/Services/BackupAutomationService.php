@@ -12,6 +12,7 @@ final class BackupAutomationService
     private string $root;
     private PDO $pdo;
     private BackupService $backupService;
+    private BackupAlertService $alerts;
 
     public function __construct(?string $root=null)
     {
@@ -19,6 +20,7 @@ final class BackupAutomationService
         $this->pdo=Database::connection();
         $this->ensureSettingsSchema();
         $this->backupService=new BackupService($this->root);
+        $this->alerts=new BackupAlertService($this->pdo);
     }
 
     private function ensureSettingsSchema():void
@@ -239,6 +241,7 @@ final class BackupAutomationService
                     $driveLink=$driveId!==''?'https://drive.google.com/file/d/'.rawurlencode($driveId).'/view':'';
                 }catch(\Throwable $e){
                     $driveStatus='failed';$driveError=$e->getMessage();
+                    try{$this->alerts->failure('drive_upload_failed',$driveError,$runId);}catch(\Throwable){}
                 }
             }
 
@@ -265,11 +268,16 @@ final class BackupAutomationService
             }
 
             $this->applyRetention((int)($settings['server_keep_count']??$settings['keep_count']),(int)($settings['drive_keep_count']??30),$settings);
+            try{
+                $this->alerts->recovered('backup_failed',$runId);
+                if($driveStatus==='uploaded')$this->alerts->recovered('drive_upload_failed',$runId);
+            }catch(\Throwable){}
 
             return ['run_id'=>$runId,'backup'=>$result,'google_drive_status'=>$driveStatus,'google_drive_error'=>$driveError];
         }catch(\Throwable $e){
             $this->pdo->prepare("UPDATE bdc_backup_runs SET status='failed',error_message=:error,completed_at=NOW() WHERE id=:id")
                 ->execute(['error'=>$e->getMessage(),'id'=>$runId]);
+            try{$this->alerts->failure('backup_failed',$e->getMessage(),$runId);}catch(\Throwable){}
             throw $e;
         }finally{
             flock($lock,LOCK_UN);

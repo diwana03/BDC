@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev463",
-  "build": 3169,
+  "version": "2.3.3-dev464",
+  "build": 3170,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds persistent BDC dashboard and immediate Super Admin email alerts for local backup or Google Drive upload failure, acknowledgment tracking, repeated-failure counts and automatic recovery notifications",
     "Makes old server backups directly deletable with one confirmed per-file action or checkbox bulk deletion while preserving Super Admin authorization, CSRF protection and strict backup-path validation",
     "Repairs scheduled backup retention and Google Drive delivery by removing embedded full-backup component copies, pruning only genuine Drive uploads, streaming large OAuth and service-account uploads without exhausting PHP memory, and locking overlapping cron runs",
     "Groups Dance Cup workflow categories beneath one responsive event header with date, venue, country, category count and direct Open, Edit and protected Delete actions",
