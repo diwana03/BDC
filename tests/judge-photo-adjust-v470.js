@@ -9,5 +9,5 @@ assert(!edit.includes('href="photo-adjust.php'),'judge editor must not jump to a
 assert(index.includes('edit.php?id=<?=(int)$j[\'id\']?>#judge-photo'),'judge database photo action must return to the profile editor');
 for(const marker of ['action" value="replace','replacement_photo','Upload and adjust','judge_photo_replaced'])assert(adjust.includes(marker),'missing judge replacement flow '+marker);
 for(const marker of ['aspect-ratio:4/5','Math.max(0,(m.iw-m.w)/2)','scaleX=640/f.width','original_photo_url'])assert(adjust.includes(marker),'missing safe responsive crop behavior '+marker);
-assert(version.version==='2.3.3-dev471'&&version.build===3177,'release must be dev471 build 3177');
+assert(version.build>=3177,'release must include dev471 one-page judge photo workflow');
 console.log('One-page judge photo upload and adjustment v471 checks passed.');

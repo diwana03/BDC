@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+namespace App\Services;
+use PDO;
+final class JudgeProfileUpdateLinkService{
+ public static function ensure(PDO $pdo):void{$pdo->exec("CREATE TABLE IF NOT EXISTS bdc_judge_profile_update_links(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,judge_id BIGINT UNSIGNED NOT NULL,token_hash CHAR(64) NOT NULL,token_hint VARCHAR(12) NOT NULL,expires_at DATETIME NOT NULL,created_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE INDEX uq_judge_profile_update_judge(judge_id),UNIQUE INDEX uq_judge_profile_update_token(token_hash),INDEX idx_judge_profile_update_expiry(expires_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}
+ public static function generate(PDO $pdo,int $judgeId,?int $createdBy):string{self::ensure($pdo);$token=bin2hex(random_bytes(32));$pdo->prepare("INSERT INTO bdc_judge_profile_update_links(judge_id,token_hash,token_hint,expires_at,created_by) VALUES(:judge,:hash,:hint,DATE_ADD(NOW(),INTERVAL 6 HOUR),:creator) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),token_hint=VALUES(token_hint),expires_at=VALUES(expires_at),created_by=VALUES(created_by),updated_at=NOW()") ->execute(['judge'=>$judgeId,'hash'=>hash('sha256',$token),'hint'=>substr($token,0,10),'creator'=>$createdBy]);return $token;}
+ public static function resolve(PDO $pdo,string $token):?array{self::ensure($pdo);if(!preg_match('/^[a-f0-9]{64}$/',$token))return null;$q=$pdo->prepare("SELECT j.*,l.expires_at profile_link_expires_at FROM bdc_judge_profile_update_links l JOIN bdc_judges j ON j.id=l.judge_id WHERE l.token_hash=:hash AND l.expires_at>NOW() LIMIT 1");$q->execute(['hash'=>hash('sha256',$token)]);return $q->fetch()?:null;}
+}

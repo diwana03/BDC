@@ -1,15 +1,16 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;
+use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;use App\Services\JudgeProfileUpdateLinkService;
 Auth::requirePermission('judges.view');$canEdit=Auth::can('judges.edit');
-Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);$notice='';$error='';
+Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);JudgeProfileUpdateLinkService::ensure($pdo);$notice='';$error='';$generatedUpdateLink='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  if(!$canEdit){http_response_code(403);exit('You do not have permission to edit judge profiles.');}
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token. Refresh and try again.';
  else try{
   $action=(string)($_POST['action']??'create');
   if($action==='create'){$judge=JudgeDirectoryService::create($pdo,$_POST);$notice='Judge created: '.$judge['full_name'].' · '.$judge['judge_code'];}
+  elseif($action==='generate_profile_update_link'){$judgeId=(int)($_POST['judge_id']??0);$q=$pdo->prepare('SELECT id,full_name FROM bdc_judges WHERE id=:id');$q->execute(['id'=>$judgeId]);$target=$q->fetch();if(!$target)throw new RuntimeException('Judge not found.');$token=JudgeProfileUpdateLinkService::generate($pdo,$judgeId,(int)(Auth::user()['id']??0)?:null);$generatedUpdateLink=url('judge-profile/?token='.$token);$notice='Six-hour profile update link created for '.$target['full_name'].'. Regenerating replaces the previous link.';Auth::audit((int)(Auth::user()['id']??0),'judge_profile_update_link_generated',['expires_hours'=>6],'judge',$judgeId);}
   elseif(in_array($action,['approve_request','reject_request'],true)){
    $id=(int)($_POST['request_id']??0);$s=$pdo->prepare("SELECT * FROM bdc_judge_profile_requests WHERE id=:id AND status='pending'");$s->execute(['id'=>$id]);$request=$s->fetch();if(!$request)throw new RuntimeException('Pending judge profile request not found.');
    if($action==='approve_request'){$judge=JudgeDirectoryService::findOrCreate($pdo,(string)$request['full_name'],$request);$judge=JudgeDirectoryService::mergeProfile($pdo,(int)$judge['id'],$request);$status='approved';$notice='Judge approved: '.$judge['full_name'].' · '.$judge['judge_code'];}else{$status='rejected';$notice='Judge profile request rejected.';}
@@ -64,6 +65,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <?=e($error)?>
 </div>
 <?php endif;?>
+<?php if($generatedUpdateLink):?><div class="card border-primary shadow-sm mb-4"><div class="card-body"><label class="form-label fw-semibold">Secure judge profile update link · expires in 6 hours</label><div class="input-group"><input class="form-control" id="generatedJudgeUpdateLink" readonly value="<?=e($generatedUpdateLink)?>"><button class="btn btn-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('generatedJudgeUpdateLink').value);this.textContent='Copied'">Copy Link</button><a class="btn btn-outline-primary" target="_blank" rel="noopener" href="<?=e($generatedUpdateLink)?>">Open</a></div></div></div><?php endif;?>
 <?php if($pending):?>
 <section class="card shadow-sm border-warning mb-4">
 <div class="card-header bg-warning-subtle">
@@ -206,6 +208,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <?php if($canEdit): ?>
 <div class="d-flex flex-wrap gap-1">
 <a class="btn btn-sm btn-primary" href="edit.php?id=<?=(int)$j['id']?>">Edit Profile &amp; Photo</a>
+<form method="post" class="d-inline"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="generate_profile_update_link"><input type="hidden" name="judge_id" value="<?=(int)$j['id']?>"><button class="btn btn-sm btn-outline-primary">Create 6-hour Update Link</button></form>
 <?php if(!empty($j['photo_url'])): ?>
 <a class="btn btn-sm btn-outline-secondary" href="edit.php?id=<?=(int)$j['id']?>#judge-photo">Edit &amp; Adjust Photo</a>
 <?php endif; ?>
