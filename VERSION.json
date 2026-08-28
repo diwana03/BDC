@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev467",
-  "build": 3173,
+  "version": "2.3.3-dev468",
+  "build": 3174,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Promotes Dance Cup event setup into a large workflow start panel with separate Step 1 Create Event and Step 2 Add Category choices that open the correct form directly",
     "Replaces the module-driven Dance Cup landing page with one non-technical six-step event journey, category readiness summaries, one Continue action and optional shared-panel tooling",
     "Repairs the Dance Cup multi-category judging panel detail page by replacing its fragile correlated judge-progress query and rendering database errors safely instead of returning HTTP 500",
     "Separates Dance Cup category registration status from profile and identity review so a rejected profile request no longer falsely marks valid category submissions as rejected",
