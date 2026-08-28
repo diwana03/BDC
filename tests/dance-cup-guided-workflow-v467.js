@@ -7,6 +7,8 @@ assert(source.includes('participant_count')&&source.includes('judge_count')&&sou
 assert(source.includes('Choose where to continue')&&source.includes("'Continue'"),'single continuation model missing');
 for(const marker of ['What do you want to set up?','Create a new event','Add category to existing event','#create-event','#create-category'])assert(source.includes(marker),'missing prominent workflow start action '+marker);
 assert(source.includes('This is optional.'),'shared judging panels must be presented as optional');
+for(const marker of ['.advanced-tools>div{position:relative;display:flex','.advanced-tools a{margin-left:auto','box-shadow:0 12px 28px'])assert(source.includes(marker),'missing premium shared-panel treatment '+marker);
 assert(!source.includes('>Judging Panels</a>'),'judging panels must not compete as a primary top action');
-assert(version.version==='2.3.3-dev468'&&version.build===3174,'release must be dev468 build 3174');
-console.log('Dance Cup guided workflow v468 checks passed.');
+const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+assert(releaseNumber>=469&&version.build>=3175,'release must retain the dev469 guided premium workflow');
+console.log('Dance Cup guided workflow v469+ checks passed.');

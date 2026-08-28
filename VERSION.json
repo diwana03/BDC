@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev468",
-  "build": 3174,
+  "version": "2.3.3-dev470",
+  "build": 3176,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes judge photo adjustment available before any photo exists, adds an upload-or-replace step, then provides bounded drag and zoom portrait cropping on desktop and mobile while preserving the original image",
+    "Upgrades the optional shared judging panel prompt into a premium responsive gradient action card with a judge-team icon and prominent setup button",
     "Promotes Dance Cup event setup into a large workflow start panel with separate Step 1 Create Event and Step 2 Add Category choices that open the correct form directly",
     "Replaces the module-driven Dance Cup landing page with one non-technical six-step event journey, category readiness summaries, one Continue action and optional shared-panel tooling",
     "Repairs the Dance Cup multi-category judging panel detail page by replacing its fragile correlated judge-progress query and rendering database errors safely instead of returning HTTP 500",

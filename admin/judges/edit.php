@@ -53,13 +53,13 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 <label class="form-label d-block mt-3">Judge photo</label>
 <input class="form-control" type="file" name="photo" accept="image/jpeg,image/png,image/webp">
 <div class="form-text">JPG, PNG or WebP, maximum 5 MB.</div>
-<?php if(!empty($judge['photo_url'])):?>
 <div class="d-grid gap-2 mt-3">
-<a class="btn btn-outline-primary" href="photo-adjust.php?id=<?=$id?>">Adjust photo</a>
+<a class="btn btn-outline-primary" href="photo-adjust.php?id=<?=$id?>">Adjust or replace photo</a>
+<?php if(!empty($judge['photo_url'])):?>
 <label class="form-check">
 <input class="form-check-input" type="checkbox" name="remove_photo"> Remove current photo</label>
-</div>
 <?php endif;?>
+</div>
 </div>
 <div class="col-md-9">
 <div class="row g-3">

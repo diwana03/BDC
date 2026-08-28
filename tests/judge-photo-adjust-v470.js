@@ -1,0 +1,10 @@
+const fs=require('fs');
+const edit=fs.readFileSync('admin/judges/edit.php','utf8');
+const adjust=fs.readFileSync('admin/judges/photo-adjust.php','utf8');
+const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+assert(edit.includes('Adjust or replace photo'),'judge editor must always expose photo adjustment');
+for(const marker of ['action" value="replace','replacement_photo','Upload and adjust','judge_photo_replaced'])assert(adjust.includes(marker),'missing judge replacement flow '+marker);
+for(const marker of ['aspect-ratio:4/5','Math.max(0,(m.iw-m.w)/2)','scaleX=640/f.width','original_photo_url'])assert(adjust.includes(marker),'missing safe responsive crop behavior '+marker);
+assert(version.version==='2.3.3-dev470'&&version.build===3176,'release must be dev470 build 3176');
+console.log('Judge photo upload and adjustment v470 checks passed.');
