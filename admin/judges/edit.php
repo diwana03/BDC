@@ -8,7 +8,8 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token.';else{
   $name=trim((string)($_POST['full_name']??''));$email=strtolower(trim((string)($_POST['email']??'')));if($name==='')$error='Full name is required.';elseif($email!==''&&!filter_var($email,FILTER_VALIDATE_EMAIL))$error='Enter a valid email or leave it blank.';
   $photo=(string)($judge['photo_url']??'');$original=(string)($judge['original_photo_url']??'');if(isset($_POST['remove_photo'])){$photo='';$original='';}
-  if($error===''&&!empty($_FILES['photo']['tmp_name'])){$f=$_FILES['photo'];$mime=(new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);$types=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];if(!isset($types[$mime])||(int)$f['size']>5*1024*1024)$error='Photo must be JPG, PNG or WebP and under 5 MB.';else{$dir=dirname(__DIR__,2).'/uploads/judges';if(!is_dir($dir)&&!mkdir($dir,0755,true))$error='Photo upload is temporarily unavailable.';else{$filename='judge-'.$id.'-'.bin2hex(random_bytes(6)).'.'.$types[$mime];if(!move_uploaded_file($f['tmp_name'],$dir.'/'.$filename))$error='Photo upload failed.';else$photo=$original=url('uploads/judges/'.$filename);}}}
+  if($error===''&&!empty($_FILES['photo']['tmp_name'])){$f=$_FILES['photo'];$mime=(new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);$types=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];if(!isset($types[$mime])||(int)$f['size']>5*1024*1024)$error='Photo must be JPG, PNG or WebP and under 5 MB.';else{$dir=dirname(__DIR__,2).'/uploads/judges';if(!is_dir($dir)&&!mkdir($dir,0755,true))$error='Photo upload is temporarily unavailable.';else{$filename='judge-original-'.$id.'-'.bin2hex(random_bytes(6)).'.'.$types[$mime];if(!move_uploaded_file($f['tmp_name'],$dir.'/'.$filename))$error='Photo upload failed.';else$photo=$original=url('uploads/judges/'.$filename);}}}
+  $cropped=(string)($_POST['cropped_photo_data']??'');if($error===''&&$cropped!==''){if(!preg_match('~^data:image/jpeg;base64,([A-Za-z0-9+/=]+)$~',$cropped,$match))$error='The adjusted photo is invalid. Please reposition it and try again.';else{$bytes=base64_decode($match[1],true);if($bytes===false||strlen($bytes)>3*1024*1024)$error='The adjusted photo is too large.';else{$dir=dirname(__DIR__,2).'/uploads/judges';if(!is_dir($dir)&&!mkdir($dir,0755,true)&&!is_dir($dir))$error='Photo upload is temporarily unavailable.';else{$filename='judge-framed-'.$id.'-'.bin2hex(random_bytes(6)).'.jpg';if(file_put_contents($dir.'/'.$filename,$bytes)===false)$error='Adjusted photo could not be saved.';else{$photo=url('uploads/judges/'.$filename);if($original==='')$original=(string)($judge['original_photo_url']?:$judge['photo_url']);}}}}}
   if($error===''){$list=static fn(string $key,array $allowed):?string=>($v=implode(',',array_values(array_intersect($allowed,array_map('strval',(array)($_POST[$key]??[]))))))!==''?$v:null;$preferred=in_array(($_POST['preferred_contact']??''),['email','whatsapp','either','none'],true)?$_POST['preferred_contact']:'none';$role=in_array(($_POST['judge_role']??''),['regular','chief','both'],true)?$_POST['judge_role']:'regular';$status=in_array(($_POST['status']??''),['active','inactive'],true)?$_POST['status']:'active';$pdo->prepare('UPDATE bdc_judges SET full_name=:name,display_name=:display,country=:country,country_code=:code,city=:city,photo_url=:photo,original_photo_url=:original,instagram=:instagram,email=:email,phone=:phone,whatsapp=:whatsapp,preferred_contact=:preferred,dance_styles=:styles,judge_role=:role,qualified_divisions=:divisions,qualified_rounds=:rounds,languages=:languages,biography=:bio,experience=:experience,certification=:certification,status=:status,notes=:notes WHERE id=:id')->execute(['name'=>$name,'display'=>trim((string)($_POST['display_name']??''))?:null,'country'=>trim((string)($_POST['country']??''))?:null,'code'=>CountryFlagService::code($_POST['country']??null),'city'=>trim((string)($_POST['city']??''))?:null,'photo'=>$photo?:null,'original'=>$original?:null,'instagram'=>ltrim(trim((string)($_POST['instagram']??'')),'@')?:null,'email'=>$email?:null,'phone'=>trim((string)($_POST['phone']??''))?:null,'whatsapp'=>trim((string)($_POST['whatsapp']??''))?:null,'preferred'=>$preferred,'styles'=>$list('dance_styles',['bachata','salsa']),'role'=>$role,'divisions'=>$list('qualified_divisions',['novice','intermediate','advanced','bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open','semi_pro','pro','all_star']),'rounds'=>$list('qualified_rounds',['heats','semifinal','final']),'languages'=>trim((string)($_POST['languages']??''))?:null,'bio'=>trim((string)($_POST['biography']??''))?:null,'experience'=>trim((string)($_POST['experience']??''))?:null,'certification'=>trim((string)($_POST['certification']??''))?:null,'status'=>$status,'notes'=>trim((string)($_POST['notes']??''))?:null,'id'=>$id]);Auth::audit((int)(Auth::user()['id']??0),'judge_updated',[],'judge',$id);$success='Judge profile updated.';$s->execute(['id'=>$id]);$judge=$s->fetch();}
  }
 }
@@ -21,6 +22,7 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Edit Judge | BDC</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>.judge-crop{width:min(220px,100%);aspect-ratio:4/5;overflow:hidden;background:#e5e7eb;border:1px solid #d6dce5;border-radius:16px;position:relative;touch-action:none;user-select:none}.judge-crop img{position:absolute;max-width:none;pointer-events:none;-webkit-user-drag:none}.judge-crop.is-dragging{cursor:grabbing}.judge-photo-tools{padding:12px;border:1px solid #dfe5ec;border-radius:12px;background:#f8fafc}</style>
 </head>
 <body class="bg-light">
 <main class="container py-4" style="max-width:950px">
@@ -47,19 +49,18 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 <div class="card-body p-4">
 <input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>">
 <input type="hidden" name="id" value="<?=$id?>">
+<input type="hidden" name="cropped_photo_data" id="judgeCropData">
 <div class="row g-4">
-<div class="col-md-3">
-<img src="<?=e($photoSrc)?>" alt="Judge photo" style="width:150px;height:188px;object-fit:cover;border-radius:14px;border:1px solid #dee2e6">
+<div class="col-md-3" id="judge-photo">
+<div class="judge-crop mx-auto" id="judgeCropFrame"><img id="judgeCropImage" src="<?=e($photoSrc)?>" alt="Judge photo" crossorigin="anonymous" draggable="false"></div>
 <label class="form-label d-block mt-3">Judge photo</label>
-<input class="form-control" type="file" name="photo" accept="image/jpeg,image/png,image/webp">
+<input class="form-control" id="judgePhotoInput" type="file" name="photo" accept="image/jpeg,image/png,image/webp">
 <div class="form-text">JPG, PNG or WebP, maximum 5 MB.</div>
-<div class="d-grid gap-2 mt-3">
-<a class="btn btn-outline-primary" href="photo-adjust.php?id=<?=$id?>">Adjust or replace photo</a>
+<div class="judge-photo-tools mt-3"><label class="form-label mb-1" for="judgePhotoZoom">Zoom and position</label><input class="form-range" id="judgePhotoZoom" type="range" min="1" max="3" step=".01" value="1"><div class="form-text mt-0">Drag the photo inside the frame. It will be saved with the profile.</div></div>
 <?php if(!empty($judge['photo_url'])):?>
-<label class="form-check">
+<label class="form-check mt-3">
 <input class="form-check-input" type="checkbox" name="remove_photo"> Remove current photo</label>
 <?php endif;?>
-</div>
 </div>
 <div class="col-md-9">
 <div class="row g-3">
@@ -200,5 +201,8 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 </div>
 </form>
 </main>
+<script>
+(()=>{const form=document.querySelector('form[enctype="multipart/form-data"]'),frame=document.getElementById('judgeCropFrame'),img=document.getElementById('judgeCropImage'),file=document.getElementById('judgePhotoInput'),zoom=document.getElementById('judgePhotoZoom'),output=document.getElementById('judgeCropData');if(!form||!frame||!img)return;let x=0,y=0,drag=false,pointerId=null,sx=0,sy=0,dirty=false,raf=0;const hasCurrent=<?=!empty($judge['photo_url'])?'true':'false'?>;function metrics(){const w=frame.clientWidth,h=frame.clientHeight,base=Math.max(w/img.naturalWidth,h/img.naturalHeight),scale=base*Number(zoom.value);return{w,h,iw:img.naturalWidth*scale,ih:img.naturalHeight*scale}}function draw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(!img.naturalWidth)return;const m=metrics(),maxX=Math.max(0,(m.iw-m.w)/2),maxY=Math.max(0,(m.ih-m.h)/2);x=Math.max(-maxX,Math.min(maxX,x));y=Math.max(-maxY,Math.min(maxY,y));img.style.width=m.iw+'px';img.style.height=m.ih+'px';img.style.left=(m.w/2-m.iw/2+x)+'px';img.style.top=(m.h/2-m.ih/2+y)+'px'})}function stop(){drag=false;pointerId=null;frame.classList.remove('is-dragging')}img.onload=draw;window.addEventListener('resize',draw);zoom.addEventListener('input',()=>{dirty=true;draw()});file.addEventListener('change',()=>{const selected=file.files&&file.files[0];if(!selected)return;x=0;y=0;zoom.value='1';dirty=true;img.src=URL.createObjectURL(selected)});frame.addEventListener('pointerdown',event=>{if(event.button!==undefined&&event.button!==0)return;drag=true;dirty=true;pointerId=event.pointerId;sx=event.clientX-x;sy=event.clientY-y;frame.classList.add('is-dragging');frame.setPointerCapture?.(pointerId);event.preventDefault()});frame.addEventListener('pointermove',event=>{if(!drag||event.pointerId!==pointerId)return;x=event.clientX-sx;y=event.clientY-sy;draw();event.preventDefault()});['pointerup','pointercancel','lostpointercapture'].forEach(type=>frame.addEventListener(type,stop));form.addEventListener('submit',()=>{if((!dirty&&!file.files.length)||(!hasCurrent&&!file.files.length))return;const canvas=document.createElement('canvas');canvas.width=640;canvas.height=800;const context=canvas.getContext('2d'),imageRect=img.getBoundingClientRect(),frameRect=frame.getBoundingClientRect(),scaleX=640/frameRect.width,scaleY=800/frameRect.height;context.drawImage(img,(imageRect.left-frameRect.left)*scaleX,(imageRect.top-frameRect.top)*scaleY,imageRect.width*scaleX,imageRect.height*scaleY);output.value=canvas.toDataURL('image/jpeg',.9)});draw()})();
+</script>
 </body>
 </html>

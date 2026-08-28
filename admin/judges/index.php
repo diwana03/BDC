@@ -207,7 +207,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <div class="d-flex flex-wrap gap-1">
 <a class="btn btn-sm btn-primary" href="edit.php?id=<?=(int)$j['id']?>">Edit Profile &amp; Photo</a>
 <?php if(!empty($j['photo_url'])): ?>
-<a class="btn btn-sm btn-outline-secondary" href="photo-adjust.php?id=<?=(int)$j['id']?>">Adjust Photo</a>
+<a class="btn btn-sm btn-outline-secondary" href="edit.php?id=<?=(int)$j['id']?>#judge-photo">Edit &amp; Adjust Photo</a>
 <?php endif; ?>
 </div>
 <?php else: ?>

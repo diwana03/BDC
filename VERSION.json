@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev470",
-  "build": 3176,
+  "version": "2.3.3-dev471",
+  "build": 3177,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps judge photo upload, live preview, bounded drag, zoom, removal and profile saving on the single Edit Judge Profile page with no separate adjustment-page jump",
     "Makes judge photo adjustment available before any photo exists, adds an upload-or-replace step, then provides bounded drag and zoom portrait cropping on desktop and mobile while preserving the original image",
     "Upgrades the optional shared judging panel prompt into a premium responsive gradient action card with a judge-team icon and prominent setup button",
     "Promotes Dance Cup event setup into a large workflow start panel with separate Step 1 Create Event and Step 2 Add Category choices that open the correct form directly",
