@@ -39,6 +39,5 @@ assert(api.includes('DanceCupCategoryEditService::ensureColumns'));
 assert(api.includes('edit_unlocked_at'));
 assert(panel.includes('c.edit_unlocked_at'));
 assert(!service.toLowerCase().includes('jack and jill'));
-assert.strictEqual(version.version, '2.3.3-dev460');
-assert.strictEqual(version.build, 3166);
+assert(version.build >= 3166, 'dev460 protected category editing must remain in later builds');
 console.log('Dance Cup protected category editing dev460 checks passed.');
