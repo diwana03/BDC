@@ -124,12 +124,32 @@ final class GoogleDriveOAuthBackupService
     {
         if(!is_file($localPath))throw new RuntimeException('Backup file was not found for Google Drive upload.');
         $this->folder();
-        $token=$this->accessToken();$boundary='bdc_backup_'.bin2hex(random_bytes(12));
+        $token=$this->accessToken();
         $metadata=json_encode(['name'=>$remoteName,'parents'=>[$this->folderId],'appProperties'=>['source'=>'bdc_backup']],JSON_UNESCAPED_SLASHES);
-        $body="--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$metadata}\r\n";
-        $body.="--{$boundary}\r\nContent-Type: application/octet-stream\r\n\r\n".(string)file_get_contents($localPath)."\r\n--{$boundary}--\r\n";
-        $uploaded=$this->api('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,createdTime,webViewLink,parents,trashed',$body,$token,['Content-Type: multipart/related; boundary='.$boundary]);
+        if($metadata===false)throw new RuntimeException('Could not prepare Google Drive upload metadata.');
+        $location='';
+        $ch=curl_init('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size,createdTime,webViewLink,parents,trashed');
+        curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_HTTPHEADER=>[
+            'Authorization: Bearer '.$token,'Content-Type: application/json; charset=UTF-8',
+            'X-Upload-Content-Type: application/octet-stream','X-Upload-Content-Length: '.(string)filesize($localPath),
+        ],CURLOPT_POSTFIELDS=>$metadata,CURLOPT_HEADERFUNCTION=>static function($curl,string $header)use(&$location):int{
+            if(stripos($header,'Location:')===0)$location=trim(substr($header,9));return strlen($header);
+        },CURLOPT_CONNECTTIMEOUT=>20,CURLOPT_TIMEOUT=>120]);
+        $response=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);$error=curl_error($ch);curl_close($ch);
+        if($response===false||$status<200||$status>=300)throw new RuntimeException($this->providerError((string)$response,$status,'Google Drive could not start the backup upload',$error));
+        if($location==='')throw new RuntimeException('Google Drive did not return a resumable upload URL.');
+        $stream=fopen($localPath,'rb');if($stream===false)throw new RuntimeException('Backup file could not be opened for Google Drive upload.');
+        $ch=curl_init($location);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_UPLOAD=>true,CURLOPT_INFILE=>$stream,CURLOPT_INFILESIZE=>(int)filesize($localPath),CURLOPT_HTTPHEADER=>['Content-Type: application/octet-stream'],CURLOPT_CONNECTTIMEOUT=>20,CURLOPT_TIMEOUT=>3600]);
+        $response=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);$error=curl_error($ch);curl_close($ch);fclose($stream);
+        if($response===false||$status<200||$status>=300)throw new RuntimeException($this->providerError((string)$response,$status,'Google Drive backup upload failed',$error));
+        $uploaded=json_decode((string)$response,true);if(!is_array($uploaded))throw new RuntimeException('Google Drive returned an invalid upload response.');
         return $this->attachAndVerifyFile((string)($uploaded['id']??''));
+    }
+
+    private function providerError(string $response,int $status,string $fallback,string $curlError=''):string
+    {
+        $data=json_decode($response,true);$message=is_array($data)?(string)($data['error']['message']??$data['error_description']??''):'';
+        return $fallback.' (HTTP '.$status.'): '.($message!==''?$message:($curlError!==''?$curlError:'Unknown error'));
     }
 
     public function attachAndVerifyFile(string $fileId):array

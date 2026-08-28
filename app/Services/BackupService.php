@@ -165,10 +165,17 @@ final class BackupService
             if (!$zip->close()) throw new RuntimeException('Unable to finalize full backup.');
             if (!rename($tmp, $path)) throw new RuntimeException('Unable to move full backup into place.');
             $result = $this->metadata('full', $name, $path, $started);
+            // The database and site archives are embedded in the full package. Keeping
+            // the temporary component copies defeats retention and triples the number
+            // of files created by every scheduled full backup.
+            @unlink($this->backupRoot . '/database/' . $db['name']);
+            @unlink($this->backupRoot . '/site/' . $site['name']);
             $this->log('full_backup', 'success', $result, $userId);
             return $result;
         } catch (\Throwable $e) {
             if (is_file($tmp)) @unlink($tmp);
+            if (!empty($db['name'])) @unlink($this->backupRoot . '/database/' . $db['name']);
+            if (!empty($site['name'])) @unlink($this->backupRoot . '/site/' . $site['name']);
             $this->log('full_backup', 'failed', ['message' => $e->getMessage()], $userId);
             throw $e;
         }

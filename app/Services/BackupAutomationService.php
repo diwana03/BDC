@@ -201,6 +201,12 @@ final class BackupAutomationService
         if($scheduleId!==null && !$schedule)throw new RuntimeException('Backup schedule not found.');
         if($schedule)$settings=array_replace($settings,$schedule);
         if(!$force && !$this->due($settings))return ['skipped'=>true,'message'=>'Backup is not due yet.'];
+        $lockPath=$this->root.'/storage/backups/backup-automation.lock';
+        $lock=fopen($lockPath,'c+');
+        if($lock===false || !flock($lock,LOCK_EX|LOCK_NB)){
+            if(is_resource($lock))fclose($lock);
+            return ['skipped'=>true,'message'=>'Another backup is already running.'];
+        }
         $started=date('Y-m-d H:i:s');
         $runId=0;
         $this->pdo->prepare("INSERT INTO bdc_backup_runs(backup_type,status,started_at,triggered_by) VALUES(:type,'running',NOW(),:user_id)")
@@ -265,6 +271,9 @@ final class BackupAutomationService
             $this->pdo->prepare("UPDATE bdc_backup_runs SET status='failed',error_message=:error,completed_at=NOW() WHERE id=:id")
                 ->execute(['error'=>$e->getMessage(),'id'=>$runId]);
             throw $e;
+        }finally{
+            flock($lock,LOCK_UN);
+            fclose($lock);
         }
     }
 
@@ -340,10 +349,10 @@ final class BackupAutomationService
     public function applyRetention(int $serverKeep,int $driveKeep,array $settings):int
     {
         $serverKeep=max(1,min(100,$serverKeep));$driveKeep=max(1,min(365,$driveKeep));
-        $runs=$this->pdo->query("SELECT * FROM bdc_backup_runs WHERE status='success' ORDER BY completed_at DESC,id DESC")->fetchAll();
+        $runs=$this->pdo->query("SELECT * FROM bdc_backup_runs WHERE status='success' AND google_drive_status='uploaded' AND google_drive_file_id IS NOT NULL ORDER BY completed_at DESC,id DESC")->fetchAll();
         $deleted=0;
         foreach(array_slice($runs,$driveKeep) as $run){
-            if(!empty($run['google_drive_file_id']) && !empty($settings['google_drive_enabled'])){
+            if(!empty($run['google_drive_file_id'])){
                 try{$this->drive($settings)->delete((string)$run['google_drive_file_id']);$this->pdo->prepare("UPDATE bdc_backup_runs SET google_drive_status='disabled',google_drive_file_id=NULL,google_drive_link=NULL WHERE id=:id")->execute(['id'=>$run['id']]);}catch(\Throwable $e){}
             }
         }

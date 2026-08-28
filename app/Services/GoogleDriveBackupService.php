@@ -130,36 +130,64 @@ final class GoogleDriveBackupService
     {
         if(!is_file($localPath))throw new RuntimeException('Backup file was not found for Google Drive upload.');
         $token=$this->accessToken();
-        $boundary='bdc_backup_'.bin2hex(random_bytes(12));
         $metadata=json_encode([
             'name'=>$remoteName,
             'parents'=>[$this->folderId],
             'appProperties'=>['source'=>'bdc_backup'],
         ],JSON_UNESCAPED_SLASHES);
-        $data=(string)file_get_contents($localPath);
-        $body="--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$metadata}\r\n";
-        $body.="--{$boundary}\r\nContent-Type: application/octet-stream\r\n\r\n{$data}\r\n";
-        $body.="--{$boundary}--\r\n";
-        $url='https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,size,createdTime,webViewLink';
+        if($metadata===false)throw new RuntimeException('Could not prepare Google Drive upload metadata.');
+
+        // Start a resumable upload session. The previous multipart implementation
+        // loaded the complete backup into PHP memory, which fails for large portal
+        // archives even though the local backup itself succeeds.
+        $location='';
+        $url='https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,size,createdTime,webViewLink';
         $ch=curl_init($url);
         curl_setopt_array($ch,[
             CURLOPT_RETURNTRANSFER=>true,
             CURLOPT_POST=>true,
             CURLOPT_HTTPHEADER=>[
                 'Authorization: Bearer '.$token,
-                'Content-Type: multipart/related; boundary='.$boundary,
-                'Content-Length: '.strlen($body),
+                'Content-Type: application/json; charset=UTF-8',
+                'X-Upload-Content-Type: application/octet-stream',
+                'X-Upload-Content-Length: '.(string)filesize($localPath),
             ],
-            CURLOPT_POSTFIELDS=>$body,
+            CURLOPT_POSTFIELDS=>$metadata,
+            CURLOPT_HEADERFUNCTION=>static function($curl,string $header)use(&$location):int{
+                if(stripos($header,'Location:')===0)$location=trim(substr($header,9));
+                return strlen($header);
+            },
             CURLOPT_CONNECTTIMEOUT=>20,
-            CURLOPT_TIMEOUT=>1800,
+            CURLOPT_TIMEOUT=>120,
         ]);
         $response=curl_exec($ch);
         $status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);
         $error=curl_error($ch);
         curl_close($ch);
         if($response===false || $status<200 || $status>=300){
-            throw new RuntimeException('Google Drive upload failed (HTTP '.$status.'): '.($error?:substr((string)$response,0,500)));
+            throw new RuntimeException(self::apiError((string)$response,$status,'Google Drive could not start the backup upload').($error!==''?' — '.$error:''));
+        }
+        if($location==='')throw new RuntimeException('Google Drive did not return a resumable upload URL.');
+
+        $stream=fopen($localPath,'rb');
+        if($stream===false)throw new RuntimeException('Backup file could not be opened for Google Drive upload.');
+        $ch=curl_init($location);
+        curl_setopt_array($ch,[
+            CURLOPT_RETURNTRANSFER=>true,
+            CURLOPT_UPLOAD=>true,
+            CURLOPT_INFILE=>$stream,
+            CURLOPT_INFILESIZE=>(int)filesize($localPath),
+            CURLOPT_HTTPHEADER=>['Content-Type: application/octet-stream'],
+            CURLOPT_CONNECTTIMEOUT=>20,
+            CURLOPT_TIMEOUT=>3600,
+        ]);
+        $response=curl_exec($ch);
+        $status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);
+        $error=curl_error($ch);
+        curl_close($ch);
+        fclose($stream);
+        if($response===false || $status<200 || $status>=300){
+            throw new RuntimeException(self::apiError((string)$response,$status,'Google Drive backup upload failed').($error!==''?' — '.$error:''));
         }
         $payload=json_decode((string)$response,true);
         if(!is_array($payload) || empty($payload['id']))throw new RuntimeException('Google Drive did not return a file ID.');
