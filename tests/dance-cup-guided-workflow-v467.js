@@ -1,0 +1,11 @@
+const fs=require('fs');
+const source=fs.readFileSync('admin/dance-cup/workflow.php','utf8');
+const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+for(const label of ['Event details','Categories','Participants','Judges','Scoring','Results & publish'])assert(source.includes(label),'missing guided step '+label);
+assert(source.includes('participant_count')&&source.includes('judge_count')&&source.includes('mark_count'),'readiness counts missing');
+assert(source.includes('Choose where to continue')&&source.includes("'Continue'"),'single continuation model missing');
+assert(source.includes('This is optional.'),'shared judging panels must be presented as optional');
+assert(!source.includes('>Judging Panels</a>'),'judging panels must not compete as a primary top action');
+assert(version.version==='2.3.3-dev467'&&version.build===3173,'release must be dev467 build 3173');
+console.log('Dance Cup guided workflow v467 checks passed.');

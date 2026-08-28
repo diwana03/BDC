@@ -6,5 +6,6 @@ assert(source.includes('SELECT * FROM {$p}_judging_panel_judges WHERE panel_id=:
 assert(source.includes('COUNT(DISTINCT pc.competition_id)'),'submitted progress must be calculated separately');
 assert(!source.includes('pc.panel_id=pj.panel_id'),'fragile outer-correlated panel query remains');
 assert(source.includes('Judging panel data could not be loaded:'),'GET-time panel errors must render safely');
-assert(version.version==='2.3.3-dev466'&&version.build===3172,'release must be dev466 build 3172');
+const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+assert(releaseNumber>=466&&version.build>=3172,'release must retain dev466 panel repair');
 console.log('Dance Cup panel detail v466 checks passed.');

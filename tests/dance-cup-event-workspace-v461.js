@@ -2,13 +2,13 @@
 const fs=require('fs'),assert=require('assert');
 const workflow=fs.readFileSync('admin/dance-cup/workflow.php','utf8');
 const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
-for(const marker of ['c.event_id','event-section','event-head','category-grid','Events &amp; Categories','event-count'])assert(workflow.includes(marker),'missing event-first workspace marker '+marker);
+for(const marker of ['c.event_id','event-section','event-head','category-grid','Choose where to continue','event-count'])assert(workflow.includes(marker),'missing event-first workspace marker '+marker);
 assert(workflow.includes("$events[$eventId]['categories'][]=$category"),'categories must be grouped beneath their event');
 assert(workflow.includes('category-edit.php?id='),'each category must expose the protected editor');
 assert(workflow.includes("$category['status']==='draft'"),'only Draft categories may expose Delete');
 assert(workflow.includes('@media(max-width:1050px)')&&workflow.includes('@media(max-width:700px)'),'workspace must adapt for PC, tablet and mobile');
 assert(workflow.includes("$workflow!=='projection'")&&workflow.includes("c.scoring_mode=:mode"),'workflow isolation must remain');
 assert(workflow.includes("$test?'&data_mode=test':''"),'Test isolation must remain');
-assert.strictEqual(version.version,'2.3.3-dev461');
-assert.strictEqual(version.build,3167);
+const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+assert(releaseNumber>=461&&version.build>=3167,'release must retain event-first workspace');
 console.log('dev461 event-first Dance Cup workspace checks passed');
