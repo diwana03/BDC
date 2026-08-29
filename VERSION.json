@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev480",
-  "build": 3186,
+  "version": "2.3.3-dev481",
+  "build": 3187,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds safe Dance Cup category and Jack and Jill event duplication across Test and Live, copying configuration, competitors and judge assignments into fresh Drafts with new judge tokens while excluding scores, results, approvals, publications, checkpoints and live state",
     "Prevents the global portal Light Dark System theme switch from overlaying the Dance Cup projector Official Live Display badge while preserving projector-specific premium backgrounds",
     "Shows linked contestant and judge photos, country flags and country labels throughout Dance Cup contestant, judge, progress, scoreboard and podium projection screens, and places the event name prominently on the holding screen",
     "Keeps shared judging-panel add, reorder, Chief Judge and remove controls directly on each Dance Cup Automatic roster form while synchronizing every category in that panel",
