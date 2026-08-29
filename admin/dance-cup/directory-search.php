@@ -13,7 +13,8 @@ header('Cache-Control: no-store');
 
 $term = trim((string) ($_GET['q'] ?? ''));
 $type = (string) ($_GET['type'] ?? 'competitor');
-if (mb_strlen($term) < 1) {
+$termLength = function_exists('mb_strlen') ? mb_strlen($term, 'UTF-8') : strlen($term);
+if ($termLength < 1) {
     echo json_encode(['ok' => true, 'items' => []]);
     exit;
 }
@@ -40,6 +41,7 @@ try {
     }
     echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $error) {
+    error_log('Dance Cup directory search failed: '.$error->getMessage());
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Directory search is temporarily unavailable.']);
+    echo json_encode(['ok' => false, 'error' => 'Directory search is temporarily unavailable.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
