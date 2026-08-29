@@ -54,6 +54,23 @@ final class DanceCupJudgingPanelService
         self::ensureTables($pdo,$test);$p=self::prefix($test);self::assertPanelNotStarted($pdo,$p,$panelId);$pdo->beginTransaction();try{$pdo->prepare("UPDATE {$p}_judging_panel_judges SET is_chief=(id=:judge) WHERE panel_id=:panel")->execute(['judge'=>$panelJudgeId,'panel'=>$panelId]);self::sync($pdo,$panelId,$test);$pdo->commit();}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
+    public static function moveJudge(PDO $pdo,int $panelId,int $panelJudgeId,string $direction,bool $test):void
+    {
+        if(!in_array($direction,['up','down'],true))throw new RuntimeException('Invalid judge direction.');
+        self::ensureTables($pdo,$test);$p=self::prefix($test);self::assertPanelNotStarted($pdo,$p,$panelId);
+        $q=$pdo->prepare("SELECT id FROM {$p}_judging_panel_judges WHERE panel_id=:panel ORDER BY judge_order,id");$q->execute(['panel'=>$panelId]);$ids=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));
+        $index=array_search($panelJudgeId,$ids,true);$target=$direction==='up'?$index-1:$index+1;
+        if($index===false)throw new RuntimeException('Judge was not found in this judging panel.');
+        if(!isset($ids[$target]))return;
+        [$ids[$index],$ids[$target]]=[$ids[$target],$ids[$index]];
+        $pdo->beginTransaction();try{
+            $pdo->prepare("UPDATE {$p}_judging_panel_judges SET judge_order=judge_order+10000 WHERE panel_id=:panel")->execute(['panel'=>$panelId]);
+            $update=$pdo->prepare("UPDATE {$p}_judging_panel_judges SET judge_order=:position WHERE id=:judge AND panel_id=:panel");
+            foreach($ids as $position=>$judge)$update->execute(['position'=>$position+1,'judge'=>$judge,'panel'=>$panelId]);
+            self::sync($pdo,$panelId,$test);$pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
+
     public static function removeJudge(PDO $pdo,int $panelId,int $panelJudgeId,bool $test):void
     {
         self::ensureTables($pdo,$test);$p=self::prefix($test);self::assertPanelNotStarted($pdo,$p,$panelId);$pdo->beginTransaction();try{$pdo->prepare("DELETE FROM {$p}_judging_panel_judges WHERE id=:judge AND panel_id=:panel")->execute(['judge'=>$panelJudgeId,'panel'=>$panelId]);$chief=$pdo->prepare("SELECT COUNT(*) FROM {$p}_judging_panel_judges WHERE panel_id=:panel AND is_chief=1");$chief->execute(['panel'=>$panelId]);if((int)$chief->fetchColumn()===0)$pdo->prepare("UPDATE {$p}_judging_panel_judges SET is_chief=1 WHERE panel_id=:panel ORDER BY judge_order,id LIMIT 1")->execute(['panel'=>$panelId]);self::sync($pdo,$panelId,$test);$pdo->commit();}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}

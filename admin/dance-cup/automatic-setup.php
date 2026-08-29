@@ -40,7 +40,7 @@ try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
         $action=(string)($_POST['action']??'');
-        $managedPanel=dcCompetitionPanel($pdo,$prefix,$id);if($managedPanel&&in_array($action,['add_judge','remove_judge','move_judge','set_chief_judge'],true))throw new RuntimeException('This category uses the '.$managedPanel['panel_name'].' judging panel. Manage its judges once from Judging Panels.');
+        $managedPanel=dcCompetitionPanel($pdo,$prefix,$id);
         $statusQuery=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");$statusQuery->execute(['competition'=>$id]);$currentStatus=(string)$statusQuery->fetchColumn();
         if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection','send_email','open_whatsapp'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
@@ -72,6 +72,8 @@ try{
                 $name=$directoryName;
             }
             if($name==='')throw new RuntimeException('Judge name is required.');
+            if($managedPanel){DanceCupJudgingPanelService::addJudge($pdo,(int)$managedPanel['id'],$directoryJudgeId?:null,$name,!empty($_POST['is_chief']),$test);$notice='Judge added from this form and synced to every '.$managedPanel['panel_name'].' panel category.';}
+            else{
             $duplicate=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_judges WHERE competition_id=:competition AND LOWER(TRIM(judge_name))=LOWER(:name)");
             $duplicate->execute(['competition'=>$id,'name'=>$name]);if((int)$duplicate->fetchColumn()>0)throw new RuntimeException('This judge is already assigned.');
             $q=$pdo->prepare("INSERT INTO {$prefix}_judges(competition_id,judge_id,judge_name,judge_order,is_chief) VALUES(:competition,:directory,:name,(SELECT COALESCE(MAX(j.judge_order),0)+1 FROM {$prefix}_judges j WHERE j.competition_id=:same),:chief)");
@@ -79,8 +81,15 @@ try{
             $addedJudgeId=(int)$pdo->lastInsertId();
             if(!empty($_POST['is_chief']))DanceCupRosterService::makeAddedJudgeChief($pdo,$prefix,$id,$addedJudgeId);
             $notice='Judge added to Automatic Scoring.';
+            }
         }elseif(in_array($action,['remove_competitor','move_competitor','remove_judge','move_judge','set_chief_judge'],true)){
-            $notice=DanceCupRosterService::apply($pdo,$id,$action,$_POST,$test);
+            if($managedPanel&&in_array($action,['remove_judge','move_judge','set_chief_judge'],true)){
+                $panelJudge=dcPanelJudgeForAssignment($pdo,$prefix,$id,(int)($_POST['judge_assignment_id']??0));if(!$panelJudge)throw new RuntimeException('Judge was not found in the shared panel.');
+                if($action==='move_judge')DanceCupJudgingPanelService::moveJudge($pdo,(int)$managedPanel['id'],(int)$panelJudge['id'],(string)($_POST['direction']??''),$test);
+                elseif($action==='set_chief_judge')DanceCupJudgingPanelService::setChief($pdo,(int)$managedPanel['id'],(int)$panelJudge['id'],$test);
+                else DanceCupJudgingPanelService::removeJudge($pdo,(int)$managedPanel['id'],(int)$panelJudge['id'],$test);
+                $notice='Judge panel updated from this form and synced to every '.$managedPanel['panel_name'].' category.';
+            }else $notice=DanceCupRosterService::apply($pdo,$id,$action,$_POST,$test);
         }elseif(in_array($action,['send_email','open_whatsapp'],true)){
             $sessionId=(int)($_POST['session_id']??0);
             $contact=$pdo->prepare("SELECT s.access_token,j.judge_name,d.email,d.phone,d.whatsapp,c.category_name,e.name event_name FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id JOIN {$tables['competitions']} c ON c.id=s.competition_id JOIN {$tables['events']} e ON e.id=c.event_id WHERE s.id=:session AND s.competition_id=:competition LIMIT 1");
