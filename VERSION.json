@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev488",
-  "build": 3194,
+  "version": "2.3.3-dev489",
+  "build": 3195,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds the canonical country dropdown and linked international calling-code selector to both New Competitor and Update Existing Profile modes in the public BDC Competitor Portal while preserving registration approval and profile workflow",
     "Replaces free-text competitor country and phone fields with a canonical country dropdown and linked international calling-code selector, normalizes existing country capitalization, and preserves already international phone numbers",
     "Simplifies Dance Cup Participant Management into one deduplicated participation workspace with participant, category, profile and photo information; removes approval, submission, rejection, published-result and winner clutter; excludes rejected requests; and adds direct Edit Profile and Adjust Photo actions across desktop and mobile",
     "Replaces the cramped judging-panel progress ring with an explicit completed-category count, percentage and horizontal progress bar that remain readable on desktop and mobile across Test and Live",
