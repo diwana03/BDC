@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev485",
-  "build": 3191,
+  "version": "2.3.3-dev486",
+  "build": 3192,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the cramped judging-panel progress ring with an explicit completed-category count, percentage and horizontal progress bar that remain readable on desktop and mobile across Test and Live",
     "Replaces the flat Dance Cup judge dashboard with a championship-grade BDC judge console using an official branded masthead, connected category journey, champagne progress language and secure standby screen across Test and Live without changing scoring behavior",
     "Upgrades the shared Test and Live Dance Cup judge scoring view into a premium competition console with refined event and judge identity, elevated panel navigation, clear active-category and progress states, and a polished empty-roster experience without changing scoring behavior",
     "Restores Dance Cup contestant and judge directory suggestions on PHP hosts without mbstring by using a safe UTF-8 length fallback and retaining clean JSON error responses across Test and Live",

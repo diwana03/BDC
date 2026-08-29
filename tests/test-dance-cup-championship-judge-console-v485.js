@@ -4,7 +4,7 @@ const assert = require('assert');
 const judge = fs.readFileSync('admin/dance-cup/judge-scoring.php', 'utf8');
 const css = fs.readFileSync('public/css/scoring-premium.css', 'utf8');
 
-for (const marker of ['dc-judge-brand', 'bdc-logo-header.png', 'OFFICIAL JUDGING WORKSPACE', 'dc-panel-total-ring', 'dc-category-copy', 'dc-waiting-visual', 'Secure judge session active']) {
+for (const marker of ['dc-judge-brand', 'bdc-logo-header.png', 'OFFICIAL JUDGING WORKSPACE', 'dc-panel-total-copy', 'dc-category-copy', 'dc-waiting-visual', 'Secure judge session active']) {
   assert(judge.includes(marker), `missing championship judge console marker: ${marker}`);
 }
 for (const marker of ['--dc-champagne', '.dc-judge-brand', '.dc-panel-category-grid::before', '.dc-waiting-ring', '.dc-refresh-button']) {

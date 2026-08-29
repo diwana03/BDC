@@ -4,7 +4,7 @@ const assert = require('assert');
 const judge = fs.readFileSync('admin/dance-cup/judge-scoring.php', 'utf8');
 const css = fs.readFileSync('public/css/scoring-premium.css', 'utf8');
 
-assert(judge.includes('scoring-premium.css?v=485'), 'judge console must load the current championship visual layer');
+assert(judge.includes('scoring-premium.css?v=486'), 'judge console must load the current championship visual layer');
 for (const marker of ['dc-premium-judge', 'dc-judge-identity-card', 'dc-scoring-progress-card', 'dc-empty-roster']) {
   assert(judge.includes(marker), `missing premium judge markup: ${marker}`);
   assert(css.includes(marker), `missing premium judge style: ${marker}`);
