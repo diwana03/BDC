@@ -1,0 +1,5 @@
+const fs=require('fs'),assert=require('assert');
+const migration=fs.readFileSync('database/migrations/20260829_0200_quarantine_test_polluted_special_categories.php','utf8');
+for(const marker of ["source_kind='legacy_profile'",'bdc_special_category_legacy_quarantine','bdc_special_category_recovery','applied_at IS NOT NULL',"status='published'",'approved_by IS NOT NULL','bdc_scoring_publication_points'])assert(migration.includes(marker),'missing protected cleanup '+marker);
+for(const file of ['app/Services/TestCompetitorGeneratorService.php','admin/scoring-tests/dashboard.php','admin/scoring-tests/index.php']){const code=fs.readFileSync(file,'utf8');assert(!/(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+bdc_competitor_special_categories/i.test(code),file+' mutates permanent categories');assert(!/(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+bdc_competitor_discipline_profiles/i.test(code),file+' mutates permanent profiles');}
+console.log('Test-to-permanent Special Category isolation v474 checks passed.');
