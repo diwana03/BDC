@@ -277,7 +277,7 @@ $currentListReturn = '?' . http_build_query($_GET);
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
         </div>
         <div class="d-flex flex-wrap gap-2 bdc-mobile-actions">
-            <?php if (Auth::isSuperAdmin()): ?><a class="btn btn-outline-success" href="<?= e(queryUrl(['export' => 'csv', 'page' => null])) ?>">Export Competitors CSV</a><?php endif; ?>
+            <?php if (Auth::isSuperAdmin()): ?><a class="btn btn-outline-success" href="<?= e(queryUrl(['export' => 'csv', 'page' => null])) ?>">Export Competitors CSV</a><a class="btn btn-outline-danger" href="special-category-reconciliation.php">Evidence Review</a><?php endif; ?>
             <?php if (Auth::can('competitors.edit')): ?><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a><?php endif; ?>
         </div>
     </div>
