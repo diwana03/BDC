@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev501",
-  "build": 3207,
+  "version": "2.3.3-dev502",
+  "build": 3208,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Simplifies every Dance Cup content projection to one non-duplicated category heading and gold divider beneath the event name, removes redundant round and screen labels such as Final Contestant Call, and restores the Holding Screen to true centre without the Next contestant preparing message",
     "Places the complete Dance Cup category and round directly above every contestant, judge, scoring, scoreboard and podium presentation with a prominent title, screen label, gold divider and consistent content gap while keeping the Holding Screen uncluttered",
     "Restores real linked contestant photos on the Dance Cup Live Scoreboard and podium even when the results query uses a compatibility fallback, and enlarges and lowers every projection category screen for stronger venue visibility",
     "Allows all four Dance Cup premium projector backgrounds to change while a contestant is live by accepting the singular contestant screen state without switching or clearing the active contestant",
