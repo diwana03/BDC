@@ -6,6 +6,9 @@
   const logoUrl = String(window.BDC_OFFICIAL_LOGO_URL || '');
   if (!logoUrl) return;
   if (/\/live-display(?:\/index\.php)?\/?$/.test(location.pathname)) return;
+  // Venue projectors own their complete full-screen geometry and branding.
+  // Wrapping their logo with portal chrome can shift the stage and clip the footer.
+  if (document.body?.classList.contains('dc-projector-presentation')) return;
 
   const style = document.createElement('style');
   style.id = 'bdc-global-branding-style';
