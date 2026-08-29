@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=420"></script></head>',$html));
+ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=505"></script></head>',$html));
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\LiveDisplaySessionService;
 Auth::requireAdmin();$test=!empty($projectionTest);$pdo=Database::connection();LiveDisplaySessionService::ensure($pdo);$eventTable=$test?'bdc_test_events':'bdc_events';$roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
 $events=$pdo->query("SELECT DISTINCT e.id,e.name,e.event_date FROM {$eventTable} e JOIN {$roundTable} r ON r.event_id=e.id ORDER BY e.event_date DESC,e.name")->fetchAll();$rounds=$pdo->query("SELECT r.id,r.event_id,r.division,r.round_type,r.status FROM {$roundTable} r ORDER BY r.event_id,r.division,FIELD(r.round_type,'heats','semifinal','final'),r.id")->fetchAll();$saved=$pdo->prepare("SELECT s.id,s.group_name,COUNT(se.event_id) event_count FROM bdc_live_display_sessions s JOIN bdc_live_display_session_events se ON se.session_id=s.id WHERE s.data_mode=:m AND s.is_enabled=1 AND s.group_name IS NOT NULL GROUP BY s.id ORDER BY s.updated_at DESC");$saved->execute(['m'=>$test?'test':'real']);$saved=$saved->fetchAll();

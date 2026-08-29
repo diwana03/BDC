@@ -29,7 +29,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <title>Judge Directory | BDC</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="<?=e(url('public/css/scoring-premium.css?v=428'))?>">
-<script defer src="<?=e(url('public/assets/js/bdc-theme.js?v=420'))?>"></script>
+<script defer src="<?=e(url('public/assets/js/bdc-theme.js?v=505'))?>"></script>
 <script defer src="<?=e(url('public/assets/js/admin-mobile-v428.js?v=428'))?>"></script>
 </head>
 <body class="bg-light bdc-mobile-admin">

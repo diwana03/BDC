@@ -23,8 +23,8 @@ const checks = {
   'premium navbar docking removes empty fallback toolbar':
     branding.split("const fallbackBar = control.closest('.bdc-theme-fallback-bar')").length - 1 === 2
       && branding.split('fallbackBar?.remove()').length - 1 === 2,
-  'theme stylesheet cache is current': controller.includes('/css/bdc-theme.css?v=420'),
-  'global branding cache is current': bootstrap.includes('bdc-global-branding.js?v=420'),
+  'theme stylesheet cache is current': controller.includes('/css/bdc-theme.css?v=505'),
+  'global branding cache is current': bootstrap.includes('bdc-global-branding.js?v=505'),
 };
 
 const themeEntryPoints = [
@@ -48,10 +48,10 @@ const themeEntryPoints = [
 ];
 
 for (const entryPoint of themeEntryPoints) {
-  checks[`current cache on ${entryPoint}`] = read(entryPoint).includes('bdc-theme.js?v=420');
+  checks[`current cache on ${entryPoint}`] = read(entryPoint).includes('bdc-theme.js?v=505');
 }
-checks['current direct dashboard stylesheet cache'] = read('app/Views/admin/dashboard.php').includes('bdc-theme.css?v=420');
-checks['current shared scoring stylesheet cache'] = read('public/css/scoring-premium.css').includes('bdc-theme.css?v=420');
+checks['current direct dashboard stylesheet cache'] = read('app/Views/admin/dashboard.php').includes('bdc-theme.css?v=505');
+checks['current shared scoring stylesheet cache'] = read('public/css/scoring-premium.css').includes('bdc-theme.css?v=505');
 
 const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([label]) => label);
 if (failed.length) {
