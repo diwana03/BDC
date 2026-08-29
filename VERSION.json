@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev478",
-  "build": 3184,
+  "version": "2.3.3-dev479",
+  "build": 3185,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows linked contestant and judge photos, country flags and country labels throughout Dance Cup contestant, judge, progress, scoreboard and podium projection screens, and places the event name prominently on the holding screen",
     "Keeps shared judging-panel add, reorder, Chief Judge and remove controls directly on each Dance Cup Automatic roster form while synchronizing every category in that panel",
     "Turns the shared judging-panel notice on each Dance Cup Automatic category into a direct panel-specific action that opens the exact assigned Test or Live panel for judge, order, Chief Judge and link management",
     "Adds a Super Admin preview-first Special Category evidence review that protects manual, official data-entry, recovery and approved-result assignments, holds unknown sources for review, creates a safety backup and quarantines only explicitly selected unsupported legacy Test contamination",
