@@ -20,12 +20,12 @@ $q=$pdo->prepare("SELECT e.id,e.bib_number contestant_number,e.display_name,c.co
 $q->execute(['competition'=>$competition]);$entries=$q->fetchAll();
 $q=$pdo->prepare("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,d.country,d.country_code,d.photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN bdc_judges d ON d.id=j.judge_id LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id");
 $q->execute(['competition'=>$competition]);$judges=$q->fetchAll();
-$q=$pdo->prepare("SELECT r.placement,r.total_score,e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number");
+$q=$pdo->prepare("SELECT r.placement,r.total_score,1 has_score,e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number");
 $q->execute(['competition'=>$competition]);$results=$q->fetchAll();
 if(!$results){
-    $q=$pdo->prepare("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url,COALESCE(SUM(m.points),0) total_score FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id,c.country,c.photo_url ORDER BY total_score DESC,e.bib_number");
+    $q=$pdo->prepare("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url,COALESCE(SUM(m.points),0) total_score,COUNT(m.id) mark_count FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id,c.country,c.photo_url ORDER BY (COUNT(m.id)>0) DESC,total_score DESC,e.bib_number");
     $q->execute(['competition'=>$competition]);$results=$q->fetchAll();
-    $place=0;$lastTotal=null;foreach($results as $i=>&$row){$total=(float)$row['total_score'];if($lastTotal===null||$total<$lastTotal){$place=$i+1;}$row['placement']=$place;$lastTotal=$total;}unset($row);
+    $place=0;$rankedCount=0;$lastTotal=null;foreach($results as &$row){$row['has_score']=(int)$row['mark_count']>0?1:0;if(!$row['has_score']){$row['placement']=null;continue;}$rankedCount++;$total=(float)$row['total_score'];if($lastTotal===null||$total<$lastTotal)$place=$rankedCount;$row['placement']=$place;$lastTotal=$total;}unset($row);
 }
 foreach($entries as &$entry)$entry['flag']=CountryFlagService::emoji($entry['country']??null);unset($entry);
 foreach($judges as &$judge)$judge['flag']=CountryFlagService::emoji($judge['country_code']?:($judge['country']??null));unset($judge);
