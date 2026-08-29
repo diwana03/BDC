@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev499",
-  "build": 3205,
+  "version": "2.3.3-dev500",
+  "build": 3206,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Restores real linked contestant photos on the Dance Cup Live Scoreboard and podium even when the results query uses a compatibility fallback, and enlarges and lowers every projection category screen for stronger venue visibility",
     "Allows all four Dance Cup premium projector backgrounds to change while a contestant is live by accepting the singular contestant screen state without switching or clearing the active contestant",
     "Rebuilds the Dance Cup contestant call into three clear venue-scale sections for contestant number, enlarged photo and identity, and the exact trophy with active event name, with responsive two-section fallback only on narrow phones",
     "Prevents browsers and shared-host caches from reusing an older Dance Cup projector document after a presentation deployment by serving the audience screen with strict no-store headers and versioning every projector-launch redirect",

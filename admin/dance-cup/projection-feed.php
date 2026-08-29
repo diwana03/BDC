@@ -27,7 +27,22 @@ if(!$results){
     if(!$results)$results=$fetch("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,NULL country,NULL photo_url,0 total_score,0 mark_count FROM {$p}_entries e WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'result-minimal');
     $place=0;$rankedCount=0;$lastTotal=null;foreach($results as &$row){$row['has_score']=(int)$row['mark_count']>0?1:0;if(!$row['has_score']){$row['placement']=null;continue;}$rankedCount++;$total=(float)$row['total_score'];if($lastTotal===null||$total<$lastTotal)$place=$rankedCount;$row['placement']=$place;$lastTotal=$total;}unset($row);
 }
-foreach($entries as &$entry)$entry['flag']=CountryFlagService::emoji($entry['country']??null);unset($entry);
+// Scoreboard and podium identities must use the same linked roster profile as
+// All Contestants. This also survives a result-query fallback on older hosts.
+$entryIdentity=[];
+foreach($entries as &$entry){
+    $entry['flag']=CountryFlagService::emoji($entry['country']??null);
+    $entryIdentity[(int)$entry['id']]=['photo_url'=>$entry['photo_url']??null,'country'=>$entry['country']??null];
+}
+unset($entry);
+foreach($results as &$result){
+    $identity=$entryIdentity[(int)($result['entry_id']??0)]??null;
+    if($identity){
+        if(empty($result['photo_url']))$result['photo_url']=$identity['photo_url'];
+        if(empty($result['country']))$result['country']=$identity['country'];
+    }
+}
+unset($result);
 foreach($judges as &$judge)$judge['flag']=CountryFlagService::emoji($judge['country_code']?:($judge['country']??null));unset($judge);
 foreach($results as &$result)$result['flag']=CountryFlagService::emoji($result['country']??null);unset($result);
 $active=null;foreach($entries as $entry)if((int)$entry['id']===(int)$state['active_entry_id']){$active=$entry;break;}
