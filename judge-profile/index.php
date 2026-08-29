@@ -1,13 +1,14 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/bootstrap.php';
-use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\JudgeProfileUpdateLinkService;use App\Services\CountryFlagService;
-$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);JudgeProfileUpdateLinkService::ensure($pdo);$error='';$success='';
-$token=trim((string)($_GET['token']??$_POST['profile_token']??''));$judge=$token!==''?JudgeProfileUpdateLinkService::resolve($pdo,$token):null;$updating=$judge!==null;
-if($token!==''&&!$judge){http_response_code(410);$error='This judge profile update link is invalid or has expired. Ask the organiser for a new 6-hour link.';}
+use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\JudgeProfileUpdateLinkService;use App\Services\JudgeRegistrationLinkService;use App\Services\CountryFlagService;
+$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);JudgeProfileUpdateLinkService::ensure($pdo);JudgeRegistrationLinkService::ensure($pdo);$error='';$success='';
+$token=trim((string)($_GET['token']??$_POST['profile_token']??''));$invite=trim((string)($_GET['invite']??$_POST['invite_token']??''));$judge=$token!==''?JudgeProfileUpdateLinkService::resolve($pdo,$token):null;$updating=$judge!==null;$invited=!$updating&&JudgeRegistrationLinkService::valid($pdo,$invite);
+if($token!==''&&!$judge){http_response_code(410);$error='This judge profile update link is invalid or has expired. Ask the organiser for a new 6-hour link.';}elseif(!$updating&&!$invited){http_response_code(410);$error='This private judge registration link is invalid or has expired. Ask the organiser for a new 12-hour full link.';}
+if(!$updating&&!$invited){?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Judge Profile Link Expired</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head><body class="bg-light"><main class="container py-5" style="max-width:760px"><div class="alert alert-danger"><?=e($error)?></div></main></body></html><?php exit;}
 $styles=['bachata'=>'Bachata','salsa'=>'Salsa'];$rounds=['heats'=>'Heats','semifinal'=>'Semifinal','final'=>'Final Relative Placement'];$divisions=['novice'=>'Novice','intermediate'=>'Intermediate','advanced'=>'Advanced','bachata_rising'=>'Bachata Rising','bachata_open'=>'Bachata Open','bachata_invitational'=>'Bachata Invitational','salsa_rising'=>'Salsa Rising','salsa_open'=>'Salsa Open','semi_pro'=>'Semi Pro','pro'=>'Pro','all_star'=>'All Star'];
 $clean=static function(string $key,array $allowed):?string{$v=implode(',',array_values(array_intersect(array_keys($allowed),array_map('strval',(array)($_POST[$key]??[])))));return $v!==''?$v:null;};
-if($_SERVER['REQUEST_METHOD']==='POST'&&($token===''||$judge)){
+if($_SERVER['REQUEST_METHOD']==='POST'&&($updating||$invited)){
  if(!Csrf::verify($_POST['_csrf']??null))$error='Please refresh the page and try again.';
  elseif(!$updating&&trim((string)($_POST['website']??''))!=='')$success='Profile submitted for organiser approval.';
  else{$name=trim((string)($_POST['full_name']??''));$email=strtolower(trim((string)($_POST['email']??'')));if($name==='')$error='Full name is required.';elseif($email!==''&&!filter_var($email,FILTER_VALIDATE_EMAIL))$error='Enter a valid email or leave it blank.';

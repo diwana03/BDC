@@ -1,16 +1,17 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;use App\Services\JudgeProfileUpdateLinkService;
+use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\JudgeDirectoryService;use App\Services\CountryFlagService;use App\Services\JudgeProfileUpdateLinkService;use App\Services\JudgeRegistrationLinkService;
 Auth::requirePermission('judges.view');$canEdit=Auth::can('judges.edit');
-Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);JudgeProfileUpdateLinkService::ensure($pdo);$notice='';$error='';$generatedUpdateLink='';
+Auth::requireAdmin();$pdo=Database::connection();JudgeDirectoryService::ensure($pdo);JudgeDirectoryService::ensureProfileRequests($pdo);JudgeProfileUpdateLinkService::ensure($pdo);JudgeRegistrationLinkService::ensure($pdo);$notice='';$error='';$generatedUpdateLink='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  if(!$canEdit){http_response_code(403);exit('You do not have permission to edit judge profiles.');}
  if(!Csrf::verify($_POST['_csrf']??null))$error='Invalid security token. Refresh and try again.';
  else try{
   $action=(string)($_POST['action']??'create');
   if($action==='create'){$judge=JudgeDirectoryService::create($pdo,$_POST);$notice='Judge created: '.$judge['full_name'].' · '.$judge['judge_code'];}
-  elseif($action==='generate_profile_update_link'){$judgeId=(int)($_POST['judge_id']??0);$q=$pdo->prepare('SELECT id,full_name FROM bdc_judges WHERE id=:id');$q->execute(['id'=>$judgeId]);$target=$q->fetch();if(!$target)throw new RuntimeException('Judge not found.');$token=JudgeProfileUpdateLinkService::generate($pdo,$judgeId,(int)(Auth::user()['id']??0)?:null);$generatedUpdateLink=url('judge-profile/?token='.$token);$notice='Six-hour profile update link created for '.$target['full_name'].'. Regenerating replaces the previous link.';Auth::audit((int)(Auth::user()['id']??0),'judge_profile_update_link_generated',['expires_hours'=>6],'judge',$judgeId);}
+  elseif($action==='generate_registration_link'){JudgeRegistrationLinkService::generate($pdo,(int)(Auth::user()['id']??0)?:null);$notice='New 12-hour private judge registration link created. The previous link is now invalid.';Auth::audit((int)(Auth::user()['id']??0),'judge_registration_link_generated',['expires_hours'=>12]);}
+  elseif($action==='generate_profile_update_link'){$judgeId=(int)($_POST['judge_id']??0);$q=$pdo->prepare('SELECT id,full_name FROM bdc_judges WHERE id=:id');$q->execute(['id'=>$judgeId]);$target=$q->fetch();if(!$target)throw new RuntimeException('Judge not found.');$token=JudgeProfileUpdateLinkService::generate($pdo,$judgeId,(int)(Auth::user()['id']??0)?:null);$generatedUpdateLink=JudgeProfileUpdateLinkService::url($token);$notice='Six-hour profile update link created for '.$target['full_name'].'. Regenerating replaces the previous link.';Auth::audit((int)(Auth::user()['id']??0),'judge_profile_update_link_generated',['expires_hours'=>6],'judge',$judgeId);}
   elseif(in_array($action,['approve_request','reject_request'],true)){
    $id=(int)($_POST['request_id']??0);$s=$pdo->prepare("SELECT * FROM bdc_judge_profile_requests WHERE id=:id AND status='pending'");$s->execute(['id'=>$id]);$request=$s->fetch();if(!$request)throw new RuntimeException('Pending judge profile request not found.');
    if($action==='approve_request'){$judge=JudgeDirectoryService::findOrCreate($pdo,(string)$request['full_name'],$request);$judge=JudgeDirectoryService::mergeProfile($pdo,(int)$judge['id'],$request);$status='approved';$notice='Judge approved: '.$judge['full_name'].' · '.$judge['judge_code'];}else{$status='rejected';$notice='Judge profile request rejected.';}
@@ -18,7 +19,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   }else throw new RuntimeException('Invalid judge action.');
  }catch(Throwable $e){$error=$e->getMessage();}
 }
-$pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pending' ORDER BY created_at,id")->fetchAll();$rows=$pdo->query("SELECT * FROM bdc_judges ORDER BY status='active' DESC,full_name")->fetchAll();$publicLink=url('judge-profile/');
+$pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pending' ORDER BY created_at,id")->fetchAll();$rows=$pdo->query("SELECT * FROM bdc_judges ORDER BY status='active' DESC,full_name")->fetchAll();$registrationLink=JudgeRegistrationLinkService::active($pdo);
 ?>
 <!doctype html>
 <html>
@@ -47,11 +48,11 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <div class="card shadow-sm" style="min-width:min(100%,430px)">
 <div class="card-body">
 <label class="form-label fw-semibold">Private judge registration link</label>
-<div class="input-group">
-<input class="form-control" id="judgeRegistrationLink" readonly value="<?=e($publicLink)?>">
-<button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('judgeRegistrationLink').value);this.textContent='Copied'">Copy Link</button>
-</div>
-<div class="form-text">Unlisted public form. Send this link directly to invited judges.</div>
+<?php if($registrationLink):?>
+<div class="input-group"><input class="form-control" id="judgeRegistrationLink" readonly value="<?=e((string)$registrationLink['url'])?>"><button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('judgeRegistrationLink').value);this.textContent='Copied'">Copy Full Link</button></div>
+<div class="form-text">Token protected. Expires <?=e((string)$registrationLink['expires_at'])?>. Send the complete link to invited judges.</div>
+<?php else:?><div class="alert alert-secondary py-2">No active registration link.</div><?php endif;?>
+<form method="post" class="mt-2"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="generate_registration_link"><button class="btn btn-primary btn-sm"><?=$registrationLink?'Regenerate':'Generate'?> 12-hour Full Link</button></form>
 </div>
 </div>
 </div>
