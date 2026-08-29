@@ -3,7 +3,7 @@ const fs=require('fs'),assert=require('assert');
 const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
 const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
 const css=fs.readFileSync('public/css/scoring-premium.css','utf8');
-assert(judge.includes('dance-cup-judge-live.js?v=457')&&judge.includes('scoring-premium.css?v=484'),'judge slider assets must load their current cache-busted versions');
+assert(judge.includes('dance-cup-judge-live.js?v=457')&&judge.includes('scoring-premium.css?v=485'),'judge slider assets must load their current cache-busted versions');
 for(const marker of ['type="range"','dc-score-output','Not scored','data-entry-live-total','step="0.1"'])assert(live.includes(marker),'missing live slider marker '+marker);
 for(const marker of ['Judge Scoring Rules','Accept Rules &amp; Start Scoring','I have read, understood and agree','sessionStorage'])assert(live.includes(marker),'missing mandatory rule acknowledgement '+marker);
 assert(live.includes('score every contestant'.replace(/^s/,'S'))&&live.includes('Do not discuss or compare marks'),'judge briefing must require independent scoring');
