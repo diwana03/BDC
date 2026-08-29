@@ -9,7 +9,7 @@ Auth::requirePermission('competitors.edit');
 $pdo=Database::connection();
 $id=(int)($_GET['id']??$_POST['id']??0);
 $return=(string)($_GET['return']??($_SESSION['competitor_list_return_'.$id]??'?'));
-if($return===''||$return[0]!=='?'||str_contains($return,"\r")||str_contains($return,"\n"))$return='?';
+if($return===''||(!str_starts_with($return,'?')&&$return!=='../dance-cup/participants.php')||str_contains($return,"\r")||str_contains($return,"\n"))$return='?';
 if($_SERVER['REQUEST_METHOD']==='GET')$_SESSION['competitor_list_return_'.$id]=$return;
 $s=$pdo->prepare('SELECT id,bdc_id,exact_name,photo_url,original_photo_url FROM bdc_competitors WHERE id=:id');
 $s->execute(['id'=>$id]);
