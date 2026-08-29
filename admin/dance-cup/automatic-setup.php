@@ -19,8 +19,8 @@ function dcPanelJudgeForAssignment(PDO $pdo,string $prefix,int $competitionId,in
     try{$q=$pdo->prepare("SELECT pj.id,pj.access_token,p.panel_name FROM {$prefix}_judging_panel_categories pc JOIN {$prefix}_judging_panels p ON p.id=pc.panel_id AND p.status='active' JOIN {$prefix}_judges j ON j.id=:assignment AND j.competition_id=pc.competition_id JOIN {$prefix}_judging_panel_judges pj ON pj.panel_id=pc.panel_id AND ((pj.judge_id IS NOT NULL AND pj.judge_id=j.judge_id) OR (pj.judge_id IS NULL AND pj.judge_name=j.judge_name)) WHERE pc.competition_id=:competition LIMIT 1");$q->execute(['assignment'=>$assignmentId,'competition'=>$competitionId]);return $q->fetch();}catch(Throwable){return false;}
 }
 
-function dcCompetitionPanelName(PDO $pdo,string $prefix,int $competitionId):string{
-    try{$q=$pdo->prepare("SELECT p.panel_name FROM {$prefix}_judging_panel_categories pc JOIN {$prefix}_judging_panels p ON p.id=pc.panel_id AND p.status='active' WHERE pc.competition_id=:competition LIMIT 1");$q->execute(['competition'=>$competitionId]);return (string)$q->fetchColumn();}catch(Throwable){return '';}
+function dcCompetitionPanel(PDO $pdo,string $prefix,int $competitionId):array|false{
+    try{$q=$pdo->prepare("SELECT p.id,p.panel_name FROM {$prefix}_judging_panel_categories pc JOIN {$prefix}_judging_panels p ON p.id=pc.panel_id AND p.status='active' WHERE pc.competition_id=:competition LIMIT 1");$q->execute(['competition'=>$competitionId]);return $q->fetch();}catch(Throwable){return false;}
 }
 
 Auth::requireAdmin();
@@ -40,7 +40,7 @@ try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
         $action=(string)($_POST['action']??'');
-        $managedPanel=dcCompetitionPanelName($pdo,$prefix,$id);if($managedPanel!==''&&in_array($action,['add_judge','remove_judge','move_judge','set_chief_judge'],true))throw new RuntimeException('This category uses the '.$managedPanel.' judging panel. Manage its judges once from Judging Panels.');
+        $managedPanel=dcCompetitionPanel($pdo,$prefix,$id);if($managedPanel&&in_array($action,['add_judge','remove_judge','move_judge','set_chief_judge'],true))throw new RuntimeException('This category uses the '.$managedPanel['panel_name'].' judging panel. Manage its judges once from Judging Panels.');
         $statusQuery=$pdo->prepare("SELECT status FROM {$tables['competitions']} WHERE id=:competition");$statusQuery->execute(['competition'=>$id]);$currentStatus=(string)$statusQuery->fetchColumn();
         if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection','send_email','open_whatsapp'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
@@ -125,6 +125,7 @@ $q=$pdo->prepare("SELECT c.*,e.name event_name,e.event_date FROM {$tables['compe
 if(!$competition){http_response_code(404);exit($error?:'Automatic Dance Cup category not found.');}
 $q=$pdo->prepare("SELECT * FROM {$prefix}_entries WHERE competition_id=:id AND status='active' ORDER BY bib_number,id");$q->execute(['id'=>$id]);$entries=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM {$prefix}_judges WHERE competition_id=:id ORDER BY judge_order,id");$q->execute(['id'=>$id]);$judges=$q->fetchAll();$chiefCount=count(array_filter($judges,static fn(array $judge):bool=>(int)$judge['is_chief']===1));
+$managedPanel=dcCompetitionPanel($pdo,$prefix,$id);$managedPanelHref=$managedPanel?'panels.php?panel_id='.(int)$managedPanel['id'].($test?'&data_mode=test':''):'';
 $csrf=Csrf::token();
 DanceCupScoringService::ensureAutomation($pdo,$id,$test);
 $q=$pdo->prepare("SELECT s.*,j.judge_name,j.judge_order,j.is_chief,d.email,d.phone,d.whatsapp,(SELECT COUNT(*) FROM {$prefix}_marks m WHERE m.competition_id=s.competition_id AND m.judge_id=s.judge_assignment_id) mark_count,(SELECT COUNT(*) FROM {$prefix}_entries e WHERE e.competition_id=s.competition_id AND e.status='active') entry_count,(SELECT COUNT(*) FROM {$tables['criteria']} x WHERE x.competition_id=s.competition_id) criterion_count FROM {$prefix}_judge_sessions s JOIN {$prefix}_judges j ON j.id=s.judge_assignment_id LEFT JOIN bdc_judges d ON d.id=j.judge_id WHERE s.competition_id=:id ORDER BY j.is_chief DESC,j.judge_order,j.id");$q->execute(['id'=>$id]);$sessions=$q->fetchAll();foreach($sessions as &$sessionRow){$panelJudge=dcPanelJudgeForAssignment($pdo,$prefix,$id,(int)$sessionRow['judge_assignment_id']);if($panelJudge){$sessionRow['access_token']=$panelJudge['access_token'];$sessionRow['panel_name']=$panelJudge['panel_name'];}}unset($sessionRow);
