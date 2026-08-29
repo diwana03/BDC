@@ -12,6 +12,8 @@ if(strlen($token)!==64){http_response_code(404);exit('Projector link not found.'
 <style>
 :root{--bg:#08111f;--bg2:#5b1833;--text:#fff;--muted:#d9c9d1;--card:rgba(255,255,255,.09);--line:rgba(255,255,255,.2);--accent:#e5bd59;--good:#35c978;--warn:#efbd4d;--danger:#ef596f}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+/* Audience presentation owns its background controls. Never inject the admin portal theme switch over the official badge. */
+.bdc-theme-control,.bdc-theme-fallback-bar{display:none!important}
 body[data-theme=obsidian_gold]{--bg:#050608;--bg2:#44371e;--accent:#d8b761}
 body[data-theme=ivory_wine]{--bg:#fffaf0;--bg2:#f1e2e6;--text:#341525;--muted:#735866;--card:rgba(255,255,255,.78);--line:#d7c4ca;--accent:#8b2948}
 body[data-theme=pearl_navy]{--bg:#f8fbff;--bg2:#dce8f6;--text:#10213d;--muted:#4c6380;--card:rgba(255,255,255,.82);--line:#b9cbe0;--accent:#215d9c}
@@ -38,7 +40,7 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
 @media(max-aspect-ratio:1/1){.grid,.grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.podium{grid-template-columns:1fr;height:auto;align-items:stretch}.podium-card{min-height:0!important}.top{grid-template-columns:64px 1fr}.identity{display:none}.event h1{white-space:normal}.rank-row{grid-template-columns:42px 44px 70px 1fr 76px;gap:8px}}
 </style>
 </head>
-<body>
+<body class="dc-projector-presentation">
 <main id="app">
  <header class="top"><div class="logo"><img src="../../public/assets/img/bdc-logo.png" alt="BDC"></div><div class="event"><h1 id="eventName">BDC Dance Cup</h1><p id="categoryName">Holding Screen</p></div><div class="identity"><span class="official <?=$test?'test':''?>"><?=$test?'TEST DISPLAY':'BDC · OFFICIAL LIVE DISPLAY'?></span></div></header>
  <section class="stage" id="stage"><div class="view"><div class="holding"><div class="eyebrow">DANCE CUP</div><h2>Holding Screen</h2><p>Waiting for projection control</p></div></div></section>
