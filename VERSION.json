@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev487",
-  "build": 3193,
+  "version": "2.3.3-dev488",
+  "build": 3194,
   "status": "development",
-  "release_date": "2026-08-28",
+  "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces free-text competitor country and phone fields with a canonical country dropdown and linked international calling-code selector, normalizes existing country capitalization, and preserves already international phone numbers",
     "Simplifies Dance Cup Participant Management into one deduplicated participation workspace with participant, category, profile and photo information; removes approval, submission, rejection, published-result and winner clutter; excludes rejected requests; and adds direct Edit Profile and Adjust Photo actions across desktop and mobile",
     "Replaces the cramped judging-panel progress ring with an explicit completed-category count, percentage and horizontal progress bar that remain readable on desktop and mobile across Test and Live",
     "Replaces the flat Dance Cup judge dashboard with a championship-grade BDC judge console using an official branded masthead, connected category journey, champagne progress language and secure standby screen across Test and Live without changing scoring behavior",
