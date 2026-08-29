@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev489",
-  "build": 3195,
+  "version": "2.3.3-dev490",
+  "build": 3196,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps the public Competitor Portal on the submitted Jack and Jill or Dance Cup workflow after validation errors and preserves entered identity, contact, country, phone, role, category, Dance Cup choices and notes instead of resetting to misleading defaults",
     "Adds the canonical country dropdown and linked international calling-code selector to both New Competitor and Update Existing Profile modes in the public BDC Competitor Portal while preserving registration approval and profile workflow",
     "Replaces free-text competitor country and phone fields with a canonical country dropdown and linked international calling-code selector, normalizes existing country capitalization, and preserves already international phone numbers",
     "Simplifies Dance Cup Participant Management into one deduplicated participation workspace with participant, category, profile and photo information; removes approval, submission, rejection, published-result and winner clutter; excludes rejected requests; and adds direct Edit Profile and Adjust Photo actions across desktop and mobile",
