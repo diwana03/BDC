@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev496",
-  "build": 3202,
+  "version": "2.3.3-dev497",
+  "build": 3203,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Prevents browsers and shared-host caches from reusing an older Dance Cup projector document after a presentation deployment by serving the audience screen with strict no-store headers and versioning every projector-launch redirect",
     "Redesigns the Dance Cup contestant call as a premium two-column venue presentation with the exact SBTA trophy beside the contestant, labels the showcase with the active event name, enlarges the national flag and country, retains the trophy on landscape and portrait projectors and hides it only on genuinely narrow phones",
     "Keeps the Dance Cup projector live feed online when optional production profile columns or result tables differ by falling back independently for contestants, judges and results, and makes mark aggregation compatible with ONLY_FULL_GROUP_BY without changing scores or projection control",
     "Recovers the Dance Cup audience projector from interrupted live-feed requests with explicit same-origin polling, bounded timeouts and faster retry; prevents global portal branding from shifting or clipping the venue layout; moves the connection warning out of the presentation centre; and renders country flags without depending on optional mb_chr support",

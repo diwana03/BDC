@@ -3,6 +3,9 @@ declare(strict_types=1);
 $token=preg_replace('/[^a-f0-9]/','',(string)($_GET['token']??''));
 $test=(string)($_GET['data_mode']??'')==='test';
 if(strlen($token)!==64){http_response_code(404);exit('Projector link not found.');}
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 ?><!doctype html>
 <html>
 <head>

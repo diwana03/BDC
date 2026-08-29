@@ -15,5 +15,5 @@ $eventId=(int)$query->fetchColumn();
 if($eventId<1){http_response_code(404);exit('Projector link not found.');}
 $pdo->prepare("UPDATE {$prefix}_event_projection SET screen_type='holding',active_entry_id=NULL,auto_cycle=0,page_number=1,state_version=state_version+1 WHERE event_id=:event")->execute(['event'=>$eventId]);
 header('Cache-Control: no-store');
-header('Location: '.url('admin/dance-cup/projector.php?token='.rawurlencode($token).($test?'&data_mode=test':'')),true,303);
+header('Location: '.url('admin/dance-cup/projector.php?token='.rawurlencode($token).($test?'&data_mode=test':'').'&presentation=497'),true,303);
 exit;
