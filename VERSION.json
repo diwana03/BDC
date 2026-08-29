@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev483",
-  "build": 3189,
+  "version": "2.3.3-dev484",
+  "build": 3190,
   "status": "development",
   "release_date": "2026-08-28",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Upgrades the shared Test and Live Dance Cup judge scoring view into a premium competition console with refined event and judge identity, elevated panel navigation, clear active-category and progress states, and a polished empty-roster experience without changing scoring behavior",
     "Restores Dance Cup contestant and judge directory suggestions on PHP hosts without mbstring by using a safe UTF-8 length fallback and retaining clean JSON error responses across Test and Live",
     "Requires every Dance Cup judge to review and accept the exact criteria for each category in a blocking premium popup before its scoring view opens, records acceptance per judge and category, and automatically requires renewed acceptance whenever criteria change across Test and Live",
     "Adds safe Dance Cup category and Jack and Jill event duplication across Test and Live, copying configuration, competitors and judge assignments into fresh Drafts with new judge tokens while excluding scores, results, approvals, publications, checkpoints and live state",
