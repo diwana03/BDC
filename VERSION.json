@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev505",
-  "build": 3211,
+  "version": "2.3.3-dev506",
+  "build": 3212,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the long Dance Cup judge sheet with a one-competitor-at-a-time scoring flow, completed and current contestant history, saved Previous and Next navigation, and final category submission only after every competitor is complete across Test and Live",
     "Prevents the global Light Dark System selector from overlaying any portal page by making every theme control participate in normal header or fallback-bar layout, removing protruding shadows and fixed mobile positioning, and refreshing the shared theme and branding assets everywhere",
     "Moves the single Dance Cup category and round line out of the top masthead and lower into the presentation area directly above the content on every projector screen, including contestant, judge, scoreboard, podium and Holding views, without adding screen labels or duplicate headings",
     "Keeps one original Dance Cup category and round line beneath the event name, makes it larger and moves it slightly lower, removes the additional per-screen heading system and keeps the centred Holding Screen free of the next-contestant message",

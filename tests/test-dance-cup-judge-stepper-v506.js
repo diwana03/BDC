@@ -1,0 +1,15 @@
+const fs=require('fs'),assert=require('assert');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
+const css=fs.readFileSync('public/css/dance-cup-judge-stepper-v506.css','utf8');
+assert(judge.includes('dance-cup-judge-stepper-v506.css'),'judge page must load dev506 stepper styles');
+assert(judge.includes('dance-cup-judge-stepper-v506.js'),'judge page must load dev506 stepper behavior');
+assert(live.includes("new CustomEvent('dc:judge-saved'"),'autosave must notify the stepper before advancing');
+for(const marker of ['ONE COMPETITOR AT A TIME','Competitor ','Save Competitor &amp; Next','Submit Category Scores','dc:judge-saved','entry.hidden=!active'])assert(stepper.includes(marker),'missing stepper behavior: '+marker);
+assert(stepper.includes("entries.every")===false,'stepper should retain all entries and calculate completion without removing inputs');
+assert(stepper.includes("originalSave.click()"),'next must save the complete form before moving forward');
+assert(stepper.includes("finalSubmit.disabled=completed!==entries.length"),'final category submission must wait for every competitor');
+for(const marker of ['.dc-competitor-history','.dc-history-item.is-complete','.entry-card[hidden]','.dc-stepper-controls','.dc-original-save'])assert(css.includes(marker),'missing stepper style: '+marker);
+assert(css.includes('@media(max-width:575.98px)'),'stepper must include a mobile layout');
+console.log('dev506 one-competitor Dance Cup judge workflow checks passed');

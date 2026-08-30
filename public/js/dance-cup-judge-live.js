@@ -71,6 +71,7 @@ async function send(action,silent=false){
  dirty=false;if(progress)progress.textContent=payload.completed+' / '+payload.required;
  if(progressBar)progressBar.style.width=(payload.required?Math.round(payload.completed/payload.required*100):0)+'%';
  show(payload.message||'Scores saved.','success');
+ form.dispatchEvent(new CustomEvent('dc:judge-saved',{detail:{action,payload}}));
  if(payload.locked){form.querySelectorAll('.dc-score-slider').forEach(input=>input.disabled=true);form.querySelectorAll('button').forEach(button=>button.remove());const dock=form.querySelector('.submit-dock');if(dock)dock.innerHTML='<div class="alert alert-success w-100 mb-0 text-center fw-bold">Submitted · scoring locked</div>';}
  return payload;
 }
