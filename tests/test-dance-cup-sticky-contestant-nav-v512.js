@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
+const css=fs.readFileSync('public/css/dance-cup-judge-stepper-v506.css','utf8');
+for(const marker of ['.dc-competitor-stepper{position:sticky','top:10px','backdrop-filter:blur(16px)','scroll-margin-top:190px'])assert(css.includes(marker),'missing sticky contestant navigation style: '+marker);
+for(const marker of ['top:6px','grid-template-columns:1fr auto','min-width:70px','scroll-margin-top:145px'])assert(css.includes(marker),'missing compact mobile sticky style: '+marker);
+assert(stepper.includes("history.querySelector('.is-current')"),'current contestant chip must be located after navigation');
+assert(stepper.includes('history.scrollTo({left:Math.max(0'),'current contestant chip must automatically centre without scrolling the page');
+assert(judge.includes('dance-cup-judge-stepper-v506.js?v=512'),'sticky workflow script must bypass stale mobile caches');
+assert(judge.includes('dance-cup-judge-stepper-v506.css?v=512'),'sticky workflow styles must bypass stale mobile caches');
+console.log('dev512 sticky Dance Cup contestant navigator checks passed');

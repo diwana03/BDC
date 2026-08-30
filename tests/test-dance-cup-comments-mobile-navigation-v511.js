@@ -13,6 +13,6 @@ assert(stepper.includes("event.detail?.requestId===pendingSaveId"),'Next must ad
 assert(stepper.includes("entries[current].scrollIntoView"),'Previous and Next must scroll to the newly active contestant card');
 for(const marker of ['Private Judge Comment','Autosaves while typing','judge-comment-api.php','Saved privately ✓'])assert(stepper.includes(marker),'missing private comment UI behavior: '+marker);
 for(const marker of ['.dc-judge-comment{','.dc-judge-comment textarea{','.dc-category-submitted .dc-judge-comment'])assert(css.includes(marker),'missing comment presentation: '+marker);
-assert(judge.includes('dance-cup-judge-stepper-v506.js?v=511'),'judge workflow script must bypass stale mobile caches');
-assert(judge.includes('dance-cup-judge-stepper-v506.css?v=511'),'judge workflow styles must bypass stale mobile caches');
+assert(/dance-cup-judge-stepper-v506\.js\?v=(?:51[1-9]|5[2-9]\d|[6-9]\d\d)/.test(judge),'judge workflow script must retain a cache version at or beyond dev511');
+assert(/dance-cup-judge-stepper-v506\.css\?v=(?:51[1-9]|5[2-9]\d|[6-9]\d\d)/.test(judge),'judge workflow styles must retain a cache version at or beyond dev511');
 console.log('dev511 Dance Cup private comments and mobile navigation checks passed');

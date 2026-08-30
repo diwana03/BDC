@@ -53,6 +53,8 @@ function render(){
   button.innerHTML='<span>'+labelFor(entry,index)+'</span><small>'+(index===current?'Current':complete(entry)?'Saved ✓':'Not scored')+'</small>';
   button.addEventListener('click',()=>go(index));history.append(button);
  });
+ const activeHistory=history.querySelector('.is-current');
+ if(activeHistory)requestAnimationFrame(()=>history.scrollTo({left:Math.max(0,activeHistory.offsetLeft-(history.clientWidth-activeHistory.offsetWidth)/2),behavior:'smooth'}));
  const previous=controls.querySelector('[data-stepper-previous]');
  previous.disabled=current===0;
  const next=controls.querySelector('[data-stepper-next]');

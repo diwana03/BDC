@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev511",
-  "build": 3217,
+  "version": "2.3.3-dev512",
+  "build": 3218,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps a compact Dance Cup contestant navigator sticky while judges scroll through scoring criteria, automatically centres the current bib and offsets Previous and Next navigation so the active contestant card remains visible on mobile and desktop",
     "Adds a private autosaved Dance Cup judge comment for every contestant and fixes mobile Previous and Save Competitor and Next navigation by switching the active card directly and advancing only after a confirmed server save",
     "Standardizes every externally shared judge, judge-profile, stage-display, projection-remote and Emcee token link as a full absolute URL using the configured public origin or current HTTPS host instead of exposing unusable portal-relative paths",
     "Greys and locks every contestant score only after a Dance Cup judge confirms final category submission, keeps all saved marks visible, and retains read-only Previous and Next review navigation until an authorised reopen",
