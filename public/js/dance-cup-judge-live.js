@@ -62,7 +62,7 @@ function buildRules(){
  button.addEventListener('click',()=>{try{sessionStorage.setItem(acceptanceKey,'1')}catch{}setScoringEnabled(true);panel.classList.add('rules-accepted');panel.innerHTML='<div class="card-body py-3 d-flex align-items-center gap-2"><span class="badge text-bg-success">Accepted</span><strong>Judge rules accepted. Scoring is open.</strong></div>';show('Rules accepted. You may begin scoring.','success');form.querySelector('.dc-score-slider')?.focus();});
  try{if(sessionStorage.getItem(acceptanceKey)==='1'){accepted=true;panel.remove();}}catch{}
 }
-async function send(action,silent=false){
+async function send(action,silent=false,requestId=''){
  if(!accepted)throw new Error('Accept the Judge Scoring Rules before scoring.');
  const data=new FormData(form);data.set('action',action);data.set('ajax','1');
  if(!silent)show(action==='submit'?'Submitting scores…':'Saving draft…','primary');
@@ -72,11 +72,12 @@ async function send(action,silent=false){
  dirty=false;if(progress)progress.textContent=payload.completed+' / '+payload.required;
  if(progressBar)progressBar.style.width=(payload.required?Math.round(payload.completed/payload.required*100):0)+'%';
  show(payload.message||'Scores saved.','success');
- form.dispatchEvent(new CustomEvent('dc:judge-saved',{detail:{action,payload}}));
+ form.dispatchEvent(new CustomEvent('dc:judge-saved',{detail:{action,payload,requestId}}));
  if(payload.locked){form.classList.add('dc-category-submitted');form.querySelectorAll('.dc-score-slider,.dc-score-zero').forEach(input=>input.disabled=true);form.querySelectorAll('.submit-dock button').forEach(button=>button.remove());const dock=form.querySelector('.submit-dock');if(dock)dock.innerHTML='<div class="alert alert-success w-100 mb-0 text-center fw-bold">Submitted · all contestant scores locked</div>';}
  return payload;
 }
-function queued(action,silent=false){const operation=chain.then(()=>send(action,silent));chain=operation.catch(()=>{});return operation;}
+function queued(action,silent=false,requestId=''){const operation=chain.then(()=>send(action,silent,requestId));chain=operation.catch(()=>{});return operation;}
+form.addEventListener('dc:judge-save-request',event=>{clearTimeout(timer);queued('save',false,event.detail?.requestId||'').catch(error=>show(error.message,'danger'));});
 buildRules();buildSliders();showAutosaveProtection();setScoringEnabled(accepted);
 form.addEventListener('submit',event=>{event.preventDefault();clearTimeout(timer);const action=event.submitter?.value==='submit'?'submit':'save';if(action==='submit'&&scoreInputs.some(input=>input.value==='')){show('Complete every highlighted score before submitting.','danger');focusNextMissing();return;}if(action==='submit'&&!confirm('All '+scoreInputs.length+' scores are complete. Submit and lock this judge sheet?'))return;queued(action,false).catch(error=>show(error.message,'danger'));});
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});

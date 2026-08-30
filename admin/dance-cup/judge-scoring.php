@@ -42,7 +42,7 @@ if($panelCategories){
  });
 }
 ob_start(static function(string $html):string{
- return str_replace('</head>','<link href="../../public/css/dance-cup-judge-stepper-v506.css" rel="stylesheet"></head>',str_replace('</body>','<script src="../../public/js/dance-cup-judge-stepper-v506.js"></script></body>',$html));
+ return str_replace('</head>','<link href="../../public/css/dance-cup-judge-stepper-v506.css?v=511" rel="stylesheet"></head>',str_replace('</body>','<script src="../../public/js/dance-cup-judge-stepper-v506.js?v=511"></script></body>',$html));
 });
 if(!$criteriaAccepted){
  $criteriaItems='';$criteriaMaximum=0.0;foreach($gateCriteria as $criterion){$maximum=(float)$criterion['maximum_points'];$criteriaMaximum+=$maximum;$display=rtrim(rtrim(number_format($maximum,2,'.',''),'0'),'.');$criteriaItems.='<li><span>'.e($criterion['criterion_name']).'</span><strong>'.$display.' points</strong></li>';}

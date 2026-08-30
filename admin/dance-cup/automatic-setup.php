@@ -11,7 +11,7 @@ use App\Services\DanceCupScoringService;
 
 function dcAutomaticWorkspaceSnapshot(PDO $pdo,string $prefix,int $competition):array{
     $snapshot=[];
-    foreach(['entries','judges','marks','scoring_results'] as $name){$query=$pdo->prepare("SELECT * FROM {$prefix}_{$name} WHERE competition_id=:competition");$query->execute(['competition'=>$competition]);$snapshot[$name]=$query->fetchAll();}
+    foreach(['entries','judges','marks','judge_comments','scoring_results'] as $name){$query=$pdo->prepare("SELECT * FROM {$prefix}_{$name} WHERE competition_id=:competition");$query->execute(['competition'=>$competition]);$snapshot[$name]=$query->fetchAll();}
     return $snapshot;
 }
 

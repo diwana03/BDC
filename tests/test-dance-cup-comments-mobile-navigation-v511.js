@@ -1,0 +1,18 @@
+const fs=require('fs'),assert=require('assert');
+const service=fs.readFileSync('app/Services/DanceCupScoringService.php','utf8');
+const api=fs.readFileSync('admin/dance-cup/judge-comment-api.php','utf8');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
+const css=fs.readFileSync('public/css/dance-cup-judge-stepper-v506.css','utf8');
+assert(service.includes('_judge_comments('),'Test and Live comment storage must be provisioned with the Dance Cup workspace');
+for(const marker of ['Csrf::verify','categorySessionsForToken','Submitted comments are locked','INSERT INTO {$p}_judge_comments','SELECT entry_id,private_comment'])assert(api.includes(marker),'missing secure private-comment behavior: '+marker);
+assert(live.includes("form.addEventListener('dc:judge-save-request'"),'mobile Next must use the direct save queue instead of a hidden button click');
+assert(stepper.includes("form.dispatchEvent(new CustomEvent('dc:judge-save-request'"),'Next must request a real server save');
+assert(stepper.includes("event.detail?.requestId===pendingSaveId"),'Next must advance only for its own confirmed save, not an older autosave');
+assert(stepper.includes("entries[current].scrollIntoView"),'Previous and Next must scroll to the newly active contestant card');
+for(const marker of ['Private Judge Comment','Autosaves while typing','judge-comment-api.php','Saved privately ✓'])assert(stepper.includes(marker),'missing private comment UI behavior: '+marker);
+for(const marker of ['.dc-judge-comment{','.dc-judge-comment textarea{','.dc-category-submitted .dc-judge-comment'])assert(css.includes(marker),'missing comment presentation: '+marker);
+assert(judge.includes('dance-cup-judge-stepper-v506.js?v=511'),'judge workflow script must bypass stale mobile caches');
+assert(judge.includes('dance-cup-judge-stepper-v506.css?v=511'),'judge workflow styles must bypass stale mobile caches');
+console.log('dev511 Dance Cup private comments and mobile navigation checks passed');

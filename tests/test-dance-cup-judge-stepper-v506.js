@@ -8,7 +8,7 @@ assert(judge.includes('dance-cup-judge-stepper-v506.js'),'judge page must load d
 assert(live.includes("new CustomEvent('dc:judge-saved'"),'autosave must notify the stepper before advancing');
 for(const marker of ['ONE COMPETITOR AT A TIME','Competitor ','Save Competitor &amp; Next','Submit Category Scores','dc:judge-saved','entry.hidden=!active'])assert(stepper.includes(marker),'missing stepper behavior: '+marker);
 assert(stepper.includes("entries.every")===false,'stepper should retain all entries and calculate completion without removing inputs');
-assert(stepper.includes("originalSave.click()"),'next must save the complete form before moving forward');
+assert(stepper.includes("new CustomEvent('dc:judge-save-request'"),'next must request a confirmed save before moving forward');
 assert(stepper.includes("finalSubmit.disabled=completed!==entries.length"),'final category submission must wait for every competitor');
 for(const marker of ['.dc-competitor-history','.dc-history-item.is-complete','.entry-card[hidden]','.dc-stepper-controls','.dc-original-save'])assert(css.includes(marker),'missing stepper style: '+marker);
 assert(css.includes('@media(max-width:575.98px)'),'stepper must include a mobile layout');

@@ -11,6 +11,11 @@ entries.forEach((entry,index)=>{
 let current=Math.max(0,entries.findIndex(entry=>entry.querySelector('.dc-score-value[value=""]')));
 if(current<0)current=0;
 let advanceAfterSave=false;
+let pendingSaveId='';
+const token=form.querySelector('input[name="token"]')?.value||'';
+const categoryId=form.querySelector('input[name="category_id"]')?.value||'';
+const dataMode=form.querySelector('input[name="data_mode"]')?.value||'real';
+const csrf=form.querySelector('input[name="_csrf"]')?.value||'';
 const shell=document.createElement('section');
 shell.className='dc-competitor-stepper';
 shell.innerHTML='<div class="dc-stepper-heading"><div><small>ONE COMPETITOR AT A TIME</small><h2 data-stepper-position></h2></div><div class="dc-stepper-category-progress" data-stepper-complete></div></div><nav class="dc-competitor-history" aria-label="Contestant scoring history"></nav>';
@@ -59,7 +64,7 @@ function render(){
 }
 function go(index){
  current=Math.max(0,Math.min(entries.length-1,index));render();
- shell.scrollIntoView({behavior:'smooth',block:'start'});
+ entries[current].scrollIntoView({behavior:'smooth',block:'start'});
  setTimeout(()=>entries[current].querySelector('.dc-score-slider:not([disabled])')?.focus(),350);
 }
 controls.querySelector('[data-stepper-previous]').addEventListener('click',()=>go(current-1));
@@ -67,12 +72,35 @@ controls.querySelector('[data-stepper-next]').addEventListener('click',()=>{
  if(isSubmitted()){go(current+1);return;}
  if(!complete(entries[current]))return;
  advanceAfterSave=true;
- if(originalSave)originalSave.click();else go(current+1);
+ pendingSaveId=String(Date.now())+'-'+String(current);
+ form.dispatchEvent(new CustomEvent('dc:judge-save-request',{detail:{requestId:pendingSaveId}}));
 });
 form.addEventListener('dc:judge-saved',event=>{
  render();
- if(advanceAfterSave&&event.detail?.action==='save'){advanceAfterSave=false;go(current+1);}
+ if(advanceAfterSave&&event.detail?.action==='save'&&event.detail?.requestId===pendingSaveId){advanceAfterSave=false;pendingSaveId='';go(current+1);}
 });
 form.addEventListener('input',()=>setTimeout(render,0),true);
+const entryId=entry=>entry.querySelector('.dc-score-value')?.name.match(/^mark\[(\d+)\]/)?.[1]||'';
+async function loadComments(){
+ const query=new URLSearchParams({token,category_id:categoryId,data_mode:dataMode});
+ try{
+  const response=await fetch('judge-comment-api.php?'+query,{credentials:'same-origin',cache:'no-store'}),payload=await response.json();
+  if(!response.ok||!payload.ok)return;
+  entries.forEach(entry=>addComment(entry,payload.comments?.[entryId(entry)]||'',Boolean(payload.locked)));
+ }catch{}
+}
+function addComment(entry,value,locked){
+ if(entry.querySelector('.dc-judge-comment'))return;
+ const wrap=document.createElement('div');wrap.className='dc-judge-comment';
+ wrap.innerHTML='<label>Private Judge Comment <small>Visible only to scoring administration</small></label><textarea maxlength="1000" rows="3" placeholder="Optional notes about this contestant"></textarea><span class="dc-comment-status">'+(locked?'Submitted · comment locked':'Autosaves while typing')+'</span>';
+ const textarea=wrap.querySelector('textarea');textarea.value=value;textarea.disabled=locked;let commentTimer=0;
+ textarea.addEventListener('input',()=>{wrap.querySelector('.dc-comment-status').textContent='Saving…';clearTimeout(commentTimer);commentTimer=setTimeout(()=>saveComment(entry,textarea,wrap),650);});
+ entry.querySelector('.card-body')?.append(wrap);
+}
+async function saveComment(entry,textarea,wrap){
+ const data=new FormData();data.set('_csrf',csrf);data.set('token',token);data.set('category_id',categoryId);data.set('data_mode',dataMode);data.set('entry_id',entryId(entry));data.set('comment',textarea.value);
+ try{const response=await fetch('judge-comment-api.php',{method:'POST',credentials:'same-origin',headers:{Accept:'application/json'},body:data}),payload=await response.json();if(!response.ok||!payload.ok)throw new Error(payload.error||'Comment could not be saved.');wrap.querySelector('.dc-comment-status').textContent='Saved privately ✓';}catch(error){wrap.querySelector('.dc-comment-status').textContent=error.message;}
+}
 render();
+loadComments();
 })();
