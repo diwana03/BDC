@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev518",
-  "build": 3224,
+  "version": "2.3.3-dev519",
+  "build": 3225,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Automatically advances the Dance Cup judge-progress projection from a fully completed contestant to the first contestant still awaiting one or more judges, without changing the operator-controlled contestant call",
     "Clarifies Dance Cup projector judge badges with concise completed, scoring and pending wording followed by the active contestant number",
     "Separates each Dance Cup judge's progress for the currently projected competitor from final category submission, with independent card badges and completion counters on the Judges and Scoring Progress screens",
     "Restores live Dance Cup scoreboard updates by counting the marks table composite-key criterion column instead of a nonexistent mark ID, preventing the projection feed from silently reporting every contestant as unscored",

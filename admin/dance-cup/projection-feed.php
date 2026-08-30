@@ -24,11 +24,22 @@ $activeEntryId=(int)($state['active_entry_id']??0);
 if(!$activeEntryId&&$entries)$activeEntryId=(int)$entries[0]['id'];
 $criteriaRows=$fetch("SELECT id FROM {$p}_criteria WHERE competition_id=:competition",'criteria');
 $criteriaRequired=count($criteriaRows);
-$judgeParams=['active_entry'=>$activeEntryId];
-$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,d.country,d.country_code,d.photo_url,COALESCE(s.status,'not_started') status,s.submitted_at,(SELECT COUNT(m.criterion_id) FROM {$p}_marks m WHERE m.competition_id=j.competition_id AND m.judge_id=j.id AND m.entry_id=:active_entry) current_mark_count FROM {$p}_judges j LEFT JOIN bdc_judges d ON d.id=j.judge_id LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge',$judgeParams);
-if(!$judges)$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,NULL country,NULL country_code,NULL photo_url,COALESCE(s.status,'not_started') status,s.submitted_at,(SELECT COUNT(m.criterion_id) FROM {$p}_marks m WHERE m.competition_id=j.competition_id AND m.judge_id=j.id AND m.entry_id=:active_entry) current_mark_count FROM {$p}_judges j LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge-minimal',$judgeParams);
+$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,d.country,d.country_code,d.photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN bdc_judges d ON d.id=j.judge_id LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge');
+if(!$judges)$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,NULL country,NULL country_code,NULL photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge-minimal');
+$markCounts=$fetch("SELECT m.entry_id,m.judge_id,COUNT(m.criterion_id) mark_count FROM {$p}_marks m WHERE m.competition_id=:competition GROUP BY m.entry_id,m.judge_id",'judge-contestant-progress');
+$marksByEntry=[];
+foreach($markCounts as $markRow)$marksByEntry[(int)$markRow['entry_id']][(int)$markRow['judge_id']]=(int)$markRow['mark_count'];
+$progressEntry=$entries[0]??null;
+foreach($entries as $entry){
+    $completed=0;
+    foreach($judges as $judge)if($criteriaRequired>0&&($marksByEntry[(int)$entry['id']][(int)$judge['id']]??0)>=$criteriaRequired)$completed++;
+    $progressEntry=$entry;
+    if($completed<count($judges))break;
+}
+$progressEntryId=(int)($progressEntry['id']??0);
 foreach($judges as &$judge){
-    $marks=(int)($judge['current_mark_count']??0);
+    $marks=(int)($marksByEntry[$progressEntryId][(int)$judge['id']]??0);
+    $judge['current_mark_count']=$marks;
     $judge['contestant_status']=$criteriaRequired>0&&$marks>=$criteriaRequired?'complete':($marks>0?'in_progress':'pending');
     $judge['final_submitted']=$judge['status']==='submitted'?1:0;
     $judge['criteria_required']=$criteriaRequired;
@@ -64,4 +75,5 @@ $entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
 $results=ProjectionNameService::abbreviateRows($results,['display_name']);
 $judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
 $active=null;foreach($entries as $entry)if((int)$entry['id']===$activeEntryId){$active=$entry;break;}
-echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$results,'active_entry'=>$active],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
+$progress=null;foreach($entries as $entry)if((int)$entry['id']===$progressEntryId){$progress=$entry;break;}
+echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$results,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
