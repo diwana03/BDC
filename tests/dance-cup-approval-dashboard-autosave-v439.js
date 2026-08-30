@@ -7,11 +7,11 @@ for(const marker of ["status='pending_approval'",'submitted_by',"$action==='appr
 assert(api.includes("if($test)throw new RuntimeException('Test results remain isolated"),'Test result publication must fail closed');
 for(const marker of ['approveResults','bdc_dance_cup_result_history',"status='approved'",'FOR UPDATE'])assert(service.includes(marker),'Permanent Dance Cup publication missing '+marker);
 for(const marker of ['submitted_by','approved_by','approved_at','bdc_dance_cup_result_history','UNIQUE KEY uq_dc_history_entry'])assert(migration.includes(marker),'Additive migration missing '+marker);
-assert(view.includes('Approve &amp; Publish Result')&&view.includes('Super Admin approval'),'Automatic workspace must show the two-stage workflow');
+assert(view.includes('Approve &amp; Publish Official Result')&&view.includes('Super Admin approval'),'Automatic workspace must show the two-stage workflow');
 assert(live.includes("['submitted','pending_approval','approved']")&&live.includes('approve_results'),'Live UI must lock legacy submitted, pending and approved scoring and support approval');
 assert(judge.includes('Automatic draft saving is on')&&judge.includes('scheduleSave'),'Judge score selection must visibly auto-save');
 for(const marker of ['Dance Cup Participant Management','All Participants','Active Profiles','Published Results','Winning Results','dance_style','entry_type','competition_level'])assert(participants.includes(marker),'Dance Cup participant dashboard missing '+marker);
-for(const marker of ['requireSuperAdmin','Pending Dance Cup Result Approval','Review Scoring','Approve &amp; Publish','approveResults'])assert(approvals.includes(marker),'Manual and Automatic approval queue missing '+marker);
+for(const marker of ['requireSuperAdmin','Pending Dance Cup Result Approval','Detailed Results &amp; Private Comments','Approve &amp; Publish Official Result','approveResults'])assert(approvals.includes(marker),'Manual and Automatic approval queue missing '+marker);
 assert(jj.includes('Create Scoring Round')&&jj.includes('new_event_name'),'Jack & Jill must retain event creation on the all-round dashboard');
 assert(requests.includes('profileRequestStatusCounts')&&requests.includes('View all '),'Profile Request records must remain discoverable across statuses');
 console.log('Dance Cup approval, participant dashboard, autosave and J&J event creation v439 passed');

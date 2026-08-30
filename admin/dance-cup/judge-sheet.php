@@ -34,6 +34,13 @@ $query=$pdo->prepare("SELECT entry_id,judge_id,criterion_id,points FROM {$prefix
 $query->execute(['id'=>$competitionId]);
 $marks=[];
 foreach($query->fetchAll() as $mark)$marks[(int)$mark['judge_id']][(int)$mark['entry_id']][(int)$mark['criterion_id']]=$mark['points'];
+$canViewPrivateComments=Auth::isSuperAdmin();
+$comments=[];
+if($canViewPrivateComments){
+ $query=$pdo->prepare("SELECT entry_id,judge_id,private_comment,updated_at FROM {$prefix}_judge_comments WHERE competition_id=:id AND TRIM(private_comment)<>'' ORDER BY judge_id,entry_id");
+ $query->execute(['id'=>$competitionId]);
+ foreach($query->fetchAll() as $comment)$comments[(int)$comment['judge_id']][(int)$comment['entry_id']]=(string)$comment['private_comment'];
+}
 
 if(!$judges)$judges=[['id'=>0,'judge_name'=>'','is_chief'=>0]];
 $pages=$entries?array_chunk($entries,10):[array_fill(0,10,null)];
@@ -48,7 +55,7 @@ function dcSheetNumber(float $value):string{return rtrim(rtrim(number_format($va
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title><?=e($competition['category_name'])?> · Judge Sheets</title>
+<title><?=e($competition['category_name'])?> · Detailed Judge Results</title>
 <style>
 *{box-sizing:border-box}
 :root{--ink:#111827;--muted:#596579;--line:#6b7280;--soft:#eef2f6;--navy:#12203a;--wine:#671b38}
@@ -70,18 +77,19 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
 .maximum{display:block;margin-top:1mm;font-size:7pt;color:var(--muted)}
 .footer{margin-top:auto;padding-top:4mm;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;font-size:8pt}.signature{border-top:1px solid var(--ink);padding-top:1.5mm}.signature b{display:block}.note{text-align:center;color:var(--muted);font-size:7pt;line-height:1.35}
 .test{color:#b42318;font-weight:800}
+.comment-list{display:grid;gap:3mm;margin-top:5mm}.comment-item{border:1px solid #cbd5e1;border-left:4px solid var(--wine);border-radius:2mm;padding:3mm 4mm}.comment-item strong{display:block;font-size:10pt}.comment-item p{margin:1.5mm 0 0;white-space:pre-wrap;font-size:9pt;line-height:1.4}.confidential{margin-top:3mm;color:var(--wine);font-size:8pt;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
 @page{size:A4 landscape;margin:0}
 @media print{html,body{background:#fff}.toolbar{display:none}.sheet{width:297mm;min-height:210mm;margin:0;box-shadow:none}.score-table thead{display:table-header-group}.score-table tr{break-inside:avoid;page-break-inside:avoid}}
 @media(max-width:900px){.sheet{transform-origin:top left}.toolbar{position:relative}}
 </style>
 </head>
 <body>
-<div class="toolbar"><div><strong><?=$test?'TEST · ':''?>Dance Cup Judge Sheets</strong><br><small>One printable sheet per assigned judge</small></div><div><a href="category.php?id=<?=$competitionId?><?=$test?'&data_mode=test':''?>">Back</a> <button type="button" onclick="window.print()">Print / Save PDF</button></div></div>
+<div class="toolbar"><div><strong><?=$test?'TEST · ':''?>Dance Cup Detailed Judge Results</strong><br><small>Criterion marks, judge subtotals and official result evidence<?=$canViewPrivateComments?' · confidential comments included':''?></small></div><div><a href="category.php?id=<?=$competitionId?><?=$test?'&data_mode=test':''?>">Back</a> <button type="button" onclick="window.print()">Print / Save PDF</button></div></div>
 <?php foreach($judges as $judge):foreach($pages as $pageIndex=>$pageEntries):?>
 <section class="sheet">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC">
-  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Dance Cup Judgement Sheet</h2><p><?=e($competition['category_name'])?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['dance_style'])))?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['competition_level'])))?></p></div>
+  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Detailed Judge Result</h2><p><?=e($competition['category_name'])?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['dance_style'])))?> · <?=e(ucwords(str_replace('_',' ',(string)$competition['competition_level'])))?></p></div>
   <div class="meta"><span class="badge"><?=$test?'TEST ONLY':'OFFICIAL'?></span><br><strong><?=e($eventDate)?></strong><?php if($location):?><br><?=e($location)?><?php endif;?></div>
  </header>
  <div class="identity">
@@ -103,9 +111,27 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
  <footer class="footer">
   <div class="signature"><b>Judge Signature</b><?=e((string)$judge['judge_name'])?></div>
   <div class="signature"><b>Scoring Administrator / Witness</b></div>
-  <div class="note">Score each criterion within its stated maximum.<br>Final total is calculated from the saved criterion marks. <?=$test?'<span class="test">TEST DATA</span>':''?></div>
+  <div class="note">Saved criterion marks and calculated judge subtotal.<br>This report does not publish or reveal the result. <?=$test?'<span class="test">TEST DATA</span>':''?></div>
  </footer>
 </section>
-<?php endforeach;endforeach;?>
+<?php endforeach;?>
+<?php $judgeComments=$comments[(int)$judge['id']]??[];if($canViewPrivateComments&&$judgeComments):?>
+<section class="sheet">
+ <header class="header">
+  <img class="logo" src="<?=e($logo)?>" alt="BDC">
+  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Private Judge Comments</h2><p><?=e($competition['category_name'])?></p></div>
+  <div class="meta"><span class="badge">SUPER ADMIN ONLY</span><br><strong><?=e($eventDate)?></strong></div>
+ </header>
+ <div class="identity"><div class="field"><b>Judge Name</b><?=e((string)$judge['judge_name'])?><?=(int)$judge['is_chief']?' · Chief Judge':''?></div><div class="field"><b>Category</b><?=e($competition['category_name'])?></div><div class="field page-count"><b>Visibility</b>Confidential</div></div>
+ <p class="confidential">Private judging material · visible only to Super Admin</p>
+ <div class="comment-list">
+ <?php foreach($entries as $entry):$privateComment=trim((string)($judgeComments[(int)$entry['id']]??''));if($privateComment==='')continue;?>
+  <article class="comment-item"><strong>No. <?=e((string)$entry['bib_number'])?> · <?=e($entry['display_name'])?></strong><p><?=e($privateComment)?></p></article>
+ <?php endforeach;?>
+ </div>
+ <footer class="footer"><div class="signature"><b>Reviewed by Super Admin</b></div><div></div><div class="note">These comments are excluded from public results, projection and ordinary admin reports.</div></footer>
+</section>
+<?php endif;?>
+<?php endforeach;?>
 </body>
 </html>

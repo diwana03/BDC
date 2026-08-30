@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev520",
-  "build": 3226,
+  "version": "2.3.3-dev521",
+  "build": 3227,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces Dance Cup Judge Sheets with a detailed result report, restricts private judge comments to Super Admin review, and clearly separates result preview, submission lock, official publication and projection reveal",
     "Protects Dance Cup scores and winners behind an explicit operator unlock, adds progressive third place, second place and champion podium reveals with lightweight celebration effects, replaces the contestant button wall with a responsive selector, and makes Holding show only the real event name",
     "Automatically advances the Dance Cup judge-progress projection from a fully completed contestant to the first contestant still awaiting one or more judges, without changing the operator-controlled contestant call",
     "Clarifies Dance Cup projector judge badges with concise completed, scoring and pending wording followed by the active contestant number",
