@@ -20,6 +20,25 @@ const shell=document.createElement('section');
 shell.className='dc-competitor-stepper';
 shell.innerHTML='<div class="dc-stepper-heading"><div><small>ONE COMPETITOR AT A TIME</small><h2 data-stepper-position></h2></div><div class="dc-stepper-category-progress" data-stepper-complete></div></div><nav class="dc-competitor-history" aria-label="Contestant scoring history"></nav>';
 form.prepend(shell);
+const stickySpacer=document.createElement('div');
+stickySpacer.className='dc-competitor-stepper-spacer';
+shell.before(stickySpacer);
+const stickyTop=()=>matchMedia('(max-width:575.98px)').matches?6:10;
+function sizePinnedStepper(){
+ if(!shell.classList.contains('dc-is-fixed'))return;
+ const bounds=form.getBoundingClientRect();
+ shell.style.left=bounds.left+'px';shell.style.width=bounds.width+'px';
+ stickySpacer.style.height=(shell.offsetHeight+18)+'px';
+}
+function updatePinnedStepper(){
+ const top=stickyTop(),anchor=stickySpacer.getBoundingClientRect().top;
+ const shouldPin=shell.classList.contains('dc-is-fixed')?anchor<=top:shell.getBoundingClientRect().top<=top;
+ shell.classList.toggle('dc-is-fixed',shouldPin);
+ if(shouldPin){sizePinnedStepper();return;}
+ shell.style.removeProperty('left');shell.style.removeProperty('width');stickySpacer.style.removeProperty('height');
+}
+addEventListener('scroll',updatePinnedStepper,{passive:true});
+addEventListener('resize',()=>{updatePinnedStepper();sizePinnedStepper();},{passive:true});
 const history=shell.querySelector('.dc-competitor-history');
 const controls=document.createElement('div');
 controls.className='dc-stepper-controls';

@@ -7,5 +7,5 @@ assert(live.includes("submit.disabled=!accepted||locked||completed!==required"))
 assert(live.includes("scoreInputs.some(input=>input.value==='')"));
 for(const marker of ['--dc-score-progress','.dc-score-slider::-webkit-slider-thumb','.dc-entry-complete','.dc-score-attention','.dc-next-missing','@media(max-width:575.98px)'])assert(css.includes(marker),'missing premium responsive style '+marker);
 assert(judge.includes('scoring-premium.css?v=486'));
-assert(judge.includes('dance-cup-judge-live.js?v=457'));
+assert(/dance-cup-judge-live\.js\?v=(?:45[7-9]|4[6-9]\d|[5-9]\d\d)/.test(judge));
 console.log('dev457 premium responsive Dance Cup slider checks passed');

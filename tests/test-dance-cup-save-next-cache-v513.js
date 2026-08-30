@@ -2,7 +2,7 @@ const fs=require('fs'),assert=require('assert');
 const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
 const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
 const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
-assert(judge.includes('dance-cup-judge-live.js?v=513'),'judge page must invalidate the pre-save-request live script cache');
+assert(/dance-cup-judge-live\.js\?v=(?:51[3-9]|5[2-9]\d|[6-9]\d\d)/.test(judge),'judge page must retain a live-script cache version at or beyond dev513');
 assert(live.includes("form.addEventListener('dc:judge-save-request'"),'active live script must receive Save Competitor and Next requests');
 assert(live.includes("detail:{action,payload,requestId}"),'save confirmation must return the matching navigation request ID');
 assert(stepper.includes("form.dispatchEvent(new CustomEvent('dc:judge-save-request'"),'Next must dispatch a confirmed server-save request');
