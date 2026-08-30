@@ -43,7 +43,7 @@ assert(!service.includes("if($test)throw new RuntimeException('Test Dance Cup re
 assert(review.includes('Permanent history was not changed.'), 'Test approval must explicitly confirm that Live history is unchanged');
 assert(live.includes("approvalNotice.dataset.dcTestMode==='1'"), 'live approval notice must distinguish Test approval from permanent publication');
 
-assert.strictEqual(version.version, '2.3.3-dev536');
-assert.strictEqual(version.build, 3242);
+assert.strictEqual(version.version, '2.3.3-dev537');
+assert.strictEqual(version.build, 3243);
 
 console.log('dev536 Dance Cup Test approval isolation checks passed');

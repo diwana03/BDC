@@ -177,7 +177,9 @@
       else dockJudgeThemeControl(judgeMeta);
     }
     if (brandTarget.matches('.navbar-brand')) {
-      const testBadge = brandTarget.closest('.navbar')?.querySelector('.badge.text-bg-warning');
+      const testBadge = Array.from(brandTarget.closest('.navbar')?.querySelectorAll('.badge.text-bg-warning') || []).find(function (badge) {
+        return /\bTEST ONLY\b/i.test(badge.textContent || '');
+      });
       const main = document.querySelector('main');
       if (testBadge && main) {
         const nav = brandTarget.closest('.navbar');
