@@ -4,6 +4,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Database;
 use App\Services\CountryFlagService;
 use App\Services\DanceCupScoringService;
+use App\Services\ProjectionNameService;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 $pdo=Database::connection();
@@ -45,5 +46,10 @@ foreach($results as &$result){
 unset($result);
 foreach($judges as &$judge)$judge['flag']=CountryFlagService::emoji($judge['country_code']?:($judge['country']??null));unset($judge);
 foreach($results as &$result)$result['flag']=CountryFlagService::emoji($result['country']??null);unset($result);
+// Match Jack and Jill projection naming: first name only, with a surname
+// initial when the current projected group contains duplicate first names.
+$entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
+$results=ProjectionNameService::abbreviateRows($results,['display_name']);
+$judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
 $active=null;foreach($entries as $entry)if((int)$entry['id']===(int)$state['active_entry_id']){$active=$entry;break;}
 echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$results,'active_entry'=>$active],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
