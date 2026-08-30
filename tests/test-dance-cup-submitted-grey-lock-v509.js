@@ -1,0 +1,12 @@
+const fs=require('fs'),assert=require('assert');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
+const css=fs.readFileSync('public/css/dance-cup-judge-stepper-v506.css','utf8');
+assert(live.includes("form.classList.toggle('dc-category-submitted',locked)"),'an already-submitted category must load grey and locked');
+assert(live.includes("if(payload.locked){form.classList.add('dc-category-submitted')"),'only a confirmed locked response may apply the submitted state');
+assert(live.includes(".dc-score-slider,.dc-score-zero').forEach(input=>input.disabled=true)"),'every contestant scoring control must lock after submission');
+assert(live.includes('Submitted · all contestant scores locked'),'final state must clearly describe the category-wide lock');
+assert(stepper.includes("if(isSubmitted()){go(current+1);return;}"),'submitted judges must retain read-only Next review navigation');
+assert(stepper.includes("next.textContent=isSubmitted()?'Next Competitor →'"),'submitted navigation must not claim to save again');
+for(const marker of ['.dc-category-submitted .entry-card{','.dc-category-submitted .dc-score-slider{','.dc-category-submitted .dc-history-item{','.dc-category-submitted .submit-dock .alert{'])assert(css.includes(marker),'missing submitted grey treatment: '+marker);
+console.log('dev509 Dance Cup submitted category grey-lock checks passed');

@@ -23,6 +23,7 @@ const dock=form.querySelector('.submit-dock');
 if(dock)dock.before(controls);
 const originalSave=form.querySelector('button[name="action"][value="save"]');
 const finalSubmit=form.querySelector('button[name="action"][value="submit"]');
+const isSubmitted=()=>form.classList.contains('dc-category-submitted');
 if(originalSave){originalSave.classList.add('dc-original-save');originalSave.textContent='Save Current Draft';}
 if(finalSubmit){finalSubmit.textContent='Submit Category Scores';}
 const complete=entry=>{
@@ -52,8 +53,8 @@ function render(){
  const next=controls.querySelector('[data-stepper-next]');
  const last=current===entries.length-1;
  next.hidden=last;
- next.disabled=!complete(entries[current]);
- next.textContent=complete(entries[current])?'Save Competitor & Next →':'Complete this competitor to continue';
+ next.disabled=isSubmitted()?false:!complete(entries[current]);
+ next.textContent=isSubmitted()?'Next Competitor →':complete(entries[current])?'Save Competitor & Next →':'Complete this competitor to continue';
  if(finalSubmit)finalSubmit.disabled=completed!==entries.length;
 }
 function go(index){
@@ -63,6 +64,7 @@ function go(index){
 }
 controls.querySelector('[data-stepper-previous]').addEventListener('click',()=>go(current-1));
 controls.querySelector('[data-stepper-next]').addEventListener('click',()=>{
+ if(isSubmitted()){go(current+1);return;}
  if(!complete(entries[current]))return;
  advanceAfterSave=true;
  if(originalSave)originalSave.click();else go(current+1);

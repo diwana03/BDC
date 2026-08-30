@@ -6,6 +6,7 @@ const scoreInputs=[...form.querySelectorAll('input[type="number"]')];
 const progress=document.getElementById('dcJudgeProgress');
 const progressBar=document.getElementById('dcJudgeProgressBar');
 const locked=!form.querySelector('button[value="submit"]');
+form.classList.toggle('dc-category-submitted',locked);
 const acceptanceKey='bdc-dc-rules-'+(form.querySelector('input[name="token"]')?.value||location.pathname);
 let timer=0,chain=Promise.resolve(),dirty=false,accepted=locked;
 const status=document.createElement('div');
@@ -72,7 +73,7 @@ async function send(action,silent=false){
  if(progressBar)progressBar.style.width=(payload.required?Math.round(payload.completed/payload.required*100):0)+'%';
  show(payload.message||'Scores saved.','success');
  form.dispatchEvent(new CustomEvent('dc:judge-saved',{detail:{action,payload}}));
- if(payload.locked){form.querySelectorAll('.dc-score-slider').forEach(input=>input.disabled=true);form.querySelectorAll('button').forEach(button=>button.remove());const dock=form.querySelector('.submit-dock');if(dock)dock.innerHTML='<div class="alert alert-success w-100 mb-0 text-center fw-bold">Submitted · scoring locked</div>';}
+ if(payload.locked){form.classList.add('dc-category-submitted');form.querySelectorAll('.dc-score-slider,.dc-score-zero').forEach(input=>input.disabled=true);form.querySelectorAll('.submit-dock button').forEach(button=>button.remove());const dock=form.querySelector('.submit-dock');if(dock)dock.innerHTML='<div class="alert alert-success w-100 mb-0 text-center fw-bold">Submitted · all contestant scores locked</div>';}
  return payload;
 }
 function queued(action,silent=false){const operation=chain.then(()=>send(action,silent));chain=operation.catch(()=>{});return operation;}
