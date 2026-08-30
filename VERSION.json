@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev514",
-  "build": 3220,
+  "version": "2.3.3-dev515",
+  "build": 3221,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Compresses the Dance Cup judge criteria gate into a single-screen mobile sheet with one-line scoring rows, a concise confirmation and an immediately visible acceptance action",
     "Guarantees the Dance Cup contestant navigator stays pinned on mobile and desktop with a JavaScript fixed-position fallback, stable page spacing and responsive width recalculation",
     "Restores Dance Cup Save Competitor and Next by invalidating the stale judge live-script cache so the confirmed server-save listener loads before contestant navigation across Test and Live",
     "Keeps a compact Dance Cup contestant navigator sticky while judges scroll through scoring criteria, automatically centres the current bib and offsets Previous and Next navigation so the active contestant card remains visible on mobile and desktop",
