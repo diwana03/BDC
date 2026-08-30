@@ -17,7 +17,7 @@ for (const marker of [
 ]) assert(projector.includes(marker), `Missing cinematic-effect marker: ${marker}`);
 
 assert(!projector.includes("launchFireworks(place==='1'?"), 'Cinematic fireworks must remain separate from result reveals');
-assert.strictEqual(version.version, '2.3.3-dev530');
-assert.strictEqual(version.build, 3236);
+assert.strictEqual(version.version, '2.3.3-dev531');
+assert.strictEqual(version.build, 3237);
 
 console.log('OK: all Dance Cup effects are cinematic, sustained and operator controlled');

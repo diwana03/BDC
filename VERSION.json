@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev530",
-  "build": 3236,
+  "version": "2.3.3-dev531",
+  "build": 3237,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Removes the fixed universal admin navigation overlay globally by docking controls into existing toolbars or a reserved in-flow navigation bar, with responsive wrapping that cannot cover page actions",
+    "Adds a consolidated first page to Dance Cup Detailed Results showing every contestant, every judge subtotal, combined score and placement while retaining all individual judge criterion pages",
     "Rebuilds every manual Dance Cup presentation effect as a cinematic 7 to 12 second sequence with layered glow, slower motion, sustained action, clean fade-out and protection against an older effect clearing a newer one",
     "Fixes the Super Admin Dance Cup approval review and pending queue to join the dedicated Dance Cup event table, preventing valid submitted categories from returning Category not found",
     "Adds responsive multicolour fireworks as an operator-controlled Dance Cup presentation effect without triggering them automatically during result or podium reveals",

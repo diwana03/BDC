@@ -318,16 +318,18 @@ if ($bdcAdminHtmlCandidate) {
         $parityJson = json_encode($bdcAutomaticParityUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         $navigation = <<<'HTML'
 <style id="bdc-universal-admin-nav-style">
-.bdc-universal-admin-nav{display:flex;align-items:center;gap:.45rem;margin-left:auto}
+.bdc-universal-admin-nav{display:flex;align-items:center;gap:.45rem;margin-left:auto;flex-wrap:wrap;max-width:100%}
 .bdc-universal-admin-nav .bdc-admin-nav-btn{display:inline-flex;align-items:center;justify-content:center;gap:.32rem;min-height:34px;padding:.38rem .72rem;border:1px solid rgba(255,255,255,.72);border-radius:7px;background:transparent;color:#fff!important;text-decoration:none;font-size:.85rem;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap}
 .bdc-universal-admin-nav .bdc-admin-nav-btn:hover{background:rgba(255,255,255,.12)}
 .bdc-universal-admin-nav .bdc-admin-nav-dashboard{background:#fff;color:#20242a!important;border-color:#fff}
 .bdc-universal-admin-nav .bdc-admin-nav-dashboard:hover{background:#f0f1f3}
 .bdc-universal-admin-nav .bdc-admin-nav-test{background:#ffc107;color:#111!important;border-color:#ffc107}
 .bdc-universal-admin-nav .bdc-admin-nav-test:hover{background:#ffca2c}
-.bdc-universal-admin-nav-floating{position:fixed;top:14px;right:18px;z-index:30000;padding:.42rem;background:#20242a;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.24)}
+.bdc-universal-admin-nav-inline{position:static;z-index:auto;flex:0 1 auto}
+.bdc-universal-admin-nav-bar{position:relative;z-index:1040;display:flex;align-items:center;justify-content:flex-end;min-height:52px;padding:8px 14px;background:#20242a;border-bottom:2px solid #c9a45c;box-shadow:0 6px 18px rgba(0,0,0,.16)}
+.toolbar.bdc-universal-admin-nav-host{flex-wrap:wrap;min-height:52px;height:auto}.toolbar.bdc-universal-admin-nav-host>.bdc-universal-admin-nav{margin-left:auto}
 .admin-topbar-actions-v203 .bdc-universal-admin-nav{margin-right:.35rem}
-@media(max-width:760px){.bdc-universal-admin-nav .bdc-admin-nav-btn{padding:.34rem .55rem;font-size:.78rem}.bdc-universal-admin-nav-floating{top:8px;right:8px}}
+@media(max-width:760px){.bdc-universal-admin-nav .bdc-admin-nav-btn{padding:.34rem .55rem;font-size:.78rem}.bdc-universal-admin-nav-bar{justify-content:flex-start;padding:7px 9px}.toolbar.bdc-universal-admin-nav-host>.bdc-universal-admin-nav{width:100%;margin-left:0}}
 </style>
 <script id="bdc-universal-admin-nav-script">
 (function(){
@@ -390,8 +392,22 @@ if ($bdcAdminHtmlCandidate) {
     return;
   }
 
-  controls.classList.add('bdc-universal-admin-nav-floating');
-  document.body.appendChild(controls);
+  var pageToolbar=document.querySelector('.toolbar');
+  if(pageToolbar){
+    pageToolbar.classList.add('bdc-universal-admin-nav-host');
+    var duplicateBack=controls.querySelector('button.bdc-admin-nav-btn');
+    if(duplicateBack&&pageToolbar.querySelector('a[href],button'))duplicateBack.remove();
+    controls.classList.add('bdc-universal-admin-nav-inline');
+    pageToolbar.appendChild(controls);
+    return;
+  }
+
+  var navigationBar=document.createElement('div');
+  navigationBar.className='bdc-universal-admin-nav-bar';
+  navigationBar.setAttribute('role','navigation');
+  navigationBar.setAttribute('aria-label','Admin navigation');
+  navigationBar.appendChild(controls);
+  document.body.insertBefore(navigationBar,document.body.firstChild);
 })();
 </script>
 HTML;
