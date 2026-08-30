@@ -1,0 +1,22 @@
+const assert = require('assert');
+const fs = require('fs');
+
+const projector = fs.readFileSync('admin/dance-cup/projector.php', 'utf8');
+const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
+
+for (const marker of [
+  'align-items:end',
+  '.podium-card.first{--podium-height:clamp(500px,72vh,720px)',
+  '.podium-card.second{--podium-height:clamp(430px,61vh,610px)',
+  '.podium-card.third{--podium-height:clamp(370px,52vh,520px)',
+  'function countdownToPodium(data)',
+  'let seconds=5',
+  "place==='1'?'Champion':place==='2'?'2nd Place':'3rd Place'",
+  'if(revealChanged){countdownToPodium(data);return}',
+]) assert(projector.includes(marker), `Missing stepped podium/countdown marker: ${marker}`);
+
+assert(projector.indexOf("classes=['second','first','third']") !== -1, 'Podium order must remain second, champion, third');
+assert.strictEqual(version.version, '2.3.3-dev526');
+assert.strictEqual(version.build, 3232);
+
+console.log('OK: Dance Cup podium is stepped and every placement reveal receives a 5-4-3-2-1 countdown');

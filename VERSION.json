@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev525",
-  "build": 3231,
+  "version": "2.3.3-dev526",
+  "build": 3232,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Rebuilds the Dance Cup winner display as a true bottom-aligned stepped podium and runs a dedicated 5-4-3-2-1 countdown before each third-place, second-place and champion reveal",
     "Keeps Dance Cup result unlocking neutral and exposes three explicit, always-rendered podium steps for third place, second place and champion while removing the unsafe full-podium shortcut",
     "Replaces the buried Dance Cup projection options with one always-visible live presentation console for premium backgrounds and effects, adds active and sent confirmation, and removes the ineffective shortcut-only layout",
     "Routes Dance Cup publication through a dedicated Super Admin review screen that combines official ranking, every judge criterion score, judge subtotals and confidential comments, and requires an explicit review confirmation before approval",
