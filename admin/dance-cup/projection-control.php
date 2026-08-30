@@ -73,7 +73,8 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <link href="../../public/css/scoring-premium.css?v=354" rel="stylesheet">
 <script defer src="../../public/assets/js/bdc-theme.js?v=505">
 </script>
-<style>.screen-btn{min-height:76px}.theme-preview{height:54px;border-radius:10px}.midnight_wine{background:linear-gradient(135deg,#08111f,#5b1833)}.obsidian_gold{background:linear-gradient(135deg,#050608,#44371e);border:2px solid #c8a95b}.ivory_wine{background:linear-gradient(135deg,#fffaf0,#f1e2e6)}.pearl_navy{background:linear-gradient(135deg,#f8fbff,#dce8f6)}.contestant-call{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem}.reveal-safety{border-left:5px solid #d4a72c}.presentation-console{border-top:5px solid #d4a72c!important}.presentation-console .console-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:1.25rem}.theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}.theme-grid form,.theme-grid button{width:100%;height:100%}.effect-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.effect-grid form,.effect-grid .btn{width:100%;min-height:50px}.presentation-sidebar{position:sticky;top:1rem}.console-status{border-radius:10px;background:#effaf5;color:#116149;padding:.65rem .85rem;font-weight:700}@media(max-width:991px){.presentation-console .console-grid{grid-template-columns:1fr}.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.presentation-sidebar{position:static}}@media(max-width:575px){.contestant-call{grid-template-columns:1fr}.contestant-call .btn{width:100%}.screen-btn{min-height:68px}.effect-grid{grid-template-columns:1fr}}</style>
+<style>.screen-btn{min-height:76px}.theme-preview{height:54px;border-radius:10px}.midnight_wine{background:linear-gradient(135deg,#08111f,#5b1833)}.obsidian_gold{background:linear-gradient(135deg,#050608,#44371e);border:2px solid #c8a95b}.ivory_wine{background:linear-gradient(135deg,#fffaf0,#f1e2e6)}.pearl_navy{background:linear-gradient(135deg,#f8fbff,#dce8f6)}.contestant-call{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem}.reveal-safety{border-left:5px solid #d4a72c}.presentation-console{border-top:5px solid #d4a72c!important}.presentation-console .console-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:1.25rem}.theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}.theme-grid form,.theme-grid button{width:100%;height:100%}.effect-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.effect-grid form,.effect-grid .btn{width:100%;min-height:50px}.presentation-sidebar{position:sticky;top:1rem}.console-status{border-radius:10px;background:#effaf5;color:#116149;padding:.65rem .85rem;font-weight:700}.podium-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}.podium-actions form{display:block!important;margin:0!important}.podium-actions .btn{display:flex!important;align-items:center;justify-content:center;width:100%;min-height:62px;font-weight:800}.podium-actions .step{display:grid;place-items:center;width:30px;height:30px;margin-right:8px;border-radius:50%;background:currentColor;color:#fff}.podium-actions .step b{color:#172033}@media(max-width:991px){.presentation-console .console-grid{grid-template-columns:1fr}.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.presentation-sidebar{position:static}}@media(max-width:575px){.contestant-call{grid-template-columns:1fr}.contestant-call .btn{width:100%}.screen-btn{min-height:68px}.effect-grid{grid-template-columns:1fr}.podium-actions{grid-template-columns:1fr}}</style>
+<style>.podium-actions .step{background:#172033}.podium-actions .step b{color:#fff}</style>
 </head>
 <body class="bg-light">
 <main class="container-fluid py-4" style="max-width:1450px">
@@ -191,7 +192,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <div class="d-flex flex-wrap justify-content-between gap-2">
 <div>
 <h2 class="h4 mb-1">Official Results Reveal</h2>
-<p class="text-muted mb-2">Scores and winners remain locked until you deliberately unlock them.</p>
+<p class="text-muted mb-2">Unlock only authorizes the controls. It does not change the projector screen or reveal any winner.</p>
 </div>
 <span class="badge text-bg-<?=!empty($state['results_unlocked'])?'success':'secondary'?> align-self-start">
 <?=!empty($state['results_unlocked'])?'UNLOCKED':'LOCKED'?>
@@ -214,18 +215,11 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </form>
 </div>
 <div class="fw-bold mb-2">Winner Podium Reveal</div>
-<div class="d-flex flex-wrap gap-2">
-<?php foreach(['3'=>'Reveal 3rd','2'=>'Reveal 2nd','1'=>'Reveal Champion','all'=>'Show Full Podium'] as $place=>$label):?>
-<form method="post">
-<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-<input type="hidden" name="id" value="<?=$id?>">
-<input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
-<input type="hidden" name="reveal_place" value="<?=e($place)?>">
-<button class="btn <?=$place==='1'?'btn-warning':'btn-outline-dark'?>" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>>
-<?=e($label)?>
-</button>
-</form>
-<?php endforeach;?>
+<p class="small text-muted">Use these in order. Each button sends the podium screen live and preserves places already revealed.</p>
+<div class="podium-actions">
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="3"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>3</b></span>Reveal 3rd Place</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="2"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>2</b></span>Reveal 2nd Place</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="1"><button class="btn btn-warning" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>1</b></span>Reveal Champion</button></form>
 </div>
 </div>
 </section>
