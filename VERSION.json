@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev507",
-  "build": 3213,
+  "version": "2.3.3-dev508",
+  "build": 3214,
   "status": "development",
   "release_date": "2026-08-29",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Enlarges contestant first names, national flags and country labels on the Dance Cup All Contestants projection while preserving the full ten-card paged venue layout",
     "Shows first names only across both Jack and Jill and Dance Cup audience projections, while automatically adding a surname initial when people on the same projected screen share a first name",
     "Replaces the long Dance Cup judge sheet with a one-competitor-at-a-time scoring flow, completed and current contestant history, saved Previous and Next navigation, and final category submission only after every competitor is complete across Test and Live",
     "Prevents the global Light Dark System selector from overlaying any portal page by making every theme control participate in normal header or fallback-bar layout, removing protruding shadows and fixed mobile positioning, and refreshing the shared theme and branding assets everywhere",

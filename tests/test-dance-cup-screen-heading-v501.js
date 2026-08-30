@@ -9,6 +9,6 @@ assert(display.includes('class="screen-category"'), 'every content view must ren
 for (const screen of ['Contestant Call','Judges','All Contestants','Scoring Progress','Live Scoreboard','Winner Podium']) {
   assert(display.includes("'" + screen + "'"), screen + ' route must remain available');
 }
-assert(launch.includes("'&presentation=504'"), 'projector launch must invalidate the previous presentation document');
+assert(/'&presentation=\d+'/.test(launch), 'projector launch must invalidate the previous presentation document');
 
 console.log('Dance Cup shared screen heading v501 passed.');

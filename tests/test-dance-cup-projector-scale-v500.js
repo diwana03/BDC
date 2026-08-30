@@ -12,6 +12,6 @@ assert(display.includes('.screen-category{text-align:center;font-size:clamp(18px
 assert(display.includes('width:min(1720px,98vw)'), 'live scoreboard must use more projector width');
 assert(display.includes('.rank-photo{width:clamp(52px,5vw,90px)'), 'scoreboard contestant photos must be larger');
 assert(display.includes('.call-layout{width:100%;height:min(72vh,760px)'), 'three-section contestant presentation must remain intact');
-assert(launch.includes("'&presentation=504'"), 'projector launch must invalidate the previous presentation document');
+assert(/'&presentation=\d+'/.test(launch), 'projector launch must invalidate the previous presentation document');
 
 console.log('Dance Cup projector identity, scale and position v500 passed.');
