@@ -16,10 +16,10 @@ assert(report.includes('FROM {$prefix}_judge_comments'), 'Super Admin report mus
 assert(report.includes('SUPER ADMIN ONLY'), 'comment pages must be visibly confidential');
 assert(report.includes('excluded from public results, projection and ordinary admin reports'), 'private comment exclusion must be explicit');
 assert(report.includes('Detailed Judge Result'), 'report must use result terminology');
-for (const marker of ['Competition Results', 'All contestants and judges', 'summary-table', 'Combined Score', 'Individual judge criterion pages follow.']) {
+for (const marker of ['Final Result', 'All contestants and judges', 'summary-table', 'Combined Score', 'Individual judge criterion pages follow.']) {
   assert(report.includes(marker), `missing consolidated result marker: ${marker}`);
 }
-assert(!report.includes('Consolidated Official Result') && !report.includes('Consolidated result overview'), 'report must use generic result terminology');
+assert(!report.includes('Consolidated Official Result') && !report.includes('Competition Results') && !report.includes('result overview'), 'report must use the exact generic Final Result terminology');
 assert(report.includes('$rankedEntries=$entries') && report.includes('usort($rankedEntries'), 'consolidated result must build a placement-sorted contestant list');
 assert(report.includes('foreach($rankedEntries as $entry)'), 'consolidated result must render official ranking order');
 
@@ -35,7 +35,7 @@ for (const ui of [workspace, category]) {
 assert(workspace.includes('Calculate &amp; Preview Result'), 'calculate must be described as a preview');
 assert(workspace.includes('Submit Results for Approval &amp; Lock'), 'submit must describe approval and locking');
 assert(workspace.includes('it does not publish or reveal the result'), 'submit consequences must be explicit');
-assert.strictEqual(version.version, '2.3.3-dev534');
-assert.strictEqual(version.build, 3240);
+assert.strictEqual(version.version, '2.3.3-dev535');
+assert.strictEqual(version.build, 3241);
 
 console.log('dev521 Dance Cup detailed result and confidential comment checks passed');

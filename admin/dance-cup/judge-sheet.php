@@ -100,7 +100,7 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
 <section class="sheet">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC">
-  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Competition Results</h2><p><?=e($competition['category_name'])?> · All contestants and judges</p></div>
+  <div class="title"><h1><?=e($competition['event_name'])?></h1><h2>Final Result</h2><p><?=e($competition['category_name'])?> · All contestants and judges</p></div>
   <div class="meta"><span class="badge"><?=$test?'TEST ONLY':'OFFICIAL'?></span><br><strong><?=e($eventDate)?></strong><?php if($location):?><br><?=e($location)?><?php endif;?></div>
  </header>
  <div class="summary-intro"><span>Each judge column is that judge’s criterion subtotal for the contestant.</span><strong><?=count($entries)?> contestants · <?=count($judges)?> judges · Maximum <?=e(dcSheetNumber($maximum))?> per judge</strong></div>
@@ -109,7 +109,7 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
   <thead><tr><th>Contestant No.</th><th class="contestant">Participant / Team</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><span class="maximum"><?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' · Chief':''?></span></th><?php endforeach;?><th>Combined Score</th><th>Place</th></tr></thead>
   <tbody><?php foreach($rankedEntries as $entry):$entryId=(int)$entry['id'];?><tr><td><strong><?=e((string)$entry['bib_number'])?></strong></td><td class="contestant"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):$subtotal=0.0;$hasJudgeMark=false;foreach($criteria as $criterion){$value=$marks[(int)$judge['id']][$entryId][(int)$criterion['id']]??null;if($value!==null&&$value!==''){$subtotal+=(float)$value;$hasJudgeMark=true;}}?><td><?=$hasJudgeMark?e(dcSheetNumber($subtotal)):'—'?></td><?php endforeach;$official=$resultByEntry[$entryId]??null;?><td class="combined"><?=$official?e(dcSheetNumber((float)$official['total_score'])):'—'?></td><td class="placement"><?=$official?'#'.(int)$official['placement']:'—'?></td></tr><?php endforeach;?><?php if(!$rankedEntries):?><tr><td colspan="<?=count($judges)+4?>" class="contestant">No contestants available.</td></tr><?php endif;?></tbody>
  </table>
- <footer class="footer"><div class="signature"><b>Scoring Administrator / Witness</b></div><div></div><div class="note">Competition result overview. Individual judge criterion pages follow. <?=$test?'<span class="test">TEST DATA</span>':''?></div></footer>
+ <footer class="footer"><div class="signature"><b>Scoring Administrator / Witness</b></div><div></div><div class="note">Final result. Individual judge criterion pages follow. <?=$test?'<span class="test">TEST DATA</span>':''?></div></footer>
 </section>
 <?php foreach($judges as $judge):foreach($pages as $pageIndex=>$pageEntries):?>
 <section class="sheet">
