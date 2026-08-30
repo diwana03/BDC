@@ -19,9 +19,9 @@ assert(review.includes('DanceCupScoringService::approveResults'), 'confirmed rev
 assert(review.includes('Projection reveal remains locked and separately controlled.'), 'approval must not imply an automatic reveal');
 assert(queue.includes('approval-review.php?id='), 'approval queue must route into the dedicated review screen');
 assert(!queue.includes('<form method="post"'), 'approval queue must not publish inline');
-assert(workspace.includes('Review &amp; Approve Official Result'), 'automatic workspace must open review rather than approve immediately');
-assert(workspace.includes("'approval-review.php?id='.$id"), 'workspace review action must target the selected competition');
-assert.strictEqual(version.version, '2.3.3-dev526');
-assert.strictEqual(version.build, 3232);
+assert(workspace.includes('Review Result, Comments &amp; Accept'), 'automatic workspace must open review rather than approve immediately');
+assert(workspace.includes('data-approval-href="approval-review.php?id=<?=$id?>"'), 'workspace review action must target the selected competition');
+assert.strictEqual(version.version, '2.3.3-dev527');
+assert.strictEqual(version.build, 3233);
 
 console.log('dev523 Super Admin Dance Cup approval review checks passed');

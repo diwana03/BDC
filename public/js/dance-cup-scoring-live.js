@@ -66,6 +66,19 @@ function renderState(state){
  if(calculateButton)calculateButton.disabled=submitted||Number(state.mark_count)<1;
  const approveButton=document.querySelector('[data-dc-api-action="approve_results"]');
  if(approveButton)approveButton.disabled=state.competition_status!=='pending_approval';
+ const approvalLink=document.querySelector('[data-dc-approval-link]');
+ if(approvalLink){
+  const pending=state.competition_status==='pending_approval';
+  approvalLink.classList.toggle('disabled',!pending);
+  approvalLink.href=pending?approvalLink.dataset.approvalHref:'#';
+  if(pending){approvalLink.removeAttribute('aria-disabled');approvalLink.removeAttribute('tabindex')}else{approvalLink.setAttribute('aria-disabled','true');approvalLink.setAttribute('tabindex','-1')}
+ }
+ const approvalNotice=document.querySelector('[data-dc-approval-notice]');
+ if(approvalNotice){
+  approvalNotice.classList.toggle('alert-success',state.competition_status==='pending_approval'||state.competition_status==='approved');
+  approvalNotice.classList.toggle('alert-info',!['pending_approval','approved'].includes(state.competition_status));
+  approvalNotice.textContent=state.competition_status==='pending_approval'?'Pending Super Admin approval. The result, marks and private comments are locked. Open Review Result, Comments & Accept.':state.competition_status==='approved'?'Official result approved and written to permanent Dance Cup history. Projection reveal remains separately controlled.':'Calculate previews the ranking only. Submit Results for Approval & Lock freezes all marks, ranking and private comments and sends them to Super Admin; it does not publish or reveal the result.';
+ }
 }
 if(manual){
  const scoreForm=[...manual.querySelectorAll('form')].find(form=>form.querySelector('input[name="action"][value="save_scores"]'));

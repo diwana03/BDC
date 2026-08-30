@@ -6,9 +6,9 @@ const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 
 for (const marker of [
   'align-items:end',
-  '.podium-card.first{--podium-height:clamp(500px,72vh,720px)',
-  '.podium-card.second{--podium-height:clamp(430px,61vh,610px)',
-  '.podium-card.third{--podium-height:clamp(370px,52vh,520px)',
+  '.podium-card.first{--podium-height:clamp(500px,69vh,690px)',
+  '.podium-card.second{--podium-height:clamp(430px,59vh,590px)',
+  '.podium-card.third{--podium-height:clamp(390px,51vh,510px)',
   'function countdownToPodium(data)',
   'let seconds=5',
   "place==='1'?'Champion':place==='2'?'2nd Place':'3rd Place'",
@@ -16,7 +16,7 @@ for (const marker of [
 ]) assert(projector.includes(marker), `Missing stepped podium/countdown marker: ${marker}`);
 
 assert(projector.indexOf("classes=['second','first','third']") !== -1, 'Podium order must remain second, champion, third');
-assert.strictEqual(version.version, '2.3.3-dev526');
-assert.strictEqual(version.build, 3232);
+assert.strictEqual(version.version, '2.3.3-dev527');
+assert.strictEqual(version.build, 3233);
 
 console.log('OK: Dance Cup podium is stepped and every placement reveal receives a 5-4-3-2-1 countdown');
