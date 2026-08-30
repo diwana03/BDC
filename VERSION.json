@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev535",
-  "build": 3241,
+  "version": "2.3.3-dev536",
+  "build": 3242,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Keeps Dance Cup Test approval, detailed results, comments, rankings and queue navigation entirely on isolated bdc_test_dance_cup tables, while allowing a Test-only approval simulation that never writes permanent Live history",
     "Uses the exact generic Final Result heading on the Dance Cup result report without consolidated, official, competition or overview wording",
     "Sorts the consolidated Dance Cup result overview by official placement from first place onward while preserving contestant numbers and leaving individual judge sheets in contestant-number order",
     "Accelerates the Dance Cup audience projector from fixed five-second full-feed polling to serialized one-second revision polling, returning lightweight unchanged responses while immediately refreshing screen calls, themes, effects, judge progress and scores when data changes, and prevents logged-in admin navigation from entering or covering the audience presentation",

@@ -75,9 +75,10 @@ function renderState(state){
  }
  const approvalNotice=document.querySelector('[data-dc-approval-notice]');
  if(approvalNotice){
+  const testMode=approvalNotice.dataset.dcTestMode==='1';
   approvalNotice.classList.toggle('alert-success',state.competition_status==='pending_approval'||state.competition_status==='approved');
   approvalNotice.classList.toggle('alert-info',!['pending_approval','approved'].includes(state.competition_status));
-  approvalNotice.textContent=state.competition_status==='pending_approval'?'Pending Super Admin approval. The result, marks and private comments are locked. Open Review Result, Comments & Accept.':state.competition_status==='approved'?'Official result approved and written to permanent Dance Cup history. Projection reveal remains separately controlled.':'Calculate previews the ranking only. Submit Results for Approval & Lock freezes all marks, ranking and private comments and sends them to Super Admin; it does not publish or reveal the result.';
+  approvalNotice.textContent=state.competition_status==='pending_approval'?'Pending Super Admin approval. The result, marks and private comments are locked. Open Review Result, Comments & Accept.':state.competition_status==='approved'?(testMode?'Test result approved in isolated Test data. Permanent history was not changed.':'Official result approved and written to permanent Dance Cup history. Projection reveal remains separately controlled.'):'Calculate previews the ranking only. Submit Results for Approval & Lock freezes all marks, ranking and private comments and sends them to Super Admin; it does not publish or reveal the result.';
  }
 }
 if(manual){
