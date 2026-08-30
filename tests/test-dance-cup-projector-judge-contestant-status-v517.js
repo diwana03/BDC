@@ -16,6 +16,6 @@ assert(projector.includes('Final submission:'), 'projector must summarize final 
 assert(projector.includes('Completed · No.'), 'judge cards must identify completed current competitor');
 assert(projector.includes('Final pending'), 'judge cards must identify pending final submission');
 assert(projector.includes('data.progress_entry||data.active_entry'), 'progress screen must use automatic contestant progression');
-assert.strictEqual(version.version, '2.3.3-dev521');
+assert.strictEqual(version.version, '2.3.3-dev522');
 
 console.log('Dance Cup projector judge contestant status v517 tests passed.');
