@@ -18,9 +18,9 @@ assert(report.includes('excluded from public results, projection and ordinary ad
 assert(report.includes('Detailed Judge Result'), 'report must use result terminology');
 
 assert(approvals.includes('private_comments'), 'approval list must expose a private comment count to Super Admin');
-assert(approvals.includes('Detailed Results &amp; Private Comments'), 'approval screen must link to detailed confidential review');
-assert(approvals.includes('Approve &amp; Publish Official Result'), 'approval action must describe official publication');
-assert(approvals.includes('projection reveal is controlled separately'), 'publication must be distinguished from projection reveal');
+assert(approvals.includes('Review Result, Comments &amp; Accept'), 'approval queue must link to dedicated confidential review');
+assert(approvals.includes('approval-review.php'), 'approval must continue on the dedicated Super Admin screen');
+assert(approvals.includes('Projection reveal is controlled separately'), 'publication must be distinguished from projection reveal');
 
 for (const ui of [workspace, category]) {
   assert(ui.includes('Detailed Judge Results'), 'scoring UI must link to the detailed result report');
@@ -29,7 +29,7 @@ for (const ui of [workspace, category]) {
 assert(workspace.includes('Calculate &amp; Preview Result'), 'calculate must be described as a preview');
 assert(workspace.includes('Submit Results for Approval &amp; Lock'), 'submit must describe approval and locking');
 assert(workspace.includes('it does not publish or reveal the result'), 'submit consequences must be explicit');
-assert.strictEqual(version.version, '2.3.3-dev522');
-assert.strictEqual(version.build, 3228);
+assert.strictEqual(version.version, '2.3.3-dev523');
+assert.strictEqual(version.build, 3229);
 
 console.log('dev521 Dance Cup detailed result and confidential comment checks passed');
