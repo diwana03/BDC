@@ -9,6 +9,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 $pdo=Database::connection();
 $test=(string)($_GET['data_mode']??'')==='test';
+DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
 $p=$test?'bdc_test_dance_cup':'bdc_dance_cup';
 $t=DanceCupScoringService::tables($test);
 $token=preg_replace('/[^a-f0-9]/','',(string)($_GET['token']??''));
@@ -74,6 +75,7 @@ foreach($results as &$result)$result['flag']=CountryFlagService::emoji($result['
 $entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
 $results=ProjectionNameService::abbreviateRows($results,['display_name']);
 $judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
+$publicResults=!empty($state['results_unlocked'])?$results:[];
 $active=null;foreach($entries as $entry)if((int)$entry['id']===$activeEntryId){$active=$entry;break;}
 $progress=null;foreach($entries as $entry)if((int)$entry['id']===$progressEntryId){$progress=$entry;break;}
-echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$results,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
+echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$publicResults,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);

@@ -51,6 +51,10 @@ final class DanceCupScoringService
             "page_number INT UNSIGNED NOT NULL DEFAULT 1 AFTER auto_cycle",
             "auto_page TINYINT(1) NOT NULL DEFAULT 1 AFTER page_number",
             "page_delay INT UNSIGNED NOT NULL DEFAULT 10 AFTER auto_page",
+            "results_unlocked TINYINT(1) NOT NULL DEFAULT 0 AFTER page_delay",
+            "reveal_place VARCHAR(8) NULL AFTER results_unlocked",
+            "effect_type VARCHAR(24) NULL AFTER reveal_place",
+            "effect_version BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER effect_type",
         ] as $definition) {
             try { $pdo->exec("ALTER TABLE {$prefix}_event_projection ADD COLUMN ".$definition); } catch (\Throwable) {}
         }
