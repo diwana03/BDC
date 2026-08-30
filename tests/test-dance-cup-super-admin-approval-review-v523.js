@@ -19,9 +19,12 @@ assert(review.includes('DanceCupScoringService::approveResults'), 'confirmed rev
 assert(review.includes('Projection reveal remains locked and separately controlled.'), 'approval must not imply an automatic reveal');
 assert(queue.includes('approval-review.php?id='), 'approval queue must route into the dedicated review screen');
 assert(!queue.includes('<form method="post"'), 'approval queue must not publish inline');
+assert(review.includes('JOIN bdc_dance_cup_events e'), 'approval review must join the dedicated Dance Cup event table');
+assert(queue.includes('JOIN bdc_dance_cup_events e'), 'approval queue must join the dedicated Dance Cup event table');
+assert(!review.includes('JOIN bdc_events e'), 'approval review must not join the unrelated general event table');
 assert(workspace.includes('Review Result, Comments &amp; Accept'), 'automatic workspace must open review rather than approve immediately');
 assert(workspace.includes('data-approval-href="approval-review.php?id=<?=$id?>"'), 'workspace review action must target the selected competition');
-assert.strictEqual(version.version, '2.3.3-dev528');
-assert.strictEqual(version.build, 3234);
+assert.strictEqual(version.version, '2.3.3-dev529');
+assert.strictEqual(version.build, 3235);
 
 console.log('dev523 Super Admin Dance Cup approval review checks passed');

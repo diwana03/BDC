@@ -14,7 +14,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   $pdo->commit();$notice='Official Dance Cup result approved and published to permanent history.';
  }catch(Throwable $exception){if($pdo->inTransaction())$pdo->rollBack();$error=$exception->getMessage();}
 }
-$q=$pdo->prepare("SELECT c.*,e.name event_name,e.event_date FROM bdc_dance_cup_competitions c JOIN bdc_events e ON e.id=c.event_id WHERE c.id=:id");$q->execute(['id'=>$id]);$competition=$q->fetch();if(!$competition){http_response_code(404);exit('Dance Cup category not found.');}
+$q=$pdo->prepare("SELECT c.*,e.name event_name,e.event_date FROM bdc_dance_cup_competitions c JOIN bdc_dance_cup_events e ON e.id=c.event_id WHERE c.id=:id");$q->execute(['id'=>$id]);$competition=$q->fetch();if(!$competition){http_response_code(404);exit('Dance Cup category not found.');}
 $q=$pdo->prepare("SELECT * FROM bdc_dance_cup_criteria WHERE competition_id=:id ORDER BY sort_order,id");$q->execute(['id'=>$id]);$criteria=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM bdc_dance_cup_entries WHERE competition_id=:id AND status='active' ORDER BY bib_number,id");$q->execute(['id'=>$id]);$entries=$q->fetchAll();
 $q=$pdo->prepare("SELECT * FROM bdc_dance_cup_judges WHERE competition_id=:id ORDER BY is_chief DESC,judge_order,id");$q->execute(['id'=>$id]);$judges=$q->fetchAll();
