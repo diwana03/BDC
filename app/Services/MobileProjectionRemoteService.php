@@ -59,7 +59,7 @@ final class MobileProjectionRemoteService
 
     public static function url(string $token):string
     {
-        $path=url('projection-remote/?token='.rawurlencode($token));$app=rtrim((string)Config::get('app.url',''),'/');if(!$app)return $path;$u=parse_url($app);return is_array($u)&&isset($u['scheme'],$u['host'])?$u['scheme'].'://'.$u['host'].(isset($u['port'])?':'.(int)$u['port']:'').$path:$path;
+        return absolute_url('projection-remote/?token='.rawurlencode($token));
     }
 
     private static function assertEventMember(PDO $pdo,array $session,int $eventId,bool $test):void

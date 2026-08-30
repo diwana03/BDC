@@ -416,20 +416,7 @@ final class TestAutomaticJudgeService
 
     public static function publicUrl(string $token): string
     {
-        $path = url("test-judge-scoring/?token=" . rawurlencode($token));
-        $appUrl = rtrim((string) Config::get("app.url", ""), "/");
-        if ($appUrl === "") {
-            return $path;
-        }
-        $parts = parse_url($appUrl);
-        if (!is_array($parts) || !isset($parts["scheme"], $parts["host"])) {
-            return $path;
-        }
-        return $parts["scheme"] .
-            "://" .
-            $parts["host"] .
-            (isset($parts["port"]) ? ":" . (int) $parts["port"] : "") .
-            $path;
+        return absolute_url("test-judge-scoring/?token=" . rawurlencode($token));
     }
 
     public static function clearJudgeSessions(PDO $pdo, int $roundId): void

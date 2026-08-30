@@ -53,7 +53,32 @@ if (!function_exists('url')) {
     function url(string $path = ''): string
     {
         $base = rtrim((string) \App\Core\Config::get('app.base_path', '/portal'), '/');
-        return $base . '/' . ltrim($path, '/');
+        $relative = $base . '/' . ltrim($path, '/');
+        // Token-bearing URLs are intended for copying or external sharing.
+        // Never expose them as portal-relative paths.
+        if (preg_match('/(?:^|[?&])(token|invite|access)=/i', $path) && function_exists('absolute_url')) {
+            return absolute_url($relative);
+        }
+        return $relative;
+    }
+}
+
+if (!function_exists('absolute_url')) {
+    /** Build a shareable absolute URL while preserving the configured portal path. */
+    function absolute_url(string $path = ''): string
+    {
+        if (preg_match('#^https?://#i', $path)) return $path;
+        $relative = str_starts_with($path, '/') ? $path : url($path);
+        $configured = rtrim((string) \App\Core\Config::get('app.url', ''), '/');
+        $parts = $configured !== '' ? parse_url($configured) : false;
+        if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
+            return $parts['scheme'].'://'.$parts['host'].(isset($parts['port'])?':'.(int)$parts['port']:'').$relative;
+        }
+        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host === '') return $relative;
+        $forwarded = strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+        $scheme = in_array($forwarded, ['http', 'https'], true) ? $forwarded : 'https';
+        return $scheme.'://'.$host.$relative;
     }
 }
 
