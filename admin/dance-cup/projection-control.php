@@ -57,10 +57,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if($screen==='results'){$lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before sending scores live.');}
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type=:screen,theme=:theme,auto_cycle=0,page_number=1,reveal_place=NULL,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'screen'=>$screen,'theme'=>$theme,'user'=>$user,'event'=>$eventId]);
     }
-    header('Location: ?id='.$id.($test?'&data_mode=test':''),true,303);exit;
+    $changed=in_array($action,['theme','effect'],true)?$action:'';
+    header('Location: ?id='.$id.($test?'&data_mode=test':'').($changed?'&changed='.$changed:''),true,303);exit;
 }
 }catch(Throwable $e){$error=$e->getMessage();}
-$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judges'=>'Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();
+$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judges'=>'Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();$changed=(string)($_GET['changed']??'');
 ?>
 <!doctype html>
 <html>
@@ -72,7 +73,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <link href="../../public/css/scoring-premium.css?v=354" rel="stylesheet">
 <script defer src="../../public/assets/js/bdc-theme.js?v=505">
 </script>
-<style>.screen-btn{min-height:80px}.theme-preview{height:58px;border-radius:12px}.midnight_wine{background:linear-gradient(135deg,#08111f,#5b1833)}.obsidian_gold{background:linear-gradient(135deg,#050608,#44371e);border:2px solid #c8a95b}.ivory_wine{background:linear-gradient(135deg,#fffaf0,#f1e2e6)}.pearl_navy{background:linear-gradient(135deg,#f8fbff,#dce8f6)}.contestant-call{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem}.reveal-safety{border-left:5px solid #d4a72c}.effect-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}.effect-grid form,.effect-grid .btn{width:100%}.presentation-sidebar{position:sticky;top:1rem;display:flex;flex-direction:column}.presentation-effects{order:-3;border-top:4px solid #a51d45!important}.premium-background{order:-2;border-top:4px solid #d4a72c!important}.quick-nav{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}.quick-nav a{font-weight:700}@media(max-width:991px){.presentation-sidebar{position:static}.effect-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:575px){.contestant-call{grid-template-columns:1fr}.contestant-call .btn{width:100%}.screen-btn{min-height:68px}.effect-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>
+<style>.screen-btn{min-height:76px}.theme-preview{height:54px;border-radius:10px}.midnight_wine{background:linear-gradient(135deg,#08111f,#5b1833)}.obsidian_gold{background:linear-gradient(135deg,#050608,#44371e);border:2px solid #c8a95b}.ivory_wine{background:linear-gradient(135deg,#fffaf0,#f1e2e6)}.pearl_navy{background:linear-gradient(135deg,#f8fbff,#dce8f6)}.contestant-call{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem}.reveal-safety{border-left:5px solid #d4a72c}.presentation-console{border-top:5px solid #d4a72c!important}.presentation-console .console-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:1.25rem}.theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}.theme-grid form,.theme-grid button{width:100%;height:100%}.effect-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.effect-grid form,.effect-grid .btn{width:100%;min-height:50px}.presentation-sidebar{position:sticky;top:1rem}.console-status{border-radius:10px;background:#effaf5;color:#116149;padding:.65rem .85rem;font-weight:700}@media(max-width:991px){.presentation-console .console-grid{grid-template-columns:1fr}.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.presentation-sidebar{position:static}}@media(max-width:575px){.contestant-call{grid-template-columns:1fr}.contestant-call .btn{width:100%}.screen-btn{min-height:68px}.effect-grid{grid-template-columns:1fr}}</style>
 </head>
 <body class="bg-light">
 <main class="container-fluid py-4" style="max-width:1450px">
@@ -91,17 +92,21 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <div class="alert alert-info py-2">
 <strong>Live state:</strong> <?=e($screens[$state['screen_type']]??ucfirst((string)$state['screen_type']))?> · Page <?=(int)($state['page_number']??1)?> · Auto Page <?=!empty($state['auto_page'])?'On':'Off'?>
 </div>
-<nav class="quick-nav" aria-label="Projection controls">
-<a class="btn btn-sm btn-outline-dark" href="#sendScreenLive">Screens</a>
-<a class="btn btn-sm btn-outline-warning" href="#officialResultReveal">Result Reveal</a>
-<a class="btn btn-sm btn-outline-danger" href="#presentationEffects">Effects</a>
-<a class="btn btn-sm btn-outline-primary" href="#premiumBackground">Premium Background</a>
-</nav>
 <?php if($error):?>
 <div class="alert alert-danger">
 <?=e($error)?>
 </div>
 <?php endif;?>
+<?php if($changed==='theme'):?><div class="console-status mb-3">✓ Premium background applied to the live projector.</div><?php elseif($changed==='effect'):?><div class="console-status mb-3">✓ Presentation effect sent to the live projector.</div><?php endif;?>
+<section class="card border-0 shadow-sm mb-4 presentation-console">
+<div class="card-body p-3 p-md-4">
+<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3"><div><span class="badge text-bg-warning">LIVE PRESENTATION CONSOLE</span><h2 class="h4 mt-2 mb-1">Background &amp; Effects</h2><p class="text-muted mb-0">These controls update the already-open projector. Do not reopen the projector after applying them.</p></div><span class="badge text-bg-dark">Active: <?=e($themes[$state['theme']][0]??'Midnight Wine')?></span></div>
+<div class="console-grid">
+<div><h3 class="h6">Premium Background</h3><div class="theme-grid"><?php foreach($themes as $key=>$theme):?><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="action" value="theme"><button class="btn text-start <?=$state['theme']===$key?'btn-warning':'btn-outline-secondary'?>" name="theme" value="<?=e($key)?>"><span class="theme-preview <?=e($key)?> d-block mb-2"></span><strong><?=e($theme[0])?></strong><small class="d-block"><?=$state['theme']===$key?'ACTIVE':e($theme[1])?></small></button></form><?php endforeach;?></div></div>
+<div><h3 class="h6">Presentation Effects</h3><div class="effect-grid"><?php foreach(['hearts'=>'💖 Hearts','balloons'=>'🎈 Balloons','heart_smiles'=>'🥰 Smiling Hearts','finger_hearts'=>'🫰 Finger Hearts','gold_rain'=>'✨ Gold Celebration','champion_impact'=>'🏆 Champion Impact','none'=>'Clear Effect'] as $effect=>$label):?><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="effect_type" value="<?=e($effect)?>"><button class="btn <?=$effect==='none'?'btn-outline-secondary':'btn-outline-danger'?>" name="action" value="effect"><?=e($label)?></button></form><?php endforeach;?></div></div>
+</div>
+</div>
+</section>
 <div class="row g-4">
 <div class="col-lg-8">
 <section class="card border-0 shadow-sm mb-4">
@@ -226,23 +231,6 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </section>
 </div>
 <div class="col-lg-4 presentation-sidebar">
-<section id="presentationEffects" class="card border-0 shadow-sm mb-4 presentation-effects">
-<div class="card-body">
-<h2 class="h4 mb-1">Presentation Effects</h2>
-<p class="text-muted">Send lightweight live effects to the projector at any time.</p>
-<div class="effect-grid">
-<?php foreach(['hearts'=>'💖 Hearts','balloons'=>'🎈 Balloons','heart_smiles'=>'🥰 Smiling Hearts','finger_hearts'=>'🫰 Finger Hearts','gold_rain'=>'✨ Gold Celebration','champion_impact'=>'🏆 Champion Impact','none'=>'Clear Effect'] as $effect=>$label):?>
-<form method="post">
-<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-<input type="hidden" name="id" value="<?=$id?>">
-<input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
-<input type="hidden" name="effect_type" value="<?=e($effect)?>">
-<button class="btn btn-sm <?=$effect==='none'?'btn-outline-secondary':'btn-outline-danger'?>" name="action" value="effect"><?=e($label)?></button>
-</form>
-<?php endforeach;?>
-</div>
-</div>
-</section>
 <section class="card border-0 shadow-sm mb-4">
 <div class="card-body">
 <h2 class="h4">Screen Paging</h2>
@@ -295,36 +283,6 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </small>
 </button>
 </form>
-<?php endforeach;?>
-</div>
-</div>
-</section>
-<section id="premiumBackground" class="card border-0 shadow-sm premium-background">
-<div class="card-body">
-<h2 class="h4">Premium Background</h2>
-<p class="text-muted">Two dark and two light adaptive presets.</p>
-<div class="row g-2">
-<?php foreach($themes as $key=>$theme):?>
-<div class="col-6">
-<form method="post">
-<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
-<input type="hidden" name="id" value="<?=$id?>">
-<input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
-<input type="hidden" name="action" value="theme">
-<input type="hidden" name="holding_title" value="<?=e($state['holding_title'])?>">
-<input type="hidden" name="holding_message" value="<?=e($state['holding_message'])?>">
-<button class="btn w-100 text-start <?=$state['theme']===$key?'btn-warning':'btn-outline-secondary'?>" name="theme" value="<?=e($key)?>">
-<span class="theme-preview <?=e($key)?> d-block mb-2">
-</span>
-<strong>
-<?=e($theme[0])?>
-</strong>
-<small class="d-block">
-<?=e($theme[1])?>
-</small>
-</button>
-</form>
-</div>
 <?php endforeach;?>
 </div>
 </div>

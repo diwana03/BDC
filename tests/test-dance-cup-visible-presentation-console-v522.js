@@ -4,18 +4,18 @@ const fs = require('fs');
 const control = fs.readFileSync('admin/dance-cup/projection-control.php', 'utf8');
 const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 
-assert(control.includes('col-lg-4 presentation-sidebar'), 'presentation controls must remain beside the main console at laptop widths');
-assert(control.includes('id="presentationEffects"'), 'effects must have a directly visible presentation panel');
-assert(control.includes('id="premiumBackground"'), 'premium backgrounds must have a directly visible panel');
-assert(control.includes('.presentation-effects{order:-3'), 'effects must appear first in the presentation sidebar');
-assert(control.includes('.premium-background{order:-2'), 'premium backgrounds must appear before secondary paging controls');
-for (const target of ['#sendScreenLive', '#officialResultReveal', '#presentationEffects', '#premiumBackground']) {
-  assert(control.includes(`href="${target}"`), `quick navigation missing ${target}`);
-}
+assert(control.includes('LIVE PRESENTATION CONSOLE'), 'presentation controls must be immediately visible near the top');
+assert(control.includes('Background &amp; Effects'), 'background and effects must share one clear console');
+assert(control.includes('class="console-grid"'), 'presentation console must use a responsive two-panel layout');
+assert(control.includes('class="theme-grid"'), 'premium backgrounds must be visible inside the console');
+assert(control.includes('class="effect-grid"'), 'effects must be visible inside the console');
+assert(!control.includes('class="quick-nav"'), 'ineffective shortcut-only navigation must be removed');
+assert(control.includes("$changed==='theme'"), 'background changes must show confirmation');
+assert(control.includes("$changed==='effect'"), 'effect commands must show confirmation');
 for (const effect of ['hearts', 'balloons', 'heart_smiles', 'finger_hearts', 'gold_rain', 'champion_impact']) {
   assert(control.includes(`'${effect}'`), `presentation effect missing ${effect}`);
 }
-assert.strictEqual(version.version, '2.3.3-dev523');
-assert.strictEqual(version.build, 3229);
+assert.strictEqual(version.version, '2.3.3-dev524');
+assert.strictEqual(version.build, 3230);
 
 console.log('dev522 visible Dance Cup presentation console checks passed');
