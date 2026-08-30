@@ -18,6 +18,29 @@ $q=$pdo->prepare("SELECT p.*,e.name event_name,c.category_name,c.round_name,c.da
 $q->execute(['token'=>$token]);$state=$q->fetch();
 if(!$state){http_response_code(404);echo json_encode(['ok'=>false]);exit;}
 $competition=(int)$state['active_competition_id'];
+$revisionQuery=$pdo->prepare("SELECT
+ (SELECT COUNT(*) FROM {$p}_entries e WHERE e.competition_id=:c1) entry_count,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',e.id,e.bib_number,e.display_name,e.status,COALESCE(e.competitor_id,0)))),0) FROM {$p}_entries e WHERE e.competition_id=:c2) entry_signature,
+ (SELECT COUNT(*) FROM {$p}_judges j WHERE j.competition_id=:c3) judge_count,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',j.id,j.judge_name,j.judge_order,j.is_chief,COALESCE(j.judge_id,0)))),0) FROM {$p}_judges j WHERE j.competition_id=:c4) judge_signature,
+ (SELECT COUNT(*) FROM {$p}_criteria x WHERE x.competition_id=:c5) criterion_count,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',x.id,x.criterion_name,x.maximum_points,x.sort_order))),0) FROM {$p}_criteria x WHERE x.competition_id=:c6) criterion_signature,
+ (SELECT COUNT(*) FROM {$p}_marks m WHERE m.competition_id=:c7) mark_count,
+ (SELECT COALESCE(MAX(UNIX_TIMESTAMP(m.updated_at)),0) FROM {$p}_marks m WHERE m.competition_id=:c8) mark_updated,
+ (SELECT COALESCE(SUM(m.points),0) FROM {$p}_marks m WHERE m.competition_id=:c9) mark_total,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',m.entry_id,m.judge_id,m.criterion_id,m.points))),0) FROM {$p}_marks m WHERE m.competition_id=:c10) mark_signature,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',s.id,s.status,COALESCE(UNIX_TIMESTAMP(s.submitted_at),0)))),0) FROM {$p}_judge_sessions s WHERE s.competition_id=:c11) session_signature,
+ (SELECT COUNT(*) FROM {$p}_scoring_results r WHERE r.competition_id=:c12) result_count,
+ (SELECT COALESCE(MAX(UNIX_TIMESTAMP(r.calculated_at)),0) FROM {$p}_scoring_results r WHERE r.competition_id=:c13) result_updated,
+ (SELECT COALESCE(SUM(r.total_score),0) FROM {$p}_scoring_results r WHERE r.competition_id=:c14) result_total,
+ (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',r.entry_id,r.total_score,r.placement))),0) FROM {$p}_scoring_results r WHERE r.competition_id=:c15) result_signature");
+$revisionParams=[];for($revisionIndex=1;$revisionIndex<=15;$revisionIndex++)$revisionParams['c'.$revisionIndex]=$competition;
+$revisionQuery->execute($revisionParams);$revisionParts=$revisionQuery->fetch()?:[];
+$revision=hash('sha256',json_encode([(int)($state['state_version']??0),$revisionParts],JSON_UNESCAPED_SLASHES));
+$clientRevision=preg_replace('/[^a-f0-9]/','',(string)($_GET['since']??''));
+if(strlen($clientRevision)===64&&hash_equals($revision,$clientRevision)){
+ echo json_encode(['ok'=>true,'unchanged'=>true,'revision'=>$revision],JSON_UNESCAPED_SLASHES);exit;
+}
 $fetch=function(string $sql,string $scope,array $params=[])use($pdo,$competition):array{try{$q=$pdo->prepare($sql);$q->execute(['competition'=>$competition]+$params);return $q->fetchAll();}catch(Throwable $e){error_log('BDC Dance Cup projector '.$scope.' feed fallback: '.$e->getMessage());return [];}};
 $entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant');
 if(!$entries)$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,NULL country,NULL photo_url FROM {$p}_entries e WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant-minimal');
@@ -78,4 +101,4 @@ $judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
 $publicResults=!empty($state['results_unlocked'])?$results:[];
 $active=null;foreach($entries as $entry)if((int)$entry['id']===$activeEntryId){$active=$entry;break;}
 $progress=null;foreach($entries as $entry)if((int)$entry['id']===$progressEntryId){$progress=$entry;break;}
-echo json_encode(['ok'=>true,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$publicResults,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
+echo json_encode(['ok'=>true,'revision'=>$revision,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$publicResults,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);

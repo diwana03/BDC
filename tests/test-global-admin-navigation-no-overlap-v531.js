@@ -14,8 +14,10 @@ for (const marker of [
 ]) assert(bootstrap.includes(marker), `Missing global non-overlap marker: ${marker}`);
 
 assert(!bootstrap.includes("controls.classList.add('bdc-universal-admin-nav-floating')"), 'Universal navigation must never use the floating overlay');
+assert(bootstrap.includes("preg_match('#/admin/dance-cup/projector(?:-launch)?\\.php$#i', $bdcRequestPath) !== 1"), 'Audience projector routes must be excluded before navigation injection');
+assert(bootstrap.includes("document.body.classList.contains('dc-projector-presentation')"), 'Presentation body must retain a client-side navigation safety guard');
 assert(sheet.includes('flex-wrap:wrap;min-height:58px'), 'Detailed result toolbar must wrap without covering actions');
-assert.strictEqual(version.version, '2.3.3-dev531');
-assert.strictEqual(version.build, 3237);
+assert.strictEqual(version.version, '2.3.3-dev532');
+assert.strictEqual(version.build, 3238);
 
 console.log('OK: universal admin navigation reserves layout space and cannot overlap page controls');

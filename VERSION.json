@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev531",
-  "build": 3237,
+  "version": "2.3.3-dev532",
+  "build": 3238,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Accelerates the Dance Cup audience projector from fixed five-second full-feed polling to serialized one-second revision polling, returning lightweight unchanged responses while immediately refreshing screen calls, themes, effects, judge progress and scores when data changes, and prevents logged-in admin navigation from entering or covering the audience presentation",
     "Removes the fixed universal admin navigation overlay globally by docking controls into existing toolbars or a reserved in-flow navigation bar, with responsive wrapping that cannot cover page actions",
     "Adds a consolidated first page to Dance Cup Detailed Results showing every contestant, every judge subtotal, combined score and placement while retaining all individual judge criterion pages",
     "Rebuilds every manual Dance Cup presentation effect as a cinematic 7 to 12 second sequence with layered glow, slower motion, sustained action, clean fade-out and protection against an older effect clearing a newer one",

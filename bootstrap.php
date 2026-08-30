@@ -278,6 +278,7 @@ $bdcRequestMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $bdcRequestPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
 $bdcAdminHtmlCandidate = $bdcRequestMethod === 'GET'
     && preg_match('#/admin(?:/|$)#', $bdcRequestPath) === 1
+    && preg_match('#/admin/dance-cup/projector(?:-launch)?\.php$#i', $bdcRequestPath) !== 1
     && preg_match('#/(?:autosave|judge-control|judge-score|progress|status|download|export|stream|api)(?:\.php)?$#i', $bdcRequestPath) !== 1;
 
 if ($bdcAdminHtmlCandidate) {
@@ -336,6 +337,7 @@ if ($bdcAdminHtmlCandidate) {
   if(window.__bdcUniversalAdminNavLoaded)return;
   window.__bdcUniversalAdminNavLoaded=true;
   if(window.self!==window.top)return;
+  if(document.body&&document.body.classList.contains('dc-projector-presentation'))return;
   var dashboard=__BDC_DASHBOARD_URL__;
   var parity=__BDC_PARITY_URL__;
   var cleanPath=window.location.pathname.replace(/\/+$/,'');
