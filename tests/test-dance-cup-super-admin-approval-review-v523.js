@@ -21,7 +21,7 @@ assert(queue.includes('approval-review.php?id='), 'approval queue must route int
 assert(!queue.includes('<form method="post"'), 'approval queue must not publish inline');
 assert(workspace.includes('Review Result, Comments &amp; Accept'), 'automatic workspace must open review rather than approve immediately');
 assert(workspace.includes('data-approval-href="approval-review.php?id=<?=$id?>"'), 'workspace review action must target the selected competition');
-assert.strictEqual(version.version, '2.3.3-dev527');
-assert.strictEqual(version.build, 3233);
+assert.strictEqual(version.version, '2.3.3-dev528');
+assert.strictEqual(version.build, 3234);
 
 console.log('dev523 Super Admin Dance Cup approval review checks passed');

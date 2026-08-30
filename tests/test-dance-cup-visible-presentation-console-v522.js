@@ -12,10 +12,10 @@ assert(control.includes('class="effect-grid"'), 'effects must be visible inside 
 assert(!control.includes('class="quick-nav"'), 'ineffective shortcut-only navigation must be removed');
 assert(control.includes("$changed==='theme'"), 'background changes must show confirmation');
 assert(control.includes("$changed==='effect'"), 'effect commands must show confirmation');
-for (const effect of ['hearts', 'balloons', 'heart_smiles', 'finger_hearts', 'gold_rain', 'champion_impact']) {
+for (const effect of ['hearts', 'balloons', 'heart_smiles', 'finger_hearts', 'gold_rain', 'fireworks', 'champion_impact']) {
   assert(control.includes(`'${effect}'`), `presentation effect missing ${effect}`);
 }
-assert.strictEqual(version.version, '2.3.3-dev527');
-assert.strictEqual(version.build, 3233);
+assert.strictEqual(version.version, '2.3.3-dev528');
+assert.strictEqual(version.build, 3234);
 
 console.log('dev522 visible Dance Cup presentation console checks passed');
