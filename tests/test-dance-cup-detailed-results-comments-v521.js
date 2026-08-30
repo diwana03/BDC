@@ -19,6 +19,8 @@ assert(report.includes('Detailed Judge Result'), 'report must use result termino
 for (const marker of ['Consolidated Official Result', 'All contestants and all judges', 'summary-table', 'Combined Score', 'Individual judge criterion pages follow.']) {
   assert(report.includes(marker), `missing consolidated result marker: ${marker}`);
 }
+assert(report.includes('$rankedEntries=$entries') && report.includes('usort($rankedEntries'), 'consolidated result must build a placement-sorted contestant list');
+assert(report.includes('foreach($rankedEntries as $entry)'), 'consolidated result must render official ranking order');
 
 assert(approvals.includes('private_comments'), 'approval list must expose a private comment count to Super Admin');
 assert(approvals.includes('Review Result, Comments &amp; Accept'), 'approval queue must link to dedicated confidential review');
@@ -32,7 +34,7 @@ for (const ui of [workspace, category]) {
 assert(workspace.includes('Calculate &amp; Preview Result'), 'calculate must be described as a preview');
 assert(workspace.includes('Submit Results for Approval &amp; Lock'), 'submit must describe approval and locking');
 assert(workspace.includes('it does not publish or reveal the result'), 'submit consequences must be explicit');
-assert.strictEqual(version.version, '2.3.3-dev532');
-assert.strictEqual(version.build, 3238);
+assert.strictEqual(version.version, '2.3.3-dev533');
+assert.strictEqual(version.build, 3239);
 
 console.log('dev521 Dance Cup detailed result and confidential comment checks passed');

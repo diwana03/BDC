@@ -14,6 +14,6 @@ assert(feed.includes("hash_equals($revision,$clientRevision)"),'feed must safely
 assert(feed.includes("'unchanged'=>true"),'feed must skip the full payload when nothing changed');
 assert(feed.includes("'revision'=>$revision,'state'=>$state"),'changed responses must carry the next revision');
 assert(bootstrap.includes("/admin/dance-cup/projector(?:-launch)?\\.php$#i"),'projector must be excluded from universal admin navigation injection');
-assert.strictEqual(version.version,'2.3.3-dev532');
-assert.strictEqual(version.build,3238);
+assert.strictEqual(version.version,'2.3.3-dev533');
+assert.strictEqual(version.build,3239);
 console.log('Dance Cup projector fast refresh v532 checks passed');

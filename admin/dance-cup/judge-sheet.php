@@ -38,6 +38,12 @@ $query=$pdo->prepare("SELECT entry_id,placement,total_score FROM {$prefix}_scori
 $query->execute(['id'=>$competitionId]);
 $resultByEntry=[];
 foreach($query->fetchAll() as $result)$resultByEntry[(int)$result['entry_id']]=$result;
+$rankedEntries=$entries;
+usort($rankedEntries,static function(array $left,array $right)use($resultByEntry):int{
+ $leftPlace=(int)($resultByEntry[(int)$left['id']]['placement']??PHP_INT_MAX);
+ $rightPlace=(int)($resultByEntry[(int)$right['id']]['placement']??PHP_INT_MAX);
+ return $leftPlace<=>$rightPlace?:((int)$left['bib_number']<=>(int)$right['bib_number']);
+});
 $canViewPrivateComments=Auth::isSuperAdmin();
 $comments=[];
 if($canViewPrivateComments){
@@ -101,7 +107,7 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
  <table class="score-table summary-table">
   <colgroup><col class="number"><col class="contestant"><?php foreach($judges as $_):?><col><?php endforeach;?><col class="combined"><col class="placement"></colgroup>
   <thead><tr><th>Contestant No.</th><th class="contestant">Participant / Team</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><span class="maximum"><?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' · Chief':''?></span></th><?php endforeach;?><th>Combined Score</th><th>Place</th></tr></thead>
-  <tbody><?php foreach($entries as $entry):$entryId=(int)$entry['id'];?><tr><td><strong><?=e((string)$entry['bib_number'])?></strong></td><td class="contestant"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):$subtotal=0.0;$hasJudgeMark=false;foreach($criteria as $criterion){$value=$marks[(int)$judge['id']][$entryId][(int)$criterion['id']]??null;if($value!==null&&$value!==''){$subtotal+=(float)$value;$hasJudgeMark=true;}}?><td><?=$hasJudgeMark?e(dcSheetNumber($subtotal)):'—'?></td><?php endforeach;$official=$resultByEntry[$entryId]??null;?><td class="combined"><?=$official?e(dcSheetNumber((float)$official['total_score'])):'—'?></td><td class="placement"><?=$official?'#'.(int)$official['placement']:'—'?></td></tr><?php endforeach;?><?php if(!$entries):?><tr><td colspan="<?=count($judges)+4?>" class="contestant">No contestants available.</td></tr><?php endif;?></tbody>
+  <tbody><?php foreach($rankedEntries as $entry):$entryId=(int)$entry['id'];?><tr><td><strong><?=e((string)$entry['bib_number'])?></strong></td><td class="contestant"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):$subtotal=0.0;$hasJudgeMark=false;foreach($criteria as $criterion){$value=$marks[(int)$judge['id']][$entryId][(int)$criterion['id']]??null;if($value!==null&&$value!==''){$subtotal+=(float)$value;$hasJudgeMark=true;}}?><td><?=$hasJudgeMark?e(dcSheetNumber($subtotal)):'—'?></td><?php endforeach;$official=$resultByEntry[$entryId]??null;?><td class="combined"><?=$official?e(dcSheetNumber((float)$official['total_score'])):'—'?></td><td class="placement"><?=$official?'#'.(int)$official['placement']:'—'?></td></tr><?php endforeach;?><?php if(!$rankedEntries):?><tr><td colspan="<?=count($judges)+4?>" class="contestant">No contestants available.</td></tr><?php endif;?></tbody>
  </table>
  <footer class="footer"><div class="signature"><b>Scoring Administrator / Witness</b></div><div></div><div class="note">Consolidated result overview. Individual judge criterion pages follow. <?=$test?'<span class="test">TEST DATA</span>':''?></div></footer>
 </section>
