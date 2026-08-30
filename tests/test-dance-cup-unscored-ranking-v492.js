@@ -6,8 +6,8 @@ const projector = fs.readFileSync('admin/dance-cup/projector.php', 'utf8');
 
 for (const marker of [
   '1 has_score',
-  'COUNT(m.id) mark_count',
-  "(COUNT(m.id)>0) DESC",
+  'COUNT(m.criterion_id) mark_count',
+  "(COUNT(m.criterion_id)>0) DESC",
   "$row['has_score']=(int)$row['mark_count']>0?1:0",
   "$row['placement']=null",
   '$rankedCount++'
