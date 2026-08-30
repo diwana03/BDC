@@ -7,11 +7,11 @@ const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 
 assert(control.includes("'fireworks'=>'🎆 Fireworks'"), 'Projection Control must expose manual fireworks');
 assert(control.includes("'gold_rain','fireworks','champion_impact'"), 'Fireworks must be validated server-side');
-for (const marker of ['function launchFireworks(count=9)', "if(type==='fireworks'){launchFireworks(12);return}", '@keyframes fireworkSpark']) {
+for (const marker of ['function launchFireworks(count=26,run=effectRun)', "if(type==='fireworks'){launchFireworks(26,run);clearEffectAfter(run,12000);return}", '@keyframes fireworkSpark', 'function clearEffectAfter(run,milliseconds)']) {
   assert(projector.includes(marker), `Missing fireworks marker: ${marker}`);
 }
 assert(!projector.includes("launchFireworks(place==='1'?14:place==='2'?9:6)"), 'Result reveals must not trigger fireworks automatically');
-assert.strictEqual(version.version, '2.3.3-dev529');
-assert.strictEqual(version.build, 3235);
+assert.strictEqual(version.version, '2.3.3-dev530');
+assert.strictEqual(version.build, 3236);
 
 console.log('OK: Dance Cup has operator-controlled fireworks with no automatic result trigger');

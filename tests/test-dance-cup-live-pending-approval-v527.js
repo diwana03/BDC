@@ -13,7 +13,7 @@ for (const marker of ["state.competition_status==='pending_approval'", "approval
   assert(live.includes(marker), `Missing live approval-state marker: ${marker}`);
 }
 assert(projector.includes('.podium-card.third .score{font-size:clamp(15px,1.25vw,23px)}'), 'Third-place score must fit inside the stepped card');
-assert.strictEqual(version.version, '2.3.3-dev529');
-assert.strictEqual(version.build, 3235);
+assert.strictEqual(version.version, '2.3.3-dev530');
+assert.strictEqual(version.build, 3236);
 
 console.log('OK: pending approval appears immediately and stepped podium details remain visible');
