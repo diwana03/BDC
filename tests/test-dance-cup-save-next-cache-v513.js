@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert');
+const judge=fs.readFileSync('admin/dance-cup/judge-scoring.php','utf8');
+const live=fs.readFileSync('public/js/dance-cup-judge-live.js','utf8');
+const stepper=fs.readFileSync('public/js/dance-cup-judge-stepper-v506.js','utf8');
+assert(judge.includes('dance-cup-judge-live.js?v=513'),'judge page must invalidate the pre-save-request live script cache');
+assert(live.includes("form.addEventListener('dc:judge-save-request'"),'active live script must receive Save Competitor and Next requests');
+assert(live.includes("detail:{action,payload,requestId}"),'save confirmation must return the matching navigation request ID');
+assert(stepper.includes("form.dispatchEvent(new CustomEvent('dc:judge-save-request'"),'Next must dispatch a confirmed server-save request');
+assert(stepper.includes("event.detail?.requestId===pendingSaveId"),'Next must advance only after its own save succeeds');
+console.log('dev513 Dance Cup Save Competitor and Next cache integration checks passed');
