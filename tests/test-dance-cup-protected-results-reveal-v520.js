@@ -25,6 +25,6 @@ assert(projector.includes('function playEffect'), 'projector must render present
 assert(projector.includes("reveal==='all'||Number(row.placement)>=Number(reveal)"), 'podium must progressively preserve revealed placements');
 assert(projector.includes("<div class=\"holding\"><h2>"), 'holding state must contain only the event name');
 assert(launch.includes('results_unlocked=0'), 'opening a projector must reset to locked Holding Screen');
-assert.strictEqual(version.version, '2.3.3-dev533');
+assert.strictEqual(version.version, '2.3.3-dev534');
 
 console.log('dev520 Dance Cup protected results reveal checks passed');
