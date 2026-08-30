@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev537",
-  "build": 3243,
+  "version": "2.3.3-dev538",
+  "build": 3244,
   "status": "development",
   "release_date": "2026-08-30",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Uploads the exact original JPG, PNG or WebP from the public Competitor Portal without cropping or re-encoding, with clear upload errors and preserved admin photo adjustment for later",
     "Prevents the global premium header from mislabeling Live confidential review pages as TEST ONLY by requiring an explicit Test badge instead of treating every yellow status badge as Test mode",
     "Keeps Dance Cup Test approval, detailed results, comments, rankings and queue navigation entirely on isolated bdc_test_dance_cup tables, while allowing a Test-only approval simulation that never writes permanent Live history",
     "Uses the exact generic Final Result heading on the Dance Cup result report without consolidated, official, competition or overview wording",

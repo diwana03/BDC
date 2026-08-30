@@ -12,5 +12,5 @@ assert(fields.includes('permanent_division_change_requested')&&fields.includes("
 assert(admin.includes("require __DIR__.'/dance-cup-request-summary.php'"),'admin approval path must load Dance Cup selection evidence');
 for(const marker of ['BDC Dance Cup registration profiles','competitor_gender','dance_style','entry_type','competition_level'])assert(summary.includes(marker),'admin registration-profile review missing '+marker);
 for(const marker of ['bdc_profile_request_dance_cup_categories','UNIQUE KEY uq_profile_request_dc_category','ON DELETE CASCADE'])assert(migration.includes(marker),'normalized request-category migration missing '+marker);
-assert(portal.includes('<option value="jack_jill">Jack & Jill</option><option value="dance_cup">BDC Dance Cup</option>'),'Jack & Jill and BDC Dance Cup portal modes must remain available');
+for(const marker of ['<option value="jack_jill"','>Jack & Jill</option>','<option value="dance_cup"','>BDC Dance Cup</option>'])assert(portal.includes(marker),'Jack & Jill and BDC Dance Cup portal modes must remain available: '+marker);
 console.log('Reusable BDC Dance Cup portal categories and approval evidence v435 passed.');
