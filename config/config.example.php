@@ -38,6 +38,11 @@ return [
     // Google Form sync uses the BDC_GOOGLE_FORM_SYNC_SECRET environment
     // variable. Keep the secret outside public_html and use the same value in
     // the response spreadsheet's Apps Script Properties.
+    // The v1 profile integration uses BDC_PROFILE_INTEGRATION_SECRET. Its
+    // long-lived secret signs timestamped requests that expire after 5 minutes.
+    'integration' => [
+        'profile_api_scopes' => 'competitors:submit,judges:submit',
+    ],
     'deployment' => [
         'enabled' => false,
         'repository_path' => '/home/account/BDC_DEV',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 
 use App\Core\Database;
-use App\Services\GoogleFormSyncService;
+use App\Services\ProfileIntegrationService;
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
@@ -22,8 +22,13 @@ if(strlen($raw)>22*1024*1024)respond(413,['ok'=>false,'error'=>'Payload is too l
 $input=json_decode($raw,true);
 if(!is_array($input))respond(400,['ok'=>false,'error'=>'Invalid JSON payload.']);
 try{
-    $result=GoogleFormSyncService::process(Database::connection(),$input);
-    respond($result['status']==='pending_review'?202:200,['ok'=>true]+$result);
+    $source=(string)($input['source_system']??'google_forms');$sourceKey=(string)($input['source_key']??'');
+    $result=ProfileIntegrationService::submitBatch(Database::connection(),[
+        'batch_key'=>'legacy-form-sync-'.date('Ymd'),
+        'source_system'=>$source,
+        'items'=>[['entity_type'=>'competitor','source_key'=>$sourceKey,'payload'=>$input]],
+    ]);
+    respond(202,['ok'=>true,'status'=>'pending_review']+$result);
 }catch(Throwable $e){
     error_log('BDC form sync failed: '.$e->getMessage());
     respond(422,['ok'=>false,'error'=>$e->getMessage()]);
