@@ -1,0 +1,12 @@
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+const auth=read('app/Services/ProfileIntegrationAuth.php');
+const endpoint=read('admin/integration-review/credential.php');
+const panel=read('admin/integration-review/index.php');
+for(const token of ['rotateCredential','credentialStatus','random_bytes(48)','LOCK_EX','chmod($temporary,0600)','profile_api_secret_file','database.password_file'])assert(auth.includes(token),'missing protected credential behavior '+token);
+assert(auth.indexOf("getenv('BDC_PROFILE_INTEGRATION_SECRET')")<auth.indexOf("getenv('BDC_GOOGLE_FORM_SYNC_SECRET')"),'dedicated integration secret must be preferred');
+for(const token of ['Auth::requireSuperAdmin','Csrf::verify','Content-Disposition: attachment','Cache-Control: no-store','profile_integration_credential_rotated'])assert(endpoint.includes(token),'credential download protection missing '+token);
+assert(!panel.includes("credential['secret']")&&!panel.includes('BDC_PROFILE_INTEGRATION_SECRET='),'review panel must not render the secret');
+for(const token of ['Integration Credential','Create & Download Credential','Rotate & Download Credential','credential.php'])assert(panel.includes(token),'credential control missing '+token);
+console.log('profile integration credential v540 checks passed');

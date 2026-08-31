@@ -42,6 +42,9 @@ return [
     // long-lived secret signs timestamped requests that expire after 5 minutes.
     'integration' => [
         'profile_api_scopes' => 'competitors:submit,judges:submit',
+        // Optional. Defaults to a profile-integration-secret file beside the
+        // configured database password file. It must remain outside public_html.
+        'profile_api_secret_file' => '/home/account/.bdc-secrets/profile-integration-secret',
     ],
     'deployment' => [
         'enabled' => false,

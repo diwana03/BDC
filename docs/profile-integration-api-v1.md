@@ -6,6 +6,8 @@ This server-to-server API stages bulk Jack & Jill competitor and judge profile u
 
 Set a random secret of at least 32 characters as `BDC_PROFILE_INTEGRATION_SECRET`. The secret remains valid until it is rotated. Every request is signed and expires after five minutes.
 
+A Super Admin can create or rotate the credential from **Admin → Integration Review**. The portal stores file-managed credentials beside the configured database password file, outside the public application directory, and downloads the new credential once. If `BDC_PROFILE_INTEGRATION_SECRET` is supplied by the server environment, the portal reports it as externally managed and does not replace it.
+
 Required headers:
 
 - `Content-Type: application/json`
