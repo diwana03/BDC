@@ -14,6 +14,7 @@ for(const token of ['competitors:submit','judges:submit'])assert(auth.includes(t
 for(const token of ['bdc_profile_integration_batches','bdc_profile_integration_updates','source_fingerprint','candidate_ids_json',"status ENUM('pending','approved','rejected','failed')"])assert(migration.includes(token),'missing queue schema '+token);
 for(const token of ['count($items)>50','source_fingerprint','matchCompetitor','matchJudge','ambiguous','stagePhoto','15*1024*1024','getimagesizefromstring','file_put_contents','staged_photo_hash','hash_file','copy($source,$path)'])assert(service.includes(token),'missing staged integration behavior '+token);
 for(const forbidden of ['imagecopyresampled','imagecreatefromstring','imagejpeg','imagerotate'])assert(!service.includes(forbidden),'profile API must not transform photos: '+forbidden);
+assert(!/fn\s*\([^\n]*\)\s*use\s*\(/.test(service),'arrow functions must not use closure use syntax');
 for(const forbidden of ['bdc_point_transactions','bdc_participant_results','bdc_scoring_','bdc_event_points','leaderboard'])assert(!service.includes(forbidden),'integration service touches forbidden points/scoring scope: '+forbidden);
 for(const token of ["status='pending'","match_status",'beginTransaction','rollBack','profile_integration_approved','profile_integration_rejected'])assert(service.includes(token),'missing review safety '+token);
 assert(endpoint.includes("ProfileIntegrationService::submitBatch")&&endpoint.includes('ProfileIntegrationAuth::verify')&&endpoint.includes('202'),'bulk endpoint is not queue-only');
