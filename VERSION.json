@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev550",
-  "build": 3256,
+  "version": "2.3.3-dev551",
+  "build": 3257,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds separate Bachata J&J, Salsa J&J and Dance Cup competitor dashboards while retaining the legacy combined Competitor Management dashboard for migration; scopes BDC and SDC identities, profiles, points, filters and exports by discipline; and adds an entry-based WDC competitor directory for solo, couple, duo, Pro-Am and team championship records",
     "Separates official result identities into permanent BDC IDs for Bachata, SDC IDs for Salsa and entry-based WDC IDs for BDC Dance Cup without renaming the public disciplines; publishes Open WDC championship points at 10, 8, 6, 4, 2 and 1 for every other valid finisher; backfills existing official history; restores the Dance Cup public tab to the approval ledger; adds Salsa Invitational; and updates Invitational Jack and Jill points to 10, 8, 6, 4, 2",
     "Fixes competitor merge SQLSTATE 23000 / MySQL 1052 by explicitly qualifying discipline-profile dance role, division and special-category columns across the INSERT SELECT and duplicate-update paths",
     "Hardens Jack and Jill and Dance Cup failure recovery with contiguous roster renumbering after removal, duplicate-safe competitor and judge merge workflows, Judge Directory sorting and deactivation, case-insensitive portal search, isolated Test Final judge saving, and direct Chief Judge tie alerts",

@@ -13,6 +13,10 @@ Auth::requirePermission('competitors.view');
 
 $pdo = Database::connection();
 
+$dashboard = in_array((string)($_GET['dashboard'] ?? ''), ['bachata','salsa'], true) ? (string)$_GET['dashboard'] : '';
+$dashboardTitle = $dashboard === 'bachata' ? 'Bachata J&J Competitor' : ($dashboard === 'salsa' ? 'Salsa J&J Competitor' : 'Competitor Management');
+$dashboardCouncil = $dashboard === 'salsa' ? 'sdc' : 'bdc';
+$dashboardIdLabel = strtoupper($dashboardCouncil).' ID';
 
 $q        = trim((string)($_GET['q'] ?? ''));
 $filter   = (string)($_GET['filter'] ?? '');
@@ -20,7 +24,7 @@ $country  = trim((string)($_GET['country'] ?? ''));
 $role     = (string)($_GET['role'] ?? '');
 $division = (string)($_GET['division'] ?? '');
 $status   = (string)($_GET['status'] ?? '');
-$danceStyle = in_array((string)($_GET['dance_style'] ?? ''), ['bachata', 'salsa'], true) ? (string)$_GET['dance_style'] : '';
+$danceStyle = $dashboard !== '' ? $dashboard : (in_array((string)($_GET['dance_style'] ?? ''), ['bachata', 'salsa'], true) ? (string)$_GET['dance_style'] : '');
 $sort     = (string)($_GET['sort'] ?? 'name');
 $order    = strtolower((string)($_GET['order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 $perPage  = (int)($_GET['per_page'] ?? 50);
@@ -32,7 +36,7 @@ if (!in_array($perPage, $allowedPerPage, true)) {
 }
 
 $allowedRoles = ['leader', 'follower', 'both', 'unknown'];
-$allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'bachata_rising', 'bachata_open', 'bachata_invitational', 'salsa_rising', 'salsa_open', 'unknown'];
+$allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'bachata_rising', 'bachata_open', 'bachata_invitational', 'salsa_rising', 'salsa_open', 'salsa_invitational', 'unknown'];
 $allowedStatuses = ['active', 'pending', 'archived'];
 
 $where = ['1=1'];
@@ -41,11 +45,11 @@ $params = [];
 if ($q !== '') {
     // Use unique placeholders because native PDO MySQL prepared statements
     // cannot reliably reuse the same named parameter more than once.
-    $where[] = '(LOWER(c.exact_name) LIKE LOWER(:q_name) OR LOWER(c.normalised_name) LIKE LOWER(:q_normalised) OR LOWER(c.bdc_id) LIKE LOWER(:q_bdc) OR LOWER(c.instagram) LIKE LOWER(:q_instagram) OR LOWER(c.email) LIKE LOWER(:q_email))';
+    $where[] = '(LOWER(c.exact_name) LIKE LOWER(:q_name) OR LOWER(c.normalised_name) LIKE LOWER(:q_normalised) OR LOWER(ri.identity_code) LIKE LOWER(:q_identity) OR LOWER(c.instagram) LIKE LOWER(:q_instagram) OR LOWER(c.email) LIKE LOWER(:q_email))';
     $searchValue = '%' . $q . '%';
     $params['q_name'] = $searchValue;
     $params['q_normalised'] = $searchValue;
-    $params['q_bdc'] = $searchValue;
+    $params['q_identity'] = $searchValue;
     $params['q_instagram'] = $searchValue;
     $params['q_email'] = $searchValue;
 }
@@ -89,11 +93,11 @@ if (in_array($status, $allowedStatuses, true)) {
 
 $sortMap = [
     'name'       => 'c.exact_name',
-    'bdc_id'     => 'c.bdc_id',
+    'bdc_id'     => 'ri.identity_code',
     'country'    => 'c.country',
     'role'       => 'COALESCE(bp.dance_role,sp.dance_role)',
     'division'   => 'COALESCE(bp.current_division,sp.current_division)',
-    'total'      => 'total_points',
+    'total'      => $dashboard!==''?$dashboard.'_points':'total_points',
     'status'     => 'c.status',
     'created'    => 'c.created_at',
     'updated'    => 'c.updated_at',
@@ -104,11 +108,13 @@ $orderSql = strtoupper($order);
 $whereSql = implode(' AND ', $where);
 
 $baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,sc.bachata_special_categories,
+        ri.identity_code dashboard_identity_code,
         sp.dance_role salsa_role,sp.current_division salsa_division,sc.salsa_special_categories,
         COALESCE(pp.bachata_points,0) bachata_points,COALESCE(pp.bachata_novice_points,0) bachata_novice_points,COALESCE(pp.bachata_intermediate_points,0) bachata_intermediate_points,COALESCE(pp.bachata_advanced_points,0) bachata_advanced_points,
         COALESCE(pp.salsa_points,0) salsa_points,COALESCE(pp.salsa_novice_points,0) salsa_novice_points,COALESCE(pp.salsa_intermediate_points,0) salsa_intermediate_points,COALESCE(pp.salsa_advanced_points,0) salsa_advanced_points,
         COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
     FROM bdc_competitors c
+    JOIN bdc_result_identities ri ON ri.competitor_id=c.id AND ri.council=".$pdo->quote($dashboardCouncil)."
     LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
     LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
     LEFT JOIN (SELECT competitor_id,GROUP_CONCAT(CASE WHEN dance_style='bachata' THEN category END ORDER BY category SEPARATOR ',') bachata_special_categories,GROUP_CONCAT(CASE WHEN dance_style='salsa' THEN category END ORDER BY category SEPARATOR ',') salsa_special_categories FROM bdc_competitor_special_categories GROUP BY competitor_id) sc ON sc.competitor_id=c.id
@@ -140,7 +146,7 @@ if ((string)($_GET['export'] ?? '') === 'csv') {
     ], 'competitor_export');
 
     header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="bdc-competitors-' . date('Y-m-d-His') . '.csv"');
+    header('Content-Disposition: attachment; filename="'.($dashboardCouncil==='sdc'?'sdc':'bdc').'-competitors-' . date('Y-m-d-His') . '.csv"');
     header('Cache-Control: no-store, no-cache, must-revalidate');
     header('X-Content-Type-Options: nosniff');
     $out = fopen('php://output', 'wb');
@@ -149,42 +155,34 @@ if ((string)($_GET['export'] ?? '') === 'csv') {
         exit('Unable to create competitor export.');
     }
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, [
-        'BDC ID','Exact Name','Email','Phone','Instagram','Country',
-        'Bachata Role','Bachata Division','Bachata Special Category','Salsa Role','Salsa Division','Salsa Special Category',
-        'Bachata Points','Salsa Points','Total Points','Status','Created At','Updated At',
-    ]);
+    $exportStyles=$dashboard!==''?[$dashboard]:['bachata','salsa'];
+    $exportHeader=[$dashboardIdLabel,'Exact Name','Email','Phone','Instagram','Country'];
+    foreach($exportStyles as $style){$label=ucfirst($style);array_push($exportHeader,$label.' Role',$label.' Division',$label.' Special Category',$label.' Points');}
+    array_push($exportHeader,'Total Points','Status','Created At','Updated At');fputcsv($out,$exportHeader);
     $safeCsv = static function ($value) {
         $text = (string)($value ?? '');
         return preg_match('/^[=+\-@]/u', $text) === 1 ? "'" . $text : $text;
     };
     foreach ($exportRows as $exportRow) {
-        fputcsv($out, [
-            $safeCsv($exportRow['bdc_id'] ?? ''),
+        $exportLine=[
+            $safeCsv($exportRow['dashboard_identity_code'] ?? ''),
             $safeCsv($exportRow['exact_name'] ?? ''),
             $safeCsv($exportRow['email'] ?? ''),
             $safeCsv($exportRow['phone'] ?? ''),
             $safeCsv($exportRow['instagram'] ?? ''),
             $safeCsv($exportRow['country'] ?? ''),
-            $safeCsv($exportRow['bachata_role'] ?? ''),
-            $safeCsv($exportRow['bachata_division'] ?? ''),
-            $safeCsv($exportRow['bachata_special_categories'] ?? ''),
-            $safeCsv($exportRow['salsa_role'] ?? ''),
-            $safeCsv($exportRow['salsa_division'] ?? ''),
-            $safeCsv($exportRow['salsa_special_categories'] ?? ''),
-            (float)($exportRow['bachata_points'] ?? 0),
-            (float)($exportRow['salsa_points'] ?? 0),
-            (float)($exportRow['total_points'] ?? 0),
+        ];
+        foreach($exportStyles as $style){array_push($exportLine,$safeCsv($exportRow[$style.'_role']??''),$safeCsv($exportRow[$style.'_division']??''),$safeCsv($exportRow[$style.'_special_categories']??''),(float)($exportRow[$style.'_points']??0));}
+        array_push($exportLine,$dashboard!==''?(float)($exportRow[$dashboard.'_points']??0):(float)($exportRow['total_points']??0),
             $safeCsv($exportRow['status'] ?? ''),
             $safeCsv($exportRow['created_at'] ?? ''),
-            $safeCsv($exportRow['updated_at'] ?? ''),
-        ]);
+            $safeCsv($exportRow['updated_at'] ?? ''));fputcsv($out,$exportLine);
     }
     fclose($out);
     exit;
 }
 
-$countSql = "SELECT COUNT(*) FROM bdc_competitors c WHERE {$whereSql}";
+$countSql = "SELECT COUNT(*) FROM bdc_competitors c JOIN bdc_result_identities ri ON ri.competitor_id=c.id AND ri.council=".$pdo->quote($dashboardCouncil)." WHERE {$whereSql}";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($params);
 $totalRows = (int)$countStmt->fetchColumn();
@@ -204,12 +202,13 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $rows = $stmt->fetchAll();
 
+$countScope=$pdo->quote($dashboardCouncil);$danceScope=$pdo->quote($danceStyle?:'bachata');
 $counts = [
-    'all_participants' => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors")->fetchColumn(),
-    'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE photo_url IS NULL OR TRIM(photo_url)='' ")->fetchColumn(),
-    'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE country IS NULL OR TRIM(country)='' ")->fetchColumn(),
-    'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_discipline_profiles WHERE dance_role='unknown' OR current_division='unknown'")->fetchColumn(),
-    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT competitor_id) FROM bdc_competitor_special_categories")->fetchColumn(),
+    'all_participants' => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities WHERE council={$countScope}")->fetchColumn(),
+    'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council={$countScope} AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
+    'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council={$countScope} AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
+    'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT p.competitor_id) FROM bdc_competitor_discipline_profiles p JOIN bdc_result_identities ri ON ri.competitor_id=p.competitor_id AND ri.council={$countScope} WHERE p.dance_style={$danceScope} AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
+    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_result_identities ri ON ri.competitor_id=s.competitor_id AND ri.council={$countScope} WHERE s.dance_style={$danceScope}")->fetchColumn(),
 ];
 $hasListFilters=$q!==''||$filter!==''||$country!==''||$danceStyle!==''||$role!==''||$division!==''||$status!=='';
 
@@ -246,7 +245,7 @@ $currentListReturn = '?' . http_build_query($_GET);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Competitor Management</title>
+    <title><?=e($dashboardTitle)?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= e(url('public/assets/css/app.css')) ?>" rel="stylesheet">
     <style>
@@ -273,12 +272,12 @@ $currentListReturn = '?' . http_build_query($_GET);
 <div class="container-fluid py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
-            <h1 class="h3 mb-1">Competitor Management</h1>
+            <h1 class="h3 mb-1"><?=e($dashboardTitle)?></h1>
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
         </div>
         <div class="d-flex flex-wrap gap-2 bdc-mobile-actions">
             <?php if (Auth::isSuperAdmin()): ?><a class="btn btn-outline-success" href="<?= e(queryUrl(['export' => 'csv', 'page' => null])) ?>">Export Competitors CSV</a><a class="btn btn-outline-danger" href="special-category-reconciliation.php">Evidence Review</a><?php endif; ?>
-            <?php if (Auth::can('competitors.edit')): ?><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php">Add competitor</a><?php endif; ?>
+            <?php if (Auth::can('competitors.edit')): ?><a class="btn btn-outline-warning" href="special-category-recovery.php">Special Category Recovery</a><a class="btn btn-outline-info" href="test-event-profile-report.php">Test Event Profile Evidence</a><a class="btn btn-outline-danger" href="merge.php">Merge duplicates</a> <a class="btn btn-outline-primary" href="career-links.php">Move Results & Career Links</a><a class="btn btn-dark" href="edit.php?dance=<?=e($dashboard?:'bachata')?><?= $dashboard!==''?'&amp;dashboard='.e($dashboard):'' ?>&amp;return=<?=e(rawurlencode($currentListReturn))?>">Add competitor</a><?php endif; ?>
         </div>
     </div>
 
@@ -286,7 +285,7 @@ $currentListReturn = '?' . http_build_query($_GET);
         <?php foreach ($counts as $key => $count): ?>
             <?php $isAll=$key==='all_participants';$isActive=$isAll?!$hasListFilters:$filter===$key; ?>
             <div>
-                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?= $isAll?'?':e(queryUrl(['filter' => $filter === $key ? '' : $key, 'page' => 1])) ?>">
+                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?= $isAll?e(queryUrl(['filter'=>null,'page'=>1])):e(queryUrl(['filter' => $filter === $key ? '' : $key, 'page' => 1])) ?>">
                     <div class="card-body">
                         <div class="small text-muted"><?= e(ucwords(str_replace('_', ' ', $key))) ?></div>
                         <div class="fs-2 fw-bold"><?= $count ?></div>
@@ -297,11 +296,12 @@ $currentListReturn = '?' . http_build_query($_GET);
     </div>
 
     <form id="competitor-filter-form" class="card border-0 shadow-sm mb-3" method="get" action="">
+        <?php if($dashboard!==''):?><input type="hidden" name="dashboard" value="<?=e($dashboard)?>"><?php endif;?>
         <div class="card-body">
             <div class="row g-2">
                 <div class="col-lg-4 col-md-6">
                     <label class="form-label small text-muted">Search</label>
-                    <input id="competitor-search" class="form-control" type="search" name="q" value="<?= e($q) ?>" placeholder="Name, BDC ID, Instagram or email" autocomplete="off">
+                    <input id="competitor-search" class="form-control" type="search" name="q" value="<?= e($q) ?>" placeholder="Name, <?=e($dashboardIdLabel)?>, Instagram or email" autocomplete="off">
                 </div>
                 <div class="col-lg-2 col-md-3">
                     <label class="form-label small text-muted">Country</label>
@@ -312,10 +312,10 @@ $currentListReturn = '?' . http_build_query($_GET);
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-3">
+                <?php if($dashboard===''):?><div class="col-lg-2 col-md-3">
                     <label class="form-label small text-muted">Dance Style</label>
                     <select class="form-select" name="dance_style"><option value="">Bachata &amp; Salsa</option><option value="bachata" <?=$danceStyle==='bachata'?'selected':''?>>Bachata</option><option value="salsa" <?=$danceStyle==='salsa'?'selected':''?>>Salsa</option></select>
-                </div>
+                </div><?php endif;?>
                 <div class="col-lg-2 col-md-3">
                     <label class="form-label small text-muted">Role</label>
                     <select class="form-select" name="role">
@@ -330,7 +330,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                     <select class="form-select" name="division">
                         <option value="">All divisions</option>
                         <optgroup label="Career Divisions"><?php foreach (['novice','intermediate','advanced','all_star','professional','unknown'] as $item): ?><option value="<?=e($item)?>" <?=$division===$item?'selected':''?>><?=e(ucwords(str_replace('_',' ',$item)))?></option><?php endforeach;?></optgroup>
-                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>Bachata Rising</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>Bachata Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option></optgroup>
+                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>Bachata Rising</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>Bachata Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option><option value="salsa_invitational" <?=$division==='salsa_invitational'?'selected':''?>>Salsa Invitational</option></optgroup>
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
@@ -381,7 +381,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                 </div>
                 <div class="col-lg-2 col-md-9 d-flex align-items-end gap-2">
                     <button class="btn btn-dark flex-grow-1">Apply</button>
-                    <a class="btn btn-outline-secondary" href="?">Reset</a>
+                    <a class="btn btn-outline-secondary" href="<?=$dashboard!==''?'?dashboard='.e($dashboard):'?'?>">Reset</a>
                 </div>
             </div>
         </div>
@@ -400,11 +400,11 @@ $currentListReturn = '?' . http_build_query($_GET);
                 <thead>
                 <tr>
                     <th>Photo</th>
-                    <th><a class="sortable" href="<?= e(sortUrl('bdc_id', $sort, $order)) ?>">BDC ID<?= sortMark('bdc_id', $sort, $order) ?></a></th>
+                    <th><a class="sortable" href="<?= e(sortUrl('bdc_id', $sort, $order)) ?>"><?=e($dashboardIdLabel)?><?= sortMark('bdc_id', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('name', $sort, $order)) ?>">Name<?= sortMark('name', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('country', $sort, $order)) ?>">Country<?= sortMark('country', $sort, $order) ?></a></th>
-                    <th>Bachata Profile</th><th>Salsa Profile</th>
-                    <th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>">Points by Style<?= sortMark('total', $sort, $order) ?></a></th>
+                    <?php if($dashboard===''):?><th>Bachata Profile</th><th>Salsa Profile</th><?php else:?><th><?=e(ucfirst($dashboard))?> Profile</th><?php endif;?>
+                    <th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>"><?=$dashboard===''?'Points by Style':e(ucfirst($dashboard).' Points')?><?= sortMark('total', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('status', $sort, $order)) ?>">Status<?= sortMark('status', $sort, $order) ?></a></th>
                     <th></th>
                 </tr>
@@ -418,19 +418,19 @@ $currentListReturn = '?' . http_build_query($_GET);
                 ?>
                     <tr id="competitor-<?= (int)$row['id'] ?>">
                         <td><img src="<?= e($photo) ?>" class="competitor-photo" alt=""></td>
-                        <td><code><?= e((string)$row['bdc_id']) ?></code></td>
+                        <td><code><?= e((string)$row['dashboard_identity_code']) ?></code></td>
                         <td>
                             <strong><?= e($row['exact_name']) ?></strong>
                             <div class="small text-muted"><?= e((string)$row['instagram']) ?></div>
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
-                        <?php foreach (['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$specials=array_values(array_filter(explode(',',(string)($row[$style.'_special_categories']??''))));?><td><div class="profile-box <?=$specials!==[]?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php foreach($specials as $special):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endforeach;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$specials===[]):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
-                        <td><?php foreach(['bachata'=>'Bachata','salsa'=>'Salsa'] as $style=>$label):?><div class="<?=$style==='salsa'?'mt-2':''?>"><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td>
+                        <?php foreach ($dashboard!==''?[$dashboard]:['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$specials=array_values(array_filter(explode(',',(string)($row[$style.'_special_categories']??''))));?><td><div class="profile-box <?=$specials!==[]?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php foreach($specials as $special):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endforeach;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$specials===[]):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
+                        <td><?php foreach($dashboard!==''?[$dashboard=>ucfirst($dashboard)]:['bachata'=>'Bachata','salsa'=>'Salsa'] as $style=>$label):?><div class="<?=$style==='salsa'&&$dashboard===''?'mt-2':''?>"><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td>
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>
                                 <?php $rowReturn=$currentListReturn.'#competitor-'.(int)$row['id']; ?>
-                                <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Edit</a>
+                                <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>&amp;dance=<?=e($dashboard?:'bachata')?><?= $dashboard!==''?'&amp;dashboard='.e($dashboard):'' ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Edit</a>
                                 <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Adjust photo</a>
                             <?php endif; ?>
                         </td>

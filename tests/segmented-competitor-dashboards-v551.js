@@ -1,0 +1,18 @@
+const assert=require('assert');const fs=require('fs');const read=f=>fs.readFileSync(f,'utf8');
+const nav=read('app/Views/admin/_sidebar_nav.php'),jj=read('admin/competitors/index.php'),wdc=read('admin/dance-cup/competitors.php'),edit=read('admin/dance-cup/competitor-edit.php'),migration=read('database/migrations/20260901_0300_wdc_competitor_directory.php');
+for(const label of ['Bachata J&J Competitor','Salsa J&J Competitor'])assert(nav.includes(label),label+' sidebar link missing');
+assert(nav.indexOf('Bachata J&J Competitor')>nav.indexOf('<summary>Jack &amp; Jill</summary>'),'J&J competitor links must be inside Jack & Jill navigation');
+assert(nav.includes("'admin/dance-cup/competitors.php', '♙', 'Dance Cup Competitor'"),'Dance Cup competitor link missing');
+assert(jj.includes("['bachata','salsa']"),'J&J dashboard scope allowlist missing');
+assert(jj.includes("$dashboard === 'salsa' ? 'sdc' : 'bdc'"),'J&J dashboard council routing missing');
+assert(jj.includes('JOIN bdc_result_identities ri'),'J&J list must join the isolated result identity');
+assert(jj.includes('ri.identity_code dashboard_identity_code'),'J&J dashboard must display BDC/SDC identity, not the shared legacy ID');
+assert(jj.includes('LOWER(ri.identity_code) LIKE LOWER'),'J&J identity search must be case-insensitive');
+assert(wdc.includes('FROM bdc_wdc_identities w'),'Dance Cup directory must use WDC identities');
+assert(wdc.includes('FROM bdc_wdc_championship_points'),'Dance Cup directory must total the WDC championship ledger');
+assert(wdc.includes('LOWER(w.identity_code) LIKE LOWER'),'WDC search must be case-insensitive');
+assert(wdc.includes('Export Competitors CSV')&&wdc.includes('Add competitor'),'Dance Cup directory management actions missing');
+assert(edit.includes('Permanent and cannot be changed.'),'WDC code immutability is not visible');
+assert(edit.includes('CouncilResultIdentityService::wdcIdentityForEntry'),'new Dance Cup competitors must use the canonical WDC allocator');
+assert(migration.includes('ADD COLUMN country')&&migration.includes('ADD COLUMN photo_url'),'WDC directory profile migration missing');
+console.log('dev551 segmented competitor dashboard checks passed');

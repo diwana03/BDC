@@ -8,8 +8,11 @@ assert(page.includes("if ((string)(\$_GET['export'] ?? '') === 'csv')"),'active 
 assert(page.includes('Auth::requireSuperAdmin();'),'export is not Super Admin protected');
 assert(page.includes('$baseListSql . " ORDER BY {$orderBy} {$orderSql}, c.id ASC"'),'export does not share the filtered list query and sorting');
 assert(!page.match(/\$exportStmt[^;]*LIMIT/s),'export must not be limited to the visible page');
-for(const column of ['BDC ID','Exact Name','Email','Phone','Instagram','Country','Bachata Role','Bachata Division','Salsa Role','Salsa Division','Bachata Points','Salsa Points','Total Points','Status','Created At','Updated At']){
+for(const column of ['Exact Name','Email','Phone','Instagram','Country','Total Points','Status','Created At','Updated At']){
   assert(page.includes("'"+column+"'"),column+' export column missing');
+}
+for(const fragment of ["['bachata','salsa']","$label.' Role'","$label.' Division'","$label.' Points'"]){
+  assert(page.includes(fragment),'dynamic discipline export columns missing: '+fragment);
 }
 for(const safety of ['text/csv; charset=UTF-8','X-Content-Type-Options: nosniff','competitors_exported',"preg_match('/^[=+\\-@]/u",'\\xEF\\xBB\\xBF']){
   assert(page.includes(safety),safety+' export safety missing');

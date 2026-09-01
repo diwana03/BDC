@@ -18,10 +18,13 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
 
 <details class="admin-nav-group-v203" open><summary>Jack &amp; Jill</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/scoring/', '⌁', 'Jack & Jill Scoring', 'NEW'); ?>
+    <?php $sidebarLink('admin/competitors/?dashboard=bachata', '♙', 'Bachata J&J Competitor', 'NEW'); ?>
+    <?php $sidebarLink('admin/competitors/?dashboard=salsa', '♙', 'Salsa J&J Competitor', 'NEW'); ?>
 </div></details>
 
 <details class="admin-nav-group-v203" open><summary>Dance Cup</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
+    <?php $sidebarLink('admin/dance-cup/competitors.php', '♙', 'Dance Cup Competitor', 'NEW'); ?>
     <?php $sidebarLink('admin/dance-cup/participants.php', '◎', 'Dance Cup Participants', 'NEW'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/dance-cup/approvals.php', '✓', 'Dance Cup Approvals', 'NEW'); ?>
 </div></details>

@@ -4,11 +4,11 @@ const fs=require('fs'),assert=require('assert');
 const page=fs.readFileSync('admin/competitors/index.php','utf8');
 for(const token of [
  "'all_participants' =>",
- 'SELECT COUNT(*) FROM bdc_competitors',
+ 'SELECT COUNT(*) FROM bdc_result_identities',
  "$hasListFilters=",
  "$isAll=$key==='all_participants'",
  "$isActive=$isAll?!$hasListFilters:$filter===$key",
- "$isAll?'?'",
+ "$isAll?e(queryUrl(['filter'=>null,'page'=>1]))",
  'summary-grid'
 ])assert(page.includes(token),'All Participants dashboard card missing '+token);
 const counts=page.slice(page.indexOf('$counts = ['),page.indexOf('];',page.indexOf('$counts = [')));
