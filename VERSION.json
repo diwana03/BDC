@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev545",
-  "build": 3251,
+  "version": "2.3.3-dev546",
+  "build": 3252,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Loads the Dance Cup Automatic scoring workspace through a new versioned PHP include so production opcode caching cannot keep serving the stale empty workspace after deployment",
     "Forces the shared Dance Cup Automatic scoring workspace file into deployment and exposes a nonvisual render marker so roster-to-scoring availability can be verified directly on the deployed page",
     "Forces the complete Dance Cup Automatic scoring workspace into the deployed category page immediately after the roster so Confirm Roster can open real judge progress instead of targeting a missing section",
     "Opens the Dance Cup Automatic judge-scoring section immediately after a valid roster confirmation and preserves a specific success message across the redirect in both Test and Live workflows",

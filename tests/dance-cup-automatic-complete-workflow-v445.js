@@ -1,11 +1,11 @@
 const fs=require('fs');
 const page=fs.readFileSync('app/Views/admin/dance-cup-automatic-page.php','utf8');
-const workspace=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
+const workspace=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace-v546.php','utf8');
 const setup=fs.readFileSync('admin/dance-cup/automatic-setup.php','utf8');
 const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
 const assert=(ok,message)=>{if(!ok)throw new Error(message)};
 assert(page.includes('Confirm Roster &amp; Start Scoring'),'roster confirmation missing');
-assert(page.includes('id="automatic-scoring-shell"')&&page.includes("require __DIR__.'/dance-cup-automatic-workspace.php'"),'complete Automatic scoring workspace must render after the roster');
+assert(page.includes('id="automatic-scoring-shell"')&&page.includes("require __DIR__.'/dance-cup-automatic-workspace-v546.php'"),'complete Automatic scoring workspace must render through the fresh versioned include after the roster');
 assert(setup.includes("$action==='confirm_roster'"),'roster validation handler missing');
 assert(setup.includes("$saved=(string)$action==='confirm_roster'?'roster':'1'"),'roster confirmation must retain a distinct success state');
 assert(setup.includes("$fragment=(string)$action==='confirm_roster'?'#judge-progress':''"),'roster confirmation must open the judge scoring section');
