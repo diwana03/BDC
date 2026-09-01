@@ -21,9 +21,17 @@ final class ProfileIntegrationAuth
 
     public static function allowed(string $entity):bool
     {
-        $configured=trim((string)(getenv('BDC_PROFILE_INTEGRATION_SCOPES')?:Config::get('integration.profile_api_scopes','competitors:submit,judges:submit')));
+        return self::allowedScope($entity==='judge'?'judges:submit':'competitors:submit');
+    }
+
+    public static function allowedScope(string $scope):bool
+    {
+        $eventScope=str_starts_with($scope,'events:');
+        $configured=$eventScope
+            ? trim((string)(getenv('BDC_EVENT_INTEGRATION_SCOPES')?:Config::get('integration.event_api_scopes','events:read,events:submit')))
+            : trim((string)(getenv('BDC_PROFILE_INTEGRATION_SCOPES')?:Config::get('integration.profile_api_scopes','competitors:submit,judges:submit')));
         $scopes=array_map('trim',explode(',',$configured));
-        return in_array($entity==='judge'?'judges:submit':'competitors:submit',$scopes,true);
+        return in_array($scope,$scopes,true);
     }
 
     public static function credentialStatus():array

@@ -22,6 +22,7 @@ try{
     header('Pragma: no-cache');
     echo "BDC_PROFILE_INTEGRATION_SECRET=".$credential['secret']."\n";
     echo "BDC_PROFILE_INTEGRATION_SCOPES=competitors:submit,judges:submit\n";
+    echo "BDC_EVENT_INTEGRATION_SCOPES=events:read,events:submit\n";
     echo "BDC_PROFILE_INTEGRATION_FINGERPRINT=".$credential['fingerprint']."\n";
 }catch(Throwable $e){
     http_response_code(422);
