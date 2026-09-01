@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev542",
-  "build": 3248,
+  "version": "2.3.3-dev543",
+  "build": 3249,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Opens the Dance Cup Automatic judge-scoring section immediately after a valid roster confirmation and preserves a specific success message across the redirect in both Test and Live workflows",
     "Adds a separately scoped signed event-setup API for Jack and Jill events and Dance Cup events/categories, resolves existing competitor and judge identities, stages complete Test or Live draft packages for Super Admin bulk review, and atomically creates event configuration, rosters and judge assignments while excluding scores, points, results and publishing",
     "Fixes the authenticated profile integration service PHP parse failure by using valid arrow-function capture syntax, allowing signed bulk competitor and judge submissions to reach validation and staging",
     "Adds a Super Admin-only profile integration credential control that creates or rotates a long-lived HMAC key in protected storage outside the public application directory, downloads it once for the integration client and never exposes it in page HTML or the database",

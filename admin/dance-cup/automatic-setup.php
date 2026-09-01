@@ -126,10 +126,12 @@ try{
             $event=$pdo->prepare("SELECT event_id FROM {$tables['competitions']} WHERE id=:competition");$event->execute(['competition'=>$id]);$pdo->prepare("UPDATE {$prefix}_event_projection SET access_token=:token,screen_type='holding',auto_cycle=0,state_version=state_version+1 WHERE event_id=:event")->execute(['token'=>bin2hex(random_bytes(32)),'event'=>(int)$event->fetchColumn()]);$notice='Projector link regenerated.';
         }else{throw new RuntimeException('Unsupported setup action.');}
         if($whatsappRedirect!==''){header('Location: '.$whatsappRedirect,true,303);exit;}
-        header('Location: automatic-setup.php?id='.$id.$suffix.'&saved=1',true,303);exit;
+        $saved=(string)$action==='confirm_roster'?'roster':'1';
+        $fragment=(string)$action==='confirm_roster'?'#judge-progress':'';
+        header('Location: automatic-setup.php?id='.$id.$suffix.'&saved='.$saved.$fragment,true,303);exit;
     }
 }catch(Throwable $e){$error=$e->getMessage();}
-if(isset($_GET['saved']))$notice='Automatic setup saved.';
+if(isset($_GET['saved']))$notice=(string)$_GET['saved']==='roster'?'Roster confirmed. Judge scoring is ready.':'Automatic setup saved.';
 $q=$pdo->prepare("SELECT c.*,e.name event_name,e.event_date FROM {$tables['competitions']} c JOIN {$tables['events']} e ON e.id=c.event_id WHERE c.id=:id AND c.scoring_mode='automatic'");$q->execute(['id'=>$id]);$competition=$q->fetch();
 if(!$competition){http_response_code(404);exit($error?:'Automatic Dance Cup category not found.');}
 $q=$pdo->prepare("SELECT * FROM {$prefix}_entries WHERE competition_id=:id AND status='active' ORDER BY bib_number,id");$q->execute(['id'=>$id]);$entries=$q->fetchAll();
