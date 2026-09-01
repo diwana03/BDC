@@ -11,7 +11,7 @@ for (const marker of ['function launchFireworks(count=26,run=effectRun)', "if(ty
   assert(projector.includes(marker), `Missing fireworks marker: ${marker}`);
 }
 assert(!projector.includes("launchFireworks(place==='1'?14:place==='2'?9:6)"), 'Result reveals must not trigger fireworks automatically');
-assert.strictEqual(version.version, '2.3.3-dev536');
-assert.strictEqual(version.build, 3242);
+assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=536);
+assert(version.build>=3242);
 
 console.log('OK: Dance Cup has operator-controlled fireworks with no automatic result trigger');

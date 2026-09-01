@@ -26,7 +26,7 @@ assert(queue.includes("JOIN {$tables['events']} e"), 'approval queue must join t
 assert(!review.includes('JOIN bdc_events e'), 'approval review must not join the unrelated general event table');
 assert(workspace.includes('Review Result, Comments &amp; Accept'), 'automatic workspace must open review rather than approve immediately');
 assert(workspace.includes('data-approval-href="approval-review.php?id=<?=$id?><?=$suffix?>"'), 'workspace review action must preserve Test or Live mode');
-assert.strictEqual(version.version, '2.3.3-dev537');
-assert.strictEqual(version.build, 3243);
+assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=537);
+assert(version.build>=3243);
 
 console.log('dev523 Super Admin Dance Cup approval review checks passed');

@@ -41,7 +41,7 @@ $params = [];
 if ($q !== '') {
     // Use unique placeholders because native PDO MySQL prepared statements
     // cannot reliably reuse the same named parameter more than once.
-    $where[] = '(c.exact_name LIKE :q_name OR c.normalised_name LIKE :q_normalised OR c.bdc_id LIKE :q_bdc OR c.instagram LIKE :q_instagram OR c.email LIKE :q_email)';
+    $where[] = '(LOWER(c.exact_name) LIKE LOWER(:q_name) OR LOWER(c.normalised_name) LIKE LOWER(:q_normalised) OR LOWER(c.bdc_id) LIKE LOWER(:q_bdc) OR LOWER(c.instagram) LIKE LOWER(:q_instagram) OR LOWER(c.email) LIKE LOWER(:q_email))';
     $searchValue = '%' . $q . '%';
     $params['q_name'] = $searchValue;
     $params['q_normalised'] = $searchValue;

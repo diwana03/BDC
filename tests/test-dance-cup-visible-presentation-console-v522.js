@@ -15,7 +15,7 @@ assert(control.includes("$changed==='effect'"), 'effect commands must show confi
 for (const effect of ['hearts', 'balloons', 'heart_smiles', 'finger_hearts', 'gold_rain', 'fireworks', 'champion_impact']) {
   assert(control.includes(`'${effect}'`), `presentation effect missing ${effect}`);
 }
-assert.strictEqual(version.version, '2.3.3-dev536');
-assert.strictEqual(version.build, 3242);
+assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=536);
+assert(version.build>=3242);
 
 console.log('dev522 visible Dance Cup presentation console checks passed');

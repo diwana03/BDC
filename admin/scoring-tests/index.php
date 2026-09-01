@@ -34,6 +34,7 @@ use App\Services\TestAutomaticJudgeService;
 use App\Services\ScoringBackupService;
 use App\Services\ScoringRosterCheckpointService;
 use App\Services\RoleAdvancementService;
+use App\Services\ScoringJudgeAssignmentService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -654,6 +655,15 @@ try{
     $pdo->commit();
     $tierInfo=applyAutomaticTier($pdo,$roundId,true);$notice='Random test competitors generated. Automatic Tier '.$tierInfo['tier'].' selected from the larger role count of '.$tierInfo['largest'].'.';
    }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+  }elseif($action==='save_final_judges'){
+   $roundId=(int)($_POST['round_id']??0);
+   $finalRound=loadRound($pdo,$roundId);
+   if(!$finalRound||$finalRound['round_type']!=='final')throw new RuntimeException('Test Final round not found.');
+   $posted=$_POST['final_judges']??[];$rows=[];
+   foreach($posted as $key=>$row)$rows[(string)$key]=['name'=>(string)($row['name']??''),'scope'=>'all','assignment_id'=>(int)($row['id']??0),'directory_id'=>(int)($row['directory_id']??0),'original_index'=>(string)$key];
+   $saved=ScoringJudgeAssignmentService::save($pdo,$roundId,$rows,(string)($_POST['final_chief_key']??''),'bdc_test_scoring_judges','bdc_test_scoring_rounds');
+   auditScoring($pdo,$roundId,$userId,'test_final_judges_saved',['count'=>$saved['count'],'chief_judge_id'=>$saved['chief_id'],'judge_profiles_created'=>$saved['created_directory_count']]);
+   $notice='Test Final judges saved and linked to the Judge Database.';
   }elseif($action==='generate_test_judges'){
    $roundId=(int)($_POST['round_id']??0);
    $allCount=max(0,min(101,(int)($_POST['all_judges']??5)));
@@ -912,7 +922,7 @@ try{
     $c=$pdo->prepare("SELECT id,bdc_id,exact_name FROM bdc_test_competitors WHERE bdc_id=:bdc OR id=:num OR LOWER(exact_name)=LOWER(:exact) ORDER BY exact_name LIMIT 1");
     $c->execute(['bdc'=>$selectedBdc!==''?$selectedBdc:$term,'num'=>ctype_digit($term)?(int)$term:0,'exact'=>$term]);$comp=$c->fetch()?:null;
     if(!$comp){
-     $c=$pdo->prepare("SELECT id,bdc_id,exact_name FROM bdc_test_competitors WHERE exact_name LIKE :like ORDER BY exact_name LIMIT 2");
+     $c=$pdo->prepare("SELECT id,bdc_id,exact_name FROM bdc_test_competitors WHERE LOWER(exact_name) LIKE LOWER(:like) ORDER BY exact_name LIMIT 2");
      $c->execute(['like'=>'%'.$term.'%']);$matches=$c->fetchAll();
      if(count($matches)===1)$comp=$matches[0];
      elseif(count($matches)>1)throw new RuntimeException('Several competitors match this name. Select the correct BDC ID from the suggestions.');
@@ -952,7 +962,7 @@ try{
    auditScoring($pdo,$roundId,$userId,'bib_updated',['entry_id'=>$entryId,'role'=>$entry['dance_role'],'old_bib'=>(int)$entry['bib_number'],'new_bib'=>$newBib]);
    $notice=$entry['display_name'].' bib updated to '.$newBib.'.';
   }elseif($action==='remove_entry'){
-   $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::assertEditable($pdo,$roundId,true);$id=(int)$_POST['entry_id'];$pdo->prepare("UPDATE bdc_test_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id]);$notice='Entry removed.';
+   $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::assertEditable($pdo,$roundId,true);$id=(int)$_POST['entry_id'];$entry=$pdo->prepare("SELECT dance_role FROM bdc_test_scoring_entries WHERE id=:id AND round_id=:r AND entry_status='active'");$entry->execute(['id'=>$id,'r'=>$roundId]);$role=(string)$entry->fetchColumn();if(!in_array($role,['leader','follower'],true))throw new RuntimeException('Active competitor not found.');$pdo->beginTransaction();try{$pdo->prepare("UPDATE bdc_test_scoring_entries SET entry_status='withdrawn' WHERE id=:id AND round_id=:r")->execute(['id'=>$id,'r'=>$roundId]);$ids=$pdo->prepare("SELECT id FROM bdc_test_scoring_entries WHERE round_id=:r AND dance_role=:role AND entry_status='active' ORDER BY bib_number,id");$ids->execute(['r'=>$roundId,'role'=>$role]);$ordered=array_map('intval',$ids->fetchAll(PDO::FETCH_COLUMN));$pdo->prepare("UPDATE bdc_test_scoring_entries SET bib_number=bib_number+1000000 WHERE round_id=:r AND dance_role=:role AND entry_status='active'")->execute(['r'=>$roundId,'role'=>$role]);$renumber=$pdo->prepare("UPDATE bdc_test_scoring_entries SET bib_number=:bib WHERE id=:id AND round_id=:r");foreach($ordered as $position=>$entryId)$renumber->execute(['bib'=>$position+1,'id'=>$entryId,'r'=>$roundId]);auditScoring($pdo,$roundId,$userId,'entry_removed',['entry_id'=>$id,'role'=>$role,'roster_renumbered'=>true]);$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}$notice='Entry removed and '.ucfirst($role).' bibs reordered.';
   }elseif($action==='save_competitors'){
    $roundId=(int)$_POST['round_id'];ScoringRosterCheckpointService::checkpoint($pdo,$roundId,$userId,'save',true);$notice='Test competitor roster checkpoint saved as draft.';
   }elseif($action==='submit_competitors'){
@@ -964,6 +974,9 @@ try{
 </div></div>
 <?php endif;?>
 
+<?php if(Auth::isSuperAdmin()):?>
+<div class="card shadow-sm mb-4 border-primary"><div class="card-body"><h2 class="h5 mb-1">Duplicate Test Jack &amp; Jill Event</h2><p class="text-muted">Copies this isolated Test event, competitors and judges into a fresh Test draft. Scores, results, approvals and projection state are never copied.</p><form method="post" action="duplicate-event.php" onsubmit="return confirm('Duplicate this Test event without scores or results?');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="test_mode" value="<?=e($testMode)?>"><input type="hidden" name="event_id" value="<?=(int)$round['event_id']?>"><button class="btn btn-primary">Duplicate Test Event</button></form></div></div>
+<?php endif;?>
 <div class="row g-3 mb-4">
  <div class="col-lg-6"><div class="card shadow-sm h-100">
   <div class="card-header fw-semibold bg-primary-subtle d-flex justify-content-between align-items-center">
@@ -1245,6 +1258,9 @@ $currentTier=(int)$round['yes_count']===5?1:((int)$round['yes_count']===15?3:2);
 </div></fieldset>
 <div class="card shadow-sm mb-4 <?=$rosterSubmitted?'border-success bg-success-subtle':'border-warning bg-warning-subtle'?>"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Test Competitor Checkpoint</h2><div class="small text-body-secondary"><?=$rosterSubmitted?'Competitors are submitted and locked. Manual score entry is open.':'Save the current Test roster as a draft, then submit and lock it before manual scoring.'?></div><?php if(!empty($rosterState['saved_at'])):?><div class="small mt-1">Last saved: <?=e((string)$rosterState['saved_at'])?></div><?php endif;?></div><div><?php if(!$rosterSubmitted):?><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-outline-dark" name="action" value="save_competitors">Save Competitors</button><button class="btn btn-success" name="action" value="submit_competitors" onclick="return confirm('Submit and lock the Test competitor roster? Bibs and competitors cannot be changed until an authorised reopen.')">Submit Competitors</button></form><?php elseif(Auth::isSuperAdmin()):?><form method="post" class="d-flex gap-2 flex-wrap"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="reopen_reason" placeholder="Required reopen reason" required><button class="btn btn-warning" name="action" value="reopen_competitors" onclick="return confirm('CAUTION: Reopen this locked Test roster? Manual scoring will be blocked until competitors are submitted again.')">Reopen Competitors</button></form><?php endif;?></div></div></div>
 <?php if(!$rosterSubmitted && $judges && ($entries['leader']||$entries['follower'])):?><div class="alert alert-warning"><strong>Manual scoring locked.</strong> Submit Competitors above to open score entry. Tiering is calculated automatically from the larger Leader or Follower count.</div><?php endif;?>
+<?php if($round['status']==='completed'&&$round['round_type']==='heats'):?>
+<div class="card shadow-sm mb-4 border-primary"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Completed Heats Score Report</h2><p class="text-muted mb-0">The locked score sheet remains available for review, printing or saving as a PDF. Opening it does not reopen scoring.</p></div><a class="btn btn-primary" target="_blank" rel="noopener" href="result.php?round_id=<?=$roundId?>">View / Print Heats Scores</a></div></div>
+<?php endif;?>
 <?php $allRolesDirect=$round['round_type']==='heats'&&($roleAdvancementPlan['leader']['direct_to_final']??false)&&($roleAdvancementPlan['follower']['direct_to_final']??false);if($rosterSubmitted&&$allRolesDirect):?>
 <div class="card shadow-sm mb-4 border-success"><div class="card-body"><h2 class="h5 text-success">Heats are not required</h2><p>All <?=count($entries['leader'])?> Leaders and <?=count($entries['follower'])?> Followers fit within the Tier <?=$currentTier?> callback quota. Open Final directly without entering Heats marks.</p><form method="post" class="row g-2 align-items-end"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="advance_roster_direct_final"><input type="hidden" name="round_id" value="<?=$roundId?>"><div class="col-md-4"><label class="form-label">Final date</label><input class="form-control" type="date" name="next_schedule_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="col-md-2"><label class="form-label">Hour</label><select class="form-select" name="next_schedule_hour"><?php for($h=1;$h<=12;$h++):?><option><?=$h?></option><?php endfor;?></select></div><div class="col-md-2"><label class="form-label">Minute</label><select class="form-select" name="next_schedule_minute"><?php for($m=0;$m<60;$m+=5):?><option value="<?=$m?>"><?=str_pad((string)$m,2,'0',STR_PAD_LEFT)?></option><?php endfor;?></select></div><div class="col-md-2"><label class="form-label">AM / PM</label><select class="form-select" name="next_schedule_period"><option>AM</option><option>PM</option></select></div><div class="col-md-2"><button class="btn btn-success w-100" onclick="return confirm('Skip Heats and open Final with every submitted competitor?')">Go Directly to Final</button></div></form></div></div>
 <?php endif;?>

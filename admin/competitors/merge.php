@@ -36,6 +36,14 @@ function loadEventOverlaps(PDO $pdo,int $keepId,int $mergeId): array
  $stmt=$pdo->prepare("SELECT k.id keep_transaction_id,d.id duplicate_transaction_id,k.event_id,k.division,k.dance_role,k.points keep_points,d.points duplicate_points,k.placement keep_placement,d.placement duplicate_placement,e.name event_name,e.event_date,(k.points=d.points AND COALESCE(k.placement,'')=COALESCE(d.placement,'')) exact_duplicate FROM bdc_point_transactions k JOIN bdc_point_transactions d ON d.event_id=k.event_id AND d.division=k.division AND d.dance_role=k.dance_role JOIN bdc_events e ON e.id=k.event_id WHERE k.competitor_id=:keep_id AND d.competitor_id=:merge_id ORDER BY e.event_date DESC,k.id,d.id");
  $stmt->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);return $stmt->fetchAll();
 }
+function mergeTableExists(PDO $pdo,string $table):bool{$q=$pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=:table');$q->execute(['table'=>$table]);return(int)$q->fetchColumn()>0;}
+function mergeColumnExists(PDO $pdo,string $table,string $column):bool{$q=$pdo->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=:table AND column_name=:column');$q->execute(['table'=>$table,'column'=>$column]);return(int)$q->fetchColumn()>0;}
+function moveScoringIdentity(PDO $pdo,string $table,string $scope,int $keepId,int $mergeId):int
+{
+ if(!mergeTableExists($pdo,$table)||!mergeColumnExists($pdo,$table,'competitor_id'))return 0;
+ $conflict=$pdo->prepare("SELECT COUNT(*) FROM {$table} source JOIN {$table} target ON target.{$scope}=source.{$scope} AND target.competitor_id=:keep WHERE source.competitor_id=:merge");$conflict->execute(['keep'=>$keepId,'merge'=>$mergeId]);if((int)$conflict->fetchColumn()>0)throw new RuntimeException('Both competitor profiles are assigned to the same scoring roster. Remove the duplicate roster entry first, then merge.');
+ $update=$pdo->prepare("UPDATE {$table} SET competitor_id=:keep WHERE competitor_id=:merge");$update->execute(['keep'=>$keepId,'merge'=>$mergeId]);return $update->rowCount();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Csrf::verify((string)($_POST['_csrf'] ?? ''));
@@ -53,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $overlaps=loadEventOverlaps($pdo,$keepId,$mergeId);
                 if($overlaps&&!isset($_POST['overlap_reviewed']))throw new RuntimeException('Review and acknowledge the overlapping event points before merging.');
                 $pdo->beginTransaction();
+                $scoringMoves=[];
+                foreach([['bdc_scoring_entries','round_id'],['bdc_dance_cup_entries','competition_id'],['bdc_dance_cup_result_history','competition_id']] as [$table,$scope])$scoringMoves[$table]=moveScoringIdentity($pdo,$table,$scope,$keepId,$mergeId);
                 $removeIds=array_values(array_unique(array_map('intval',(array)($_POST['remove_duplicate_transaction']??[]))));
                 if($removeIds){
                     $marks=implode(',',array_fill(0,count($removeIds),'?'));
@@ -75,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute(['keep_id'=>$keepId,'merge_id'=>$mergeId]);
                     $moved[$table] = $stmt->rowCount();
                 }
+                $moved=array_merge($moved,$scoringMoves);
 
                 // Career progression and Special Competition Category are
                 // separate profile axes. Preserve both before removing the
@@ -130,7 +141,7 @@ if ($search !== '') {
     $stmt = $pdo->prepare("SELECT c.id,c.bdc_id,c.exact_name,c.country,c.dance_role,c.current_division,c.status,
         COALESCE(SUM(p.points),0) total_points
         FROM bdc_competitors c LEFT JOIN bdc_point_transactions p ON p.competitor_id=c.id
-        WHERE c.exact_name LIKE :name OR c.bdc_id LIKE :bdc OR c.email LIKE :email OR c.instagram LIKE :instagram
+        WHERE LOWER(c.exact_name) LIKE LOWER(:name) OR LOWER(c.bdc_id) LIKE LOWER(:bdc) OR LOWER(COALESCE(c.email,'')) LIKE LOWER(:email) OR LOWER(COALESCE(c.instagram,'')) LIKE LOWER(:instagram)
         GROUP BY c.id ORDER BY c.exact_name LIMIT 50");
     $value = '%' . $search . '%';
     $stmt->execute(['name'=>$value,'bdc'=>$value,'email'=>$value,'instagram'=>$value]);
@@ -139,12 +150,14 @@ if ($search !== '') {
 $keep = loadCompetitor($pdo, $keepId);
 $duplicate = loadCompetitor($pdo, $mergeId);
 $eventOverlaps=loadEventOverlaps($pdo,$keepId,$mergeId);
+$possibleDuplicates=$pdo->query("SELECT LOWER(TRIM(exact_name)) duplicate_key,COUNT(*) total,GROUP_CONCAT(id ORDER BY id) ids,GROUP_CONCAT(CONCAT(bdc_id,' · ',exact_name) ORDER BY id SEPARATOR ' | ') matches FROM bdc_competitors WHERE status<>'archived' GROUP BY LOWER(TRIM(exact_name)) HAVING COUNT(*)>1 ORDER BY total DESC,duplicate_key LIMIT 100")->fetchAll();
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Merge Competitors | BDC Admin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head>
 <body class="bg-light"><nav class="navbar navbar-dark bg-dark"><div class="container-fluid"><a class="navbar-brand" href="<?=e(url('admin/'))?>">BDC Admin</a><a class="btn btn-outline-light btn-sm" href="./">Competitors</a></div></nav>
 <main class="container py-4" style="max-width:1100px"><div class="mb-4"><h1 class="h3 mb-1">Merge Duplicate Competitors</h1><p class="text-muted mb-0">Keep one BDC record and move all linked history from the duplicate into it.</p></div>
 <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?><?php if($success):?><div class="alert alert-success"><?=e($success)?></div><?php endif;?>
 <div class="alert alert-warning"><strong>Permanent action.</strong> The duplicate competitor record will be deleted after all linked rows are moved. Take a database backup first.</div>
+<?php if($possibleDuplicates):?><section class="card border-warning shadow-sm mb-4"><div class="card-header bg-warning-subtle fw-bold">Possible Duplicates · <?=count($possibleDuplicates)?></div><div class="list-group list-group-flush"><?php foreach($possibleDuplicates as $pair):$ids=array_values(array_filter(array_map('intval',explode(',',(string)$pair['ids']))));?><div class="list-group-item d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><strong><?=e($pair['matches'])?></strong><div class="small text-muted">Matched case-insensitively by normalized full name. Review identity details before merging.</div></div><?php if(count($ids)>=2):?><a class="btn btn-sm btn-outline-warning" href="?keep_id=<?=$ids[0]?>&amp;merge_id=<?=$ids[1]?>">Review Merge</a><?php endif;?></div><?php endforeach;?></div></section><?php endif;?>
 <form class="card border-0 shadow-sm mb-4" method="get"><div class="card-body"><label class="form-label">Search competitors</label><div class="input-group"><input class="form-control" name="q" value="<?=e($search)?>" placeholder="Name, BDC ID, email or Instagram"><button class="btn btn-dark">Search</button></div></div></form>
 <?php if($results):?><div class="card border-0 shadow-sm mb-4"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>BDC ID</th><th>Name</th><th>Country</th><th>Role</th><th>Division</th><th>Points</th><th>Choose</th></tr></thead><tbody><?php foreach($results as $r):?><tr><td><code><?=e($r['bdc_id'])?></code></td><td><?=e($r['exact_name'])?></td><td><?=e($r['country']?:'—')?></td><td><?=e(ucfirst($r['dance_role']))?></td><td><?=e(ucwords(str_replace('_',' ',$r['current_division'])))?></td><td><?=e((string)(float)$r['total_points'])?></td><td class="text-nowrap"><a class="btn btn-sm btn-success" href="?q=<?=urlencode($search)?>&keep_id=<?=(int)$r['id']?>&merge_id=<?=$mergeId?>">Keep</a> <a class="btn btn-sm btn-outline-danger" href="?q=<?=urlencode($search)?>&keep_id=<?=$keepId?>&merge_id=<?=(int)$r['id']?>">Duplicate</a></td></tr><?php endforeach;?></tbody></table></div></div><?php endif;?>
 <div class="row g-3 mb-4"><div class="col-md-6"><div class="card h-100 border-success"><div class="card-header bg-success-subtle fw-semibold">Record to keep</div><div class="card-body"><?php if($keep):?><h2 class="h5"><?=e($keep['exact_name'])?></h2><div><code><?=e($keep['bdc_id'])?></code></div><div class="mt-2">Points: <strong><?=e((string)(float)$keep['total_points'])?></strong>, Transactions: <?= (int)$keep['transaction_count'] ?></div><a class="btn btn-sm btn-outline-dark mt-3" href="edit.php?id=<?=$keepId?>" target="_blank">Open profile</a><?php else:?><span class="text-muted">Not selected</span><?php endif;?></div></div></div>

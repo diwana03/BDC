@@ -54,7 +54,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 
 $q=trim((string)($_GET['q']??''));$competitors=[];
-if($q!==''){$s=$pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE exact_name LIKE :q OR bdc_id LIKE :q ORDER BY exact_name LIMIT 30");$s->execute(['q'=>'%'.$q.'%']);$competitors=$s->fetchAll();}
+if($q!==''){$s=$pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE LOWER(exact_name) LIKE LOWER(:q) OR LOWER(bdc_id) LIKE LOWER(:q) ORDER BY exact_name LIMIT 30");$s->execute(['q'=>'%'.$q.'%']);$competitors=$s->fetchAll();}
 $selectedCompetitor=(int)($_GET['competitor_id']??0);$selectedEvent=(int)($_GET['event_id']??0);
 $events=$pdo->query("SELECT id,name,event_date FROM bdc_events ORDER BY COALESCE(event_date,'1900-01-01') DESC,id DESC")->fetchAll();
 $eventPoints=[];

@@ -35,7 +35,7 @@ for (const ui of [workspace, category]) {
 assert(workspace.includes('Calculate &amp; Preview Result'), 'calculate must be described as a preview');
 assert(workspace.includes('Submit Results for Approval &amp; Lock'), 'submit must describe approval and locking');
 assert(workspace.includes('it does not publish or reveal the result'), 'submit consequences must be explicit');
-assert.strictEqual(version.version, '2.3.3-dev537');
-assert.strictEqual(version.build, 3243);
+assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=537);
+assert(version.build>=3243);
 
 console.log('dev521 Dance Cup detailed result and confidential comment checks passed');

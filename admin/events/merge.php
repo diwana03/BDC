@@ -111,7 +111,7 @@ if ($search !== '') {
         (SELECT COUNT(*) FROM bdc_event_registrations x WHERE x.event_id=e.id) registration_rows,
         (SELECT COUNT(*) FROM bdc_result_documents x WHERE x.event_id=e.id) repository_rows
         FROM bdc_events e
-        WHERE e.name LIKE :name OR CAST(e.id AS CHAR) LIKE :id OR DATE_FORMAT(e.event_date,'%Y-%m-%d') LIKE :event_date
+        WHERE LOWER(e.name) LIKE LOWER(:name) OR CAST(e.id AS CHAR) LIKE :id OR DATE_FORMAT(e.event_date,'%Y-%m-%d') LIKE :event_date
         ORDER BY e.event_date DESC,e.name LIMIT 75");
     $stmt->execute(['name'=>$like,'id'=>$like,'event_date'=>$like]);
     $results = $stmt->fetchAll();

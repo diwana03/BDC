@@ -52,7 +52,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!in_array($theme,['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'],true))throw new RuntimeException('Invalid projection theme.');
         $pdo->prepare("UPDATE {$p}_event_projection SET theme=:theme,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['theme'=>$theme,'user'=>$user,'event'=>$eventId]);
     }else{
-        $allowed=['holding','contestant','judges','contestants','scoring','results'];$themes=['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'];
+        $allowed=['holding','contestant','judges','contestants','scoring','results','podium'];$themes=['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'];
         if(!in_array($screen,$allowed,true)||!in_array($theme,$themes,true))throw new RuntimeException('Invalid projection setting.');
         if($screen==='results'){$lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before sending scores live.');}
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type=:screen,theme=:theme,auto_cycle=0,page_number=1,reveal_place=NULL,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'screen'=>$screen,'theme'=>$theme,'user'=>$user,'event'=>$eventId]);

@@ -19,7 +19,7 @@ $registrationRows=[];$counts=['people'=>0,'entries'=>0,'profiles'=>0,'setup'=>0]
 try{
     if($requestsReady){
         $where=[$categoryStatusReady?"(d.registration_status IS NULL OR d.registration_status<>'rejected')":'1=1'];$params=[];
-        if($q!==''){$where[]='(r.full_name LIKE :q OR r.instagram LIKE :q OR c.bdc_id LIKE :q OR d.partner_or_team_name LIKE :q)';$params['q']='%'.$q.'%';}
+        if($q!==''){$where[]='(LOWER(r.full_name) LIKE LOWER(:q) OR LOWER(r.instagram) LIKE LOWER(:q) OR LOWER(c.bdc_id) LIKE LOWER(:q) OR LOWER(d.partner_or_team_name) LIKE LOWER(:q))';$params['q']='%'.$q.'%';}
         if(in_array($style,['salsa','bachata','cha_cha','other'],true)){$where[]='d.dance_style=:style';$params['style']=$style;}
         if(in_array($entry,['solo','couple','pro_am','team'],true)){$where[]='d.entry_type=:entry';$params['entry']=$entry;}
         if(in_array($level,['open','amateur','intermediate','professional'],true)){$where[]='d.competition_level=:level';$params['level']=$level;}

@@ -5,7 +5,7 @@ const sync=fs.readFileSync('admin/profile-requests/dance-cup-request-summary.php
 const migration=fs.readFileSync('database/migrations/20260828_1900_dance_cup_category_status.php','utf8');
 assert(dashboard.includes('d.registration_status'),'participant dashboard must read category status');
 assert(!dashboard.includes('r.status request_status'),'participant dashboard must not display parent profile status');
-assert(dashboard.includes('Registration status is independent from profile or identity review.'),'dashboard must explain independent status');
+assert(dashboard.includes("d.registration_status IS NULL OR d.registration_status<>'rejected'"),'dashboard must filter by independent registration status');
 assert(sync.includes("registration_status='approved'"),'profile approval must approve category registration');
 assert(migration.includes("DEFAULT 'submitted'"),'new and historical rejected profile requests must remain submitted by default');
 assert(migration.includes("r.status='approved'"),'existing approved profiles must be backfilled');

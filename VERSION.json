@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev547",
-  "build": 3253,
+  "version": "2.3.3-dev548",
+  "build": 3254,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Hardens Jack and Jill and Dance Cup failure recovery with contiguous roster renumbering after removal, duplicate-safe competitor and judge merge workflows, Judge Directory sorting and deactivation, case-insensitive portal search, isolated Test Final judge saving, and direct Chief Judge tie alerts",
+    "Completes the Test and Live regression gate by restoring Test completed-Heats reports and Test event duplication while replacing stale exact-version assertions with forward-compatible feature minimums",
     "Fixes the PHP 8 parse failure in the Dance Cup Automatic approval notice by explicitly grouping its chained ternary, allowing the full judge-scoring workspace to render after roster confirmation",
     "Loads the Dance Cup Automatic scoring workspace through a new versioned PHP include so production opcode caching cannot keep serving the stale empty workspace after deployment",
     "Forces the shared Dance Cup Automatic scoring workspace file into deployment and exposes a nonvisual render marker so roster-to-scoring availability can be verified directly on the deployed page",

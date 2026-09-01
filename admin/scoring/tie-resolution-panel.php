@@ -5,8 +5,24 @@ $csrf=(string)($csrf??\App\Core\Csrf::token());
 $tiePanelAction=(string)($tiePanelAction??'');
 $tiePanelAttributes=(string)($tiePanelAttributes??'');
 $sharedTieGroups=\App\Services\CallbackTieResolutionService::groups($pdo,$roundId,$tiePanelTest);
+$chiefTieContact=null;
+if($sharedTieGroups){
+ try{
+  $judgeTable=$tiePanelTest?'bdc_test_scoring_judges':'bdc_scoring_judges';
+  $chiefContactQuery=$pdo->prepare("SELECT sj.judge_name,j.email,j.whatsapp,j.phone FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:round AND sj.is_chief=1 ORDER BY sj.id LIMIT 1");
+  $chiefContactQuery->execute(['round'=>$roundId]);
+  $chiefTieContact=$chiefContactQuery->fetch()?:null;
+ }catch(\Throwable){}
+}
 ?>
 <?php if($sharedTieGroups):?>
+<div class="alert alert-danger border-3" role="alert" data-chief-tie-alert><strong>Chief Judge action required.</strong> Scoring progression is locked until every callback or alternate tie below is resolved. Alert the Chief Judge now and record the explicit decision here.</div>
+<?php $chiefMessage='Chief Judge decision required: an unresolved callback tie is blocking BDC scoring round '.$roundId.'. Please come to the scoring desk to review and confirm the decision.';$chiefWhatsapp=preg_replace('/\D+/','',(string)($chiefTieContact['whatsapp']??$chiefTieContact['phone']??''));?>
+<div class="d-flex flex-wrap gap-2 mb-3" data-chief-tie-notification>
+ <button type="button" class="btn btn-outline-danger" data-copy-chief-tie data-message="<?=e($chiefMessage)?>">Copy Chief Decision Request</button>
+ <?php if(!empty($chiefTieContact['email'])):?><a class="btn btn-outline-primary" href="mailto:<?=e((string)$chiefTieContact['email'])?>?subject=<?=rawurlencode('Chief Judge tie decision required')?>&amp;body=<?=rawurlencode($chiefMessage)?>">Email <?=e((string)$chiefTieContact['judge_name'])?></a><?php endif;?>
+ <?php if($chiefWhatsapp!==''):?><a class="btn btn-outline-success" target="_blank" rel="noopener" href="https://wa.me/<?=e($chiefWhatsapp)?>?text=<?=rawurlencode($chiefMessage)?>">WhatsApp <?=e((string)($chiefTieContact['judge_name']??'Chief Judge'))?></a><?php endif;?>
+</div>
 <div class="card shadow-sm mt-3 mb-4 border-warning callback-tie-panel">
  <div class="card-header bg-warning-subtle fw-semibold">Chief Judge Tie Resolution</div>
  <div class="card-body">
@@ -48,5 +64,6 @@ document.querySelectorAll('.callback-tie-form').forEach(function(form){
  boxes.forEach(box=>box.addEventListener('change',refresh));alts.forEach(select=>select.addEventListener('change',refresh));refresh();
  form.addEventListener('submit',function(event){if(button.disabled||!window.confirm('Confirm this Chief Judge tie decision?'))event.preventDefault();});
 });
+document.querySelector('[data-copy-chief-tie]')?.addEventListener('click',async function(){try{await navigator.clipboard.writeText(this.dataset.message||'');this.textContent='Decision Request Copied';}catch(error){window.prompt('Copy this Chief Judge decision request:',this.dataset.message||'');}});
 </script>
 <?php endif;?>

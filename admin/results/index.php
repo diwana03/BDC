@@ -197,7 +197,7 @@ if(!in_array($filterCategory,['','heats','finals','points','full_results','other
 $where=[];
 $params=[];
 if($search!=='') {
-    $where[]="(d.title LIKE :search OR e.name LIKE :search OR DATE_FORMAT(e.event_date,'%Y-%m-%d') LIKE :search)";
+    $where[]="(LOWER(d.title) LIKE LOWER(:search) OR LOWER(e.name) LIKE LOWER(:search) OR DATE_FORMAT(e.event_date,'%Y-%m-%d') LIKE :search)";
     $params['search']='%'.$search.'%';
 }
 if($filterEvent>0) {

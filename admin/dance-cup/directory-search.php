@@ -30,7 +30,7 @@ try {
             'meta' => trim(implode(' · ', array_filter([(string) ($row['judge_code'] ?? ''), (string) ($row['country'] ?? '')]))),
         ], $rows);
     } else {
-        $query = $pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE status<>'archived' AND (exact_name LIKE :contains OR bdc_id LIKE :prefix) ORDER BY CASE WHEN exact_name LIKE :starts THEN 0 ELSE 1 END,exact_name LIMIT 100");
+        $query = $pdo->prepare("SELECT id,bdc_id,exact_name,country FROM bdc_competitors WHERE status<>'archived' AND (LOWER(exact_name) LIKE LOWER(:contains) OR LOWER(bdc_id) LIKE LOWER(:prefix)) ORDER BY CASE WHEN LOWER(exact_name) LIKE LOWER(:starts) THEN 0 ELSE 1 END,LOWER(exact_name),id LIMIT 100");
         $query->execute(['contains' => '%' . $term . '%', 'prefix' => $term . '%', 'starts' => $term . '%']);
         $items = array_map(static fn(array $row): array => [
             'id' => (int) $row['id'],

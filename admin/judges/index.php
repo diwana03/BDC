@@ -12,6 +12,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   if($action==='create'){$judge=JudgeDirectoryService::create($pdo,$_POST);$notice='Judge created: '.$judge['full_name'].' · '.$judge['judge_code'];}
   elseif($action==='generate_registration_link'){JudgeRegistrationLinkService::generate($pdo,(int)(Auth::user()['id']??0)?:null);$notice='New 12-hour private judge registration link created. The previous link is now invalid.';Auth::audit((int)(Auth::user()['id']??0),'judge_registration_link_generated',['expires_hours'=>12]);}
   elseif($action==='generate_profile_update_link'){$judgeId=(int)($_POST['judge_id']??0);$q=$pdo->prepare('SELECT id,full_name FROM bdc_judges WHERE id=:id');$q->execute(['id'=>$judgeId]);$target=$q->fetch();if(!$target)throw new RuntimeException('Judge not found.');$token=JudgeProfileUpdateLinkService::generate($pdo,$judgeId,(int)(Auth::user()['id']??0)?:null);$generatedUpdateLink=JudgeProfileUpdateLinkService::url($token);$notice='Six-hour profile update link created for '.$target['full_name'].'. Regenerating replaces the previous link.';Auth::audit((int)(Auth::user()['id']??0),'judge_profile_update_link_generated',['expires_hours'=>6],'judge',$judgeId);}
+  elseif($action==='set_status'){$judgeId=(int)($_POST['judge_id']??0);$status=(string)($_POST['status']??'');if(!in_array($status,['active','inactive'],true))throw new RuntimeException('Invalid judge status.');$q=$pdo->prepare('UPDATE bdc_judges SET status=:status WHERE id=:id');$q->execute(['status'=>$status,'id'=>$judgeId]);if($q->rowCount()!==1)throw new RuntimeException('Judge not found or status unchanged.');Auth::audit((int)(Auth::user()['id']??0),'judge_status_changed',['status'=>$status],'judge',$judgeId);$notice='Judge '.($status==='active'?'reactivated':'deactivated').'. Historical scoring records were preserved.';}
   elseif(in_array($action,['approve_request','reject_request'],true)){
    $id=(int)($_POST['request_id']??0);$s=$pdo->prepare("SELECT * FROM bdc_judge_profile_requests WHERE id=:id AND status='pending'");$s->execute(['id'=>$id]);$request=$s->fetch();if(!$request)throw new RuntimeException('Pending judge profile request not found.');
    if($action==='approve_request'){$judge=JudgeDirectoryService::findOrCreate($pdo,(string)$request['full_name'],$request);$judge=JudgeDirectoryService::mergeProfile($pdo,(int)$judge['id'],$request);$status='approved';$notice='Judge approved: '.$judge['full_name'].' · '.$judge['judge_code'];}else{$status='rejected';$notice='Judge profile request rejected.';}
@@ -19,7 +20,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   }else throw new RuntimeException('Invalid judge action.');
  }catch(Throwable $e){$error=$e->getMessage();}
 }
-$pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pending' ORDER BY created_at,id")->fetchAll();$rows=$pdo->query("SELECT * FROM bdc_judges ORDER BY status='active' DESC,full_name")->fetchAll();$registrationLink=JudgeRegistrationLinkService::active($pdo);
+$pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pending' ORDER BY created_at,id")->fetchAll();
+$search=trim((string)($_GET['q']??''));$statusFilter=(string)($_GET['status']??'');$sort=(string)($_GET['sort']??'name');
+$where=[];$params=[];if($search!==''){$where[]="(LOWER(full_name) LIKE LOWER(:q1) OR LOWER(COALESCE(display_name,'')) LIKE LOWER(:q2) OR LOWER(COALESCE(judge_code,'')) LIKE LOWER(:q3) OR LOWER(COALESCE(email,'')) LIKE LOWER(:q4) OR LOWER(COALESCE(instagram,'')) LIKE LOWER(:q5) OR REPLACE(COALESCE(phone,''),' ','') LIKE REPLACE(:q6,' ','') OR REPLACE(COALESCE(whatsapp,''),' ','') LIKE REPLACE(:q7,' ',''))";$value='%'.$search.'%';foreach(['q1','q2','q3','q4','q5','q6','q7'] as $key)$params[$key]=$value;}if(in_array($statusFilter,['active','inactive'],true)){$where[]='status=:status';$params['status']=$statusFilter;}$orders=['name'=>'LOWER(COALESCE(NULLIF(display_name,\'\'),full_name)),id','code'=>'judge_code,id','country'=>'LOWER(COALESCE(country,\'\')),LOWER(full_name),id','role'=>'judge_role,LOWER(full_name),id','status'=>'status ASC,LOWER(full_name),id','updated'=>'updated_at DESC,id DESC'];$order=$orders[$sort]??$orders['name'];$sql='SELECT * FROM bdc_judges'.($where?' WHERE '.implode(' AND ',$where):'').' ORDER BY '.$order;$query=$pdo->prepare($sql);$query->execute($params);$rows=$query->fetchAll();
+$duplicates=$pdo->query("SELECT LOWER(TRIM(full_name)) duplicate_key,COUNT(*) total,GROUP_CONCAT(CONCAT(judge_code,' · ',full_name) ORDER BY id SEPARATOR ' | ') matches FROM bdc_judges GROUP BY LOWER(TRIM(full_name)) HAVING COUNT(*)>1 ORDER BY total DESC,duplicate_key LIMIT 100")->fetchAll();$registrationLink=JudgeRegistrationLinkService::active($pdo);
 ?>
 <!doctype html>
 <html>
@@ -44,6 +48,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <div>
 <h1 class="h2 mb-1">Judge Directory</h1>
 <p class="text-muted mb-0">Reusable judge profiles for scoring, contact and projection.</p>
+<a class="btn btn-outline-warning btn-sm mt-2" href="merge.php">Merge Duplicate Judges</a>
 </div>
 <div class="card shadow-sm" style="min-width:min(100%,430px)">
 <div class="card-body">
@@ -67,6 +72,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 </div>
 <?php endif;?>
 <?php if($generatedUpdateLink):?><div class="card border-primary shadow-sm mb-4"><div class="card-body"><label class="form-label fw-semibold">Secure judge profile update link · expires in 6 hours</label><div class="input-group"><input class="form-control" id="generatedJudgeUpdateLink" readonly value="<?=e($generatedUpdateLink)?>"><button class="btn btn-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('generatedJudgeUpdateLink').value);this.textContent='Copied'">Copy Link</button><a class="btn btn-outline-primary" target="_blank" rel="noopener" href="<?=e($generatedUpdateLink)?>">Open</a></div></div></div><?php endif;?>
+<?php if($duplicates):?><div class="alert alert-warning"><strong>Possible duplicate judges · <?=count($duplicates)?></strong><div class="small mt-1"><?php foreach(array_slice($duplicates,0,8) as $duplicate):?><div><?=e($duplicate['matches'])?></div><?php endforeach;?></div><div class="small mt-2">These are suggestions only. Review before merging; historical scoring assignments must never be deleted blindly.</div></div><?php endif;?>
 <?php if($pending):?>
 <section class="card shadow-sm border-warning mb-4">
 <div class="card-header bg-warning-subtle">
@@ -145,6 +151,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 </div>
 </section>
 <section class="card shadow-sm">
+<div class="card-body border-bottom"><form method="get" class="row g-2"><div class="col-lg-6"><input class="form-control" name="q" value="<?=e($search)?>" placeholder="Search name, judge code, email, Instagram, phone or WhatsApp"></div><div class="col-lg-2"><select class="form-select" name="status"><option value="">All statuses</option><option value="active" <?=$statusFilter==='active'?'selected':''?>>Active</option><option value="inactive" <?=$statusFilter==='inactive'?'selected':''?>>Inactive</option></select></div><div class="col-lg-2"><select class="form-select" name="sort"><option value="name" <?=$sort==='name'?'selected':''?>>Name</option><option value="code" <?=$sort==='code'?'selected':''?>>Judge code</option><option value="country" <?=$sort==='country'?'selected':''?>>Country</option><option value="role" <?=$sort==='role'?'selected':''?>>Role</option><option value="status" <?=$sort==='status'?'selected':''?>>Status</option><option value="updated" <?=$sort==='updated'?'selected':''?>>Recently updated</option></select></div><div class="col-lg-2 d-grid"><button class="btn btn-dark">Search &amp; Sort</button></div></form><div class="small text-muted mt-2">All text matching is case-insensitive.</div></div>
 <div class="table-responsive">
 <table class="table align-middle mb-0" data-mobile-cards>
 <thead>
@@ -210,6 +217,7 @@ $pending=$pdo->query("SELECT * FROM bdc_judge_profile_requests WHERE status='pen
 <div class="d-flex flex-wrap gap-1">
 <a class="btn btn-sm btn-primary" href="edit.php?id=<?=(int)$j['id']?>">Edit Profile &amp; Photo</a>
 <form method="post" class="d-inline"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="generate_profile_update_link"><input type="hidden" name="judge_id" value="<?=(int)$j['id']?>"><button class="btn btn-sm btn-outline-primary">Create 6-hour Update Link</button></form>
+<form method="post" class="d-inline" onsubmit="return confirm('<?=$j['status']==='active'?'Deactivate this judge? Historical scoring records will remain available.':'Reactivate this judge?'?>')"><input type="hidden" name="_csrf" value="<?=e(Csrf::token())?>"><input type="hidden" name="action" value="set_status"><input type="hidden" name="judge_id" value="<?=(int)$j['id']?>"><input type="hidden" name="status" value="<?=$j['status']==='active'?'inactive':'active'?>"><button class="btn btn-sm <?=$j['status']==='active'?'btn-outline-danger':'btn-outline-success'?>"><?=$j['status']==='active'?'Deactivate':'Reactivate'?></button></form>
 <?php if(!empty($j['photo_url'])): ?>
 <a class="btn btn-sm btn-outline-secondary" href="edit.php?id=<?=(int)$j['id']?>#judge-photo">Edit &amp; Adjust Photo</a>
 <?php endif; ?>

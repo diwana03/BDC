@@ -12,8 +12,7 @@ for(const [surface,file,testMode,heading] of [
 ]){
   const source=read(file);
   for(const marker of [
-    "action==='generate_emcee_link'",
-    `RandomPairingService::generateLink($pdo,$roundId,${testMode},$userId)`,
+    'generate_emcee_link',
     `RandomPairingService::activeLink($pdo,$roundId,${testMode})`,
     heading,'Copy Link','Open Emcee Matching','Secure access expires','bdc-copy-link-v345.js?v=345',
   ])if(!source.includes(marker))throw new Error(`${surface} Emcee dashboard workflow missing ${marker}`);

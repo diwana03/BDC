@@ -16,7 +16,7 @@ for (const marker of [
 ]) assert(projector.includes(marker), `Missing stepped podium/countdown marker: ${marker}`);
 
 assert(projector.indexOf("classes=['second','first','third']") !== -1, 'Podium order must remain second, champion, third');
-assert.strictEqual(version.version, '2.3.3-dev536');
-assert.strictEqual(version.build, 3242);
+assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=536);
+assert(version.build>=3242);
 
 console.log('OK: Dance Cup podium is stepped and every placement reveal receives a 5-4-3-2-1 countdown');

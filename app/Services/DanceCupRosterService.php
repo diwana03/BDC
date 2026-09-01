@@ -120,6 +120,22 @@ final class DanceCupRosterService
 
     private static function renumber(PDO $pdo, string $prefix, int $competitionId, string $kind): void
     {
+        if ($kind === 'entry') {
+            $query = $pdo->prepare("SELECT id FROM {$prefix}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");
+            $query->execute(['competition' => $competitionId]);
+            $ids = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
+            if (!$ids) return;
+            // Move active bibs out of the normal range first so a unique
+            // competition/bib key cannot collide while the gaps are closed.
+            $offset = 1000000 + count($ids);
+            $temporary = $pdo->prepare("UPDATE {$prefix}_entries SET bib_number=bib_number+:offset WHERE competition_id=:competition AND status='active'");
+            $temporary->execute(['offset' => $offset, 'competition' => $competitionId]);
+            $update = $pdo->prepare("UPDATE {$prefix}_entries SET bib_number=:position WHERE id=:id AND competition_id=:competition");
+            foreach ($ids as $position => $id) {
+                $update->execute(['position' => $position + 1, 'id' => $id, 'competition' => $competitionId]);
+            }
+            return;
+        }
         if ($kind !== 'judge') return;
         $query = $pdo->prepare("SELECT id FROM {$prefix}_judges WHERE competition_id=:competition ORDER BY judge_order,id");
         $query->execute(['competition' => $competitionId]);

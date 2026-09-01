@@ -30,7 +30,7 @@ function specialFindCompetitor(PDO $pdo,string $term,string $role):?array{
     $stmt=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status FROM bdc_competitors WHERE status<>'archived' AND dance_role IN(:role,'both') AND (bdc_id=:bdc OR id=:numeric OR LOWER(exact_name)=LOWER(:exact)) ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");
     $stmt->execute(['role'=>$role,'bdc'=>$bdc!==''?$bdc:$term,'numeric'=>ctype_digit($term)?(int)$term:0,'exact'=>$term,'preferred'=>$role]);
     $competitor=$stmt->fetch();if($competitor)return $competitor;
-    $stmt=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status FROM bdc_competitors WHERE status<>'archived' AND dance_role IN(:role,'both') AND exact_name LIKE :term ORDER BY exact_name,id LIMIT 2");
+    $stmt=$pdo->prepare("SELECT id,bdc_id,exact_name,dance_role,current_division,status FROM bdc_competitors WHERE status<>'archived' AND dance_role IN(:role,'both') AND LOWER(exact_name) LIKE LOWER(:term) ORDER BY exact_name,id LIMIT 2");
     $stmt->execute(['role'=>$role,'term'=>'%'.$term.'%']);$rows=$stmt->fetchAll();
     if(count($rows)===1)return $rows[0];if(count($rows)>1)throw new RuntimeException('Several competitors match this name. Select the correct BDC ID.');return null;
 }

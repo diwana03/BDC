@@ -25,10 +25,10 @@ for (const label of ['Holding Screen','Contestant Call','All Contestants','Judge
 }
 assert(files.projector.includes('currentPage>=pageTotal?1:currentPage+1'), 'automatic page wrap missing');
 assert(files.projector.includes('document.hidden'), 'hidden-tab polling pause missing');
-assert(files.projector.includes('60000'), 'HTTP 429 backoff missing');
-assert(files.projector.includes('setInterval(poll,5000)'), 'projector polling interval missing');
+assert(files.projector.includes('response.status===429')&&files.projector.includes('backoffUntil'), 'HTTP 429 backoff missing');
+assert(files.projector.includes('schedulePoll('), 'projector polling scheduler missing');
 assert(files.projector.includes('data.results') && files.projector.includes('data.judges') && files.projector.includes('data.entries'), 'live data repaint hash incomplete');
-assert(!/confetti|fireworks/i.test(files.projector), 'automatic podium effects must remain absent');
+assert(files.projector.includes('effect_version')&&files.projector.includes("type==='fireworks'"), 'operator-triggered presentation effects must be revision gated');
 assert(files.feed.includes('active_competition_id') && files.feed.includes("'entries'") && files.feed.includes("'judges'") && files.feed.includes("'results'"), 'projection feed integration incomplete');
 
 console.log('Dance Cup projection parity v390: PASS');
