@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev548",
-  "build": 3254,
+  "version": "2.3.3-dev549",
+  "build": 3255,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Fixes competitor merge SQLSTATE 23000 / MySQL 1052 by explicitly qualifying discipline-profile dance role, division and special-category columns across the INSERT SELECT and duplicate-update paths",
     "Hardens Jack and Jill and Dance Cup failure recovery with contiguous roster renumbering after removal, duplicate-safe competitor and judge merge workflows, Judge Directory sorting and deactivation, case-insensitive portal search, isolated Test Final judge saving, and direct Chief Judge tie alerts",
     "Completes the Test and Live regression gate by restoring Test completed-Heats reports and Test event duplication while replacing stale exact-version assertions with forward-compatible feature minimums",
     "Fixes the PHP 8 parse failure in the Dance Cup Automatic approval notice by explicitly grouping its chained ternary, allowing the full judge-scoring workspace to render after roster confirmation",

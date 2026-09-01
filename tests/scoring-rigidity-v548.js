@@ -20,6 +20,7 @@ for(const [name,source] of [['Live',live],['Test',test]]){
 }
 assert(tie.includes('data-chief-tie-alert')&&tie.includes('Chief Judge action required'),'Tie workflow must show a blocking Chief Judge alert');
 assert(competitors.includes('Possible Duplicates')&&competitors.includes('LOWER(TRIM(exact_name))'),'Competitor merge must expose case-insensitive duplicate suggestions');
+assert(competitors.includes('source.dance_role')&&competitors.includes('bdc_competitor_discipline_profiles.dance_role'),'Competitor profile merge must qualify ambiguous dance_role columns');
 for(const marker of ['Search &amp; Sort','set_status','Possible duplicate judges','LOWER(full_name) LIKE LOWER'])assert(judges.includes(marker),'Judge Directory hardening missing '+marker);
 assert(judgeService.includes('LOWER(full_name) LIKE LOWER'),'Judge roster search must be case-insensitive');
 assert(directory.includes('LOWER(exact_name) LIKE LOWER'),'Dance Cup competitor search must be case-insensitive');
