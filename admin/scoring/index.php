@@ -3,7 +3,7 @@ declare(strict_types=1);
 ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=505"></script></head>',$html));
 $mode=(string)($_GET['mode']??'');$roundId=(int)($_GET['round_id']??$_POST['round_id']??0);$action=(string)($_POST['action']??'');
 if($mode==='special'){header('Location: ?mode=manual'.($roundId?'&round_id='.$roundId:''));exit;}
-if($_SERVER['REQUEST_METHOD']==='POST'&&$action==='create_round'&&in_array((string)($_POST['division']??''),['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'],true)){require __DIR__.'/integrated-special-create.php';exit;}
+if($_SERVER['REQUEST_METHOD']==='POST'&&$action==='create_round'&&in_array((string)($_POST['division']??''),['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open','salsa_invitational'],true)){require __DIR__.'/integrated-special-create.php';exit;}
 if($_SERVER['REQUEST_METHOD']==='POST'&&$action==='create_round'){require __DIR__.'/create-round-action.php';exit;}
 if($_SERVER['REQUEST_METHOD']==='POST'&&in_array($action,['create_next_round','delete_scoring_workflow'],true)){require __DIR__.'/discipline-actions.php';exit;}
 if($_SERVER['REQUEST_METHOD']==='POST'&&$action==='add_entry'&&$roundId){require_once dirname(__DIR__,2).'/bootstrap.php';try{$pdo=App\Core\Database::connection();$s=$pdo->prepare('SELECT dance_style FROM bdc_scoring_rounds WHERE id=:id');$s->execute(['id'=>$roundId]);if((string)$s->fetchColumn()==='salsa'){require __DIR__.'/discipline-actions.php';exit;}}catch(Throwable){}}
