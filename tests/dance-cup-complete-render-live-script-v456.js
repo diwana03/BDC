@@ -1,7 +1,7 @@
 const fs=require('fs'),assert=require('assert');
 const view=fs.readFileSync('app/Views/admin/dance-cup-automatic-workspace.php','utf8');
 const page=fs.readFileSync('app/Views/admin/dance-cup-automatic-page.php','utf8');
-assert(page.includes("require __DIR__.'/dance-cup-automatic-workspace-v546.php'"));
+assert(page.includes("require __DIR__.'/dance-cup-automatic-workspace-v547.php'"));
 assert(view.includes('\\App\\Core\\Auth::isSuperAdmin()'));
 assert(!view.includes('&&Auth::isSuperAdmin()'));
 assert(view.indexOf('Calculated Ranking')>view.indexOf('Submit Scores &amp; Lock'));
