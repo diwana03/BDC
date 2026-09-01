@@ -11,6 +11,7 @@ assert(setup.includes("$saved=(string)$action==='confirm_roster'?'roster':'1'"),
 assert(setup.includes("$fragment=(string)$action==='confirm_roster'?'#judge-progress':''"),'roster confirmation must open the judge scoring section');
 assert(setup.includes("(string)$_GET['saved']==='roster'?'Roster confirmed. Judge scoring is ready.'"),'roster confirmation success message must survive the redirect');
 assert(workspace.includes('SCORING RULES')&&workspace.includes("$state['criteria']"),'criteria summary missing');
+assert(workspace.includes('data-dc-workspace-mounted'),'deployed Automatic workspace must expose a render marker');
 assert(workspace.includes('Marks autosave')&&workspace.includes('every two seconds'),'live status guidance missing');
 assert(workspace.includes('Super Admin must then approve'),'approval rule missing');
 assert((workspace.match(/Open Projection Control/g)||[]).length===1,'Automatic workspace must expose one consolidated Projection control');
