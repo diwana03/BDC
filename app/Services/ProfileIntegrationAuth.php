@@ -34,6 +34,12 @@ final class ProfileIntegrationAuth
         return in_array($scope,$scopes,true);
     }
 
+    public static function allowedAnyScope(array $scopes):bool
+    {
+        foreach($scopes as $scope)if(self::allowedScope((string)$scope))return true;
+        return false;
+    }
+
     public static function credentialStatus():array
     {
         $environmentSecret=trim((string)getenv('BDC_PROFILE_INTEGRATION_SECRET'));

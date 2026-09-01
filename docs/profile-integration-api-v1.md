@@ -16,6 +16,30 @@ Required headers:
 
 The signature input is `v1.<timestamp>.<exact raw request body>`. Configure `BDC_PROFILE_INTEGRATION_SCOPES` as `competitors:submit`, `judges:submit`, or both separated by a comma.
 
+## Test-only directory and diagnostics
+
+The comparison API is deliberately read-only. It can inspect exact competitor IDs, BDC/SDC IDs, Salsa role and progression, registered Salsa categories, photo presence, history and deletion impact. It cannot approve, submit, commit, delete or change a database row. Existing `competitors:submit` credentials may read these endpoints for backward compatibility; new installations may use `competitors:read`.
+
+`GET /portal/api/profile-sync/v1/directory.php?search=<text>&page=1&per_page=100`
+
+Sign an empty body with context `directory:<sha256 of search|page|per_page>`. Search is case-insensitive. The response excludes private email and phone fields.
+
+`POST /portal/api/profile-sync/v1/diagnostics.php`
+
+Sign the exact body with context `profile-diagnostics`. Only allowlisted parameterized queries are available: `sdc_members`, `missing_photos`, `competitor_history`, and `deletion_impact`. Arbitrary SQL is rejected. `deletion_impact` simulates the affected row counts and returns an `approval_hash`; it never deletes. A logged-in Super Admin must perform the final deletion through an authenticated administrative workflow after the impact is recomputed.
+
+```json
+{"query":"deletion_impact","params":{"competitor_id":248}}
+```
+
+`POST /portal/api/profile-sync/v1/reconcile-sdc.php`
+
+Sign the exact body with context `reconcile-sdc-test`. Send `dry_run: true` and exact `target_id` values obtained from the directory. The response compares the requested SDC roster, categories and roles with current data; identifies Novice tags, missing photos, proposed removals and protected official Salsa history; and returns a stable plan hash. `dry_run: false` is always rejected. No approval queue is created.
+
+```json
+{"dry_run":true,"members":[{"target_id":123,"role":"leader","categories":["salsa_rising","salsa_open"]}]}
+```
+
 ## Submit a batch
 
 `POST /portal/api/profile-sync/v1/`
@@ -80,3 +104,5 @@ Staged photos stay under the protected `storage` directory and are served only t
 ## Explicit exclusions
 
 The integration service does not write to point transactions, participant results, scoring tables, publication approvals, placements, event registrations, payments, user accounts or access permissions.
+
+The test-only directory, diagnostics and SDC reconciliation endpoints do not perform any database writes at all. Mutation, approval and deletion remain Super Admin actions.
