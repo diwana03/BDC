@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev555",
-  "build": 3261,
+  "version": "2.3.3-dev556",
+  "build": 3262,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Creates the eight remaining verified competitors as SDC-only records with no BDC identity, assigns Salsa Rising/Open categories and Unknown progression, and preserves every existing BDC profile unchanged",
     "Reconciles SDC without changing BDC identities: removes three remaining non-registrants, consolidates duplicate Budveen and Gokul SDC identities on their oldest codes with verified categories, clears Salsa Novice from every SDC profile, and adds unambiguous photographed Ángel, Carlos and Bárbara Salsa Open profiles",
     "Removes eight Super Admin-confirmed non-registered people from SDC only after exact identity and zero-Salsa-history checks, archives every SDC identity/profile/category row for recovery, and preserves all BDC identities and Bachata history",
     "Adds signed test-only profile directory, allowlisted SQL diagnostics, deletion-impact simulation and SDC reconciliation planning with exact IDs, photo checks, case-insensitive search and official-history protection while preventing API approval, submission, commit, deletion or any other database mutation; final changes remain Super Admin-only",
