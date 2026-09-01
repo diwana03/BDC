@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev553",
-  "build": 3259,
+  "version": "2.3.3-dev554",
+  "build": 3260,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Removes eight Super Admin-confirmed non-registered people from SDC only after exact identity and zero-Salsa-history checks, archives every SDC identity/profile/category row for recovery, and preserves all BDC identities and Bachata history",
     "Adds signed test-only profile directory, allowlisted SQL diagnostics, deletion-impact simulation and SDC reconciliation planning with exact IDs, photo checks, case-insensitive search and official-history protection while preventing API approval, submission, commit, deletion or any other database mutation; final changes remain Super Admin-only",
     "Removes Alvin Foo Dun Zhi BDC-000248 from the Salsa and SDC directories after a testing-only discipline move while preserving his permanent BDC identity, Bachata profile and all Bachata competition history",
     "Adds separate Bachata J&J, Salsa J&J and Dance Cup competitor dashboards while retaining the legacy combined Competitor Management dashboard for migration; scopes BDC and SDC identities, profiles, points, filters and exports by discipline; and adds an entry-based WDC competitor directory for solo, couple, duo, Pro-Am and team championship records",
