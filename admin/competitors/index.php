@@ -17,6 +17,11 @@ $dashboard = in_array((string)($_GET['dashboard'] ?? ''), ['bachata','salsa'], t
 $dashboardTitle = $dashboard === 'bachata' ? 'Bachata J&J Competitor' : ($dashboard === 'salsa' ? 'Salsa J&J Competitor' : 'Competitor Management');
 $dashboardCouncil = $dashboard === 'salsa' ? 'sdc' : 'bdc';
 $dashboardIdLabel = strtoupper($dashboardCouncil).' ID';
+$dashboardAccent = $dashboard === 'salsa' ? 'salsa' : 'bachata';
+$dashboardEyebrow = $dashboard === 'salsa' ? 'SALSA DANCE COUNCIL' : 'BACHATA DANCE COUNCIL';
+$dashboardDescription = $dashboard === 'salsa'
+    ? 'Dedicated SDC identities, Salsa roles and registered competition categories.'
+    : 'Dedicated BDC identities, Bachata progression, points and competition categories.';
 
 $q        = trim((string)($_GET['q'] ?? ''));
 $filter   = (string)($_GET['filter'] ?? '');
@@ -221,7 +226,7 @@ if($dashboardCouncil==='sdc'){$counts=[
     'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitor_discipline_profiles p JOIN bdc_result_identities ri ON ri.competitor_id=p.competitor_id AND ri.council='bdc' WHERE p.dance_style='bachata' AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
     'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_result_identities ri ON ri.competitor_id=s.competitor_id AND ri.council='bdc' WHERE s.dance_style='bachata'")->fetchColumn(),
 ];}
-$hasListFilters=$q!==''||$filter!==''||$country!==''||$danceStyle!==''||$role!==''||$division!==''||$status!=='';
+$hasListFilters=$q!==''||$filter!==''||$country!==''||($dashboard===''&&$danceStyle!=='')||$role!==''||$division!==''||$status!=='';
 
 $countries = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
 
@@ -260,19 +265,27 @@ $currentListReturn = '?' . http_build_query($_GET);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= e(url('public/assets/css/app.css')) ?>" rel="stylesheet">
     <style>
+        :root{--portal-navy:#0d1b36;--portal-wine:#5a1734;--portal-gold:#d9b567;--portal-ink:#152039;--portal-muted:#667085;--portal-line:#dce3ed;--portal-accent:<?=$dashboardAccent==='salsa'?'#0d7b83':'#9b284d'?>;--portal-accent-soft:<?=$dashboardAccent==='salsa'?'#e4f7f6':'#f9eaf0'?>}
+        body.competitor-premium{background:radial-gradient(circle at 85% 0,<?=$dashboardAccent==='salsa'?'#dff7f5':'#f7e1ea'?> 0,transparent 28rem),linear-gradient(145deg,#edf3fa,#f8f9fc 55%,#f4eef3);color:var(--portal-ink);min-height:100vh}
+        .premium-shell{max-width:1800px;margin:auto}.premium-hero{position:relative;overflow:hidden;border-radius:24px;padding:clamp(1.35rem,3vw,2.3rem);background:linear-gradient(120deg,var(--portal-navy),#172e58 62%,<?=$dashboardAccent==='salsa'?'#075b65':'var(--portal-wine)'?>);color:#fff;box-shadow:0 20px 45px rgba(13,27,54,.2)}
+        .premium-hero:after{content:"";position:absolute;width:300px;height:300px;border:1px solid rgba(255,255,255,.16);border-radius:50%;right:-90px;top:-150px;box-shadow:0 0 0 45px rgba(255,255,255,.04),0 0 0 90px rgba(255,255,255,.025)}
+        .premium-eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.16em;color:#f4d99d}.premium-hero h1{font-weight:800;letter-spacing:-.035em}.premium-hero p{color:#dce5f4;max-width:720px}.premium-actions{position:relative;z-index:1}.premium-actions .btn{border-radius:999px;font-weight:700;padding:.58rem .9rem}.premium-actions .btn-light{color:var(--portal-navy)}
+        .summary-card{height:100%;border:1px solid rgba(255,255,255,.9)!important;border-radius:18px!important;background:rgba(255,255,255,.92);box-shadow:0 12px 30px rgba(31,49,78,.08)!important;transition:.18s ease}.summary-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(31,49,78,.13)!important}.summary-card.active{outline:3px solid var(--portal-accent);outline-offset:1px}.summary-value{font-size:2rem;font-weight:850;color:var(--portal-navy)}
+        .premium-panel{border:1px solid rgba(255,255,255,.95)!important;border-radius:20px!important;background:rgba(255,255,255,.94);box-shadow:0 12px 32px rgba(31,49,78,.08)!important}.premium-panel .form-control,.premium-panel .form-select{border-color:#ccd6e4;border-radius:11px;min-height:43px}.premium-panel .form-control:focus,.premium-panel .form-select:focus{border-color:var(--portal-accent);box-shadow:0 0 0 .2rem rgba(13,123,131,.13)}
+        .premium-table-wrap{border-radius:20px;overflow:hidden}.premium-table thead th{background:var(--portal-navy);color:#fff;border:0;padding:.9rem .75rem;font-size:.75rem;letter-spacing:.045em;text-transform:uppercase}.premium-table thead .sortable{color:#fff}.premium-table tbody td{padding:.8rem .75rem;border-color:var(--portal-line)}.premium-table tbody tr:hover>*{background:var(--portal-accent-soft)}.identity-code{font-weight:800;color:var(--portal-accent);white-space:nowrap}.competitor-name{font-size:1rem;color:var(--portal-ink)}
         .sortable { color: inherit; text-decoration: none; white-space: nowrap; }
         .sortable:hover { text-decoration: underline; }
-        .filter-card.active { outline: 2px solid #212529; }
         .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; }
-        .competitor-photo { width:48px; height:48px; object-fit:cover; border-radius:8px; }
+        .competitor-photo { width:58px; height:68px; object-fit:cover; border-radius:13px;box-shadow:0 4px 12px rgba(21,32,57,.16);background:#e8edf4 }
         .table thead th { vertical-align: middle; }
-        .profile-box { min-width:190px; padding:.55rem .7rem; border:1px solid #dee2e6; border-radius:.55rem; background:#fff; }
-        .profile-box.special { border-color:#0dcaf0; background:#f0fbff; }
+        .profile-box { min-width:190px; padding:.65rem .75rem; border:1px solid var(--portal-line); border-radius:12px; background:#fff; }
+        .profile-box.special { border-color:var(--portal-accent); background:var(--portal-accent-soft); }.profile-box .badge{border-radius:999px}.scope-note{border-left:4px solid var(--portal-accent);background:#fff;border-radius:12px;padding:.75rem 1rem;color:var(--portal-muted)}
+        @media(max-width:767px){.premium-hero{border-radius:18px}.premium-actions{width:100%}.premium-actions .btn{flex:1 1 45%}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-value{font-size:1.6rem}.premium-table-wrap{border-radius:14px}.competitor-photo{width:52px;height:62px}}
     </style>
     <link rel="stylesheet" href="<?= e(url('public/assets/css/admin-mobile-v428.css?v=428')) ?>">
     <script defer src="<?= e(url('public/assets/js/admin-mobile-v428.js?v=428')) ?>"></script>
 </head>
-<body class="bg-light bdc-mobile-admin">
+<body class="bdc-mobile-admin competitor-premium">
 <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="<?= e(url('admin/')) ?>">BDC Admin</a>
@@ -280,8 +293,12 @@ $currentListReturn = '?' . http_build_query($_GET);
     </div>
 </nav>
 
-<div class="container-fluid py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+<div class="container-fluid py-4 premium-shell">
+    <?php if($dashboard!==''):?><section class="premium-hero mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-4 position-relative" style="z-index:1"><div><div class="premium-eyebrow mb-2"><?=e($dashboardEyebrow)?></div><h1 class="display-6 mb-2"><?=e($dashboardTitle)?></h1><p class="mb-0"><?=e($dashboardDescription)?></p></div>
+        <div class="premium-actions d-flex flex-wrap gap-2"><a class="btn btn-light" href="#competitor-directory">Browse directory</a><?php if(Auth::can('competitors.edit')):?><a class="btn btn-outline-light" href="edit.php?dance=<?=e($dashboard)?>&amp;dashboard=<?=e($dashboard)?>&amp;return=<?=e(rawurlencode($currentListReturn))?>">Add <?=e(strtoupper($dashboardCouncil))?> competitor</a><?php endif;?></div></div>
+    </section><?php endif;?>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 <?=$dashboard!==''?'visually-hidden':''?>">
         <div>
             <h1 class="h3 mb-1"><?=e($dashboardTitle)?></h1>
             <p class="text-muted mb-0">Admin and assigned admin access only.</p>
@@ -296,17 +313,17 @@ $currentListReturn = '?' . http_build_query($_GET);
         <?php foreach ($counts as $key => $count): ?>
             <?php $isAll=$key==='all_participants';$isActive=$isAll?!$hasListFilters:$filter===$key; ?>
             <div>
-                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?=e(queryUrl(['filter'=>$isAll?null:$key,'q'=>null,'country'=>null,'role'=>null,'division'=>null,'status'=>null,'page'=>1]))?>">
+                <a class="card summary-card <?= $isActive ? 'active' : '' ?> text-decoration-none" href="<?=e(queryUrl(['filter'=>$isAll?null:$key,'q'=>null,'country'=>null,'role'=>null,'division'=>null,'status'=>null,'page'=>1]))?>">
                     <div class="card-body">
                         <div class="small text-muted"><?= e(ucwords(str_replace('_', ' ', $key))) ?></div>
-                        <div class="fs-2 fw-bold"><?= $count ?></div>
+                        <div class="summary-value"><?= $count ?></div>
                     </div>
                 </a>
             </div>
         <?php endforeach; ?>
     </div>
 
-    <form id="competitor-filter-form" class="card border-0 shadow-sm mb-3" method="get" action="">
+    <form id="competitor-filter-form" class="card premium-panel mb-3" method="get" action="">
         <?php if($dashboard!==''):?><input type="hidden" name="dashboard" value="<?=e($dashboard)?>"><?php endif;?>
         <div class="card-body">
             <div class="row g-2">
@@ -340,8 +357,8 @@ $currentListReturn = '?' . http_build_query($_GET);
                     <label class="form-label small text-muted">Division</label>
                     <select class="form-select" name="division">
                         <option value="">All divisions</option>
-                        <optgroup label="Career Divisions"><?php foreach (['novice','intermediate','advanced','all_star','professional','unknown'] as $item): ?><option value="<?=e($item)?>" <?=$division===$item?'selected':''?>><?=e(ucwords(str_replace('_',' ',$item)))?></option><?php endforeach;?></optgroup>
-                        <optgroup label="Special Categories"><option value="bachata_rising" <?=$division==='bachata_rising'?'selected':''?>>Bachata Rising</option><option value="bachata_open" <?=$division==='bachata_open'?'selected':''?>>Bachata Open</option><option value="bachata_invitational" <?=$division==='bachata_invitational'?'selected':''?>>Bachata Invitational</option><option value="salsa_rising" <?=$division==='salsa_rising'?'selected':''?>>Salsa Rising</option><option value="salsa_open" <?=$division==='salsa_open'?'selected':''?>>Salsa Open</option><option value="salsa_invitational" <?=$division==='salsa_invitational'?'selected':''?>>Salsa Invitational</option></optgroup>
+                        <optgroup label="Career Divisions"><?php foreach (($dashboard==='salsa'?['novice','intermediate','advanced','unknown']:['novice','intermediate','advanced','all_star','professional','unknown']) as $item): ?><option value="<?=e($item)?>" <?=$division===$item?'selected':''?>><?=e(ucwords(str_replace('_',' ',$item)))?></option><?php endforeach;?></optgroup>
+                        <optgroup label="Special Categories"><?php foreach(($dashboard==='salsa'?['salsa_rising'=>'Salsa Rising','salsa_open'=>'Salsa Open','salsa_invitational'=>'Salsa Invitational']:($dashboard==='bachata'?['bachata_rising'=>'Bachata Rising','bachata_open'=>'Bachata Open','bachata_invitational'=>'Bachata Invitational']:['bachata_rising'=>'Bachata Rising','bachata_open'=>'Bachata Open','bachata_invitational'=>'Bachata Invitational','salsa_rising'=>'Salsa Rising','salsa_open'=>'Salsa Open','salsa_invitational'=>'Salsa Invitational'])) as $value=>$label):?><option value="<?=e($value)?>" <?=$division===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></optgroup>
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
@@ -405,9 +422,10 @@ $currentListReturn = '?' . http_build_query($_GET);
         <div class="text-muted small">Click any column heading to sort.</div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <?php if($dashboard!==''):?><div class="scope-note mb-3"><strong><?=e(strtoupper($dashboardCouncil))?> integrity scope:</strong> this directory reads only <?=e($dashboard==='salsa'?'active SDC identities and Salsa profiles':'BDC result identities and Bachata profiles')?>. Shared contact details and photos do not create an identity in another council.</div><?php endif;?>
+    <div id="competitor-directory" class="card premium-panel premium-table-wrap">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" data-mobile-cards>
+            <table class="table premium-table table-hover align-middle mb-0" data-mobile-cards>
                 <thead>
                 <tr>
                     <th>Photo</th>
@@ -429,9 +447,9 @@ $currentListReturn = '?' . http_build_query($_GET);
                 ?>
                     <tr id="competitor-<?= (int)$row['id'] ?>">
                         <td><img src="<?= e($photo) ?>" class="competitor-photo" alt=""></td>
-                        <td><code><?= e((string)$row['dashboard_identity_code']) ?></code></td>
+                        <td><code class="identity-code"><?= e((string)$row['dashboard_identity_code']) ?></code></td>
                         <td>
-                            <strong><?= e($row['exact_name']) ?></strong>
+                            <strong class="competitor-name"><?= e($row['exact_name']) ?></strong>
                             <div class="small text-muted"><?= e((string)$row['instagram']) ?></div>
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
@@ -442,7 +460,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                             <?php if (Auth::can('competitors.edit')): ?>
                                 <?php $rowReturn=$currentListReturn.'#competitor-'.(int)$row['id']; ?>
                                 <a class="btn btn-sm btn-outline-dark" href="edit.php?id=<?= (int)$row['id'] ?>&amp;dance=<?=e($dashboard?:'bachata')?><?= $dashboard!==''?'&amp;dashboard='.e($dashboard):'' ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Edit</a>
-                                <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Adjust photo</a>
+                                <a class="btn btn-sm btn-outline-primary" href="photo-adjust.php?id=<?= (int)$row['id'] ?>&amp;dashboard=<?=e($dashboard)?>&amp;return=<?= e(rawurlencode($rowReturn)) ?>">Adjust photo</a>
                             <?php endif; ?>
                         </td>
                     </tr>
