@@ -8,7 +8,8 @@ for(const token of [
  "$hasListFilters=",
  "$isAll=$key==='all_participants'",
  "$isActive=$isAll?!$hasListFilters:$filter===$key",
- "$isAll?e(queryUrl(['filter'=>null,'page'=>1]))",
+ "'filter'=>$isAll?null:$key",
+ "'division'=>null",
  'summary-grid'
 ])assert(page.includes(token),'All Participants dashboard card missing '+token);
 const counts=page.slice(page.indexOf("'all_participants'=>"),page.indexOf('];',page.indexOf("'all_participants'=>")));

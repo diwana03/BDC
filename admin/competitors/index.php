@@ -296,7 +296,7 @@ $currentListReturn = '?' . http_build_query($_GET);
         <?php foreach ($counts as $key => $count): ?>
             <?php $isAll=$key==='all_participants';$isActive=$isAll?!$hasListFilters:$filter===$key; ?>
             <div>
-                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?= $isAll?e(queryUrl(['filter'=>null,'page'=>1])):e(queryUrl(['filter' => $filter === $key ? '' : $key, 'page' => 1])) ?>">
+                <a class="card filter-card <?= $isActive ? 'active' : '' ?> text-decoration-none shadow-sm border-0" href="<?=e(queryUrl(['filter'=>$isAll?null:$key,'q'=>null,'country'=>null,'role'=>null,'division'=>null,'status'=>null,'page'=>1]))?>">
                     <div class="card-body">
                         <div class="small text-muted"><?= e(ucwords(str_replace('_', ' ', $key))) ?></div>
                         <div class="fs-2 fw-bold"><?= $count ?></div>
