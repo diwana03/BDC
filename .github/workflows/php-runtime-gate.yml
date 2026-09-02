@@ -1,0 +1,20 @@
+name: PHP Runtime Gate
+on:
+  push:
+    branches: [develop, "codex/**"]
+  pull_request:
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: PHP version
+        run: php --version
+      - name: Lint every PHP file
+        run: find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript regression suite
+        run: find tests -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node

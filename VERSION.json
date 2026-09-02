@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev576",
-  "build": 3282,
+  "version": "2.3.3-dev577",
+  "build": 3283,
   "status": "development",
   "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes the real Dance Cup Competitor route the single premium WDC workspace, removes the unrequested preview route and menu, retains the Production-proven identity query, adds premium search/filter/sort/duplicate/completeness/export features, redesigns the WDC editor without raw photo URLs, adds drag/zoom/crop photo controls, and introduces a PHP 8.1 GitHub Actions syntax gate",
     "Adds a Super Admin-only WDC Premium Preview beside the unchanged working Dance Cup Competitor page, using the exact Production-proven identity query with PHP-side summary cards, case-insensitive search, type/style/completeness filters, duplicate and missing-data review, sortable columns, profile completeness, CSV export and edit/photo actions",
     "Restores the existing shared-person photo preview on the WDC Adjust Photo page through a separate guarded lookup when the WDC identity has no dedicated photo, while keeping replacements isolated to the WDC identity",
     "Recovers the Dance Cup Adjust Photo route with a minimal WDC-identity-only lookup, guarded MIME detection and upload errors, removing its dependency on the shared BDC competitor join while preserving WDC-only photo updates and audit history",

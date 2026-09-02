@@ -10,7 +10,7 @@ assert(jj.includes('ri.identity_code dashboard_identity_code'),'J&J dashboard mu
 assert(jj.includes('LOWER(ri.identity_code) LIKE LOWER'),'J&J identity search must be case-insensitive');
 assert(wdc.includes('FROM bdc_wdc_identities w'),'Dance Cup directory must use WDC identities');
 assert(wdc.includes('LOWER(w.display_name)'),'WDC directory ordering must be case-insensitive');
-assert(wdc.includes('str_contains($haystack,$normal($q))'),'WDC search must be case-insensitive');
+assert(wdc.includes("str_contains($r['search'],wdcpLower($q))"),'WDC search must be case-insensitive');
 assert(wdc.includes('Add competitor'),'Dance Cup directory management action missing');
 assert(edit.includes('Permanent and cannot be changed.'),'WDC code immutability is not visible');
 assert(edit.includes('CouncilResultIdentityService::wdcIdentityForEntry'),'new Dance Cup competitors must use the canonical WDC allocator');

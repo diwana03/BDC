@@ -10,7 +10,7 @@ for(const marker of ['submitted_by','approved_by','approved_at','bdc_dance_cup_r
 assert(view.includes('Review Result, Comments &amp; Accept')&&view.includes('Super Admin must then approve'),'Automatic workspace must show the two-stage workflow');
 assert(live.includes("['submitted','pending_approval','approved']")&&live.includes('approve_results'),'Live UI must lock legacy submitted, pending and approved scoring and support approval');
 assert(judge.includes('Automatic draft saving is on')&&judge.includes('scheduleSave'),'Judge score selection must visibly auto-save');
-for(const marker of ['Dance Cup Competitor','WDC identities','Active registrations','bdc_wdc_registrations','entry_type','registration_count'])assert(participants.includes(marker),'Dance Cup competitor dashboard missing '+marker);
+for(const marker of ['Dance Cup Competitor','WDC identities','Category entries','bdc_wdc_registrations','entry_type','registration_count'])assert(participants.includes(marker),'Dance Cup competitor dashboard missing '+marker);
 for(const marker of ['requireSuperAdmin','Pending Dance Cup Result Approval','Review Result, Comments &amp; Accept','approval-review.php'])assert(approvals.includes(marker),'Manual and Automatic approval queue missing '+marker);
 assert(jj.includes('Create Scoring Round')&&jj.includes('new_event_name'),'Jack & Jill must retain event creation on the all-round dashboard');
 assert(requests.includes('profileRequestStatusCounts')&&requests.includes('View all '),'Profile Request records must remain discoverable across statuses');

@@ -25,7 +25,6 @@ $sidebarLink = static function (string $path, string $icon, string $label, strin
 <details class="admin-nav-group-v203" open><summary>Dance Cup</summary><div class="admin-nav-group-links-v203">
     <?php $sidebarLink('admin/dance-cup/', '★', 'Dance Cup Scoring', 'NEW'); ?>
     <?php $sidebarLink('admin/dance-cup/competitors.php', '♙', 'Dance Cup Competitor', 'NEW'); ?>
-    <?php if(\App\Core\Auth::isSuperAdmin())$sidebarLink('admin/dance-cup/competitors-premium.php', '✦', 'WDC Premium Preview', 'TEST'); ?>
     <?php if (Auth::isSuperAdmin()) $sidebarLink('admin/dance-cup/approvals.php', '✓', 'Dance Cup Approvals', 'NEW'); ?>
 </div></details>
 
