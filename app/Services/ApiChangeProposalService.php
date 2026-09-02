@@ -9,7 +9,7 @@ use Throwable;
 
 final class ApiChangeProposalService
 {
-    private const ACTIONS=['competitor.update','competitor.archive','judge.update','judge.deactivate','sdc.update','sdc.remove','bdc.update','bdc.detach_identity'];
+    private const ACTIONS=['competitor.update','competitor.archive','judge.update','judge.deactivate','sdc.update','sdc.remove','bdc.update','bdc.detach_identity','wdc.remove_registration'];
     private const COMPETITOR_FIELDS=['exact_name','country','email','phone','instagram','status'];
     private const JUDGE_FIELDS=['full_name','display_name','country','email','phone','instagram','status'];
     private const SDC_CATEGORIES=['salsa_rising','salsa_open','salsa_invitational'];
@@ -48,6 +48,12 @@ final class ApiChangeProposalService
 
     private static function payload(string $type,array $payload):array
     {
+        if($type==='wdc.remove_registration'){
+            $allowed=['event_key','category_key'];if(array_diff(array_keys($payload),$allowed))throw new RuntimeException('WDC removal payload contains unsupported fields.');
+            $event=substr(trim((string)($payload['event_key']??'')),0,191);$category=substr(trim((string)($payload['category_key']??'')),0,120);
+            if($event===''||$category===''||!preg_match('/^[A-Za-z0-9._:-]+$/',$event)||!preg_match('/^[A-Za-z0-9._:-]+$/',$category))throw new RuntimeException('WDC removal requires valid event_key and category_key values.');
+            return ['event_key'=>$event,'category_key'=>$category];
+        }
         if(str_ends_with($type,'.archive')||str_ends_with($type,'.deactivate')||str_ends_with($type,'.remove')||$type==='bdc.detach_identity')return [];
         if($type==='bdc.update'){
             $allowed=['dance_role','categories','current_division'];if(array_diff(array_keys($payload),$allowed))throw new RuntimeException('BDC payload contains unsupported fields.');
@@ -76,6 +82,7 @@ final class ApiChangeProposalService
     private static function snapshot(PDO $pdo,string $type,int $target,bool $lock):array
     {
         if($type==='bdc.detach_identity'||$type==='bdc.update')return self::bdcIdentitySnapshot($pdo,$target,$lock);
+        if($type==='wdc.remove_registration')return self::wdcRegistrationSnapshot($pdo,$target,$lock);
         $table=str_starts_with($type,'judge.')?'bdc_judges':'bdc_competitors';$suffix=$lock?' FOR UPDATE':'';
         $q=$pdo->prepare("SELECT * FROM {$table} WHERE id=:id{$suffix}");$q->execute(['id'=>$target]);$row=$q->fetch();if(!$row)throw new RuntimeException('Target record does not exist.');
         if(str_starts_with($type,'sdc.')){
@@ -112,6 +119,15 @@ final class ApiChangeProposalService
 
     private static function apply(PDO $pdo,string $type,int $id,array $payload):void
     {
+        if($type==='wdc.remove_registration'){
+            $state=self::wdcRegistrationSnapshot($pdo,$id,true);$registration=$state['registration']??null;
+            if(!$registration||$registration['event_key']!==($payload['event_key']??'')||$registration['category_key']!==($payload['category_key']??''))throw new RuntimeException('The selected WDC registration no longer matches this proposal.');
+            if((int)$state['official_result_count']>0||(int)$state['championship_point_count']>0)throw new RuntimeException('Official Dance Cup history protects this WDC registration.');
+            $pdo->prepare("UPDATE bdc_wdc_registrations SET status='withdrawn',approved_by=:user,approved_at=NOW() WHERE id=:registration AND status='registered'")->execute(['user'=>(int)(Auth::user()['id']??0)?:null,'registration'=>(int)$registration['id']]);
+            $remaining=$pdo->prepare("SELECT COUNT(*) FROM bdc_wdc_registrations WHERE wdc_identity_id=:id AND status='registered'");$remaining->execute(['id'=>$id]);
+            if((int)$remaining->fetchColumn()===0)$pdo->prepare("UPDATE bdc_wdc_identities SET status='archived' WHERE id=:id")->execute(['id'=>$id]);
+            return;
+        }
         if($type==='bdc.detach_identity'){
             $state=self::bdcIdentitySnapshot($pdo,$id,true);
             if((int)$state['bachata_result_count']>0||(int)$state['bachata_point_transaction_count']>0)throw new RuntimeException('Official Bachata history protects this BDC identity.');
@@ -165,6 +181,16 @@ final class ApiChangeProposalService
         $sdc=$pdo->prepare("SELECT COUNT(*) FROM bdc_sdc_competitors WHERE competitor_id=:id AND status='active'");$sdc->execute(['id'=>$id]);
         $requests=$pdo->prepare("SELECT COUNT(DISTINCT r.id) FROM bdc_profile_requests r JOIN bdc_profile_request_dance_cup_categories d ON d.request_id=r.id WHERE r.competitor_id=:id AND (d.registration_status IS NULL OR d.registration_status<>'rejected')");$requests->execute(['id'=>$id]);
         return ['competitor_id'=>$id,'exact_name'=>(string)$person['exact_name'],'bdc_id'=>(string)($person['bdc_id']??''),'dance_role'=>(string)$person['dance_role'],'current_division'=>(string)$person['current_division'],'status'=>(string)$person['status'],'identity_rows'=>$identityRows,'bachata_result_count'=>(int)($counts['result_count']??0),'bachata_point_transaction_count'=>(int)($counts['point_count']??0),'bachata_profile'=>$bachataProfiles[0]??null,'bachata_profiles'=>$bachataProfiles,'bachata_categories'=>$bachataCategories,'active_sdc_profile_count'=>(int)$sdc->fetchColumn(),'wdc_identity_count'=>count($wdcRows),'wdc_rows'=>$wdcRows,'dance_cup_request_count'=>(int)$requests->fetchColumn()];
+    }
+
+    private static function wdcRegistrationSnapshot(PDO $pdo,int $id,bool $lock):array
+    {
+        $suffix=$lock?' FOR UPDATE':'';$q=$pdo->prepare("SELECT id,identity_code,entry_type,display_name,status FROM bdc_wdc_identities WHERE id=:id{$suffix}");$q->execute(['id'=>$id]);$identity=$q->fetch();
+        if(!$identity||$identity['status']!=='active')throw new RuntimeException('Active WDC identity not found.');
+        $registration=$pdo->prepare("SELECT id,event_key,event_name,category_key,category_name,dance_style,entry_type,competition_level,status FROM bdc_wdc_registrations WHERE wdc_identity_id=:id AND status='registered' ORDER BY id");$registration->execute(['id'=>$id]);$rows=$registration->fetchAll();
+        if(count($rows)!==1)throw new RuntimeException('WDC removal requires exactly one active registration for this identity.');
+        $history=$pdo->prepare("SELECT (SELECT COUNT(*) FROM bdc_dance_cup_result_history WHERE wdc_identity_id=:a) official_result_count,(SELECT COUNT(*) FROM bdc_wdc_championship_points WHERE wdc_identity_id=:b) championship_point_count");$history->execute(['a'=>$id,'b'=>$id]);$counts=$history->fetch()?:[];
+        return ['identity'=>$identity,'registration'=>$rows[0],'active_registration_count'=>1,'official_result_count'=>(int)($counts['official_result_count']??0),'championship_point_count'=>(int)($counts['championship_point_count']??0)];
     }
 
     private static function encode(array $value):string{$json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION);if($json===false)throw new RuntimeException('Data could not be encoded.');return $json;}

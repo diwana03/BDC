@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev565",
-  "build": 3271,
+  "version": "2.3.3-dev566",
+  "build": 3272,
   "status": "development",
   "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds Super Admin-approved WDC registration removal with exact event/category targeting, immutable live-state review, official result and championship-point protection, and automatic identity archival only when no active registrations remain",
     "Promotes an existing shared SDC person to a distinct BDC identity when a Super Admin approves a Bachata profile submission, allocating a non-reused BDC code under a database sequence lock and preserving the person's SDC ID, photo and shared contact details without creating a duplicate person record",
     "Reconciles Bachata Rising/Open/Invitational registrations through Super Admin-approved API proposals, resets unearned Novice progression only when both Bachata results and point transactions are absent, and safely detaches accidental BDC identities from verified Salsa-only SDC members while preserving shared people, photos, SDC/WDC profiles and all official history",
     "Migrates the Dance Cup Participants workspace from legacy BDC profile-request rows to approved WDC identities and category registrations, displays permanent WDC IDs, preserves shared person photos without exposing BDC codes, shows each approved identity/category entry exactly once with case-insensitive WDC search and filters, and adds Super Admin-approved detachment of unused legacy BDC identities for verified Dance Cup-only people with no official Bachata history",
