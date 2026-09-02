@@ -13,7 +13,8 @@
 
 - Compared 222 populated registrations across the verified 2026 Amateur and Open response sheets, representing 196 normalized names.
 - Classified style from the actual Lead/Follow competition selection, not the fee description.
-- Found 48 exact Salsa-only BDC matches with zero Bachata results and zero Bachata point transactions; these are eligible for approval-gated detachment after deployment.
+- Found 47 exact Salsa-only BDC matches with zero Bachata results and zero Bachata point transactions; these are eligible for approval-gated detachment after deployment.
+- Protected Joshua yao (`BDC-000230`) because the corrected production audit found 12 Bachata history records; current Salsa-only registration cannot erase prior BDC history.
 - Excluded ambiguous names, unmatched names and six selection/fee mismatches from automatic action.
 
 ## Validation
