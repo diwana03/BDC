@@ -7,4 +7,6 @@ for(const token of ['LOWER(w.display_name)','LOWER(w.identity_code)','LOWER(rq.c
 assert(photo.includes("uploads/wdc")&&photo.includes('8*1024*1024')&&photo.includes('wdc_photo_replaced'),'universal WDC photo safety missing');
 assert(photo.includes('never creates or changes a BDC or SDC ID'),'identity isolation warning missing');
 assert(edit.includes('Official Dance Cup history protects this WDC identity from archival.'),'official history protection missing');
+assert(edit.includes('bdc_dance_cup_result_history h JOIN bdc_dance_cup_competitions dc')&&edit.includes('JOIN bdc_events e'),'official history names must be joined from their owning tables');
+assert(!edit.includes('SELECT event_name,category_name,placement,approved_at FROM bdc_dance_cup_result_history'),'history query references columns that do not exist');
 console.log('WDC consolidated dashboard v568 checks passed');

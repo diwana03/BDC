@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev568",
-  "build": 3274,
+  "version": "2.3.3-dev569",
+  "build": 3275,
   "status": "development",
   "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Fixes the WDC editor HTTP 500 by joining event and Dance Cup category names from their owning tables instead of requesting nonexistent name columns from the permanent result-history ledger",
     "Consolidates Dance Cup Participants into one comprehensive Dance Cup Competitor dashboard with one row per WDC identity, grouped category registrations, event/style/level/completeness filters, case-insensitive name/ID/country/event/category search, missing-data and duplicate indicators, universal WDC-only photo upload for solos/couples/teams, official history visibility and archival protection, while permanently redirecting the retired duplicate panel without changing scoring, BDC or SDC data",
     "Makes competitor summary cards open a clean, deterministic filter instead of toggling off or retaining conflicting Novice/general filters, and exposes pending WDC removals and other API changes prominently inside Integration Review",
     "Adds Super Admin-approved WDC registration removal with exact event/category targeting, immutable live-state review, official result and championship-point protection, and automatic identity archival only when no active registrations remain",
