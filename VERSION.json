@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev560",
-  "build": 3266,
+  "version": "2.3.3-dev562",
+  "build": 3268,
   "status": "development",
-  "release_date": "2026-09-01",
+  "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds protected WDC identity and category-registration migration through the signed profile API: 23 permanent SBTA Dance Cup identities and 24 unique entries can be staged without writing scores, results or points; shared solo people/photos are linked without changing BDC or SDC; duplicate person matches are resolved by safe exact email/Instagram diagnostics; and every change remains pending until explicit Super Admin approval in the WDC review tab",
+    "Enforces strict BDC, SDC and WDC competitor isolation across Manual, Automatic, Test, Registration Desk and signed event API workflows; blocks scoring from creating council identities; keeps all roster and draft activity at Unknown progression; activates Novice only after Super Admin publication, including zero-point participants; and synchronizes approved Salsa progression into the canonical SDC table",
     "Separates SDC membership, SDC IDs, Salsa roles, progression and Rising/Open/Invitational categories into dedicated database tables linked to the shared person and photo record; routes the Salsa dashboard, editor, diagnostics, reconciliation and approved API changes through one canonical SDC service; keeps temporary Salsa-only compatibility rows; and proves the migration cannot mutate BDC results, points, events or WDC records",
     "Copies Carlito's existing active Judge Database photo to SDC-000096 only after exact SDC-only identity, unique judge match and non-empty-photo checks, without changing the judge or any BDC identity",
     "Creates the eight remaining verified competitors as SDC-only records with no BDC identity, assigns Salsa Rising/Open categories and Unknown progression, and preserves every existing BDC profile unchanged",

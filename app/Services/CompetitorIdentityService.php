@@ -50,12 +50,12 @@ final class CompetitorIdentityService
   * create a new official BDC identity. This is the only scoring-registration
   * path that should allocate a new BDC ID.
   */
- public static function findOrCreateOfficial(PDO $pdo,string $exactName,string $danceRole,string $initialDivision='novice'):array{
+ public static function findOrCreateOfficial(PDO $pdo,string $exactName,string $danceRole,string $initialDivision='unknown'):array{
   $exactName=trim($exactName);
   if($exactName==='')throw new RuntimeException('Competitor name is required.');
   if(!in_array($danceRole,['leader','follower','both'],true))throw new RuntimeException('Invalid competitor dance role.');
   // A scoring/event entry may request any competition category, but a new
-  // identity remains provisional Novice until approved competition history
+  // identity remains Unknown until approved competition history
   // establishes career progression.
   $initialDivision=DivisionProgressionService::initialDivisionForUnapprovedEntry();
   $normalised=self::normaliseCompetitorName($exactName);
@@ -112,13 +112,13 @@ final class CompetitorIdentityService
  }
 
  /** Create a provisional identity in isolated Test data only. */
- public static function findOrCreateTest(PDO $pdo,string $exactName,string $danceRole,string $initialDivision='novice'):array{
+ public static function findOrCreateTest(PDO $pdo,string $exactName,string $danceRole,string $initialDivision='unknown'):array{
   $exactName=trim($exactName);if($exactName==='')throw new RuntimeException('Competitor name is required.');
   if(!in_array($danceRole,['leader','follower','both'],true))throw new RuntimeException('Invalid competitor dance role.');
   $normalised=self::normaliseCompetitorName($exactName);
   $find=$pdo->prepare("SELECT * FROM bdc_test_competitors WHERE normalised_name=:name AND dance_role IN(:role,'both') ORDER BY CASE WHEN dance_role=:preferred THEN 0 ELSE 1 END,id LIMIT 1");
   $find->execute(['name'=>$normalised,'role'=>$danceRole,'preferred'=>$danceRole]);if($row=$find->fetch(PDO::FETCH_ASSOC))return $row+['created'=>false,'test_only'=>true];
-  $division=DivisionProgressionService::normaliseDivision($initialDivision);if($division==='unknown')$division='novice';
+  $division=DivisionProgressionService::normaliseDivision($initialDivision);
   $next=(int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(bdc_id,5) AS UNSIGNED)),0)+1 FROM bdc_test_competitors WHERE bdc_id LIKE 'BDC-%'")->fetchColumn();
   $bdcId='BDC-'.str_pad((string)$next,6,'0',STR_PAD_LEFT);
   $insert=$pdo->prepare("INSERT INTO bdc_test_competitors(bdc_id,exact_name,normalised_name,dance_role,current_division,status,is_historical) VALUES(:bdc,:name,:normalised,:role,:division,'pending',0)");

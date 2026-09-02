@@ -1,6 +1,6 @@
 # BDC Profile Integration API v1
 
-This server-to-server API stages bulk Jack & Jill competitor and judge profile updates for administrator review. It never updates points, results, scoring rounds, placements or leaderboards.
+This server-to-server API stages bulk Jack & Jill competitor profiles, judge profiles, and WDC identity/category registrations for administrator review. It never updates points, results, scoring rounds, placements or leaderboards.
 
 ## Authentication
 
@@ -46,7 +46,13 @@ Sign an empty body with context `directory:<sha256 of search|page|per_page>`. Se
 
 `POST /portal/api/profile-sync/v1/diagnostics.php`
 
-Sign the exact body with context `profile-diagnostics`. Only allowlisted parameterized queries are available: `sdc_members`, `missing_photos`, `competitor_history`, and `deletion_impact`. Arbitrary SQL is rejected. `deletion_impact` simulates the affected row counts and returns an `approval_hash`; it never deletes. A logged-in Super Admin must perform the final deletion through an authenticated administrative workflow after the impact is recomputed.
+Sign the exact body with context `profile-diagnostics`. Only allowlisted parameterized queries are available: `sdc_members`, `wdc_members`, `person_match`, `missing_photos`, `competitor_history`, and `deletion_impact`. Arbitrary SQL is rejected. `wdc_members` returns active permanent WDC identities and their approved category-registration count without points or results. `person_match` accepts an exact name, email and/or Instagram value and returns safe identity candidates with match flags, never private contact values. `deletion_impact` simulates the affected row counts and returns an `approval_hash`; it never deletes. A logged-in Super Admin must perform the final deletion through an authenticated administrative workflow after the impact is recomputed.
+
+### WDC identity and registration staging
+
+Use `entity_type: wdc_identity` in the ordinary signed profile batch endpoint. The payload requires `display_name`, `entry_type` and one or more `registrations`. A solo payload may include `person_id` to reuse an existing shared person/photo record without creating or changing a BDC or SDC identity. Every registration requires stable `event_key` and `category_key` values plus `event_name`, `category_name`, `dance_style`, matching `entry_type`, and `competition_level`.
+
+Submission only stages the proposed WDC identity and category registrations. The API never creates a WDC ID, category registration, score, result, championship point or database deletion. A logged-in Super Admin must approve the WDC items in Integration Review. Approval rechecks identity conflicts and applies each selected identity plus its registrations atomically.
 
 ```json
 {"query":"deletion_impact","params":{"competitor_id":248}}
@@ -113,7 +119,7 @@ Sign the GET request with `v1.<timestamp>.status:<batch-key>.` so the query targ
 
 ## Review and approval
 
-Open `/portal/admin/integration-review/`. Competitor and Judge tabs support filters, select all shown, bulk approval and bulk rejection. Clear matches and new profiles can be approved together. Ambiguous or invalid identities must be resolved before approval. Each selected update uses its own transaction, so one failure does not block the remaining selections.
+Open `/portal/admin/integration-review/`. Competitor, WDC and Judge tabs support filters, select all shown, bulk approval and bulk rejection. Clear matches and new profiles can be approved together. Ambiguous or invalid identities must be resolved before approval. Each selected update uses its own transaction, so one failure does not block the remaining selections.
 
 Staged photos stay under the protected `storage` directory and are served only through an authenticated preview. Approved photos are copied byte-for-byte to the appropriate profile upload folder. Rejected items never modify live profiles.
 
@@ -123,6 +129,6 @@ Staged photos stay under the protected `storage` directory and are served only t
 
 ## Explicit exclusions
 
-The integration service does not write to point transactions, participant results, scoring tables, publication approvals, placements, event registrations, payments, user accounts or access permissions.
+The integration service does not write to point transactions, participant results, scoring tables, publication approvals, placements, scoring-event rosters, payments, user accounts or access permissions. Approved WDC items may write only permanent WDC identities and their non-scoring category-registration records.
 
 The test-only directory, diagnostics and SDC reconciliation endpoints do not perform any database writes at all. Mutation, approval and deletion remain Super Admin actions.

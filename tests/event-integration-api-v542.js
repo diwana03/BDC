@@ -15,7 +15,7 @@ for(const token of ['jackJillPayload','danceCupPayload','applyJackJill','applyDa
 for(const forbidden of ['bdc_point_transactions','bdc_participant_results','bdc_scoring_marks','bdc_scoring_results','bdc_scoring_publications','status=\'published\''])assert(!service.includes(forbidden),'event integration writes forbidden scope '+forbidden);
 assert(endpoint.includes("verify($raw,'events:submit')")&&endpoint.includes('EventIntegrationService::submitBatch')&&endpoint.includes('202'),'event endpoint must only stage signed requests');
 assert(status.includes("events:status:")&&status.includes('batchStatus'),'signed event batch status missing');
-for(const token of ['events:directory:','events:read','judge_code','bdc_id'])assert(directory.includes(token),'safe event directory missing '+token);
+for(const token of ['events:directory:','events:read','judge_code','dance_style','JackJillCompetitorEligibilityService'])assert(directory.includes(token),'safe event directory missing '+token);
 for(const forbidden of ['email','phone','whatsapp','admin_notes'])assert(!directory.includes(forbidden),'directory exposes private field '+forbidden);
 for(const token of ['Select all shown','Approve Selected Packages','Reject Selected Packages','requireSuperAdmin','One draft event, atomically'])assert(panel.includes(token),'event bulk review missing '+token);
 for(const token of ['scores','points','results','publication','leaderboard'])assert(docs.toLowerCase().includes(token),'out-of-scope docs missing '+token);

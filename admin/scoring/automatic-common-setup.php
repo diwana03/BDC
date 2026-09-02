@@ -10,6 +10,7 @@ use App\Services\ScoringJudgeAssignmentService;
 use App\Services\AutomaticJudgeBrowserService;
 use App\Services\ScoringRulesService;
 use App\Services\ScoringRosterCheckpointService;
+use App\Services\JackJillCompetitorEligibilityService;
 
 function bdcRenderAutomaticCommonSetup(int $roundId):string
 {
@@ -36,7 +37,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
     $nextBib=['leader'=>1,'follower'=>1];
     foreach(['leader','follower'] as $role)foreach($entries[$role] as $entry)$nextBib[$role]=max($nextBib[$role],(int)$entry['bib_number']+1);
 
-    $suggestions=$pdo->query("SELECT id,bdc_id,exact_name,dance_role,status FROM bdc_competitors WHERE status<>'archived' ORDER BY exact_name LIMIT 1500")->fetchAll();
+    $suggestions=JackJillCompetitorEligibilityService::directory($pdo,(string)$round['dance_style'],null,1500);
     $csrf=Csrf::token();
     $special=SpecialCategoryService::isSpecial((string)$round['division']);
     $categoryLabel=$special?SpecialCategoryService::label((string)$round['division']):ucfirst((string)$round['division']);
@@ -133,7 +134,7 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
 
     foreach(['leader'=>'Leader','follower'=>'Follower'] as $suggestionRole=>$suggestionLabel){
         $html.='<datalist id="competitorSuggestions'.ucfirst($suggestionRole).'">';
-        foreach($suggestions as $suggestion)if((string)$suggestion['dance_role']===$suggestionRole&&!isset($activeCompetitorIds[(int)$suggestion['id']]))$html.='<option value="'.$e((string)$suggestion['bdc_id']).'">'.$e((string)$suggestion['exact_name'].' · '.$suggestionLabel.((string)$suggestion['status']==='pending'?' · Details pending':'')).'</option>';
+        foreach($suggestions as $suggestion)if(in_array((string)$suggestion['dance_role'],[$suggestionRole,'both'],true)&&!isset($activeCompetitorIds[(int)$suggestion['id']]))$html.='<option value="'.$e((string)$suggestion['identity_code']).'">'.$e((string)$suggestion['exact_name'].' · '.$suggestionLabel).'</option>';
         $html.='</datalist>';
     }
 
@@ -148,7 +149,8 @@ function bdcRenderAutomaticCommonSetup(int $roundId):string
 
     $html.='<fieldset '.($rosterSubmitted?'disabled':'').'><div class="row g-3 mb-4">';
     foreach(['leader'=>['Leaders','primary'],'follower'=>['Followers','danger']] as $role=>$meta){
-        $html.='<div class="col-lg-6"><div class="card shadow-sm role-card border-'.$meta[1].' border-2"><div class="card-header bg-'.$meta[1].' text-white fw-semibold">'.$meta[0].'</div><div class="card-body"><form method="post" action="automatic-setup-action.php" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="'.$roundId.'"><input type="hidden" name="dance_role" value="'.$role.'"><div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="'.$nextBib[$role].'" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div><div class="col-9"><input class="form-control" name="competitor_search" list="competitorSuggestions'.ucfirst($role).'" placeholder="Type '.$role.' name or BDC ID" required><div class="form-text">Only '.ucfirst($role).' BDC IDs are shown.</div></div><div class="col-6"><button class="btn btn-'.$meta[1].' w-100" name="entry_mode" value="existing">Add Existing</button></div><div class="col-6"><button class="btn btn-outline-'.$meta[1].' w-100" name="entry_mode" value="create" onclick="return confirm(\'Create a provisional BDC competitor using only this name?\')">Create Name &amp; Add</button></div></form>';
+        $council=JackJillCompetitorEligibilityService::council((string)$round['dance_style']);
+        $html.='<div class="col-lg-6"><div class="card shadow-sm role-card border-'.$meta[1].' border-2"><div class="card-header bg-'.$meta[1].' text-white fw-semibold">'.$meta[0].'</div><div class="card-body"><form method="post" action="automatic-setup-action.php" class="row g-2 mb-3"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="action" value="add_entry"><input type="hidden" name="round_id" value="'.$roundId.'"><input type="hidden" name="dance_role" value="'.$role.'"><div class="col-3"><input class="form-control" type="number" min="1" name="bib_number" value="'.$nextBib[$role].'" required><div class="form-text">Next suggested bib. You can overwrite it.</div></div><div class="col-9"><input class="form-control" name="competitor_search" list="competitorSuggestions'.ucfirst($role).'" placeholder="Type '.$role.' name or '.$council.' ID" required><div class="form-text">Only active '.$council.' '.ucfirst($role).' profiles are shown.</div></div><div class="col-12"><button class="btn btn-'.$meta[1].' w-100" name="entry_mode" value="existing">Add Existing '.$council.' Competitor</button></div></form>';
         $html.='<table class="table table-sm align-middle"><thead><tr><th style="width:150px">Bib</th><th>Competitor</th><th>BDC ID</th><th style="width:100px"></th></tr></thead><tbody>';
         if(!$entries[$role])$html.='<tr><td colspan="4" class="text-muted">No competitors</td></tr>';
         foreach($entries[$role] as $entry){

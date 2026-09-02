@@ -1,0 +1,37 @@
+{
+  "event_key": "sbta-2026-asia-open-dance-cup",
+  "event_name": "Asia Open Dance Cup – SBTA 2026",
+  "identities": [
+    {"source_key":"solo-bora-nam","display_name":"Bora Nam","entry_type":"solo","country":"South Korea","categories":["bachata-solo-open"]},
+    {"source_key":"solo-pan-konstantin","display_name":"Pan Konstantin","entry_type":"solo","country":"Kazakhstan","categories":["bachata-solo-open"]},
+    {"source_key":"solo-flora-hu","display_name":"Flora Hu","entry_type":"solo","country":"China","categories":["bachata-solo-open"]},
+    {"source_key":"solo-katie-mcdougall","display_name":"Katie McDougall","entry_type":"solo","country":"New Zealand","categories":["bachata-solo-open"]},
+    {"source_key":"solo-paulina-diaz","display_name":"Paulina Diaz","entry_type":"solo","country":"Chile","categories":["bachata-solo-open"]},
+    {"source_key":"solo-eve","display_name":"Eve","entry_type":"solo","country":"Philippines / Thailand","categories":["bachata-solo-open"]},
+    {"source_key":"solo-barbara-schumacher","display_name":"Bárbara Nicole Schumacher Alvear","entry_type":"solo","country":"","categories":["bachata-solo-open","salsa-solo-open"]},
+    {"source_key":"solo-saira","display_name":"Saira","entry_type":"solo","country":"","categories":["bachata-solo-open"]},
+    {"source_key":"solo-prabin-gharti","display_name":"Prabin Gharti","entry_type":"solo","country":"Nepal","categories":["salsa-solo-open"]},
+    {"source_key":"solo-amita-chowdhury","display_name":"Amita Chowdhury","entry_type":"solo","country":"India","categories":["salsa-solo-open"]},
+    {"source_key":"solo-david-sepulveda","display_name":"David Sepulveda","entry_type":"solo","country":"New Zealand","categories":["salsa-solo-open"]},
+    {"source_key":"solo-darren-low","display_name":"Darren Low","entry_type":"solo","country":"Australia","categories":["salsa-solo-open"]},
+    {"source_key":"solo-natasha-frost","display_name":"Natasha Frost","entry_type":"solo","country":"New Zealand","categories":["salsa-solo-open"]},
+    {"source_key":"solo-joan-teh","display_name":"Joan Teh","entry_type":"solo","country":"Malaysia","categories":["salsa-solo-open"]},
+    {"source_key":"solo-martina-hotova","display_name":"Martina Hotova","entry_type":"solo","country":"Australia","categories":["salsa-solo-open"]},
+    {"source_key":"solo-carlos-troncoso","display_name":"Carlos Troncoso","entry_type":"solo","country":"","categories":["salsa-solo-open"]},
+    {"source_key":"solo-noel","display_name":"Noel","entry_type":"solo","country":"","categories":["salsa-solo-open"]},
+    {"source_key":"couple-varun-aki","display_name":"Varun & Aki","entry_type":"couple","country":"Japan","categories":["bachata-partner-open"]},
+    {"source_key":"couple-prabin-amita","display_name":"Prabin Gharti & Amita Chowdhury","entry_type":"couple","country":"India / Nepal","categories":["salsa-partner-open"]},
+    {"source_key":"couple-robin-steph","display_name":"Robin Dsouza & Steph Cuce","entry_type":"couple","country":"Australia","categories":["salsa-partner-open"]},
+    {"source_key":"couple-katie-david","display_name":"Katie McDougall & David Sepulveda","entry_type":"couple","country":"New Zealand","categories":["salsa-partner-open"]},
+    {"source_key":"team-sg-extreme","display_name":"SG Extreme Team","entry_type":"team","country":"Singapore","categories":["bachata-team-open"]},
+    {"source_key":"team-latin-soul-hanoi","display_name":"Latin Soul Hanoi","entry_type":"team","country":"Vietnam","categories":["salsa-team-open"]}
+  ],
+  "categories": {
+    "bachata-solo-open":{"category_name":"Bachata Solo Open","dance_style":"bachata","entry_type":"solo"},
+    "salsa-solo-open":{"category_name":"Salsa Solo Open","dance_style":"salsa","entry_type":"solo"},
+    "bachata-partner-open":{"category_name":"Bachata Partner Routine Open","dance_style":"bachata","entry_type":"couple"},
+    "salsa-partner-open":{"category_name":"Salsa Partner Routine Open","dance_style":"salsa","entry_type":"couple"},
+    "bachata-team-open":{"category_name":"Bachata Team Choreography Open","dance_style":"bachata","entry_type":"team"},
+    "salsa-team-open":{"category_name":"Salsa Team Choreography Open","dance_style":"salsa","entry_type":"team"}
+  }
+}

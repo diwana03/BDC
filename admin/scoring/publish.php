@@ -484,6 +484,7 @@ try{
       DivisionProgressionService::syncProfileAfterApproval($pdo,$person['competitor_id'],$person['dance_role'],'bachata');
      }
     }
+    DivisionProgressionService::syncEventParticipantsAfterApproval($pdo,(int)$round['event_id'],'bachata');
     $docs=[
      [
       'category'=>'heats',

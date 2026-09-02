@@ -64,6 +64,17 @@ final class SdcCompetitorService
         $pdo->prepare("DELETE FROM bdc_competitor_special_categories WHERE competitor_id=:id AND dance_style='salsa'")->execute(['id'=>$competitorId]);
     }
 
+    /** Publication is the only scoring operation allowed to commit Salsa progression. */
+    public static function syncDivisionAfterApproval(PDO $pdo,int $competitorId,string $role,string $division):void
+    {
+        if(!in_array($role,self::ROLES,true)||$role==='unknown')throw new RuntimeException('Invalid published Salsa role.');
+        if(!in_array($division,['novice','intermediate','advanced','all_star','professional'],true))throw new RuntimeException('Invalid published Salsa division.');
+        $profile=self::profile($pdo,$competitorId);
+        if(!$profile||(string)$profile['status']!=='active')throw new RuntimeException('Published Salsa competitor does not have an active SDC profile.');
+        $pdo->prepare("UPDATE bdc_sdc_competitors SET dance_role=:role,current_division=:division WHERE competitor_id=:id AND status='active'")->execute(['role'=>$role,'division'=>$division,'id'=>$competitorId]);
+        $pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:id,'salsa',:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division),updated_at=NOW()")->execute(['id'=>$competitorId,'role'=>$role,'division'=>$division]);
+    }
+
     private static function syncLegacy(PDO $pdo,int $competitorId,string $code,string $role,string $division,array $categories,string $sourceKind='migration',string $sourceName='SDC canonical compatibility'):void
     {
         $pdo->prepare("INSERT INTO bdc_result_identities(competitor_id,council,identity_code) VALUES(:id,'sdc',:code) ON DUPLICATE KEY UPDATE identity_code=VALUES(identity_code)")->execute(['id'=>$competitorId,'code'=>$code]);

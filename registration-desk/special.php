@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 require dirname(__DIR__).'/bootstrap.php';
 
+if($_SERVER['REQUEST_METHOD']==='GET'){
+    $query=http_build_query(array_filter(['token'=>$_GET['token']??null,'round_id'=>$_GET['round_id']??null],static fn($value):bool=>$value!==null&&$value!==''));
+    header('Location: index.php'.($query!==''?'?'.$query:''),true,303);
+    exit;
+}
+
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Services\SpecialCategoryService;

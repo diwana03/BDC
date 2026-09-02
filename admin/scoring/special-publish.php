@@ -203,8 +203,10 @@ try{
                         $linkStmt->execute([
                             'publication'=>$publication['id'],'pair'=>$pair['pair_id'],'competitor'=>$person['id'],'role'=>$person['role'],'rank'=>$rank,'points'=>$points,'transaction'=>$transactionId,'result'=>$resultId,
                         ]);
+                        \App\Services\DivisionProgressionService::syncProfileAfterApproval($pdo,$person['id'],$person['role'],'bachata');
                     }
                 }
+                \App\Services\DivisionProgressionService::syncEventParticipantsAfterApproval($pdo,(int)$round['event_id'],'bachata');
 
                 $docStmt=$pdo->prepare("INSERT INTO bdc_result_documents(event_id,title,document_category,file_type,url,storage_path,status,source,created_by) VALUES(:event,:title,:category,'external',:url,:storage,'published','scoring_engine',:user)");
                 $mapStmt=$pdo->prepare("INSERT INTO bdc_scoring_publication_documents(publication_id,document_category,repository_document_id,storage_path) VALUES(:publication,:category,:document,:storage)");

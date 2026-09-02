@@ -37,9 +37,9 @@ forbidText(formSync,'current_division=VALUES(current_division)','Google Form per
 forbidText(formSync,'SET dance_role=:role,current_division=:division','Google Form legacy overwrite');
 
 for(const route of ['automatic-setup-action','discipline-actions'])requireText(hook,route,'shared registration route');
-requireText(hook,'if(!$create)','existing competitor approved-history gate');
+requireText(hook,'if($create)throw','scoring identity creation block');
 requireText(hook,'eligibilityFromApprovedHistory','approved eligibility');
-requireText(hook,'initialDivisionForUnapprovedEntry','provisional new identity');
+requireText(hook,'requireEligible','council eligibility boundary');
 forbidText(hook,'if(!$isDesk&&!$create)return','legacy create-only bypass');
 
 // dev399 restores intentional manual Special Category assignments while the

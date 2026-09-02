@@ -204,10 +204,24 @@ final class DivisionProgressionService
     {
         if(!in_array($danceStyle,['bachata','salsa'],true))throw new \RuntimeException('Invalid approved dance style.');
         $division=self::approvedPermanentDivision($pdo,$competitorId,$danceRole,$danceStyle);
-        $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:competitor,:dance,:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division),updated_at=NOW()");
-        $stmt->execute(['competitor'=>$competitorId,'dance'=>$danceStyle,'role'=>$danceRole,'division'=>$division]);
-        if($danceStyle==='bachata')$pdo->prepare('UPDATE bdc_competitors SET current_division=:division WHERE id=:competitor')->execute(['division'=>$division,'competitor'=>$competitorId]);
+        if($danceStyle==='salsa'){
+            SdcCompetitorService::syncDivisionAfterApproval($pdo,$competitorId,$danceRole,$division);
+        }else{
+            $stmt=$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:competitor,'bachata',:role,:division) ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),current_division=VALUES(current_division),updated_at=NOW()");
+            $stmt->execute(['competitor'=>$competitorId,'role'=>$danceRole,'division'=>$division]);
+            $pdo->prepare('UPDATE bdc_competitors SET current_division=:division WHERE id=:competitor')->execute(['division'=>$division,'competitor'=>$competitorId]);
+        }
         return $division;
+    }
+
+    /** Activate every dancer who actually appeared in an officially published workflow, including zero-point non-finalists. */
+    public static function syncEventParticipantsAfterApproval(PDO $pdo,int $eventId,string $danceStyle):int
+    {
+        if($eventId<1||!in_array($danceStyle,['bachata','salsa'],true))throw new \RuntimeException('Invalid published event progression request.');
+        $q=$pdo->prepare("SELECT DISTINCT se.competitor_id,se.dance_role FROM bdc_scoring_entries se JOIN bdc_scoring_rounds r ON r.id=se.round_id WHERE r.event_id=:event AND r.dance_style=:dance AND se.entry_status='active' AND se.competitor_id IS NOT NULL");
+        $q->execute(['event'=>$eventId,'dance'=>$danceStyle]);$count=0;
+        foreach($q->fetchAll() as $row){self::syncProfileAfterApproval($pdo,(int)$row['competitor_id'],(string)$row['dance_role'],$danceStyle);$count++;}
+        return $count;
     }
 
     /**
@@ -263,7 +277,7 @@ final class DivisionProgressionService
     /** Unapproved registration never selects a permanent career division. */
     public static function initialDivisionForUnapprovedEntry():string
     {
-        return 'novice';
+        return 'unknown';
     }
 
     public static function statusLabel(string $selectedDivision,string $effectiveDivision):string

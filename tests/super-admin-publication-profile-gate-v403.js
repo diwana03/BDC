@@ -13,7 +13,7 @@ const salsa=read('admin/scoring/publish-salsa.php');
 const repair=read('app/Services/UnapprovedProfileRepairService.php');
 
 assert(identity.includes('findOrCreateTest'),'Test-only identity path missing');
-assert(hook.includes("$competitorTable=$isTest?'bdc_test_competitors':'bdc_competitors'"),'Test lookup is not isolated');
+assert(hook.includes('mirrorOfficialToTest'),'Test lookup must mirror only an eligible official council identity');
 assert(!hook.includes('if(!empty($competitor[\'created\'])){$pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles'),'roster creation still writes a permanent profile');
 assert(!forms.includes('upsertProfile($pdo'),'Google Form registration still writes a permanent profile');
 assert(!automatic.includes('INSERT INTO bdc_competitor_discipline_profiles'),'Automatic roster still writes a permanent profile');

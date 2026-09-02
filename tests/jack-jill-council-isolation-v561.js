@@ -1,0 +1,34 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const read=file=>fs.readFileSync(file,'utf8');
+const eligibility=read('app/Services/JackJillCompetitorEligibilityService.php');
+const hook=read('app/Services/GlobalScoringRegistrationHook.php');
+const progression=read('app/Services/DivisionProgressionService.php');
+const sdc=read('app/Services/SdcCompetitorService.php');
+const directory=read('api/event-sync/v1/directory.php');
+const integration=read('app/Services/EventIntegrationService.php');
+const desk=read('registration-desk/index.php');
+const specialDesk=read('registration-desk/special.php');
+const testPage=read('admin/scoring-tests/index.php');
+const automatic=read('admin/scoring/automatic-common-setup.php');
+const profileRequests=read('admin/profile-requests/index.php');
+const publications=['publish.php','publish-salsa.php','special-publish.php','special-publish-salsa.php'].map(file=>read('admin/scoring/'+file));
+
+for(const token of ["self::dance($dance)==='salsa'?'SDC':'BDC'","FROM bdc_sdc_competitors s","s.status='active'","c.status='active'","c.bdc_id LIKE 'BDC-%'","LOWER(c.exact_name)=LOWER"])
+  assert(eligibility.includes(token),'missing strict council boundary '+token);
+assert(hook.includes('if($create)throw'),'roster must not create BDC or SDC identities');
+assert(hook.includes('requireEligible')&&hook.includes('eligibilityFromApprovedHistory'),'every roster POST needs council and division validation');
+assert(hook.includes('mirrorOfficialToTest'),'Test must use the same official council eligibility');
+assert(progression.includes("return 'unknown';"),'unpublished identity must not start in Novice');
+assert(profileRequests.includes("current_division) VALUES(:cid,:dance,:role,'unknown')")&&!profileRequests.includes("current_division) VALUES(:cid,:dance,:role,'novice')"),'registration approval must remain Unknown');
+assert(progression.includes('syncEventParticipantsAfterApproval'),'published zero-point participants must activate progression');
+assert(sdc.includes('syncDivisionAfterApproval'),'Salsa publication must update canonical SDC progression');
+assert(directory.includes('dance_style must be bachata or salsa')&&directory.includes('JackJillCompetitorEligibilityService::directory'),'API directory must require discipline');
+assert(integration.includes("$expected=$dance==='salsa'?'SDC':'BDC'")&&integration.includes('requireEligible'),'staged event API must reject cross-council identities');
+assert(integration.includes('Dance Cup competitors require a WDC ID.')&&integration.includes('wdc_identity_id'),'Dance Cup event API must use WDC identities');
+assert(desk.includes('JackJillCompetitorEligibilityService::directory'),'registration desk search bypasses council gate');
+assert(specialDesk.includes("header('Location: index.php"),'legacy special desk must route to the unified gate');
+assert(testPage.includes('Only active <?=$testCouncil?> profiles are available in Test.'),'Test UI does not expose the council boundary');
+assert(automatic.includes("Only active '.$council.'"),'Automatic UI does not expose the council boundary');
+for(const source of publications)assert(source.includes('syncEventParticipantsAfterApproval'),'publication does not activate all official participants');
+console.log('Jack & Jill council isolation v561 checks passed');

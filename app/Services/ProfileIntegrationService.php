@@ -34,17 +34,18 @@ final class ProfileIntegrationService
     private static function stageItem(PDO $pdo,int $batchId,string $source,array $item,int $index):array
     {
         $entity=strtolower(trim((string)($item['entity_type']??'')));
-        if(!in_array($entity,['competitor','judge'],true))throw new RuntimeException('entity_type must be competitor or judge.');
-        if(!ProfileIntegrationAuth::allowed($entity))throw new RuntimeException('The integration token is not permitted to submit '.$entity.' updates.');
+        if(!in_array($entity,['competitor','judge','wdc_identity'],true))throw new RuntimeException('entity_type must be competitor, judge or wdc_identity.');
+        $scopeEntity=$entity==='wdc_identity'?'competitor':$entity;
+        if(!ProfileIntegrationAuth::allowed($scopeEntity))throw new RuntimeException('The integration token is not permitted to submit '.$entity.' updates.');
         $sourceKey=substr(trim((string)($item['source_key']??'')),0,191);if($sourceKey==='')throw new RuntimeException('source_key is required for every item.');
         $payload=is_array($item['payload']??null)?$item['payload']:[];
-        $canonical=$entity==='competitor'?self::competitorPayload($payload):self::judgePayload($payload);
+        $canonical=$entity==='competitor'?self::competitorPayload($payload):($entity==='judge'?self::judgePayload($payload):self::wdcPayload($payload));
         $photo=self::stagePhoto($canonical,$batchId,$sourceKey);unset($canonical['photo_base64'],$canonical['photo_mime'],$canonical['photo_name']);
         $json=json_encode($canonical,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);if($json===false)throw new RuntimeException('Profile payload could not be encoded.');
         $fingerprint=hash('sha256',$source."\0".$entity."\0".$sourceKey);$payloadHash=hash('sha256',$json."\0".($photo['hash']??''));
         $dupe=$pdo->prepare('SELECT id,status,batch_id FROM bdc_profile_integration_updates WHERE source_fingerprint=:fingerprint');$dupe->execute(['fingerprint'=>$fingerprint]);
         if($row=$dupe->fetch()){if($photo)@unlink(self::stagingDir().'/'.$photo['name']);return ['index'=>$index,'source_key'=>$sourceKey,'status'=>'duplicate','update_id'=>(int)$row['id']];}
-        try{[$match,$target,$candidates]=$entity==='competitor'?self::matchCompetitor($pdo,$canonical):self::matchJudge($pdo,$canonical);}
+        try{[$match,$target,$candidates]=$entity==='competitor'?self::matchCompetitor($pdo,$canonical):($entity==='judge'?self::matchJudge($pdo,$canonical):self::matchWdc($pdo,$canonical));}
         catch(Throwable $e){if($photo)@unlink(self::stagingDir().'/'.$photo['name']);throw$e;}
         $insert=$pdo->prepare("INSERT INTO bdc_profile_integration_updates(batch_id,entity_type,source_key,source_fingerprint,payload_hash,target_id,match_status,candidate_ids_json,payload_json,staged_photo_name,staged_photo_mime,staged_photo_hash,status) VALUES(:batch,:entity,:source_key,:fingerprint,:payload_hash,:target,:match_status,:candidates,:payload,:photo_name,:photo_mime,:photo_hash,'pending')");
         try{$insert->execute(['batch'=>$batchId,'entity'=>$entity,'source_key'=>$sourceKey,'fingerprint'=>$fingerprint,'payload_hash'=>$payloadHash,'target'=>$target?:null,'match_status'=>$match,'candidates'=>$candidates?json_encode($candidates):null,'payload'=>$json,'photo_name'=>$photo['name']??null,'photo_mime'=>$photo['mime']??null,'photo_hash'=>$photo['hash']??null]);}
@@ -71,6 +72,28 @@ final class ProfileIntegrationService
         return ['judge_code'=>strtoupper(trim((string)($p['judge_code']??''))),'full_name'=>$name,'display_name'=>trim((string)($p['display_name']??'')),'country'=>substr(trim((string)($p['country']??'')),0,100),'city'=>substr(trim((string)($p['city']??'')),0,120),'instagram'=>self::instagram((string)($p['instagram']??'')),'email'=>$email,'phone'=>trim((string)($p['phone']??'')),'whatsapp'=>trim((string)($p['whatsapp']??'')),'preferred_contact'=>$preferred,'dance_styles'=>self::allowedList($p['dance_styles']??[],['bachata','salsa']),'judge_role'=>$role,'qualified_divisions'=>self::allowedList($p['qualified_divisions']??[],['novice','intermediate','advanced','bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open','semi_pro','pro','all_star']),'qualified_rounds'=>self::allowedList($p['qualified_rounds']??[],['heats','semifinal','final']),'languages'=>trim((string)($p['languages']??'')),'biography'=>trim((string)($p['biography']??'')),'experience'=>trim((string)($p['experience']??'')),'certification'=>trim((string)($p['certification']??'')),'photo_base64'=>(string)($p['photo_base64']??''),'photo_mime'=>(string)($p['photo_mime']??''),'photo_name'=>(string)($p['photo_name']??'')];
     }
 
+    private static function wdcPayload(array $p):array
+    {
+        $name=trim((string)preg_replace('/\s+/u',' ',(string)($p['display_name']??'')));if($name===''||mb_strlen($name)>190)throw new RuntimeException('A valid WDC display_name is required.');
+        $type=strtolower(trim((string)($p['entry_type']??'')));if(!in_array($type,['solo','couple','duo','pro_am','team'],true))throw new RuntimeException('Invalid WDC entry_type.');
+        $wdcId=strtoupper(trim((string)($p['wdc_id']??'')));if($wdcId!==''&&!preg_match('/^WDC-\d+$/',$wdcId))throw new RuntimeException('Invalid WDC ID.');
+        $personId=(int)($p['person_id']??0);if($type!=='solo'&&$personId)throw new RuntimeException('Only solo WDC identities may link a shared person profile.');
+        $registrations=[];$seen=[];
+        foreach((array)($p['registrations']??[]) as $row){
+            if(!is_array($row))throw new RuntimeException('Every WDC registration must be an object.');
+            $eventKey=substr(trim((string)($row['event_key']??'')),0,191);$categoryKey=substr(trim((string)($row['category_key']??'')),0,120);
+            if($eventKey===''||$categoryKey===''||!preg_match('/^[A-Za-z0-9._:-]+$/',$eventKey)||!preg_match('/^[A-Za-z0-9._:-]+$/',$categoryKey))throw new RuntimeException('Every WDC registration needs stable event_key and category_key values.');
+            $dance=strtolower(trim((string)($row['dance_style']??'')));if(!in_array($dance,['bachata','salsa','other'],true))throw new RuntimeException('Invalid WDC registration dance_style.');
+            $rowType=strtolower(trim((string)($row['entry_type']??$type)));if($rowType!==$type)throw new RuntimeException('WDC registration entry_type must match its identity.');
+            $level=strtolower(trim((string)($row['competition_level']??'open')));if(!in_array($level,['amateur','intermediate','pro_am','professional','open'],true))throw new RuntimeException('Invalid WDC competition_level.');
+            $eventName=substr(trim((string)($row['event_name']??'')),0,190);$categoryName=substr(trim((string)($row['category_name']??'')),0,190);if($eventName===''||$categoryName==='')throw new RuntimeException('WDC event_name and category_name are required.');
+            $key=$eventKey."\0".$categoryKey;if(isset($seen[$key]))continue;$seen[$key]=true;
+            $registrations[]=['event_key'=>$eventKey,'event_name'=>$eventName,'category_key'=>$categoryKey,'category_name'=>$categoryName,'dance_style'=>$dance,'entry_type'=>$type,'competition_level'=>$level];
+        }
+        if(!$registrations)throw new RuntimeException('At least one WDC registration is required.');
+        return ['wdc_id'=>$wdcId,'entry_type'=>$type,'display_name'=>$name,'person_id'=>$personId,'country'=>substr(trim((string)($p['country']??'')),0,100),'photo_url'=>substr(trim((string)($p['photo_url']??'')),0,1000),'registrations'=>$registrations,'photo_base64'=>(string)($p['photo_base64']??''),'photo_mime'=>(string)($p['photo_mime']??''),'photo_name'=>(string)($p['photo_name']??'')];
+    }
+
     private static function matchCompetitor(PDO $pdo,array $p):array
     {
         if($p['bdc_id']!==''){$q=$pdo->prepare("SELECT id FROM bdc_competitors WHERE bdc_id=:id AND status<>'archived'");$q->execute(['id'=>$p['bdc_id']]);$id=(int)($q->fetchColumn()?:0);return $id?['matched',$id,[]]:['invalid',0,[]];}
@@ -88,6 +111,18 @@ final class ProfileIntegrationService
         if($p['judge_code']!==''){$q=$pdo->prepare("SELECT id FROM bdc_judges WHERE judge_code=:code AND status='active'");$q->execute(['code'=>$p['judge_code']]);$id=(int)($q->fetchColumn()?:0);return $id?['matched',$id,[]]:['invalid',0,[]];}
         $q=$pdo->prepare("SELECT id,full_name,email,phone,instagram FROM bdc_judges WHERE status='active' AND (LOWER(TRIM(full_name))=:name OR LOWER(TRIM(email))=:email OR LOWER(TRIM(LEADING '@' FROM instagram))=:instagram OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-',''),'(',''),')','')=:phone) ORDER BY id LIMIT 30");
         $q->execute(['name'=>mb_strtolower($p['full_name']),'email'=>$p['email']?:'__none__','instagram'=>$p['instagram']?:'__none__','phone'=>self::digits($p['phone'])?:'__none__']);$rows=$q->fetchAll();$strong=array_values(array_filter($rows,static fn(array $r):bool=>($p['email']!==''&&strtolower(trim((string)$r['email']))===$p['email'])||($p['instagram']!==''&&self::instagram((string)$r['instagram'])===$p['instagram'])||(self::digits($p['phone'])!==''&&self::digits((string)$r['phone'])===self::digits($p['phone']))));$pool=$strong?:array_values(array_filter($rows,static fn(array $r):bool=>mb_strtolower(trim((string)$r['full_name']))===mb_strtolower($p['full_name'])));$ids=array_values(array_unique(array_map(static fn(array $r):int=>(int)$r['id'],$pool)));
+        return count($ids)===1?['matched',$ids[0],[]]:(count($ids)>1?['ambiguous',0,$ids]:['new',0,[]]);
+    }
+
+    private static function matchWdc(PDO $pdo,array $p):array
+    {
+        if($p['person_id']){$q=$pdo->prepare("SELECT id FROM bdc_competitors WHERE id=:id AND status<>'archived'");$q->execute(['id'=>$p['person_id']]);if(!$q->fetchColumn())throw new RuntimeException('The shared person profile does not exist.');}
+        if($p['wdc_id']!==''){$q=$pdo->prepare("SELECT id FROM bdc_wdc_identities WHERE identity_code=:code AND status='active'");$q->execute(['code'=>$p['wdc_id']]);$id=(int)($q->fetchColumn()?:0);return $id?['matched',$id,[]]:['invalid',0,[]];}
+        $normal=self::normaliseName($p['display_name']);
+        $q=$p['entry_type']==='solo'&&$p['person_id']
+            ?$pdo->prepare("SELECT id FROM bdc_wdc_identities WHERE entry_type='solo' AND status='active' AND (solo_competitor_id=:person OR normalised_name=:name) ORDER BY id")
+            :$pdo->prepare("SELECT id FROM bdc_wdc_identities WHERE entry_type=:type AND normalised_name=:name AND status='active' ORDER BY id");
+        $q->execute($p['entry_type']==='solo'&&$p['person_id']?['person'=>$p['person_id'],'name'=>$normal]:['type'=>$p['entry_type'],'name'=>$normal]);$ids=array_values(array_unique(array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN))));
         return count($ids)===1?['matched',$ids[0],[]]:(count($ids)>1?['ambiguous',0,$ids]:['new',0,[]]);
     }
 
@@ -111,12 +146,12 @@ final class ProfileIntegrationService
 
     private static function reviewOne(PDO $pdo,int $id,string $decision,int $userId):void
     {
-        $q=$pdo->prepare("SELECT u.*,b.batch_key FROM bdc_profile_integration_updates u JOIN bdc_profile_integration_batches b ON b.id=u.batch_id WHERE u.id=:id AND u.status='pending'");$q->execute(['id'=>$id]);$u=$q->fetch();if(!$u)throw new RuntimeException('Update is no longer pending.');
+        $q=$pdo->prepare("SELECT u.*,b.batch_key,b.source_system FROM bdc_profile_integration_updates u JOIN bdc_profile_integration_batches b ON b.id=u.batch_id WHERE u.id=:id AND u.status='pending'");$q->execute(['id'=>$id]);$u=$q->fetch();if(!$u)throw new RuntimeException('Update is no longer pending.');
         if($decision==='reject'){$pdo->prepare("UPDATE bdc_profile_integration_updates SET status='rejected',staged_photo_name=NULL,staged_photo_mime=NULL,staged_photo_hash=NULL,reviewed_by=:user,reviewed_at=NOW() WHERE id=:id AND status='pending'")->execute(['user'=>$userId,'id'=>$id]);if(!empty($u['staged_photo_name']))@unlink(self::stagingDir().'/'.$u['staged_photo_name']);self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'profile_integration_rejected',['batch_key'=>$u['batch_key'],'entity_type'=>$u['entity_type'],'source_key'=>$u['source_key']],'profile_integration_update',$id);return;}
         if(in_array($u['match_status'],['ambiguous','invalid'],true))throw new RuntimeException('Resolve the identity match before approval.');
         $payload=json_decode((string)$u['payload_json'],true);if(!is_array($payload))throw new RuntimeException('Stored payload is invalid.');
         $pdo->beginTransaction();$published=null;
-        try{$published=$u['entity_type']==='competitor'?self::applyCompetitor($pdo,$u,$payload):self::applyJudge($pdo,$u,$payload);$pdo->prepare("UPDATE bdc_profile_integration_updates SET status='approved',target_id=:target,reviewed_by=:user,reviewed_at=NOW() WHERE id=:id AND status='pending'")->execute(['target'=>$published['id'],'user'=>$userId,'id'=>$id]);$pdo->commit();if(!empty($u['staged_photo_name']))@unlink(self::stagingDir().'/'.$u['staged_photo_name']);self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'profile_integration_approved',['batch_key'=>$u['batch_key'],'entity_type'=>$u['entity_type'],'source_key'=>$u['source_key']],'profile_integration_update',$id);}
+        try{$published=$u['entity_type']==='competitor'?self::applyCompetitor($pdo,$u,$payload):($u['entity_type']==='judge'?self::applyJudge($pdo,$u,$payload):self::applyWdc($pdo,$u,$payload,$userId));$pdo->prepare("UPDATE bdc_profile_integration_updates SET status='approved',target_id=:target,reviewed_by=:user,reviewed_at=NOW() WHERE id=:id AND status='pending'")->execute(['target'=>$published['id'],'user'=>$userId,'id'=>$id]);$pdo->commit();if(!empty($u['staged_photo_name']))@unlink(self::stagingDir().'/'.$u['staged_photo_name']);self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'profile_integration_approved',['batch_key'=>$u['batch_key'],'entity_type'=>$u['entity_type'],'source_key'=>$u['source_key']],'profile_integration_update',$id);}
         catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();if(!empty($published['new_photo_path']))@unlink($published['new_photo_path']);throw$e;}
     }
 
@@ -143,6 +178,20 @@ final class ProfileIntegrationService
         return ['id'=>$id,'new_photo_path'=>$path];
     }
 
+    private static function applyWdc(PDO $pdo,array $u,array $p,int $userId):array
+    {
+        $id=(int)($u['target_id']??0);$identity=null;
+        if($id){$q=$pdo->prepare('SELECT * FROM bdc_wdc_identities WHERE id=:id FOR UPDATE');$q->execute(['id'=>$id]);$identity=$q->fetch();if(!$identity)throw new RuntimeException('Matched WDC identity no longer exists.');if($identity['entry_type']!==$p['entry_type'])throw new RuntimeException('WDC entry type changed after review submission.');}
+        if(!$identity){$identity=CouncilResultIdentityService::wdcIdentityForEntry($pdo,$p['entry_type'],$p['display_name'],$p['person_id']?:null);$id=(int)$identity['id'];}
+        $currentPerson=(int)($identity['solo_competitor_id']??0);if($currentPerson&&$p['person_id']&&$currentPerson!==$p['person_id'])throw new RuntimeException('WDC identity is already linked to another shared person profile.');
+        [$publishedPhoto,$path]=self::publishPhoto($u,'wdc','wdc-'.$id);$photo=$publishedPhoto?:$p['photo_url'];$normal=self::normaliseName($p['display_name']);
+        $pdo->prepare("UPDATE bdc_wdc_identities SET display_name=:name,normalised_name=:normal,solo_competitor_id=COALESCE(solo_competitor_id,NULLIF(:person,0)),country=COALESCE(NULLIF(:country,''),country),photo_url=COALESCE(NULLIF(:photo,''),photo_url),status='active' WHERE id=:id")
+            ->execute(['name'=>$p['display_name'],'normal'=>$normal,'person'=>$p['person_id'],'country'=>$p['country'],'photo'=>$photo,'id'=>$id]);
+        $insert=$pdo->prepare("INSERT INTO bdc_wdc_registrations(wdc_identity_id,event_key,event_name,category_key,category_name,dance_style,entry_type,competition_level,source_system,source_key,status,approved_by,approved_at) VALUES(:wdc,:event_key,:event_name,:category_key,:category_name,:dance,:entry_type,:level,:source,:source_key,'registered',:user,NOW()) ON DUPLICATE KEY UPDATE event_name=VALUES(event_name),category_name=VALUES(category_name),dance_style=VALUES(dance_style),entry_type=VALUES(entry_type),competition_level=VALUES(competition_level),source_system=VALUES(source_system),source_key=VALUES(source_key),status='registered',approved_by=VALUES(approved_by),approved_at=NOW()");
+        foreach($p['registrations'] as $row)$insert->execute(['wdc'=>$id,'event_key'=>$row['event_key'],'event_name'=>$row['event_name'],'category_key'=>$row['category_key'],'category_name'=>$row['category_name'],'dance'=>$row['dance_style'],'entry_type'=>$row['entry_type'],'level'=>$row['competition_level'],'source'=>$u['source_system'],'source_key'=>$u['source_key'],'user'=>$userId?:null]);
+        return ['id'=>$id,'new_photo_path'=>$path];
+    }
+
     private static function publishPhoto(array $u,string $folder,string $prefix):array
     {
         $name=(string)($u['staged_photo_name']??'');if($name==='')return [null,null];$source=self::stagingDir().'/'.$name;if(!is_file($source)||!hash_equals((string)$u['staged_photo_hash'],hash_file('sha256',$source)))throw new RuntimeException('Staged photo is missing or changed.');
@@ -151,7 +200,7 @@ final class ProfileIntegrationService
 
     public static function assignTarget(PDO $pdo,int $updateId,int $targetId,string $entity):void
     {
-        $table=$entity==='judge'?'bdc_judges':'bdc_competitors';$q=$pdo->prepare("SELECT id FROM {$table} WHERE id=:id");$q->execute(['id'=>$targetId]);if(!$q->fetchColumn())throw new RuntimeException('Selected target does not exist.');$pdo->prepare("UPDATE bdc_profile_integration_updates SET target_id=:target,match_status='matched',candidate_ids_json=NULL WHERE id=:id AND entity_type=:entity AND status='pending'")->execute(['target'=>$targetId,'id'=>$updateId,'entity'=>$entity]);
+        $table=$entity==='judge'?'bdc_judges':($entity==='wdc_identity'?'bdc_wdc_identities':'bdc_competitors');$q=$pdo->prepare("SELECT id FROM {$table} WHERE id=:id");$q->execute(['id'=>$targetId]);if(!$q->fetchColumn())throw new RuntimeException('Selected target does not exist.');$pdo->prepare("UPDATE bdc_profile_integration_updates SET target_id=:target,match_status='matched',candidate_ids_json=NULL WHERE id=:id AND entity_type=:entity AND status='pending'")->execute(['target'=>$targetId,'id'=>$updateId,'entity'=>$entity]);
     }
 
     public static function stagedPhoto(PDO $pdo,int $updateId):?array
@@ -170,6 +219,7 @@ final class ProfileIntegrationService
     }
 
     private static function stagingDir():string{return dirname(__DIR__,2).'/storage/profile-integration';}
+    private static function normaliseName(string $value):string{$value=function_exists('mb_strtolower')?mb_strtolower($value,'UTF-8'):strtolower($value);return trim((string)preg_replace('/[^\pL\pN]+/u',' ',$value));}
     private static function allowedList(mixed $value,array $allowed):array{$list=is_array($value)?$value:preg_split('/\s*,\s*/',(string)$value);return array_values(array_unique(array_intersect($allowed,array_map(static fn($v):string=>strtolower(trim((string)$v)),(array)$list))));}
     private static function instagram(string $value):string{$value=trim($value);if(preg_match('#instagram\.com/([^/?]+)#i',$value,$m))$value=$m[1];return strtolower(ltrim($value,'@/'));}
     private static function digits(string $value):string{return preg_replace('/\D+/','',$value)??'';}

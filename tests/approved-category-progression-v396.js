@@ -22,7 +22,8 @@ for(const marker of [
  "FROM bdc_point_transactions WHERE competitor_id=:competitor AND dance_style=:dance",
  "initialDivisionForUnapprovedEntry",
 ])assert(progression.includes(marker),marker+' missing from approved-history progression service');
-assert(!progression.includes('bdc_scoring_entries'),'draft/event entries must never establish career progression');
+assert(progression.includes('syncEventParticipantsAfterApproval'),'published zero-point participant activation is missing');
+assert(progression.includes("se.entry_status='active'"),'publication activation must require an active event entry');
 assert(!progression.includes('bdc_test_scoring_entries'),'Test entries must never establish career progression');
 
 assert(identity.includes('$initialDivision=DivisionProgressionService::initialDivisionForUnapprovedEntry()'),'new scoring identities must start provisionally');
@@ -30,13 +31,14 @@ assert(registration.includes('SELECT event_id,division,dance_style FROM {$roundT
 assert(registration.includes('eligibilityFromApprovedHistory'),'event entry must use approved history only');
 assert(registration.includes("'entered_division'=>(string)$round['division']")&&registration.includes("'permanent_division_changed'=>false"),'entry audit must distinguish category from permanent division');
 assert(registration.includes("$roundTable=$isTest?'bdc_test_scoring_rounds':'bdc_scoring_rounds'"),'Testing and Live registration must share the gate');
-assert(registration.includes('findOrCreateTest'),'Test identity creation must remain isolated');
+assert(registration.includes('mirrorOfficialToTest'),'Test must mirror an eligible official council identity without changing it');
 
 assert(publicRegister.includes('Competition category'),'website must not call an event category a permanent division');
 assert(publicFields.includes("$html=str_replace('<div class=\"form-text\">Choose the category you may enter."),'active public render path must remove the internal progression explanation');
 assert(publicRegister.includes("'permanent_division_change_requested'=>false"),'website request must record non-progression intent');
 
-assert(requests.includes("current_division) VALUES(:cid,:dance,:role,'novice')"),'new approved profile identity must remain provisional Novice');
+assert(requests.includes("current_division) VALUES(:cid,:dance,:role,'unknown')"),'approved registration must remain Unknown until publication');
+assert(requests.includes('SdcCompetitorService::ensure'),'approved Salsa registration must create an SDC profile');
 assert(requests.includes("'permanent_division_changed'=>false"),'profile approval audit must preserve category without progression');
 assert(!requests.includes("current_division=IF(VALUES(current_division)='unknown',current_division,VALUES(current_division))"),'website request must not overwrite an existing permanent division');
 assert(requests.includes('Permanent division changes only after a Super Admin-approved competition result.'),'review screen must explain the gate');
