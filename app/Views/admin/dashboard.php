@@ -108,7 +108,7 @@ if (
  const groups={
   'Live Operations':['Live Projection','Events & Tickets','Registrations'],
   'Jack & Jill':['Jack & Jill Scoring'],
-  'Dance Cup':['Dance Cup Scoring','Dance Cup Participants','Dance Cup Approvals'],
+  'Dance Cup':['Dance Cup Scoring','Dance Cup Competitor','Dance Cup Approvals'],
   'Operations Safety':['Scoring Backups'],
   'People':['Competitors','Judge Database','Identity Matches','Profile Requests'],
   'Results & Points':['Completed Events','Archived Events','Point Adjustments','Result Repository','Recalculate Rankings'],

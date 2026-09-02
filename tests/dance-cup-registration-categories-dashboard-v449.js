@@ -1,11 +1,11 @@
 const fs=require('fs');
-const source=fs.readFileSync('admin/dance-cup/participants.php','utf8');
+const source=fs.readFileSync('admin/dance-cup/competitors.php','utf8');
 const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
 const assert=(ok,message)=>{if(!ok)throw new Error(message)};
 assert(source.includes('bdc_wdc_registrations'),'WDC registration category source missing');
-assert(source.includes('Dance Participation')&&source.includes('WDC Identities')&&source.includes('Category Entries'),'WDC identity and category datasets are not separated');
-assert(source.includes('Each approved WDC identity and category registration is shown once'),'category explanation missing');
-assert(source.includes("r.status='registered'"),'approved WDC registration status missing');
+assert(source.includes('WDC identities')&&source.includes('Active registrations'),'WDC identity and registration summaries missing');
+assert(source.includes('One permanent WDC identity'),'identity-first explanation missing');
+assert(source.includes("status='registered'"),'approved WDC registration status missing');
 const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
 assert(releaseNumber>=449&&version.build>=3155,'release must retain dev449 registration-category support');
 console.log('Dance Cup registration categories dashboard v449 checks passed.');

@@ -11,7 +11,7 @@ assert(jj.includes('LOWER(ri.identity_code) LIKE LOWER'),'J&J identity search mu
 assert(wdc.includes('FROM bdc_wdc_identities w'),'Dance Cup directory must use WDC identities');
 assert(wdc.includes('FROM bdc_wdc_championship_points'),'Dance Cup directory must total the WDC championship ledger');
 assert(wdc.includes('LOWER(w.identity_code) LIKE LOWER'),'WDC search must be case-insensitive');
-assert(wdc.includes('Export Competitors CSV')&&wdc.includes('Add competitor'),'Dance Cup directory management actions missing');
+assert(wdc.includes('Export CSV')&&wdc.includes('Add competitor'),'Dance Cup directory management actions missing');
 assert(edit.includes('Permanent and cannot be changed.'),'WDC code immutability is not visible');
 assert(edit.includes('CouncilResultIdentityService::wdcIdentityForEntry'),'new Dance Cup competitors must use the canonical WDC allocator');
 assert(migration.includes('ADD COLUMN country')&&migration.includes('ADD COLUMN photo_url'),'WDC directory profile migration missing');

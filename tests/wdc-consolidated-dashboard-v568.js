@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert'),read=f=>fs.readFileSync(f,'utf8');
+const page=read('admin/dance-cup/competitors.php'),redirect=read('admin/dance-cup/participants.php'),photo=read('admin/dance-cup/photo-adjust.php'),nav=read('app/Views/admin/_sidebar_nav.php'),dashboard=read('app/Views/admin/dashboard.php'),edit=read('admin/dance-cup/competitor-edit.php');
+assert(!nav.includes('Dance Cup Participants'),'duplicate Dance Cup menu remains');
+assert(!dashboard.includes("'Dance Cup Participants'"),'dashboard still advertises duplicate participant panel');
+assert(redirect.includes("true,301"),'legacy page must permanently redirect');
+for(const token of ['LOWER(w.display_name)','LOWER(w.identity_code)','LOWER(rq.category_name)','LOWER(rq.event_name)','missing_photo','missing_country','no_registration','duplicate_count','registered_categories'])assert(page.includes(token),'dashboard capability missing '+token);
+assert(photo.includes("uploads/wdc")&&photo.includes('8*1024*1024')&&photo.includes('wdc_photo_replaced'),'universal WDC photo safety missing');
+assert(photo.includes('never creates or changes a BDC or SDC ID'),'identity isolation warning missing');
+assert(edit.includes('Official Dance Cup history protects this WDC identity from archival.'),'official history protection missing');
+console.log('WDC consolidated dashboard v568 checks passed');

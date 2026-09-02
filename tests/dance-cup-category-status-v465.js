@@ -1,9 +1,9 @@
 const fs=require('fs');
 const assert=(condition,message)=>{if(!condition)throw new Error(message)};
-const dashboard=fs.readFileSync('admin/dance-cup/participants.php','utf8');
+const dashboard=fs.readFileSync('admin/dance-cup/competitors.php','utf8');
 const sync=fs.readFileSync('admin/profile-requests/dance-cup-request-summary.php','utf8');
 const migration=fs.readFileSync('database/migrations/20260828_1900_dance_cup_category_status.php','utf8');
-assert(dashboard.includes("r.status='registered'"),'participant dashboard must read approved WDC registration status');
+assert(dashboard.includes("status='registered'"),'competitor dashboard must read approved WDC registration status');
 assert(!dashboard.includes('request_status'),'participant dashboard must not display parent profile status');
 assert(!dashboard.includes('bdc_profile_request_dance_cup_categories'),'legacy request category rows must not drive the WDC dashboard');
 assert(sync.includes("registration_status='approved'"),'profile approval must approve category registration');
