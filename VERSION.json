@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev570",
-  "build": 3276,
+  "version": "2.3.3-dev571",
+  "build": 3277,
   "status": "development",
   "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Recovers the blank HTTP 500 Dance Cup Competitor page by using the exact WDC identity and registration query already verified against Production through the signed diagnostics API, with case-insensitive filtering performed after the proven read path",
     "Restores the Dance Cup Competitor list with the previously proven WDC identity-first query shape and simple independent category, event, style and level aggregates, removing optional shared-profile fields and compound registration aggregation from the runtime path that returned HTTP 500",
     "Fixes the WDC editor HTTP 500 by joining event and Dance Cup category names from their owning tables instead of requesting nonexistent name columns from the permanent result-history ledger",
     "Consolidates Dance Cup Participants into one comprehensive Dance Cup Competitor dashboard with one row per WDC identity, grouped category registrations, event/style/level/completeness filters, case-insensitive name/ID/country/event/category search, missing-data and duplicate indicators, universal WDC-only photo upload for solos/couples/teams, official history visibility and archival protection, while permanently redirecting the retired duplicate panel without changing scoring, BDC or SDC data",

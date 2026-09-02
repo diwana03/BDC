@@ -19,6 +19,6 @@ for(const marker of ["'wdc_identity'",'wdcPayload','matchWdc','applyWdc','bdc_wd
 for(const marker of ["'wdc_members'","'person_match'","'read_only'=>true"])assert(diagnostics.includes(marker),'Missing read-only WDC diagnostic marker: '+marker);
 assert(review.includes('entity=wdc_identity')&&review.includes("['competitor','wdc_identity']"),'WDC Super Admin review tab or permission gate missing');
 assert(migration.includes("ENUM('competitor','judge','wdc_identity')")&&migration.includes('UNIQUE KEY uq_wdc_registration(event_key,wdc_identity_id,category_key)'),'Idempotent WDC staging schema missing');
-assert(directory.includes('registration_count')&&directory.includes('registered_categories'),'WDC directory must expose approved registrations');
+assert(directory.includes('registration_count')&&directory.includes("r.status='registered'")&&directory.includes('registrations'),'WDC directory must expose approved registrations');
 for(const forbidden of ['bdc_wdc_championship_points','bdc_dance_cup_result_history','bdc_participant_results','bdc_point_transactions'])assert(!new RegExp('(INSERT INTO|UPDATE|DELETE FROM)\\s+'+forbidden,'i').test(service),'WDC profile approval must not mutate scoring or result table '+forbidden);
 console.log('WDC registration integration v562 checks passed');

@@ -5,6 +5,6 @@ const assert=(ok,message)=>{if(!ok)throw new Error(message)};
 assert(source.includes('FROM bdc_wdc_identities w'),'WDC identity-first query missing');
 assert(source.includes('LEFT JOIN bdc_competitors c'),'profile and photo link missing');
 assert(source.includes('w.identity_code'),'permanent WDC code missing');
-assert(source.includes('bdc_wdc_championship_points'),'published WDC summary missing');
+assert(source.includes('COUNT(r.id) registration_count'),'active WDC registration summary missing');
 assert(Number((version.version.match(/dev(\d+)$/)||[])[1])>=448&&version.build>=3154,'release predates dev448');
 console.log('Dance Cup participant-first query v448 checks passed.');
