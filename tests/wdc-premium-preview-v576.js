@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const page=fs.readFileSync('admin/dance-cup/competitors-premium.php','utf8');
+const working=fs.readFileSync('admin/dance-cup/competitors.php','utf8');
+const nav=fs.readFileSync('app/Views/admin/_sidebar_nav.php','utf8');
+assert(page.includes('Auth::requireSuperAdmin()'),'premium preview must be Super Admin only');
+assert(page.includes('FROM bdc_wdc_identities w LEFT JOIN bdc_competitors c'),'premium preview must use the proven WDC identity read path');
+assert(page.includes("GROUP_CONCAT(CONCAT(r.event_key,':',r.category_key)")&&page.includes('LIMIT 500'),'premium preview must retain the proven identity query');
+for(const marker of ['SUPER ADMIN · PREMIUM PREVIEW','Missing photos','Missing country','Possible duplicates','Export CSV','Apply filters','Click a heading to sort','Edit profile','Adjust photo','completeness'])assert(page.includes(marker),'premium preview missing '+marker);
+assert(page.includes('str_contains($r[\'search\'],wdcpLower($q))'),'premium search must be case-insensitive');
+assert(nav.includes('WDC Premium Preview')&&nav.includes("'TEST'"),'protected preview navigation missing');
+assert(!working.includes('competitors-premium.php'),'working WDC runtime must remain unchanged');
+console.log('WDC premium protected preview v576 checks passed');
