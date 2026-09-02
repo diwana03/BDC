@@ -9,7 +9,7 @@ use Throwable;
 
 final class ApiChangeProposalService
 {
-    private const ACTIONS=['competitor.update','competitor.archive','judge.update','judge.deactivate','sdc.update','sdc.remove'];
+    private const ACTIONS=['competitor.update','competitor.archive','judge.update','judge.deactivate','sdc.update','sdc.remove','bdc.detach_identity'];
     private const COMPETITOR_FIELDS=['exact_name','country','email','phone','instagram','status'];
     private const JUDGE_FIELDS=['full_name','display_name','country','email','phone','instagram','status'];
     private const SDC_CATEGORIES=['salsa_rising','salsa_open','salsa_invitational'];
@@ -47,7 +47,7 @@ final class ApiChangeProposalService
 
     private static function payload(string $type,array $payload):array
     {
-        if(str_ends_with($type,'.archive')||str_ends_with($type,'.deactivate')||str_ends_with($type,'.remove'))return [];
+        if(str_ends_with($type,'.archive')||str_ends_with($type,'.deactivate')||str_ends_with($type,'.remove')||$type==='bdc.detach_identity')return [];
         if($type==='sdc.update'){
             $allowed=['dance_role','categories'];if(array_diff(array_keys($payload),$allowed))throw new RuntimeException('SDC payload contains unsupported fields.');
             $role=strtolower(trim((string)($payload['dance_role']??'')));if($role!==''&&!in_array($role,['leader','follower','both'],true))throw new RuntimeException('Invalid SDC dance_role.');
@@ -66,6 +66,7 @@ final class ApiChangeProposalService
 
     private static function snapshot(PDO $pdo,string $type,int $target,bool $lock):array
     {
+        if($type==='bdc.detach_identity')return self::bdcIdentitySnapshot($pdo,$target,$lock);
         $table=str_starts_with($type,'judge.')?'bdc_judges':'bdc_competitors';$suffix=$lock?' FOR UPDATE':'';
         $q=$pdo->prepare("SELECT * FROM {$table} WHERE id=:id{$suffix}");$q->execute(['id'=>$target]);$row=$q->fetch();if(!$row)throw new RuntimeException('Target record does not exist.');
         if(str_starts_with($type,'sdc.')){
@@ -102,6 +103,16 @@ final class ApiChangeProposalService
 
     private static function apply(PDO $pdo,string $type,int $id,array $payload):void
     {
+        if($type==='bdc.detach_identity'){
+            $state=self::bdcIdentitySnapshot($pdo,$id,true);
+            if((int)$state['bachata_result_count']>0||(int)$state['bachata_point_transaction_count']>0)throw new RuntimeException('Official Bachata history protects this BDC identity.');
+            if((int)$state['wdc_identity_count']<1&&(int)$state['dance_cup_request_count']<1)throw new RuntimeException('Only a verified Dance Cup person may detach an unused BDC identity.');
+            $pdo->prepare("INSERT INTO bdc_bdc_identity_detachment_archive(competitor_id,bdc_id,identity_json,wdc_json,approved_by) VALUES(:id,:bdc,:identity,:wdc,:user) ON DUPLICATE KEY UPDATE bdc_id=VALUES(bdc_id),identity_json=VALUES(identity_json),wdc_json=VALUES(wdc_json),approved_by=VALUES(approved_by),detached_at=NOW()")
+                ->execute(['id'=>$id,'bdc'=>(string)$state['bdc_id'],'identity'=>self::encode((array)$state['identity_rows']),'wdc'=>self::encode((array)$state['wdc_rows']),'user'=>(int)(Auth::user()['id']??0)?:null]);
+            $pdo->prepare("DELETE FROM bdc_result_identities WHERE competitor_id=:id AND council='bdc'")->execute(['id'=>$id]);
+            $pdo->prepare('UPDATE bdc_competitors SET bdc_id=NULL WHERE id=:id')->execute(['id'=>$id]);
+            return;
+        }
         if($type==='competitor.archive'){$pdo->prepare("UPDATE bdc_competitors SET status='archived' WHERE id=:id")->execute(['id'=>$id]);return;}
         if($type==='judge.deactivate'){$pdo->prepare("UPDATE bdc_judges SET status='inactive' WHERE id=:id")->execute(['id'=>$id]);return;}
         if($type==='sdc.remove'){
@@ -119,6 +130,18 @@ final class ApiChangeProposalService
         }
         $table=str_starts_with($type,'judge.')?'bdc_judges':'bdc_competitors';$allowed=str_starts_with($type,'judge.')?self::JUDGE_FIELDS:self::COMPETITOR_FIELDS;$sets=[];$params=['id'=>$id];foreach($payload as $field=>$value){if(!in_array($field,$allowed,true))throw new RuntimeException('Stored field is unsupported.');$sets[]="{$field}=:{$field}";$params[$field]=$value===''?null:$value;}if(!$sets)throw new RuntimeException('No fields to update.');
         $pdo->prepare("UPDATE {$table} SET ".implode(',',$sets).' WHERE id=:id')->execute($params);
+    }
+
+    private static function bdcIdentitySnapshot(PDO $pdo,int $id,bool $lock):array
+    {
+        $suffix=$lock?' FOR UPDATE':'';
+        $q=$pdo->prepare("SELECT id,exact_name,bdc_id,status FROM bdc_competitors WHERE id=:id{$suffix}");$q->execute(['id'=>$id]);$person=$q->fetch();if(!$person)throw new RuntimeException('Target record does not exist.');
+        $identity=$pdo->prepare("SELECT id,council,identity_code,created_at FROM bdc_result_identities WHERE competitor_id=:id AND council='bdc' ORDER BY id");$identity->execute(['id'=>$id]);$identityRows=$identity->fetchAll();
+        if(trim((string)($person['bdc_id']??''))===''&&!$identityRows)throw new RuntimeException('This person has no BDC identity to detach.');
+        $history=$pdo->prepare("SELECT (SELECT COUNT(*) FROM bdc_participant_results WHERE competitor_id=:result_id AND dance_style='bachata') result_count,(SELECT COUNT(*) FROM bdc_point_transactions WHERE competitor_id=:point_id AND dance_style='bachata') point_count");$history->execute(['result_id'=>$id,'point_id'=>$id]);$counts=$history->fetch()?:[];
+        $wdc=$pdo->prepare("SELECT id,identity_code,entry_type,display_name,status FROM bdc_wdc_identities WHERE solo_competitor_id=:id ORDER BY id");$wdc->execute(['id'=>$id]);$wdcRows=$wdc->fetchAll();
+        $requests=$pdo->prepare("SELECT COUNT(DISTINCT r.id) FROM bdc_profile_requests r JOIN bdc_profile_request_dance_cup_categories d ON d.request_id=r.id WHERE r.competitor_id=:id AND (d.registration_status IS NULL OR d.registration_status<>'rejected')");$requests->execute(['id'=>$id]);
+        return ['competitor_id'=>$id,'exact_name'=>(string)$person['exact_name'],'bdc_id'=>(string)($person['bdc_id']??''),'status'=>(string)$person['status'],'identity_rows'=>$identityRows,'bachata_result_count'=>(int)($counts['result_count']??0),'bachata_point_transaction_count'=>(int)($counts['point_count']??0),'wdc_identity_count'=>count($wdcRows),'wdc_rows'=>$wdcRows,'dance_cup_request_count'=>(int)$requests->fetchColumn()];
     }
 
     private static function encode(array $value):string{$json=json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION);if($json===false)throw new RuntimeException('Data could not be encoded.');return $json;}

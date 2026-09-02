@@ -16,6 +16,8 @@ Sign requests with context `profile-actions`. The body contains `source_system` 
 
 Approval locks and rereads the target, verifies the state fingerprint captured at submission, and applies one database transaction with a Super Admin audit entry. If live data changed meanwhile, approval fails closed and the proposal must be rejected and resubmitted. Raw SQL is not accepted by this endpoint.
 
+`bdc.detach_identity` removes an incorrectly assigned BDC identity from a verified Dance Cup person while preserving the shared person/photo record and every SDC and WDC identity. It is rejected if any official Bachata participant result or Bachata point transaction exists, and it remains pending until Super Admin approval. The prior BDC identity is archived for recovery before detachment.
+
 ```json
 {
   "source_system": "sdc-reconciliation",
