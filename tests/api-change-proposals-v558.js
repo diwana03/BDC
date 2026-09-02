@@ -1,0 +1,7 @@
+const fs=require('fs');const path=require('path');const root=path.resolve(__dirname,'..');const read=p=>fs.readFileSync(path.join(root,p),'utf8');const assert=(v,m)=>{if(!v)throw new Error(m)};
+const service=read('app/Services/ApiChangeProposalService.php'),endpoint=read('api/profile-sync/v1/actions.php'),panel=read('admin/integration-review/actions.php'),migration=read('database/migrations/20260902_0400_api_change_proposals.php');
+for(const token of ['bdc_api_change_proposals','proposal_key','state_hash',"status ENUM('pending','approved','rejected','failed')"])assert(migration.includes(token),'migration missing '+token);
+for(const token of ["verify($raw,'profile-actions')",'ApiChangeProposalService::submit','actionResponse(202'])assert(endpoint.includes(token),'endpoint missing '+token);
+for(const token of ['competitor.update','competitor.archive','judge.update','judge.deactivate','sdc.update','sdc.remove','Raw SQL is never accepted','FOR UPDATE','hash_equals','beginTransaction','Auth::audit','bdc_sdc_association_removal_archive','Official Salsa history protects'])assert(service.includes(token),'service missing '+token);
+for(const token of ['Auth::requireSuperAdmin','Csrf::verify','Approve Selected','Reject Selected','Current state at submission','Proposed change'])assert(panel.includes(token),'panel missing '+token);
+console.log('API change proposal v558 checks passed.');

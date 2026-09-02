@@ -8,6 +8,26 @@ Set a random secret of at least 32 characters as `BDC_PROFILE_INTEGRATION_SECRET
 
 A Super Admin can create or rotate the credential from **Admin → Integration Review**. The portal stores file-managed credentials beside the configured database password file, outside the public application directory, and downloads the new credential once. If `BDC_PROFILE_INTEGRATION_SECRET` is supplied by the server environment, the portal reports it as externally managed and does not replace it.
 
+## Controlled data changes
+
+`POST /api/profile-sync/v1/actions.php` lets an authenticated integration propose supported updates and removals. It never applies them directly. Every proposal appears under **Admin → Integration Review → API Changes**, where a Super Admin can inspect the previous state and proposed payload, then approve or reject it.
+
+Sign requests with context `profile-actions`. The body contains `source_system` and 1–100 `actions`. Each action requires a stable `proposal_key`, an `action_type`, and `target_id`. Supported types are `competitor.update`, `competitor.archive`, `judge.update`, `judge.deactivate`, `sdc.update`, and `sdc.remove`. New competitor and judge submissions continue through the normal profile submission endpoint.
+
+Approval locks and rereads the target, verifies the state fingerprint captured at submission, and applies one database transaction with a Super Admin audit entry. If live data changed meanwhile, approval fails closed and the proposal must be rejected and resubmitted. Raw SQL is not accepted by this endpoint.
+
+```json
+{
+  "source_system": "sdc-reconciliation",
+  "actions": [{
+    "proposal_key": "sdc-248-categories-20260902",
+    "action_type": "sdc.update",
+    "target_id": 248,
+    "payload": {"dance_role": "leader", "categories": ["salsa_open"]}
+  }]
+}
+```
+
 Required headers:
 
 - `Content-Type: application/json`
