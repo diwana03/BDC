@@ -14,6 +14,7 @@
 - Adds GitHub Actions PHP 8.1 lint for every PHP source file.
 - Runs the complete JavaScript regression suite in the same candidate gate.
 - Repairs the pre-existing invalid arrow-function return declaration found by the new PHP gate in `GoogleFormSyncService`.
+- Repairs the pre-existing malformed competitor-role ternary found by the PHP gate in `EventIntegrationService`.
 
 ## Safety
 

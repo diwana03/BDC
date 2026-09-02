@@ -115,7 +115,7 @@ final class EventIntegrationService
         foreach($rows as $row){
             if(!is_array($row))throw new RuntimeException('Every competitor selection must be an object.');
             $code=strtoupper(trim((string)($row['council_id']??$row['bdc_id']??$row['wdc_id']??'')));
-            $role=$roles?strtolower(trim((string)($row['role']??'')):'';
+            $role=$roles?strtolower(trim((string)($row['role']??''))):'';
             if($roles&&!in_array($role,['leader','follower'],true))throw new RuntimeException('Jack & Jill competitor role must be leader or follower.');
             $identity=$code."\0".$role;if(isset($seen[$identity]))throw new RuntimeException('The same competitor cannot be selected twice in one category.');$seen[$identity]=true;
             $bib=self::boundedInt($row['bib']??0,1,999999,'bib');$bibKey=($roles?$role:'all')."\0".$bib;if(isset($bibs[$bibKey]))throw new RuntimeException('Competitor bibs must be unique within each role/category.');$bibs[$bibKey]=true;
