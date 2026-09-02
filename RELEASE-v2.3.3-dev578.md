@@ -13,8 +13,9 @@
 - Focused BDC/SDC dashboard integrity regression: passed.
 - Existing segmented-dashboard and SDC database-separation regressions: passed.
 - Complete JavaScript regression suite: passed.
-- Repository-wide PHP 8.1 lint: pending in GitHub candidate gate.
-- Diff and exact published commit inspection: pending.
+- Repository-wide PHP 8.1 lint: passed in GitHub candidate gate.
+- Candidate diff inspection: passed; only the existing shared BDC/SDC dashboard, editor, photo flow, focused test, version and release record changed.
+- Exact published `develop` commit inspection: pending promotion.
 
 ## Migration and deployment
 
