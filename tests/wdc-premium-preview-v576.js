@@ -6,6 +6,7 @@ const edit=fs.readFileSync('admin/dance-cup/competitor-edit.php','utf8');
 const photo=fs.readFileSync('admin/dance-cup/photo-adjust.php','utf8');
 const formSync=fs.readFileSync('app/Services/GoogleFormSyncService.php','utf8');
 const eventIntegration=fs.readFileSync('app/Services/EventIntegrationService.php','utf8');
+const automaticLiveData=fs.readFileSync('admin/scoring-tests/automatic-live-data.php','utf8');
 assert(page.includes("Auth::requirePermission('competitors.view')"),'premium dashboard permission missing');
 assert(page.includes('FROM bdc_wdc_identities w LEFT JOIN bdc_competitors c'),'premium dashboard must use proven WDC identity read');
 assert(page.includes("GROUP_CONCAT(CONCAT(r.event_key,':',r.category_key)")&&page.includes('LIMIT 500'),'premium dashboard must retain proven query');
@@ -16,4 +17,5 @@ assert(edit.includes('WDC COMPETITOR PROFILE')&&!edit.includes('name="photo_url"
 for(const marker of ['WDC PHOTO STUDIO','cropped_photo_data','Save adjusted photo','Upload replacement','pointermove','toDataURL'])assert(photo.includes(marker),'photo studio missing '+marker);
 assert(formSync.includes("static fn(array $c):int=>(int)$c['id']")&&!formSync.includes("static fn(array $c):(int)"),'PHP gate blocker in Google Form sync remains');
 assert(eventIntegration.includes("$role=$roles?strtolower(trim((string)($row['role']??''))):'';")&&!eventIntegration.includes("($row['role']??'')):''"),'PHP gate blocker in event integration remains');
+assert(automaticLiveData.includes(".'/bootstrap.php';"),'PHP gate blocker in automatic scoring live-data endpoint remains');
 console.log('WDC premium main dashboard, editor and photo studio v577 checks passed');

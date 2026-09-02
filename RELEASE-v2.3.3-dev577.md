@@ -15,6 +15,7 @@
 - Runs the complete JavaScript regression suite in the same candidate gate.
 - Repairs the pre-existing invalid arrow-function return declaration found by the new PHP gate in `GoogleFormSyncService`.
 - Repairs the pre-existing malformed competitor-role ternary found by the PHP gate in `EventIntegrationService`.
+- Repairs the pre-existing missing statement terminator found by the PHP gate in the automatic scoring live-data endpoint.
 
 ## Safety
 
