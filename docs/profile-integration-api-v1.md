@@ -12,11 +12,13 @@ A Super Admin can create or rotate the credential from **Admin → Integration R
 
 `POST /api/profile-sync/v1/actions.php` lets an authenticated integration propose supported updates and removals. It never applies them directly. Every proposal appears under **Admin → Integration Review → API Changes**, where a Super Admin can inspect the previous state and proposed payload, then approve or reject it.
 
-Sign requests with context `profile-actions`. The body contains `source_system` and 1–100 `actions`. Each action requires a stable `proposal_key`, an `action_type`, and `target_id`. Supported types are `competitor.update`, `competitor.archive`, `judge.update`, `judge.deactivate`, `sdc.update`, and `sdc.remove`. New competitor and judge submissions continue through the normal profile submission endpoint.
+Sign requests with context `profile-actions`. The body contains `source_system` and 1–100 `actions`. Each action requires a stable `proposal_key`, an `action_type`, and `target_id`. Supported types are `competitor.update`, `competitor.archive`, `judge.update`, `judge.deactivate`, `sdc.update`, `sdc.remove`, `bdc.update`, and `bdc.detach_identity`. New competitor and judge submissions continue through the normal profile submission endpoint.
 
 Approval locks and rereads the target, verifies the state fingerprint captured at submission, and applies one database transaction with a Super Admin audit entry. If live data changed meanwhile, approval fails closed and the proposal must be rejected and resubmitted. Raw SQL is not accepted by this endpoint.
 
-`bdc.detach_identity` removes an incorrectly assigned BDC identity from a verified Dance Cup person while preserving the shared person/photo record and every SDC and WDC identity. It is rejected if any official Bachata participant result or Bachata point transaction exists, and it remains pending until Super Admin approval. The prior BDC identity is archived for recovery before detachment.
+`bdc.detach_identity` removes an incorrectly assigned BDC identity from a verified SDC or Dance Cup person while preserving the shared person/photo record and every SDC and WDC identity. It is rejected if any official Bachata participant result or Bachata point transaction exists, and it remains pending until Super Admin approval. The prior BDC identity, Bachata discipline profile and Bachata categories are archived for recovery before the Bachata-only records are detached.
+
+`bdc.update` reconciles an existing BDC competitor's Bachata role and exact Rising, Open or Invitational registrations. It may reset progression only to `unknown`, and only when the competitor has no official Bachata participant result and no Bachata point transaction. Special-category registration never fabricates Novice progression.
 
 ```json
 {
@@ -48,7 +50,7 @@ Sign an empty body with context `directory:<sha256 of search|page|per_page>`. Se
 
 `POST /portal/api/profile-sync/v1/diagnostics.php`
 
-Sign the exact body with context `profile-diagnostics`. Only allowlisted parameterized queries are available: `sdc_members`, `wdc_members`, `person_match`, `missing_photos`, `competitor_history`, and `deletion_impact`. Arbitrary SQL is rejected. `wdc_members` returns active permanent WDC identities and their approved category-registration count without points or results. `person_match` accepts an exact name, email and/or Instagram value and returns safe identity candidates with match flags, never private contact values. `deletion_impact` simulates the affected row counts and returns an `approval_hash`; it never deletes. A logged-in Super Admin must perform the final deletion through an authenticated administrative workflow after the impact is recomputed.
+Sign the exact body with context `profile-diagnostics`. Only allowlisted parameterized queries are available: `bdc_members`, `sdc_members`, `wdc_members`, `person_match`, `missing_photos`, `competitor_history`, and `deletion_impact`. Arbitrary SQL is rejected. `bdc_members` returns active BDC identities with Bachata role, progression, special categories, photo presence, result count, point-transaction count and total points so registration reconciliation can fail closed. `wdc_members` returns active permanent WDC identities and their approved category-registration count without points or results. `person_match` accepts an exact name, email and/or Instagram value and returns safe identity candidates with match flags, never private contact values. `deletion_impact` simulates the affected row counts and returns an `approval_hash`; it never deletes. A logged-in Super Admin must perform the final deletion through an authenticated administrative workflow after the impact is recomputed.
 
 ### WDC identity and registration staging
 
