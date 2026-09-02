@@ -159,6 +159,7 @@ final class ProfileIntegrationService
     {
         $id=(int)($u['target_id']??0);if(!$id){$created=CompetitorIdentityService::findOrCreateOfficial($pdo,$p['full_name'],$p['role']);$id=(int)$created['id'];}
         $q=$pdo->prepare('SELECT * FROM bdc_competitors WHERE id=:id');$q->execute(['id'=>$id]);$current=$q->fetch();if(!$current)throw new RuntimeException('Matched competitor no longer exists.');
+        if(in_array('bachata',$p['styles'],true)&&trim((string)($current['bdc_id']??''))===''){$code=self::allocateBdcIdentity($pdo,$id);$current['bdc_id']=$code;}
         $replace=(array)($p['replace_fields']??[]);$value=static fn(string $field,string $incoming):?string=>$incoming!==''&&((string)($current[$field]??'')===''||in_array($field==='exact_name'?'full_name':$field,$replace,true))?$incoming:($current[$field]??null);
         [$photo,$path]=self::publishPhoto($u,'competitors','competitor-'.$id);if(!$photo)$photo=(string)($current['photo_url']??'');
         $pdo->prepare("UPDATE bdc_competitors SET exact_name=:name,normalised_name=:normalised,email=:email,phone=:phone,instagram=:instagram,country=:country,photo_url=:photo,original_photo_url=IF(:new_photo<>'',:new_photo2,original_photo_url),status=IF(status='archived',status,'active') WHERE id=:id")
@@ -167,6 +168,23 @@ final class ProfileIntegrationService
         $category=$pdo->prepare("INSERT IGNORE INTO bdc_competitor_special_categories(competitor_id,dance_style,category,source_kind,source_name) VALUES(:id,:dance,:category,'form_sync',:source)");
         foreach($p['styles'] as $dance){if($dance==='salsa'){SdcCompetitorService::save($pdo,$id,$p['role'],'unknown',['salsa_'.($p['form_kind']==='open'?'open':'rising')],'form_sync','Profile integration API / '.$u['source_key']);continue;}$profile->execute(['id'=>$id,'dance'=>$dance,'role'=>$p['role']]);$category->execute(['id'=>$id,'dance'=>$dance,'category'=>$dance.'_'.($p['form_kind']==='open'?'open':'rising'),'source'=>'Profile integration API / '.$u['source_key']]);$pdo->prepare('UPDATE bdc_competitors SET dance_role=:role WHERE id=:id')->execute(['role'=>$p['role'],'id'=>$id]);}
         CompetitorIdentityService::inspect($pdo,$id);return ['id'=>$id,'new_photo_path'=>$path];
+    }
+
+    private static function allocateBdcIdentity(PDO $pdo,int $competitorId):string
+    {
+        if((int)$pdo->query("SELECT GET_LOCK('bdc-bdc-identity-sequence',10)")->fetchColumn()!==1)throw new RuntimeException('Could not reserve a BDC ID. Please try again.');
+        try{
+            $q=$pdo->prepare("SELECT bdc_id FROM bdc_competitors WHERE id=:id AND status<>'archived' FOR UPDATE");$q->execute(['id'=>$competitorId]);$current=$q->fetchColumn();
+            if($current===false)throw new RuntimeException('Matched competitor is archived or missing.');
+            $code=trim((string)$current);
+            if($code===''){
+                $next=(int)$pdo->query("SELECT COALESCE(MAX(sequence_number),0)+1 FROM (SELECT CAST(SUBSTRING(bdc_id,5) AS UNSIGNED) sequence_number FROM bdc_competitors WHERE bdc_id LIKE 'BDC-%' UNION ALL SELECT CAST(SUBSTRING(bdc_id,5) AS UNSIGNED) FROM bdc_bdc_identity_detachment_archive WHERE bdc_id LIKE 'BDC-%') used_bdc_ids")->fetchColumn();
+                $code='BDC-'.str_pad((string)$next,6,'0',STR_PAD_LEFT);
+                $pdo->prepare("UPDATE bdc_competitors SET bdc_id=:code,status='active' WHERE id=:id AND (bdc_id IS NULL OR bdc_id='')")->execute(['code'=>$code,'id'=>$competitorId]);
+            }
+            $pdo->prepare("INSERT INTO bdc_result_identities(competitor_id,council,identity_code) VALUES(:id,'bdc',:code) ON DUPLICATE KEY UPDATE identity_code=VALUES(identity_code)")->execute(['id'=>$competitorId,'code'=>$code]);
+            return $code;
+        }finally{$pdo->query("SELECT RELEASE_LOCK('bdc-bdc-identity-sequence')")->fetchColumn();}
     }
 
     private static function applyJudge(PDO $pdo,array $u,array $p):array
