@@ -7,8 +7,9 @@ for(const token of ['LOWER(w.display_name)','str_contains($haystack,$normal($q))
 assert(page.includes("LIMIT 500")&&page.includes("GROUP_CONCAT(CONCAT(r.event_key,':',r.category_key)"),'main dashboard must use the production-proven API query');
 assert(photo.includes("uploads/wdc")&&photo.includes('8*1024*1024')&&photo.includes('wdc_photo_replaced'),'universal WDC photo safety missing');
 assert(photo.includes('never creates or changes a BDC or SDC ID'),'identity isolation warning missing');
-assert(photo.includes('SELECT id,identity_code,display_name,entry_type,photo_url FROM bdc_wdc_identities'),'WDC photo page must use the minimal identity-only read');
+assert(photo.includes('SELECT id,identity_code,display_name,entry_type,solo_competitor_id,photo_url FROM bdc_wdc_identities'),'WDC photo page must use the minimal identity read');
 assert(!photo.includes('LEFT JOIN bdc_competitors'),'WDC photo page must not depend on a shared BDC/SDC profile join');
+assert(photo.includes('SELECT photo_url FROM bdc_competitors WHERE id=:id')&&photo.includes("if($photo==='')$photo=$sharedPhoto"),'WDC photo page must display the existing shared-person photo through a guarded fallback read');
 assert(photo.includes("class_exists('finfo')")&&photo.includes("function_exists('mime_content_type')")&&photo.includes('catch(Throwable $exception)'),'WDC photo upload must guard runtime and MIME capability failures');
 assert(edit.includes('Official Dance Cup history protects this WDC identity from archival.'),'official history protection missing');
 assert(edit.includes('bdc_dance_cup_result_history h JOIN bdc_dance_cup_competitions dc')&&edit.includes('JOIN bdc_events e'),'official history names must be joined from their owning tables');

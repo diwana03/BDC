@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev574",
-  "build": 3280,
+  "version": "2.3.3-dev575",
+  "build": 3281,
   "status": "development",
   "release_date": "2026-09-02",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Restores the existing shared-person photo preview on the WDC Adjust Photo page through a separate guarded lookup when the WDC identity has no dedicated photo, while keeping replacements isolated to the WDC identity",
     "Recovers the Dance Cup Adjust Photo route with a minimal WDC-identity-only lookup, guarded MIME detection and upload errors, removing its dependency on the shared BDC competitor join while preserving WDC-only photo updates and audit history",
     "Rolls the Dance Cup Competitor runtime back to the exact Production-confirmed dev571 implementation after the comprehensive dev572 page returned HTTP 500; preserves the proven WDC identity and active-registration query, case-insensitive search, entry/completeness filters and edit/photo actions without changing database data",
     "Restores the comprehensive Dance Cup Competitor dashboard on the Production-proven WDC identity query with fail-safe registration, result and championship-point enrichment; adds event, category, style, level and completeness filters, case-insensitive search, sorting, pagination, duplicate review, CSV export and universal edit/photo actions without allowing optional summary failures to blank the page",
