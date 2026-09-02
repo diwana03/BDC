@@ -69,9 +69,8 @@ final class ApiChangeProposalService
         $table=str_starts_with($type,'judge.')?'bdc_judges':'bdc_competitors';$suffix=$lock?' FOR UPDATE':'';
         $q=$pdo->prepare("SELECT * FROM {$table} WHERE id=:id{$suffix}");$q->execute(['id'=>$target]);$row=$q->fetch();if(!$row)throw new RuntimeException('Target record does not exist.');
         if(str_starts_with($type,'sdc.')){
-            $p=$pdo->prepare("SELECT dance_role,current_division FROM bdc_competitor_discipline_profiles WHERE competitor_id=:id AND dance_style='salsa'{$suffix}");$p->execute(['id'=>$target]);$profile=$p->fetch()?:null;
-            $c=$pdo->prepare("SELECT category FROM bdc_competitor_special_categories WHERE competitor_id=:id AND dance_style='salsa' ORDER BY category{$suffix}");$c->execute(['id'=>$target]);
-            return ['competitor'=>array_intersect_key($row,array_flip(['id','exact_name','status'])),'profile'=>$profile,'categories'=>$c->fetchAll(PDO::FETCH_COLUMN)];
+            $profile=SdcCompetitorService::profile($pdo,$target);
+            return ['competitor'=>array_intersect_key($row,array_flip(['id','exact_name','status'])),'profile'=>$profile?array_intersect_key($profile,array_flip(['sdc_id','dance_role','current_division','status'])):null,'categories'=>$profile['special_categories']??[]];
         }
         $fields=str_starts_with($type,'judge.')?array_merge(['id'],self::JUDGE_FIELDS):array_merge(['id'],self::COMPETITOR_FIELDS);
         return array_intersect_key($row,array_flip($fields));
@@ -113,14 +112,10 @@ final class ApiChangeProposalService
             $categories=$pdo->prepare("SELECT * FROM bdc_competitor_special_categories WHERE competitor_id=:id AND dance_style='salsa' ORDER BY id");$categories->execute(['id'=>$id]);$categoryRows=$categories->fetchAll();
             $pdo->prepare("INSERT INTO bdc_sdc_association_removal_archive(competitor_id,bdc_id,exact_name,identity_json,profile_json,categories_json,approval_note) VALUES(:id,:bdc,:name,:identity,:profile,:categories,'Approved in Super Admin API Changes panel') ON DUPLICATE KEY UPDATE bdc_id=VALUES(bdc_id),exact_name=VALUES(exact_name),identity_json=VALUES(identity_json),profile_json=VALUES(profile_json),categories_json=VALUES(categories_json),approval_note=VALUES(approval_note),removed_at=NOW()")
                 ->execute(['id'=>$id,'bdc'=>(string)($person['bdc_id']??''),'name'=>(string)($person['exact_name']??''),'identity'=>self::encode($identities),'profile'=>self::encode($profiles),'categories'=>self::encode($categoryRows)]);
-            $pdo->prepare("DELETE FROM bdc_competitor_special_categories WHERE competitor_id=:id AND dance_style='salsa'")->execute(['id'=>$id]);
-            $pdo->prepare("DELETE FROM bdc_competitor_discipline_profiles WHERE competitor_id=:id AND dance_style='salsa'")->execute(['id'=>$id]);
-            $pdo->prepare("DELETE FROM bdc_result_identities WHERE competitor_id=:id AND council='sdc'")->execute(['id'=>$id]);return;
+            SdcCompetitorService::archive($pdo,$id);return;
         }
         if($type==='sdc.update'){
-            CouncilResultIdentityService::identityForCompetitor($pdo,$id,'salsa');$role=(string)($payload['dance_role']??'both');
-            $pdo->prepare("INSERT INTO bdc_competitor_discipline_profiles(competitor_id,dance_style,dance_role,current_division) VALUES(:id,'salsa',:role,'unknown') ON DUPLICATE KEY UPDATE dance_role=VALUES(dance_role),updated_at=NOW()")->execute(['id'=>$id,'role'=>$role]);
-            $pdo->prepare("DELETE FROM bdc_competitor_special_categories WHERE competitor_id=:id AND dance_style='salsa'")->execute(['id'=>$id]);$add=$pdo->prepare("INSERT INTO bdc_competitor_special_categories(competitor_id,dance_style,category,source_kind,source_name) VALUES(:id,'salsa',:category,'api_approved','API Changes panel')");foreach($payload['categories'] as $category)$add->execute(['id'=>$id,'category'=>$category]);return;
+            $current=SdcCompetitorService::profile($pdo,$id);$role=(string)($payload['dance_role']??($current['dance_role']??'both'));$division=(string)($current['current_division']??'unknown');SdcCompetitorService::save($pdo,$id,$role,$division,(array)($payload['categories']??($current['special_categories']??[])),'api_approved','API Changes panel');return;
         }
         $table=str_starts_with($type,'judge.')?'bdc_judges':'bdc_competitors';$allowed=str_starts_with($type,'judge.')?self::JUDGE_FIELDS:self::COMPETITOR_FIELDS;$sets=[];$params=['id'=>$id];foreach($payload as $field=>$value){if(!in_array($field,$allowed,true))throw new RuntimeException('Stored field is unsupported.');$sets[]="{$field}=:{$field}";$params[$field]=$value===''?null:$value;}if(!$sets)throw new RuntimeException('No fields to update.');
         $pdo->prepare("UPDATE {$table} SET ".implode(',',$sets).' WHERE id=:id')->execute($params);

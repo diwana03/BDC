@@ -17,6 +17,10 @@ final class CouncilResultIdentityService
     {
         if($competitorId<1)throw new RuntimeException('A valid competitor is required for result identity assignment.');
         $council=self::councilForDance($danceStyle);
+        if($council==='sdc'){
+            $profile=SdcCompetitorService::ensure($pdo,$competitorId);
+            return ['id'=>(int)$profile['id'],'competitor_id'=>$competitorId,'council'=>'sdc','identity_code'=>(string)$profile['sdc_id']];
+        }
         $query=$pdo->prepare("SELECT id,competitor_id,council,identity_code FROM bdc_result_identities WHERE competitor_id=:competitor AND council=:council LIMIT 1");
         $query->execute(['competitor'=>$competitorId,'council'=>$council]);
         if($row=$query->fetch())return $row;
@@ -26,17 +30,6 @@ final class CouncilResultIdentityService
             $source->execute(['competitor'=>$competitorId]);
             $code=(string)$source->fetchColumn();
             if($code==='')throw new RuntimeException('The Bachata competitor does not have a BDC ID.');
-        }else{
-            if((int)$pdo->query("SELECT GET_LOCK('bdc-sdc-identity-sequence',10)")->fetchColumn()!==1)throw new RuntimeException('Could not reserve an SDC ID. Please try again.');
-            try{
-                $query->execute(['competitor'=>$competitorId,'council'=>$council]);
-                if($row=$query->fetch())return $row;
-                $next=(int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(identity_code,5) AS UNSIGNED)),0)+1 FROM bdc_result_identities WHERE council='sdc' AND identity_code LIKE 'SDC-%'")->fetchColumn();
-                $code='SDC-'.str_pad((string)$next,6,'0',STR_PAD_LEFT);
-                $insert=$pdo->prepare("INSERT INTO bdc_result_identities(competitor_id,council,identity_code) VALUES(:competitor,:council,:code)");
-                $insert->execute(['competitor'=>$competitorId,'council'=>$council,'code'=>$code]);
-                return ['id'=>(int)$pdo->lastInsertId(),'competitor_id'=>$competitorId,'council'=>$council,'identity_code'=>$code];
-            }finally{$pdo->query("SELECT RELEASE_LOCK('bdc-sdc-identity-sequence')")->fetchColumn();}
         }
         $insert=$pdo->prepare("INSERT INTO bdc_result_identities(competitor_id,council,identity_code) VALUES(:competitor,:council,:code)");
         $insert->execute(['competitor'=>$competitorId,'council'=>$council,'code'=>$code]);

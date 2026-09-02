@@ -106,6 +106,11 @@ $orderBy = $sortMap[$sort] ?? $sortMap['name'];
 $sort = array_key_exists($sort, $sortMap) ? $sort : 'name';
 $orderSql = strtoupper($order);
 $whereSql = implode(' AND ', $where);
+$identitySource=$dashboardCouncil==='sdc'
+    ?"(SELECT competitor_id,sdc_id identity_code FROM bdc_sdc_competitors WHERE status='active')"
+    :"(SELECT competitor_id,identity_code FROM bdc_result_identities WHERE council='bdc')";
+$salsaProfileSource="(SELECT competitor_id,dance_role,current_division FROM bdc_sdc_competitors WHERE status='active')";
+$categorySource="(SELECT competitor_id,GROUP_CONCAT(CASE WHEN dance_style='bachata' THEN category END ORDER BY category SEPARATOR ',') bachata_special_categories,NULL salsa_special_categories FROM bdc_competitor_special_categories WHERE dance_style='bachata' GROUP BY competitor_id UNION ALL SELECT s.competitor_id,NULL,GROUP_CONCAT(c.category ORDER BY c.category SEPARATOR ',') FROM bdc_sdc_competitors s LEFT JOIN bdc_sdc_competitor_categories c ON c.sdc_competitor_id=s.id WHERE s.status='active' GROUP BY s.competitor_id)";
 
 $baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachata_division,sc.bachata_special_categories,
         ri.identity_code dashboard_identity_code,
@@ -114,10 +119,10 @@ $baseListSql = "SELECT c.*,bp.dance_role bachata_role,bp.current_division bachat
         COALESCE(pp.salsa_points,0) salsa_points,COALESCE(pp.salsa_novice_points,0) salsa_novice_points,COALESCE(pp.salsa_intermediate_points,0) salsa_intermediate_points,COALESCE(pp.salsa_advanced_points,0) salsa_advanced_points,
         COALESCE(pp.bachata_points,0)+COALESCE(pp.salsa_points,0) AS total_points
     FROM bdc_competitors c
-    JOIN bdc_result_identities ri ON ri.competitor_id=c.id AND ri.council=".$pdo->quote($dashboardCouncil)."
+    JOIN {$identitySource} ri ON ri.competitor_id=c.id
     LEFT JOIN bdc_competitor_discipline_profiles bp ON bp.competitor_id=c.id AND bp.dance_style='bachata'
-    LEFT JOIN bdc_competitor_discipline_profiles sp ON sp.competitor_id=c.id AND sp.dance_style='salsa'
-    LEFT JOIN (SELECT competitor_id,GROUP_CONCAT(CASE WHEN dance_style='bachata' THEN category END ORDER BY category SEPARATOR ',') bachata_special_categories,GROUP_CONCAT(CASE WHEN dance_style='salsa' THEN category END ORDER BY category SEPARATOR ',') salsa_special_categories FROM bdc_competitor_special_categories GROUP BY competitor_id) sc ON sc.competitor_id=c.id
+    LEFT JOIN {$salsaProfileSource} sp ON sp.competitor_id=c.id
+    LEFT JOIN (SELECT competitor_id,MAX(bachata_special_categories) bachata_special_categories,MAX(salsa_special_categories) salsa_special_categories FROM {$categorySource} grouped_categories GROUP BY competitor_id) sc ON sc.competitor_id=c.id
     LEFT JOIN (SELECT competitor_id,
         SUM(CASE WHEN dance_style='bachata' THEN points ELSE 0 END) bachata_points,
         SUM(CASE WHEN dance_style='bachata' AND division='novice' THEN points ELSE 0 END) bachata_novice_points,
@@ -182,7 +187,7 @@ if ((string)($_GET['export'] ?? '') === 'csv') {
     exit;
 }
 
-$countSql = "SELECT COUNT(*) FROM bdc_competitors c JOIN bdc_result_identities ri ON ri.competitor_id=c.id AND ri.council=".$pdo->quote($dashboardCouncil)." WHERE {$whereSql}";
+$countSql = "SELECT COUNT(*) FROM bdc_competitors c JOIN {$identitySource} ri ON ri.competitor_id=c.id WHERE {$whereSql}";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($params);
 $totalRows = (int)$countStmt->fetchColumn();
@@ -203,13 +208,19 @@ $stmt->execute();
 $rows = $stmt->fetchAll();
 
 $countScope=$pdo->quote($dashboardCouncil);$danceScope=$pdo->quote($danceStyle?:'bachata');
-$counts = [
-    'all_participants' => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities WHERE council={$countScope}")->fetchColumn(),
-    'missing_photo'    => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council={$countScope} AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
-    'missing_country'  => (int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council={$countScope} AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
-    'incomplete_profile' => (int)$pdo->query("SELECT COUNT(DISTINCT p.competitor_id) FROM bdc_competitor_discipline_profiles p JOIN bdc_result_identities ri ON ri.competitor_id=p.competitor_id AND ri.council={$countScope} WHERE p.dance_style={$danceScope} AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
-    'special_category' => (int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_result_identities ri ON ri.competitor_id=s.competitor_id AND ri.council={$countScope} WHERE s.dance_style={$danceScope}")->fetchColumn(),
-];
+if($dashboardCouncil==='sdc'){$counts=[
+    'all_participants'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_sdc_competitors WHERE status='active'")->fetchColumn(),
+    'missing_photo'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_sdc_competitors s JOIN bdc_competitors c ON c.id=s.competitor_id WHERE s.status='active' AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
+    'missing_country'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_sdc_competitors s JOIN bdc_competitors c ON c.id=s.competitor_id WHERE s.status='active' AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
+    'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_sdc_competitors WHERE status='active' AND dance_role='unknown'")->fetchColumn(),
+    'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT sdc_competitor_id) FROM bdc_sdc_competitor_categories")->fetchColumn(),
+];}else{$counts=[
+    'all_participants'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities WHERE council='bdc'")->fetchColumn(),
+    'missing_photo'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council='bdc' AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
+    'missing_country'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council='bdc' AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
+    'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitor_discipline_profiles p JOIN bdc_result_identities ri ON ri.competitor_id=p.competitor_id AND ri.council='bdc' WHERE p.dance_style='bachata' AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
+    'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_result_identities ri ON ri.competitor_id=s.competitor_id AND ri.council='bdc' WHERE s.dance_style='bachata'")->fetchColumn(),
+];}
 $hasListFilters=$q!==''||$filter!==''||$country!==''||$danceStyle!==''||$role!==''||$division!==''||$status!=='';
 
 $countries = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
@@ -404,7 +415,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                     <th><a class="sortable" href="<?= e(sortUrl('name', $sort, $order)) ?>">Name<?= sortMark('name', $sort, $order) ?></a></th>
                     <th><a class="sortable" href="<?= e(sortUrl('country', $sort, $order)) ?>">Country<?= sortMark('country', $sort, $order) ?></a></th>
                     <?php if($dashboard===''):?><th>Bachata Profile</th><th>Salsa Profile</th><?php else:?><th><?=e(ucfirst($dashboard))?> Profile</th><?php endif;?>
-                    <th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>"><?=$dashboard===''?'Points by Style':e(ucfirst($dashboard).' Points')?><?= sortMark('total', $sort, $order) ?></a></th>
+                    <?php if($dashboard!=='salsa'):?><th><a class="sortable" href="<?= e(sortUrl('total', $sort, $order)) ?>"><?=$dashboard===''?'Points by Style':e(ucfirst($dashboard).' Points')?><?= sortMark('total', $sort, $order) ?></a></th><?php endif;?>
                     <th><a class="sortable" href="<?= e(sortUrl('status', $sort, $order)) ?>">Status<?= sortMark('status', $sort, $order) ?></a></th>
                     <th></th>
                 </tr>
@@ -425,7 +436,7 @@ $currentListReturn = '?' . http_build_query($_GET);
                         </td>
                         <td><?= e($row['country'] ?: '—') ?></td>
                         <?php foreach ($dashboard!==''?[$dashboard]:['bachata','salsa'] as $style): $div=(string)($row[$style.'_division']??'');$rrole=(string)($row[$style.'_role']??'');$specials=array_values(array_filter(explode(',',(string)($row[$style.'_special_categories']??''))));?><td><div class="profile-box <?=$specials!==[]?'special':''?>"><strong><?=ucfirst($style)?></strong><?php if($div):?><div><span class="badge text-bg-primary"><?=e(ucwords(str_replace('_',' ',$div)))?></span></div><?php endif;?><?php foreach($specials as $special):?><div class="mt-1"><span class="badge text-bg-info"><?=e(SpecialCategoryService::label($special))?></span></div><?php endforeach;?><div class="small text-muted mt-1"><?=$rrole==='unknown'?'Role not required / unset':e(ucfirst($rrole))?></div><?php if(!$div&&$specials===[]):?><div class="small text-muted">No profile</div><?php endif;?></div></td><?php endforeach;?>
-                        <td><?php foreach($dashboard!==''?[$dashboard=>ucfirst($dashboard)]:['bachata'=>'Bachata','salsa'=>'Salsa'] as $style=>$label):?><div class="<?=$style==='salsa'&&$dashboard===''?'mt-2':''?>"><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td>
+                        <?php if($dashboard!=='salsa'):?><td><?php foreach($dashboard!==''?[$dashboard=>ucfirst($dashboard)]:['bachata'=>'Bachata'] as $style=>$label):?><div><strong><?=e($label)?> Total:</strong> <?=e((string)(float)$row[$style.'_points'])?></div><div class="small text-muted"><span>Novice: <?=e((string)(float)$row[$style.'_novice_points'])?></span> · <span>Intermediate: <?=e((string)(float)$row[$style.'_intermediate_points'])?></span> · <span>Advanced: <?=e((string)(float)$row[$style.'_advanced_points'])?></span></div><?php endforeach;?></td><?php endif;?>
                         <td><span class="badge text-bg-<?= $row['status'] === 'active' ? 'success' : ($row['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= e(ucfirst($row['status'])) ?></span></td>
                         <td class="text-end">
                             <?php if (Auth::can('competitors.edit')): ?>

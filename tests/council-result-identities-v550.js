@@ -4,6 +4,7 @@ const fs = require('fs');
 const read = file => fs.readFileSync(file, 'utf8');
 const migration = read('database/migrations/20260901_0200_council_result_identities.php');
 const identities = read('app/Services/CouncilResultIdentityService.php');
+const sdc = read('app/Services/SdcCompetitorService.php');
 const cup = read('app/Services/DanceCupScoringService.php');
 const results = read('results/index.php');
 const special = read('app/Services/SpecialCategoryService.php');
@@ -17,9 +18,9 @@ assert(migration.includes("WHERE competition_level='open'"), 'historical WDC poi
 assert(migration.includes('WHEN 1 THEN 10 WHEN 2 THEN 8 WHEN 3 THEN 6 WHEN 4 THEN 4 WHEN 5 THEN 2 ELSE 1'), 'WDC backfill points schedule is wrong');
 
 assert(identities.includes("return strtolower(trim($danceStyle))==='salsa'?'sdc':'bdc'"), 'dance-to-council isolation is missing');
-assert(identities.includes("'SDC-'.str_pad"), 'SDC generator is missing');
+assert(sdc.includes("'SDC-'.str_pad"), 'SDC generator is missing');
 assert(identities.includes("'WDC-'.str_pad"), 'WDC generator is missing');
-assert(identities.includes("GET_LOCK('bdc-sdc-identity-sequence',10)"), 'SDC allocation must be concurrency locked');
+assert(sdc.includes("GET_LOCK('bdc-sdc-identity-sequence',10)"), 'SDC allocation must be concurrency locked');
 assert(identities.includes("GET_LOCK('bdc-wdc-identity-sequence',10)"), 'WDC allocation must be concurrency locked');
 assert(identities.includes('[1=>10,2=>8,3=>6,4=>4,5=>2]'), 'WDC Open points schedule is wrong');
 assert(identities.includes('$placement>5?1:0'), 'valid WDC finishers after fifth must receive one point');

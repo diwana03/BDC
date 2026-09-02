@@ -1,0 +1,23 @@
+const fs=require('fs'),assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const migration=read('database/migrations/20260902_0600_separate_sdc_competitor_profiles.php');
+const service=read('app/Services/SdcCompetitorService.php');
+const editor=read('admin/competitors/edit.php');
+const dashboard=read('admin/competitors/index.php');
+const api=read('app/Services/ApiChangeProposalService.php');
+const diagnostics=read('app/Services/ProfileDiagnosticQueryService.php');
+
+for(const table of ['bdc_sdc_competitors','bdc_sdc_competitor_categories'])assert(migration.includes('CREATE TABLE IF NOT EXISTS '+table),table+' missing');
+for(const protectedTable of ['bdc_participant_results','bdc_point_transactions','bdc_wdc_identities','bdc_wdc_championship_points'])assert(!new RegExp('(INSERT INTO|UPDATE|DELETE FROM)\\s+'+protectedTable,'i').test(migration),'migration mutates '+protectedTable);
+assert(migration.includes('REFERENCES bdc_competitors(id) ON DELETE RESTRICT'),'shared person/photo link is not protected');
+assert(migration.includes("IN ('intermediate','advanced')"),'legacy Salsa Novice must not survive SDC separation');
+assert(service.includes('final class SdcCompetitorService'),'canonical SDC service missing');
+assert(service.includes("WHERE competitor_id=:id AND council='sdc'"),'legacy identity cleanup is not SDC-scoped');
+assert(service.includes("WHERE competitor_id=:id AND dance_style='salsa'"),'legacy compatibility cleanup is not Salsa-scoped');
+assert(!/UPDATE bdc_competitors SET (?:dance_role|current_division)/.test(service),'SDC service can mutate BDC profile fields');
+assert(editor.includes("SdcCompetitorService::save"),'Salsa editor bypasses canonical SDC service');
+assert(editor.includes("'salsa_invitational'"),'Salsa Invitational is missing from the SDC editor');
+assert(dashboard.includes('JOIN {$identitySource} ri')&&dashboard.includes('bdc_sdc_competitors'),'Salsa dashboard bypasses canonical SDC tables');
+assert(api.includes('SdcCompetitorService::archive')&&api.includes('SdcCompetitorService::save'),'API approval bypasses canonical SDC service');
+assert(diagnostics.includes('FROM bdc_sdc_competitors'),'SDC diagnostics use legacy identity tables');
+console.log('SDC database separation checks passed');

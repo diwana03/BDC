@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev559",
-  "build": 3265,
+  "version": "2.3.3-dev560",
+  "build": 3266,
   "status": "development",
   "release_date": "2026-09-01",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Separates SDC membership, SDC IDs, Salsa roles, progression and Rising/Open/Invitational categories into dedicated database tables linked to the shared person and photo record; routes the Salsa dashboard, editor, diagnostics, reconciliation and approved API changes through one canonical SDC service; keeps temporary Salsa-only compatibility rows; and proves the migration cannot mutate BDC results, points, events or WDC records",
     "Copies Carlito's existing active Judge Database photo to SDC-000096 only after exact SDC-only identity, unique judge match and non-empty-photo checks, without changing the judge or any BDC identity",
     "Creates the eight remaining verified competitors as SDC-only records with no BDC identity, assigns Salsa Rising/Open categories and Unknown progression, and preserves every existing BDC profile unchanged",
     "Reconciles SDC without changing BDC identities: removes three remaining non-registrants, consolidates duplicate Budveen and Gokul SDC identities on their oldest codes with verified categories, clears Salsa Novice from every SDC profile, and adds unambiguous photographed Ángel, Carlos and Bárbara Salsa Open profiles",
