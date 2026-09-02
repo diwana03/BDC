@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-use App\\Core\\Auth;use App\\Core\\Database;
+use App\Core\Auth;use App\Core\Database;
 Auth::requirePermission('competitors.view');$pdo=Database::connection();
 function wdcpLower(string $v):string{return function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);}function wdcpLabel(string $v):string{return ucwords(str_replace(['_','-',':'],' ',trim($v)));}function wdcpUrl(array $c=[]):string{$q=array_merge($_GET,$c);foreach($q as $k=>$v)if($v===''||$v===null)unset($q[$k]);return'?'.http_build_query($q);}
 $q=trim((string)($_GET['q']??''));$type=(string)($_GET['type']??'');$style=(string)($_GET['style']??'');$complete=(string)($_GET['complete']??'');$sort=(string)($_GET['sort']??'name');$order=strtolower((string)($_GET['order']??'asc'))==='desc'?'desc':'asc';

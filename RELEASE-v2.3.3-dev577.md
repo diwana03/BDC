@@ -17,6 +17,7 @@
 - Repairs the pre-existing malformed competitor-role ternary found by the PHP gate in `EventIntegrationService`.
 - Repairs the pre-existing missing statement terminator found by the PHP gate in the automatic scoring live-data endpoint.
 - Restores the 723-line Test scoring workflow section accidentally replaced by literal truncation text in dev505, while retaining the later roster recovery and council-isolation fixes.
+- Corrects the premium WDC dashboard namespace imports caught by the PHP 8.1 candidate gate.
 
 ## Safety
 

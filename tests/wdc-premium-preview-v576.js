@@ -9,6 +9,7 @@ const eventIntegration=fs.readFileSync('app/Services/EventIntegrationService.php
 const automaticLiveData=fs.readFileSync('admin/scoring-tests/automatic-live-data.php','utf8');
 const scoringTestDashboard=fs.readFileSync('admin/scoring-tests/index.php','utf8');
 assert(page.includes("Auth::requirePermission('competitors.view')"),'premium dashboard permission missing');
+assert(page.includes('use App\\Core\\Auth;use App\\Core\\Database;')&&!page.includes('use App\\\\Core'),'premium dashboard namespace imports are invalid');
 assert(page.includes('FROM bdc_wdc_identities w LEFT JOIN bdc_competitors c'),'premium dashboard must use proven WDC identity read');
 assert(page.includes("GROUP_CONCAT(CONCAT(r.event_key,':',r.category_key)")&&page.includes('LIMIT 500'),'premium dashboard must retain proven query');
 for(const marker of ['WDC COMPETITOR MANAGEMENT','Missing photos','Missing country','Possible duplicates','Export CSV','Apply filters','Click a heading to sort','Edit profile','Adjust photo','completeness'])assert(page.includes(marker),'premium dashboard missing '+marker);
