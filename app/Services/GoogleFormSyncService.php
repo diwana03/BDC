@@ -65,7 +65,7 @@ final class GoogleFormSyncService
             $candidates=self::findCandidates($pdo,$data);
             $decision=self::resolveIdentity($data,$candidates);
             if($decision['status']==='pending_review'){
-                $ids=array_map(static fn(array $c):(int)$c['id'],$candidates);
+                $ids=array_map(static fn(array $c):int=>(int)$c['id'],$candidates);
                 $pdo->prepare("UPDATE bdc_form_sync_submissions SET status='pending_review',candidate_ids_json=:ids,processed_at=NOW() WHERE id=:id")
                     ->execute(['ids'=>json_encode($ids),'id'=>$submissionId]);
                 $pdo->commit();
