@@ -1,0 +1,24 @@
+const fs=require('fs');
+const assert=require('assert');
+const read=path=>fs.readFileSync(path,'utf8');
+const ht=read('.htaccess');
+const oauth=read('app/Services/McpOAuthService.php');
+const authorize=read('mcp/oauth/authorize.php');
+const token=read('mcp/oauth/token.php');
+const resource=read('mcp/oauth/resource.php');
+const endpoint=read('mcp/index.php');
+
+assert(ht.includes('RewriteRule ^mcp/?$ mcp/index.php [QSA,L]'),'both MCP URL forms must route directly without DirectorySlash');
+assert(ht.indexOf('RewriteRule ^mcp/?$ mcp/index.php')<ht.indexOf('RewriteCond %{REQUEST_FILENAME} !-d'),'MCP direct route must run before the physical-directory bypass');
+assert(oauth.includes('function requireResource(string $resource)'),'OAuth service must validate the RFC 8707 resource');
+assert(oauth.includes('hash_equals($expected,$resource)'),'OAuth resource comparison must be exact and timing safe');
+assert(oauth.includes("'client_id_issued_at'=>time()"),'dynamic client registration must report issue time');
+assert(authorize.includes("$resource=(string)($_GET['resource']??$_POST['resource']??'')"),'authorization endpoint must receive resource');
+assert(authorize.includes("'resource'=>$resource"),'authorization consent must preserve resource');
+assert(authorize.includes('issueCode(')&&authorize.includes('$resource);'),'authorization code issuance must validate resource');
+assert(token.includes("$resource=(string)($_POST['resource']??'')"),'token endpoint must receive resource');
+assert(token.includes('exchangeCode(')&&token.includes('$resource);'),'authorization code exchange must validate resource');
+assert(token.includes('refresh(')&&token.includes('$resource);'),'refresh grant must validate resource');
+assert(resource.includes("'resource'=>absolute_url('mcp')"),'protected-resource metadata must advertise the canonical no-slash URL');
+assert(endpoint.includes("'version'=>'2.3.3-dev587'"),'MCP server version must match release');
+console.log('MCP OAuth resource and routing checks passed');

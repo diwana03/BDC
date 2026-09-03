@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# Route both the canonical no-slash MCP URL and the directory URL directly to
+# the Streamable HTTP endpoint. This prevents Apache DirectorySlash from
+# redirecting an MCP POST and changing the request method.
+RewriteRule ^mcp/?$ mcp/index.php [QSA,L]
+
 # OAuth 2.1 discovery for the BDC MCP resource and authorization server.
 RewriteRule ^\.well-known/oauth-protected-resource/?$ mcp/oauth/resource.php [QSA,L]
 RewriteRule ^\.well-known/oauth-authorization-server/?$ mcp/oauth/metadata.php [QSA,L]

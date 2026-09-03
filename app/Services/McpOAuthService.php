@@ -11,6 +11,18 @@ final class McpOAuthService
     public const READ_SCOPE='bdc.events.read';
     public const STAGE_SCOPE='bdc.events.stage';
 
+    public static function resource():string
+    {
+        return \absolute_url('mcp');
+    }
+
+    public static function requireResource(string $resource):string
+    {
+        $expected=self::resource();
+        if($resource===''||!hash_equals($expected,$resource))throw new RuntimeException('The OAuth resource must exactly match '.$expected.'.');
+        return $expected;
+    }
+
     public static function ensure(PDO $pdo):void
     {
         $pdo->exec("CREATE TABLE IF NOT EXISTS bdc_mcp_oauth_clients(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,client_id VARCHAR(191) NOT NULL,client_name VARCHAR(190) NOT NULL,redirect_uris_json TEXT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE INDEX uq_bdc_mcp_client(client_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
@@ -25,7 +37,7 @@ final class McpOAuthService
         $clean=[];foreach($uris as $uri){$uri=trim((string)$uri);$parts=parse_url($uri);if(!is_array($parts)||strtolower((string)($parts['scheme']??''))!=='https'||empty($parts['host'])||isset($parts['fragment']))throw new RuntimeException('Every redirect URI must be an absolute HTTPS URL without a fragment.');$clean[]=$uri;}
         $clean=array_values(array_unique($clean));$clientId='bdc_'.bin2hex(random_bytes(24));$name=substr(trim((string)($input['client_name']??'ChatGPT')),0,190)?:'ChatGPT';
         $pdo->prepare('INSERT INTO bdc_mcp_oauth_clients(client_id,client_name,redirect_uris_json) VALUES(:id,:name,:uris)')->execute(['id'=>$clientId,'name'=>$name,'uris'=>json_encode($clean,JSON_UNESCAPED_SLASHES)]);
-        return ['client_id'=>$clientId,'client_name'=>$name,'redirect_uris'=>$clean,'token_endpoint_auth_method'=>'none','grant_types'=>['authorization_code','refresh_token'],'response_types'=>['code']];
+        return ['client_id'=>$clientId,'client_id_issued_at'=>time(),'client_name'=>$name,'redirect_uris'=>$clean,'token_endpoint_auth_method'=>'none','grant_types'=>['authorization_code','refresh_token'],'response_types'=>['code']];
     }
 
     public static function client(PDO $pdo,string $clientId,string $redirectUri):?array
@@ -33,20 +45,21 @@ final class McpOAuthService
         self::ensure($pdo);$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_clients WHERE client_id=:id');$s->execute(['id'=>$clientId]);$row=$s->fetch();if(!$row)return null;$uris=json_decode((string)$row['redirect_uris_json'],true);return is_array($uris)&&in_array($redirectUri,$uris,true)?$row:null;
     }
 
-    public static function issueCode(PDO $pdo,string $clientId,int $userId,string $redirectUri,string $scope,string $challenge):string
+    public static function issueCode(PDO $pdo,string $clientId,int $userId,string $redirectUri,string $scope,string $challenge,string $resource):string
     {
+        self::requireResource($resource);
         if(!preg_match('/^[A-Za-z0-9\-._~]{43,128}$/',$challenge))throw new RuntimeException('A valid S256 code_challenge is required.');
         $scope=self::scope($scope);$code=self::randomToken();$pdo->prepare("INSERT INTO bdc_mcp_oauth_codes(code_hash,client_id,user_id,redirect_uri,scope,code_challenge,expires_at) VALUES(:hash,:client,:user,:redirect,:scope,:challenge,DATE_ADD(NOW(),INTERVAL 5 MINUTE))")->execute(['hash'=>hash('sha256',$code),'client'=>$clientId,'user'=>$userId,'redirect'=>$redirectUri,'scope'=>$scope,'challenge'=>$challenge]);return $code;
     }
 
-    public static function exchangeCode(PDO $pdo,string $code,string $clientId,string $redirectUri,string $verifier):array
+    public static function exchangeCode(PDO $pdo,string $code,string $clientId,string $redirectUri,string $verifier,string $resource):array
     {
-        self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_codes WHERE code_hash=:hash AND client_id=:client AND redirect_uri=:redirect AND used_at IS NULL AND expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$code),'client'=>$clientId,'redirect'=>$redirectUri]);$row=$s->fetch();$challenge=rtrim(strtr(base64_encode(hash('sha256',$verifier,true)),'+/','-_'),'=');if(!$row||!hash_equals((string)$row['code_challenge'],$challenge))throw new RuntimeException('Invalid or expired authorization code.');$pdo->prepare('UPDATE bdc_mcp_oauth_codes SET used_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,(string)$row['client_id'],(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        self::requireResource($resource);self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_codes WHERE code_hash=:hash AND client_id=:client AND redirect_uri=:redirect AND used_at IS NULL AND expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$code),'client'=>$clientId,'redirect'=>$redirectUri]);$row=$s->fetch();$challenge=rtrim(strtr(base64_encode(hash('sha256',$verifier,true)),'+/','-_'),'=');if(!$row||!hash_equals((string)$row['code_challenge'],$challenge))throw new RuntimeException('Invalid or expired authorization code.');$pdo->prepare('UPDATE bdc_mcp_oauth_codes SET used_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,(string)$row['client_id'],(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
-    public static function refresh(PDO $pdo,string $refresh,string $clientId):array
+    public static function refresh(PDO $pdo,string $refresh,string $clientId,string $resource):array
     {
-        self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_tokens WHERE refresh_hash=:hash AND client_id=:client AND revoked_at IS NULL AND refresh_expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$refresh),'client'=>$clientId]);$row=$s->fetch();if(!$row)throw new RuntimeException('Invalid or expired refresh token.');$pdo->prepare('UPDATE bdc_mcp_oauth_tokens SET revoked_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,$clientId,(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        self::requireResource($resource);self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_tokens WHERE refresh_hash=:hash AND client_id=:client AND revoked_at IS NULL AND refresh_expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$refresh),'client'=>$clientId]);$row=$s->fetch();if(!$row)throw new RuntimeException('Invalid or expired refresh token.');$pdo->prepare('UPDATE bdc_mcp_oauth_tokens SET revoked_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,$clientId,(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
     public static function authenticate(PDO $pdo,string $bearer,string $requiredScope):?array
