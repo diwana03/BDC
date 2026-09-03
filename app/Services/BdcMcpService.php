@@ -51,7 +51,16 @@ final class BdcMcpService
         return ['dance_style'=>$dance,'division'=>$division,'count'=>count($eligible),'competitors'=>array_slice($eligible,0,500)];
     }
     private static function stage(PDO $pdo,array $a):array
-    {$mode=self::mode($a);$event=(int)($a['target_event_id']??0);$round=(int)($a['target_round_id']??0);$competitors=$a['competitors']??null;if($event<1||$round<1||!is_array($competitors)||$competitors===[])throw new RuntimeException('Exact target_event_id, target_round_id and competitors are required.');$source=substr(trim((string)($a['source_key']??'')),0,191);if($source==='')$source='round-'.$mode.'-'.$event.'-'.$round.'-'.substr(hash('sha256',json_encode($competitors)),0,16);$batch='chatgpt-'.gmdate('Ymd').'-'.substr(hash('sha256',$source),0,20);return EventIntegrationService::submitBatch($pdo,['batch_key'=>$batch,'source_system'=>'chatgpt_mcp','items'=>[['event_system'=>'jack_jill','data_mode'=>$mode,'source_key'=>$source,'operation'=>'add_competitors','payload'=>['target_event_id'=>$event,'target_round_id'=>$round,'competitors'=>$competitors]]]]);}
+    {
+        $mode=self::mode($a);$event=(int)($a['target_event_id']??0);$round=(int)($a['target_round_id']??0);$competitors=$a['competitors']??null;
+        if($event<1||$round<1||!is_array($competitors)||$competitors===[])throw new RuntimeException('Exact target_event_id, target_round_id and competitors are required.');
+        $normalized=[];
+        foreach($competitors as $competitor){
+            if(!is_array($competitor))throw new RuntimeException('Every competitor selection must be an object.');
+            $normalized[]=['council_id'=>(string)($competitor['identity_code']??''),'role'=>(string)($competitor['role']??''),'bib'=>$competitor['bib_number']??0];
+        }
+        $source=substr(trim((string)($a['source_key']??'')),0,191);if($source==='')$source='round-'.$mode.'-'.$event.'-'.$round.'-'.substr(hash('sha256',json_encode($normalized)),0,16);$batch='chatgpt-'.gmdate('Ymd').'-'.substr(hash('sha256',$source),0,20);return EventIntegrationService::submitBatch($pdo,['batch_key'=>$batch,'source_system'=>'chatgpt_mcp','items'=>[['event_system'=>'jack_jill','data_mode'=>$mode,'source_key'=>$source,'operation'=>'add_competitors','payload'=>['target_event_id'=>$event,'target_round_id'=>$round,'competitors'=>$normalized]]]]);
+    }
     private static function status(PDO $pdo,array $a):array{$key=trim((string)($a['batch_key']??''));if($key==='')throw new RuntimeException('batch_key is required.');$row=EventIntegrationService::batchStatus($pdo,$key);if(!$row)throw new RuntimeException('Batch not found.');return ['batch'=>$row];}
     private static function mode(array $a):string{$mode=strtolower(trim((string)($a['data_mode']??'')));if(!in_array($mode,['test','live'],true))throw new RuntimeException('data_mode must be test or live.');return $mode;}
 }
