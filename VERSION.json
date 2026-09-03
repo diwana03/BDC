@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev579",
-  "build": 3285,
+  "version": "2.3.3-dev580",
+  "build": 3286,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Expands the WDC competitor editor from a basic identity shell into a complete WDC-specific profile with the canonical country selector, city, primary contact, email, phone, WhatsApp, Instagram, studio or team, member names, biography and private admin notes while preserving permanent WDC IDs and leaving registrations, scores, results and championship points read-only",
     "Adds an approval-gated WDC photo_replace integration operation that accepts an exact WDC ID and untouched JPG, PNG or WebP, updates only the matched WDC identity photo after Super Admin approval, and cannot modify names, shared BDC or SDC profiles, registrations, scores, results or points",
     "Upgrades the real Bachata J&J and Salsa J&J competitor dashboards to one premium responsive council-aware workspace, retains strict BDC/SDC identity isolation and case-insensitive search, scopes division and special-category filters correctly, fixes the All Participants summary state, and preserves the correct council identity through editing and photo adjustment",
     "Makes the real Dance Cup Competitor route the single premium WDC workspace, removes the unrequested preview route and menu, retains the Production-proven identity query, adds premium search/filter/sort/duplicate/completeness/export features, redesigns the WDC editor without raw photo URLs, adds drag/zoom/crop photo controls, and introduces a PHP 8.1 GitHub Actions syntax gate",
