@@ -12,8 +12,7 @@ return static function(PDO $pdo):void{
         "ALTER TABLE bdc_wdc_identities ADD COLUMN studio_name VARCHAR(190) NULL AFTER instagram",
         "ALTER TABLE bdc_wdc_identities ADD COLUMN member_names TEXT NULL AFTER studio_name",
         "ALTER TABLE bdc_wdc_identities ADD COLUMN biography TEXT NULL AFTER member_names",
-        "ALTER TABLE bdc_wdc_identities ADD COLUMN photo_consent TINYINT(1) NULL AFTER biography",
-        "ALTER TABLE bdc_wdc_identities ADD COLUMN admin_notes TEXT NULL AFTER photo_consent"
+        "ALTER TABLE bdc_wdc_identities ADD COLUMN admin_notes TEXT NULL AFTER biography"
     ] as $sql){try{$pdo->exec($sql);}catch(Throwable){}}
     $pdo->exec("UPDATE bdc_wdc_identities w JOIN bdc_competitors c ON c.id=w.solo_competitor_id SET w.country=COALESCE(NULLIF(w.country,''),c.country),w.email=COALESCE(NULLIF(w.email,''),c.email),w.phone=COALESCE(NULLIF(w.phone,''),c.phone),w.instagram=COALESCE(NULLIF(w.instagram,''),c.instagram) WHERE w.entry_type='solo'");
 };
