@@ -27,8 +27,18 @@ final class BdcMcpService
         if(!in_array($dance,['bachata','salsa'],true))throw new RuntimeException('dance_style is required.');
         $role=strtolower(trim((string)($a['role']??'')));if($role!==''&&!in_array($role,['leader','follower'],true))throw new RuntimeException('role must be leader or follower.');
         $query=trim((string)($a['query']??''));$rows=JackJillCompetitorEligibilityService::directory($pdo,$dance,$role!==''?$role:null,1500);
+        $registered=null;
+        if(SpecialCategoryService::isSpecial($division)){
+            if($dance==='salsa'){
+                $category=$pdo->prepare("SELECT DISTINCT s.competitor_id FROM bdc_sdc_competitor_categories c JOIN bdc_sdc_competitors s ON s.id=c.sdc_competitor_id WHERE c.category=:category AND s.status='active'");
+            }else{
+                $category=$pdo->prepare("SELECT DISTINCT competitor_id FROM bdc_competitor_special_categories WHERE dance_style='bachata' AND category=:category");
+            }
+            $category->execute(['category'=>$division]);$registered=array_fill_keys(array_map('intval',$category->fetchAll(PDO::FETCH_COLUMN)),true);
+        }
         $lower=static fn(string $v):string=>function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);$needle=$lower($query);$eligible=[];
         foreach($rows as $row){
+            if($registered!==null&&!isset($registered[(int)$row['id']]))continue;
             if($needle!==''&&!str_contains($lower((string)($row['identity_code']??'').' '.(string)($row['exact_name']??'')),$needle))continue;
             $profileRole=strtolower((string)($row['dance_role']??''));$roles=$role!==''?[$role]:($profileRole==='both'?['leader','follower']:[$profileRole]);$allowed=[];
             foreach($roles as $candidateRole){
