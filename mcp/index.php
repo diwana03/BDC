@@ -10,7 +10,7 @@ $raw=(string)file_get_contents('php://input');if(strlen($raw)>1024*1024)mcpOut([
 $header=trim((string)($_SERVER['HTTP_AUTHORIZATION']??''));$bearer=preg_match('/^Bearer\s+(.+)$/i',$header,$m)?trim($m[1]):'';$method=(string)($req['method']??'');$required=$method==='tools/call'&&(string)($req['params']['name']??'')==='stage_competitor_additions'?McpOAuthService::STAGE_SCOPE:McpOAuthService::READ_SCOPE;$user=McpOAuthService::authenticate(Database::connection(),$bearer,$required);
 if(!$user){$resource=absolute_url('mcp/oauth/resource.php');header('WWW-Authenticate: Bearer resource_metadata="'.$resource.'"');mcpOut(['jsonrpc'=>'2.0','id'=>$req['id']??null,'error'=>['code'=>-32001,'message'=>'Authorization required.']],401);}
 $id=$req['id']??null;
-if($method==='initialize')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>['protocolVersion'=>'2025-06-18','capabilities'=>['tools'=>['listChanged'=>false]],'serverInfo'=>['name'=>'BDC Portal','version'=>'2.3.3-dev584']]]);
+if($method==='initialize')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>['protocolVersion'=>'2025-06-18','capabilities'=>['tools'=>['listChanged'=>false]],'serverInfo'=>['name'=>'BDC Portal','version'=>'2.3.3-dev587']]]);
 if($method==='notifications/initialized')mcpOut([],202);
 if($method==='ping')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>(object)[]]);
 if($method==='tools/list')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>['tools'=>BdcMcpService::tools()]]);
