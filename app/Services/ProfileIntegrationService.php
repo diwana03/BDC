@@ -74,6 +74,16 @@ final class ProfileIntegrationService
 
     private static function wdcPayload(array $p):array
     {
+        $operation=strtolower(trim((string)($p['operation']??'upsert')));
+        if($operation==='photo_replace'){
+            $allowed=['operation','wdc_id','photo_base64','photo_mime','photo_name'];
+            if(array_diff(array_keys($p),$allowed))throw new RuntimeException('WDC photo replacement contains unsupported fields.');
+            $wdcId=strtoupper(trim((string)($p['wdc_id']??'')));
+            if(!preg_match('/^WDC-\d+$/',$wdcId))throw new RuntimeException('WDC photo replacement requires a valid WDC ID.');
+            if(trim((string)($p['photo_base64']??''))==='')throw new RuntimeException('WDC photo replacement requires an original JPG, PNG or WebP image.');
+            return ['operation'=>'photo_replace','wdc_id'=>$wdcId,'photo_base64'=>(string)$p['photo_base64'],'photo_mime'=>(string)($p['photo_mime']??''),'photo_name'=>(string)($p['photo_name']??'')];
+        }
+        if($operation!=='upsert')throw new RuntimeException('Invalid WDC operation.');
         $name=trim((string)preg_replace('/\s+/u',' ',(string)($p['display_name']??'')));if($name===''||mb_strlen($name)>190)throw new RuntimeException('A valid WDC display_name is required.');
         $type=strtolower(trim((string)($p['entry_type']??'')));if(!in_array($type,['solo','couple','duo','pro_am','team'],true))throw new RuntimeException('Invalid WDC entry_type.');
         $wdcId=strtoupper(trim((string)($p['wdc_id']??'')));if($wdcId!==''&&!preg_match('/^WDC-\d+$/',$wdcId))throw new RuntimeException('Invalid WDC ID.');
@@ -116,6 +126,10 @@ final class ProfileIntegrationService
 
     private static function matchWdc(PDO $pdo,array $p):array
     {
+        if(($p['operation']??'upsert')==='photo_replace'){
+            $q=$pdo->prepare("SELECT id FROM bdc_wdc_identities WHERE identity_code=:code AND status='active'");$q->execute(['code'=>$p['wdc_id']]);$id=(int)($q->fetchColumn()?:0);
+            return $id?['matched',$id,[]]:['invalid',0,[]];
+        }
         if($p['person_id']){$q=$pdo->prepare("SELECT id FROM bdc_competitors WHERE id=:id AND status<>'archived'");$q->execute(['id'=>$p['person_id']]);if(!$q->fetchColumn())throw new RuntimeException('The shared person profile does not exist.');}
         if($p['wdc_id']!==''){$q=$pdo->prepare("SELECT id FROM bdc_wdc_identities WHERE identity_code=:code AND status='active'");$q->execute(['code'=>$p['wdc_id']]);$id=(int)($q->fetchColumn()?:0);return $id?['matched',$id,[]]:['invalid',0,[]];}
         $normal=self::normaliseName($p['display_name']);
@@ -199,7 +213,13 @@ final class ProfileIntegrationService
     private static function applyWdc(PDO $pdo,array $u,array $p,int $userId):array
     {
         $id=(int)($u['target_id']??0);$identity=null;
-        if($id){$q=$pdo->prepare('SELECT * FROM bdc_wdc_identities WHERE id=:id FOR UPDATE');$q->execute(['id'=>$id]);$identity=$q->fetch();if(!$identity)throw new RuntimeException('Matched WDC identity no longer exists.');if($identity['entry_type']!==$p['entry_type'])throw new RuntimeException('WDC entry type changed after review submission.');}
+        if($id){$q=$pdo->prepare('SELECT * FROM bdc_wdc_identities WHERE id=:id FOR UPDATE');$q->execute(['id'=>$id]);$identity=$q->fetch();if(!$identity)throw new RuntimeException('Matched WDC identity no longer exists.');if(($p['operation']??'upsert')!=='photo_replace'&&$identity['entry_type']!==$p['entry_type'])throw new RuntimeException('WDC entry type changed after review submission.');}
+        if(($p['operation']??'upsert')==='photo_replace'){
+            if(!$identity||!hash_equals((string)$identity['identity_code'],(string)$p['wdc_id']))throw new RuntimeException('WDC identity changed after review submission.');
+            [$photo,$path]=self::publishPhoto($u,'wdc','wdc-'.$id);if(!$photo||!$path)throw new RuntimeException('The approved WDC photo replacement is missing.');
+            $pdo->prepare('UPDATE bdc_wdc_identities SET photo_url=:photo WHERE id=:id')->execute(['photo'=>$photo,'id'=>$id]);
+            return ['id'=>$id,'new_photo_path'=>$path];
+        }
         if(!$identity){$identity=CouncilResultIdentityService::wdcIdentityForEntry($pdo,$p['entry_type'],$p['display_name'],$p['person_id']?:null);$id=(int)$identity['id'];}
         $currentPerson=(int)($identity['solo_competitor_id']??0);if($currentPerson&&$p['person_id']&&$currentPerson!==$p['person_id'])throw new RuntimeException('WDC identity is already linked to another shared person profile.');
         [$publishedPhoto,$path]=self::publishPhoto($u,'wdc','wdc-'.$id);$photo=$publishedPhoto?:$p['photo_url'];$normal=self::normaliseName($p['display_name']);
