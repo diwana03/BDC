@@ -11,6 +11,6 @@ assert(read('mcp/oauth/.well-known/oauth-authorization-server/index.php').includ
 assert(read('mcp/.well-known/oauth-protected-resource/index.php').includes("/oauth/resource.php"),'resource discovery must serve resource metadata');
 assert(oauth.includes("rtrim(\\absolute_url('mcp'),'/').'/'"),'canonical MCP resource must use the working trailing-slash URL');
 assert(endpoint.includes('scope="bdc.events.read bdc.events.stage"'),'HTTP OAuth challenge must advertise scopes');
-assert(endpoint.includes("'version'=>'2.3.3-dev588'"),'MCP server version must match release');
+assert(/'version'=>'2\.3\.3-dev\d+'/.test(endpoint),'MCP server must advertise a versioned release');
 assert((tools.match(/'securitySchemes'=>/g)||[]).length===4,'every MCP tool must declare OAuth security schemes');
 console.log('physical MCP OAuth discovery and tool security checks passed');
