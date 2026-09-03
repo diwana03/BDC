@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev586",
-  "build": 3292,
+  "version": "2.3.3-dev587",
+  "build": 3293,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs ChatGPT MCP connection creation by routing both slash forms without redirecting POST requests and enforcing the OAuth resource indicator through authorization, token exchange and refresh while preserving Super Admin approval gating.",
     "Restores valid multiline Apache FilesMatch directives after the MCP routing release, recovering the Staging Release Manager before PHP execution and adding a regression guard that preserves physical admin/system-release directory routing.",
     "Repairs the Test Jack and Jill scoring dashboard source corruption by restoring the complete 2,275-line workflow and correctly integrating Super Admin archive and restore controls without removing roster, judge, scoring, callback, Final, report or projection behavior.",
     "Adds a Super Admin-authorized OAuth 2.1 MCP connector for ChatGPT that lists exact draft Jack and Jill rounds and division-eligible competitors, stages idempotent competitor additions through the existing Integration Review approval queue, and never exposes the protected integration secret or writes rosters directly.",
