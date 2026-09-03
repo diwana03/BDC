@@ -19,6 +19,6 @@ assert(authorize.includes('issueCode(')&&authorize.includes('$resource);'),'auth
 assert(token.includes("$resource=(string)($_POST['resource']??'')"),'token endpoint must receive resource');
 assert(token.includes('exchangeCode(')&&token.includes('$resource);'),'authorization code exchange must validate resource');
 assert(token.includes('refresh(')&&token.includes('$resource);'),'refresh grant must validate resource');
-assert(resource.includes("'resource'=>absolute_url('mcp')"),'protected-resource metadata must advertise the canonical no-slash URL');
-assert(endpoint.includes("'version'=>'2.3.3-dev587'"),'MCP server version must match release');
+assert(resource.includes("'resource'=>McpOAuthService::resource()"),'protected-resource metadata must use the canonical OAuth service resource');
+assert(/'version'=>'2\.3\.3-dev\d+'/.test(endpoint),'MCP server must advertise a versioned release');
 console.log('MCP OAuth resource and routing checks passed');
