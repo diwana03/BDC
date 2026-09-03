@@ -42,7 +42,13 @@ final class EventIntegrationService
         $sourceKey=substr(trim((string)($item['source_key']??'')),0,191);
         if($sourceKey==='')throw new RuntimeException('source_key is required for every event package.');
         $payload=is_array($item['payload']??null)?$item['payload']:[];
-        $canonical=$system==='jack_jill'?self::jackJillPayload($pdo,$payload,$mode):self::danceCupPayload($pdo,$payload,$mode);
+        $operation=strtolower(trim((string)($item['operation']??'create_event')));
+        if(!in_array($operation,['create_event','add_competitors'],true))throw new RuntimeException('operation must be create_event or add_competitors.');
+        if($operation==='add_competitors'&&$system!=='jack_jill')throw new RuntimeException('Adding competitors to an existing event is currently supported only for Jack & Jill.');
+        $canonical=$operation==='add_competitors'
+            ?self::existingJackJillCompetitorsPayload($pdo,$payload,$mode)
+            :($system==='jack_jill'?self::jackJillPayload($pdo,$payload,$mode):self::danceCupPayload($pdo,$payload,$mode));
+        $canonical['operation']=$operation;
         $json=json_encode($canonical,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
         if($json===false)throw new RuntimeException('Event payload could not be encoded.');
         $fingerprint=hash('sha256',$source."\0".$system."\0".$mode."\0".$sourceKey);
@@ -144,6 +150,40 @@ final class EventIntegrationService
         if($clean&&$chiefs!==1)throw new RuntimeException('Select exactly one Chief Judge.');return $clean;
     }
 
+    private static function existingJackJillCompetitorsPayload(PDO $pdo,array $payload,string $mode):array
+    {
+        $eventId=self::boundedInt($payload['target_event_id']??0,1,PHP_INT_MAX,'target_event_id');
+        $roundId=self::boundedInt($payload['target_round_id']??0,1,PHP_INT_MAX,'target_round_id');
+        $target=self::requireDraftJackJillRound($pdo,$eventId,$roundId,$mode,false);
+        $competitors=self::competitors($pdo,(array)($payload['competitors']??[]),$mode,true,(string)$target['dance_style'],(string)$target['division']);
+        return [
+            'operation'=>'add_competitors',
+            'target_event_id'=>$eventId,
+            'target_round_id'=>$roundId,
+            'event_name'=>(string)$target['event_name'],
+            'dance_style'=>(string)$target['dance_style'],
+            'division'=>(string)$target['division'],
+            'round_type'=>(string)$target['round_type'],
+            'competitors'=>$competitors,
+        ];
+    }
+
+    private static function requireDraftJackJillRound(PDO $pdo,int $eventId,int $roundId,string $mode,bool $lock):array
+    {
+        $events=$mode==='test'?'bdc_test_events':'bdc_events';
+        $rounds=$mode==='test'?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
+        $sql="SELECT r.id,r.event_id,r.dance_style,r.division,r.round_type,r.status AS round_status,e.name AS event_name,e.status AS event_status FROM {$rounds} r JOIN {$events} e ON e.id=r.event_id WHERE e.id=:event AND r.id=:round LIMIT 1".($lock?' FOR UPDATE':'');
+        $q=$pdo->prepare($sql);$q->execute(['event'=>$eventId,'round'=>$roundId]);$target=$q->fetch();
+        if(!$target)throw new RuntimeException('The target Jack & Jill event round was not found in the selected data mode.');
+        if((string)$target['event_status']!=='draft'||(string)$target['round_status']!=='draft')throw new RuntimeException('Competitors can be added only to a draft event and draft round.');
+        $dance=JackJillCompetitorEligibilityService::dance((string)$target['dance_style']);
+        $division=strtolower(trim((string)$target['division']));
+        if(!in_array($division,self::JJ_DIVISIONS,true))throw new RuntimeException('The target round has an unsupported division.');
+        if(str_starts_with($division,'salsa_')&&$dance!=='salsa'||str_starts_with($division,'bachata_')&&$dance!=='bachata')throw new RuntimeException('The target round division does not match its dance style.');
+        $target['dance_style']=$dance;$target['division']=$division;
+        return $target;
+    }
+
     private static function boundedInt(mixed $value,int $min,int $max,string $field):int{$value=filter_var($value,FILTER_VALIDATE_INT);if($value===false||$value<$min||$value>$max)throw new RuntimeException($field.' must be between '.$min.' and '.$max.'.');return(int)$value;}
 
     public static function review(PDO $pdo,array $ids,string $decision,int $userId):array
@@ -158,7 +198,28 @@ final class EventIntegrationService
         if($decision==='reject'){$pdo->prepare("UPDATE bdc_event_integration_updates SET status='rejected',reviewed_by=:user,reviewed_at=NOW() WHERE id=:id AND status='pending'")->execute(['user'=>$userId,'id'=>$id]);self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'event_integration_rejected',['batch_key'=>$u['batch_key'],'event_system'=>$u['event_system'],'data_mode'=>$u['data_mode']],'event_integration_update',$id);return;}
         if($u['validation_status']!=='ready')throw new RuntimeException('Resolve package validation before approval.');$payload=json_decode((string)$u['payload_json'],true);if(!is_array($payload))throw new RuntimeException('Stored event payload is invalid.');$test=$u['data_mode']==='test';
         if($u['event_system']==='dance_cup')DanceCupScoringService::ensureWorkspaceTables($pdo,$test);
-        $pdo->beginTransaction();try{$eventId=$u['event_system']==='jack_jill'?self::applyJackJill($pdo,$payload,$test,$userId):self::applyDanceCup($pdo,$payload,$test,$userId);$pdo->prepare("UPDATE bdc_event_integration_updates SET status='approved',target_event_id=:event,reviewed_by=:user,reviewed_at=NOW(),error_message=NULL WHERE id=:id AND status='pending'")->execute(['event'=>$eventId,'user'=>$userId,'id'=>$id]);$pdo->commit();self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'event_integration_approved',['batch_key'=>$u['batch_key'],'event_system'=>$u['event_system'],'data_mode'=>$u['data_mode'],'event_id'=>$eventId],'event_integration_update',$id);}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
+        $pdo->beginTransaction();try{$operation=(string)($payload['operation']??'create_event');$eventId=$operation==='add_competitors'?self::applyExistingJackJillCompetitors($pdo,$payload,$test):($u['event_system']==='jack_jill'?self::applyJackJill($pdo,$payload,$test,$userId):self::applyDanceCup($pdo,$payload,$test,$userId));$pdo->prepare("UPDATE bdc_event_integration_updates SET status='approved',target_event_id=:event,reviewed_by=:user,reviewed_at=NOW(),error_message=NULL WHERE id=:id AND status='pending'")->execute(['event'=>$eventId,'user'=>$userId,'id'=>$id]);$pdo->commit();self::refreshBatch($pdo,(int)$u['batch_id']);Auth::audit($userId,'event_integration_approved',['batch_key'=>$u['batch_key'],'event_system'=>$u['event_system'],'data_mode'=>$u['data_mode'],'operation'=>$operation,'event_id'=>$eventId],'event_integration_update',$id);}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw$e;}
+    }
+
+    private static function applyExistingJackJillCompetitors(PDO $pdo,array $payload,bool $test):int
+    {
+        $mode=$test?'test':'live';$eventId=(int)$payload['target_event_id'];$roundId=(int)$payload['target_round_id'];
+        $target=self::requireDraftJackJillRound($pdo,$eventId,$roundId,$mode,true);
+        if((string)$target['dance_style']!==(string)$payload['dance_style']||(string)$target['division']!==(string)$payload['division'])throw new RuntimeException('The target round changed after this update was submitted. Submit a fresh package.');
+        $entries=$test?'bdc_test_scoring_entries':'bdc_scoring_entries';
+        $existing=$pdo->prepare("SELECT id FROM {$entries} WHERE round_id=:round AND competitor_id=:competitor AND dance_role=:role AND entry_status='active' LIMIT 1");
+        $bibCheck=$pdo->prepare("SELECT id FROM {$entries} WHERE round_id=:round AND dance_role=:role AND bib_number=:bib AND entry_status='active' LIMIT 1");
+        $insert=$pdo->prepare("INSERT INTO {$entries}(round_id,competitor_id,dance_role,bib_number,display_name,entry_status) VALUES(:round,:competitor,:role,:bib,:name,'active')");
+        foreach((array)$payload['competitors'] as $competitor){
+            $profile=JackJillCompetitorEligibilityService::requireEligible($pdo,(string)$target['dance_style'],(string)$competitor['council_id'],(string)$competitor['role']);
+            $eligibility=DivisionProgressionService::eligibilityFromApprovedHistory($pdo,(int)$profile['id'],(string)$competitor['role'],(string)$target['dance_style'],(string)$target['division']);
+            if(!$eligibility['eligible'])throw new RuntimeException('Cannot add '.$profile['exact_name'].': '.$eligibility['reason']);
+            if($test)CompetitorIdentityService::mirrorOfficialToTest($pdo,$profile);
+            $existing->execute(['round'=>$roundId,'competitor'=>(int)$profile['id'],'role'=>$competitor['role']]);if($existing->fetch())throw new RuntimeException($profile['exact_name'].' is already active in this round as '.$competitor['role'].'.');
+            $bibCheck->execute(['round'=>$roundId,'role'=>$competitor['role'],'bib'=>(int)$competitor['bib']]);if($bibCheck->fetch())throw new RuntimeException('Bib '.$competitor['bib'].' is already used by another '.$competitor['role'].' in this round.');
+            $insert->execute(['round'=>$roundId,'competitor'=>(int)$profile['id'],'role'=>$competitor['role'],'bib'=>(int)$competitor['bib'],'name'=>(string)$profile['exact_name']]);
+        }
+        return $eventId;
     }
 
     private static function applyJackJill(PDO $pdo,array $payload,bool $test,int $userId):int

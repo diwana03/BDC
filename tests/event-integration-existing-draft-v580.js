@@ -1,0 +1,12 @@
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+const service=read('app/Services/EventIntegrationService.php');
+const panel=read('admin/integration-review/events.php');
+const docs=read('docs/event-integration-api-v1.md');
+for(const token of ["'add_competitors'",'existingJackJillCompetitorsPayload','requireDraftJackJillRound','applyExistingJackJillCompetitors','target_event_id','target_round_id','FOR UPDATE'])assert(service.includes(token),'missing existing draft event capability '+token);
+for(const token of ['event_status','round_status',"!=='draft'",'already active in this round','Bib ','DivisionProgressionService::eligibilityFromApprovedHistory','mirrorOfficialToTest'])assert(service.includes(token),'missing existing draft safety '+token);
+for(const forbidden of ['UPDATE {$events}','UPDATE {$rounds} SET dance_style','DELETE FROM'])assert(!service.includes(forbidden),'existing draft capability contains forbidden mutation '+forbidden);
+for(const token of ['existing round update','Add competitors to existing draft round, atomically'])assert(panel.includes(token),'review panel missing update explanation '+token);
+for(const token of ['operation','add_competitors','target_event_id','target_round_id','must both remain `draft`','rejected atomically'])assert(docs.includes(token),'API docs missing '+token);
+console.log('existing Jack & Jill draft competitor API checks passed');
