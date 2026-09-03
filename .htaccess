@@ -15,8 +15,13 @@ SetEnvIfNoCase Request_URI "^/portal/admin/scoring-tests(?:/|$)" bdc_scoring_tes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
-<FilesMatch "^config\.php$">Require all denied</FilesMatch>
-<FilesMatch "^(setup|install|install-v.*|rollback-v.*)\.php$">Require all denied</FilesMatch>
+<FilesMatch "^config\.php$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^(setup|install|install-v.*|rollback-v.*)\.php$">
+    Require all denied
+</FilesMatch>
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
