@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev582",
-  "build": 3288,
+  "version": "2.3.3-dev583",
+  "build": 3289,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds Super Admin-approved Event API updates that safely add division-eligible BDC or SDC competitors to an existing draft Jack and Jill Test or Live round while preserving event settings, judges, scores, results and publication state.",
     "Restores the immutable dev580 WDC profile migration to its exact Production-applied form and moves photo consent into a separate additive migration, clearing the checksum deployment gate without altering or deleting existing WDC data",
     "Adds Super Admin-only recoverable Archive and Restore controls to Saved Rounds in both Live and isolated Test Jack and Jill dashboards, preserves each round's exact previous status and all setup, competitors, judges, scores, results and approvals, and keeps archived rounds in a separate uncluttered view with full audit history",
     "Expands the WDC competitor editor to match the connected Asia Open Dance Cup registration identity fields with the canonical country selector, city, contact, mobile, WhatsApp, Instagram, photo-posting permission, studio or team and member details; adds a Super Admin-only audited Lock/Unlock correction control for entry type; preserves permanent WDC IDs and leaves category registrations, scores, results and championship points protected",
