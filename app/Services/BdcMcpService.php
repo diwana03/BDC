@@ -22,7 +22,24 @@ final class BdcMcpService
     private static function rounds(PDO $pdo,array $a):array
     {$mode=self::mode($a);$events=$mode==='test'?'bdc_test_events':'bdc_events';$rounds=$mode==='test'?'bdc_test_scoring_rounds':'bdc_scoring_rounds';$needle=trim((string)($a['name_query']??''));$sql="SELECT e.id event_id,e.name event_name,e.event_date,e.status event_status,r.id round_id,r.round_type,r.division,r.status round_status,COALESCE(r.dance_style,CASE WHEN r.division LIKE 'salsa_%' THEN 'salsa' ELSE 'bachata' END) dance_style FROM {$events} e JOIN {$rounds} r ON r.event_id=e.id WHERE e.status='draft' AND r.status='draft'";$params=[];if($needle!==''){$sql.=' AND e.name LIKE :name';$params['name']='%'.$needle.'%';}$sql.=' ORDER BY e.event_date,e.id,r.id LIMIT 200';$s=$pdo->prepare($sql);$s->execute($params);return ['data_mode'=>$mode,'rounds'=>$s->fetchAll()];}
     private static function competitors(PDO $pdo,array $a):array
-    {$dance=strtolower(trim((string)($a['dance_style']??'')));$division=strtolower(trim((string)($a['division']??'')));if(!in_array($dance,['bachata','salsa'],true))throw new RuntimeException('dance_style is required.');$role=strtolower(trim((string)($a['role']??'')));$query=trim((string)($a['query']??''));$rows=JackJillCompetitorEligibilityService::directory($pdo,$dance,$division,2000);$lower=static fn(string $v):string=>function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);$needle=$lower($query);$rows=array_values(array_filter($rows,static function(array $r)use($role,$needle,$lower):bool{if($role!==''&&!in_array($role,(array)($r['eligible_roles']??[$r['dance_role']??'']),true)&&($r['dance_role']??'')!=='both')return false;if($needle!==''&&!str_contains($lower((string)($r['identity_code']??'').' '.(string)($r['exact_name']??'')),$needle))return false;return true;}));return ['dance_style'=>$dance,'division'=>$division,'count'=>count($rows),'competitors'=>array_slice($rows,0,500)];}
+    {
+        $dance=strtolower(trim((string)($a['dance_style']??'')));$division=strtolower(trim((string)($a['division']??'')));
+        if(!in_array($dance,['bachata','salsa'],true))throw new RuntimeException('dance_style is required.');
+        $role=strtolower(trim((string)($a['role']??'')));if($role!==''&&!in_array($role,['leader','follower'],true))throw new RuntimeException('role must be leader or follower.');
+        $query=trim((string)($a['query']??''));$rows=JackJillCompetitorEligibilityService::directory($pdo,$dance,$role!==''?$role:null,1500);
+        $lower=static fn(string $v):string=>function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);$needle=$lower($query);$eligible=[];
+        foreach($rows as $row){
+            if($needle!==''&&!str_contains($lower((string)($row['identity_code']??'').' '.(string)($row['exact_name']??'')),$needle))continue;
+            $profileRole=strtolower((string)($row['dance_role']??''));$roles=$role!==''?[$role]:($profileRole==='both'?['leader','follower']:[$profileRole]);$allowed=[];
+            foreach($roles as $candidateRole){
+                if(!in_array($candidateRole,['leader','follower'],true))continue;
+                $check=DivisionProgressionService::eligibilityFromApprovedHistory($pdo,(int)$row['id'],$candidateRole,$dance,$division);
+                if(!empty($check['eligible']))$allowed[]=$candidateRole;
+            }
+            if(!$allowed)continue;$row['eligible_roles']=$allowed;$eligible[]=$row;
+        }
+        return ['dance_style'=>$dance,'division'=>$division,'count'=>count($eligible),'competitors'=>array_slice($eligible,0,500)];
+    }
     private static function stage(PDO $pdo,array $a):array
     {$mode=self::mode($a);$event=(int)($a['target_event_id']??0);$round=(int)($a['target_round_id']??0);$competitors=$a['competitors']??null;if($event<1||$round<1||!is_array($competitors)||$competitors===[])throw new RuntimeException('Exact target_event_id, target_round_id and competitors are required.');$source=substr(trim((string)($a['source_key']??'')),0,191);if($source==='')$source='round-'.$mode.'-'.$event.'-'.$round.'-'.substr(hash('sha256',json_encode($competitors)),0,16);$batch='chatgpt-'.gmdate('Ymd').'-'.substr(hash('sha256',$source),0,20);return EventIntegrationService::submitBatch($pdo,['batch_key'=>$batch,'source_system'=>'chatgpt_mcp','items'=>[['event_system'=>'jack_jill','data_mode'=>$mode,'source_key'=>$source,'operation'=>'add_competitors','payload'=>['target_event_id'=>$event,'target_round_id'=>$round,'competitors'=>$competitors]]]]);}
     private static function status(PDO $pdo,array $a):array{$key=trim((string)($a['batch_key']??''));if($key==='')throw new RuntimeException('batch_key is required.');$row=EventIntegrationService::batchStatus($pdo,$key);if(!$row)throw new RuntimeException('Batch not found.');return ['batch'=>$row];}
