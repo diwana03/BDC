@@ -1,28 +1,22 @@
 RewriteEngine On
 
-# Authenticated Scoring Tests must never be cached or double-compressed by the
-# shared-hosting endurance/nginx layer.
-SetEnvIfNoCase Request_URI "^/portal/admin/scoring-tests(?:/|$)" bdc_scoring_test=1 no-gzip=1
+# OAuth 2.1 discovery for the BDC MCP resource and authorization server.
+RewriteRule ^\.well-known/oauth-protected-resource/?$ mcp/oauth/resource.php [QSA,L]
+RewriteRule ^\.well-known/oauth-authorization-server/?$ mcp/oauth/metadata.php [QSA,L]
+RewriteRule ^mcp/oauth/\.well-known/oauth-authorization-server/?$ mcp/oauth/metadata.php [QSA,L]
 
+SetEnvIfNoCase Request_URI "^/portal/admin/scoring-tests(?:/|$)" bdc_scoring_test=1 no-gzip=1
 <IfModule mod_headers.c>
     Header always set Cache-Control "no-store, no-cache, must-revalidate, private, max-age=0" env=bdc_scoring_test
     Header always set Pragma "no-cache" env=bdc_scoring_test
     Header always set Expires "0" env=bdc_scoring_test
     Header always set X-Accel-Expires "0" env=bdc_scoring_test
 </IfModule>
-
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
-
-<FilesMatch "^config\.php$">
-    Require all denied
-</FilesMatch>
-
-<FilesMatch "^(setup|install|install-v.*|rollback-v.*)\.php$">
-    Require all denied
-</FilesMatch>
-
+<FilesMatch "^config\.php$">Require all denied</FilesMatch>
+<FilesMatch "^(setup|install|install-v.*|rollback-v.*)\.php$">Require all denied</FilesMatch>
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
