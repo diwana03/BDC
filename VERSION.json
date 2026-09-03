@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev584",
-  "build": 3290,
+  "version": "2.3.3-dev585",
+  "build": 3291,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs the Test Jack and Jill scoring dashboard source corruption by restoring the complete 2,275-line workflow and correctly integrating Super Admin archive and restore controls without removing roster, judge, scoring, callback, Final, report or projection behavior.",
     "Adds a Super Admin-authorized OAuth 2.1 MCP connector for ChatGPT that lists exact draft Jack and Jill rounds and division-eligible competitors, stages idempotent competitor additions through the existing Integration Review approval queue, and never exposes the protected integration secret or writes rosters directly.",
     "Adds Super Admin-approved Event API updates that safely add division-eligible BDC or SDC competitors to an existing draft Jack and Jill Test or Live round while preserving event settings, judges, scores, results and publication state.",
     "Restores the immutable dev580 WDC profile migration to its exact Production-applied form and moves photo consent into a separate additive migration, clearing the checksum deployment gate without altering or deleting existing WDC data",
