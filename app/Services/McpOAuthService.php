@@ -13,7 +13,7 @@ final class McpOAuthService
 
     public static function resource():string
     {
-        return \absolute_url('mcp');
+        return rtrim(\absolute_url('mcp'),'/').'/';
     }
 
     public static function requireResource(string $resource):string
