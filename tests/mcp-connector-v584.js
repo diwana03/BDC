@@ -1,0 +1,10 @@
+const fs=require('fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
+const endpoint=read('mcp/index.php'),oauth=read('app/Services/McpOAuthService.php'),tools=read('app/Services/BdcMcpService.php'),ht=read('.htaccess');
+for(const token of ['initialize','tools/list','tools/call','MCP-Protocol-Version','WWW-Authenticate','resource_metadata'])assert(endpoint.includes(token),'MCP endpoint missing '+token);
+for(const token of ['code_challenge','hash_equals','access_hash','refresh_hash','super_admin','bdc.events.stage'])assert(oauth.includes(token),'OAuth hardening missing '+token);
+assert(!oauth.includes('client_secret'),'public PKCE client must not persist a client secret');
+for(const token of ['list_event_rounds','list_division_competitors','stage_competitor_additions','get_staged_batch_status','add_competitors'])assert(tools.includes(token),'MCP tool missing '+token);
+for(const token of ['oauth-protected-resource','oauth-authorization-server'])assert(ht.includes(token),'OAuth discovery rewrite missing '+token);
+console.log('BDC MCP connector static checks passed');
