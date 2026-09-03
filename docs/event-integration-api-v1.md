@@ -1,6 +1,6 @@
 # BDC Event Setup Integration API v1
 
-This API stages complete Jack & Jill and Dance Cup event setup packages for Super Admin bulk review. It does not write live scoring data when a package is submitted. Approval creates one draft event and its complete requested setup atomically.
+This API stages complete Jack & Jill and Dance Cup event setup packages for Super Admin bulk review. It also stages competitor additions to an existing Jack & Jill draft round. It does not write scoring data when a package is submitted. Approval applies the requested package atomically.
 
 ## Authorization and signing
 
@@ -54,6 +54,33 @@ Initial Jack & Jill rounds can be `heats` or `final`. Semifinals and later final
 
 Use `event_system: "dance_cup"`. The event includes `scoring_mode: "manual"` or `"automatic"`; each item in `categories` includes a unique `category_key`, name, entry type, dance style, level, gender eligibility, performance type, round name, criteria, competitors, and judges. Competitors use `bdc_id`; judges use `judge_code`.
 
+## Add competitors to an existing Jack & Jill draft
+
+Set `operation` to `add_competitors`, identify the existing event and round, and provide the exact council IDs, roles, and bibs to add:
+
+```json
+{
+  "batch_key": "sbta-2026-test-roster-01",
+  "source_system": "chatgpt_bdc",
+  "items": [{
+    "source_key": "salsa-open-test-roster",
+    "event_system": "jack_jill",
+    "data_mode": "test",
+    "operation": "add_competitors",
+    "payload": {
+      "target_event_id": 123,
+      "target_round_id": 456,
+      "competitors": [
+        {"council_id": "SDC-000101", "role": "leader", "bib": 101},
+        {"council_id": "SDC-000202", "role": "follower", "bib": 201}
+      ]
+    }
+  }]
+}
+```
+
+The server reads dance style and division from the target round and revalidates them at approval time. The event and round must both remain `draft`. Existing competitor assignments, duplicate council ID and role pairs, cross council IDs, division ineligible profiles, and duplicate bibs within a role are rejected atomically. This operation never changes event settings, judges, scores, results, or publication state.
+
 ## Directory and status
 
 - `GET /api/event-sync/v1/directory.php?type=competitor&q=BDC-000101&data_mode=live`
@@ -66,4 +93,4 @@ Directory responses intentionally exclude email, phone, WhatsApp, private notes,
 
 Super Admin reviews packages at `/admin/integration-review/events.php`. “Select all shown” supports one bulk decision across many packages. Each package is atomic and produces only draft configuration.
 
-Out of scope: scores, marks, points, placements, results, publication, leaderboard changes, payments, registrations, automatic progression, deletion or modification of an existing event, and sending judge links.
+Out of scope: scores, marks, points, placements, results, publication, leaderboard changes, payments, registrations, automatic progression, deletion, changing existing event or round settings, and sending judge links.
