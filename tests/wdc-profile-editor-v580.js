@@ -2,7 +2,7 @@ const fs=require('fs');
 const assert=require('assert');
 
 const editor=fs.readFileSync('admin/dance-cup/competitor-edit.php','utf8');
-const migration=fs.readFileSync('database/migrations/20260903_0100_wdc_profile_details.php','utf8');
+const migration=fs.readFileSync('database/migrations/20260903_0100_wdc_profile_details.php','utf8')+fs.readFileSync('database/migrations/20260903_0110_wdc_photo_consent.php','utf8');
 
 assert(editor.includes('public/assets/flags/countries.json'),'WDC editor must load the canonical country directory');
 assert(editor.includes('name="country"'),'Country selector missing');
