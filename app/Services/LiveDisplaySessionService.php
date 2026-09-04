@@ -159,6 +159,7 @@ final class LiveDisplaySessionService
         $allowed = [
             "holding",
             "judges",
+            "judge_call",
             "competitors",
             "scoring",
             "callbacks",
@@ -192,6 +193,18 @@ final class LiveDisplaySessionService
             if (in_array($candidate, ["5", "4", "3", "2", "1", "all"], true)) {
                 $reveal = $candidate;
             }
+        }
+        $page = max(1, (int) ($v["page_number"] ?? 1));
+        if ($type === "judge_call") {
+            $roundId = (int) ($v["round_id"] ?? 0);
+            $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
+            $judgeCount = 1;
+            if ($roundId > 0) {
+                $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+                $judgeCountQuery->execute(["r" => $roundId]);
+                $judgeCount = max(1, (int) $judgeCountQuery->fetchColumn());
+            }
+            $page = min($page, $judgeCount);
         }
         // Only the explicit Lock action may clear reveal permission. Moving to
         // a non-result loop tab must not silently remove protected loop tabs.
@@ -232,14 +245,22 @@ final class LiveDisplaySessionService
             );
         }
         $loopEnabled = !empty($v["loop_enabled"]);
+        $effect = (string) ($v["effect_type"] ?? "");
+        $setEffect = $effect !== "";
+        if ($setEffect && !in_array($effect, ['countdown'], true)) {
+            throw new \RuntimeException("Invalid screen transition effect.");
+        }
         $pdo->prepare(
-            "UPDATE bdc_live_display_sessions SET active_event_id=:ae,current_round_id=:r,screen_type=:t,reveal_place=:rp,page_number=:p,auto_page=:a,page_delay_seconds=:d,results_unlocked=:lock,loop_enabled=:le,loop_screens=:ls,loop_delay_seconds=:ld,playlist_enabled=0,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1",
+            "UPDATE bdc_live_display_sessions SET active_event_id=:ae,current_round_id=:r,screen_type=:t,effect_type=CASE WHEN :set_fx=1 THEN :fx ELSE effect_type END,effect_version=effect_version+:fx_bump,reveal_place=:rp,page_number=:p,auto_page=:a,page_delay_seconds=:d,results_unlocked=:lock,loop_enabled=:le,loop_screens=:ls,loop_delay_seconds=:ld,playlist_enabled=0,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1",
         )->execute([
             "ae" => $eventId,
             "r" => (int) ($v["round_id"] ?? 0) ?: null,
             "t" => $type,
+            "set_fx" => $setEffect ? 1 : 0,
+            "fx" => $setEffect ? $effect : null,
+            "fx_bump" => $setEffect ? 1 : 0,
             "rp" => $reveal,
-            "p" => max(1, (int) ($v["page_number"] ?? 1)),
+            "p" => $page,
             "a" => !empty($v["auto_page"]) ? 1 : 0,
             "d" => $delay,
             "lock" => $relock,
