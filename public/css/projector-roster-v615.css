@@ -73,6 +73,9 @@
   grid-row: 2;
   align-self: start;
   justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: clamp(2px, .65cqh, 5px);
   width: 100%;
   max-width: 100%;
   padding-top: clamp(2px, 1cqh, 5px);
@@ -84,9 +87,45 @@
 
 .stage .competitor-country-name {
   overflow: hidden;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* Flight Round 1, Round 2 and later rounds: keep the country name below the flag. */
+.stage .flight-country {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .45cqh, 5px) !important;
+  width: 100%;
+  max-width: 100%;
+  margin-top: .2em !important;
+  line-height: 1.08;
+  white-space: normal;
+  overflow: visible;
+}
+
+.stage .flight-country img {
+  flex: 0 0 auto;
+  width: clamp(30px, 2.25vw, 56px) !important;
+  height: auto !important;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.72);
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.45);
+  margin: 0 !important;
+}
+
+.stage .flight-country span {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .stage .judge-card {
