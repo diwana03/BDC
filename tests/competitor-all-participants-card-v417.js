@@ -4,7 +4,7 @@ const fs=require('fs'),assert=require('assert');
 const page=fs.readFileSync('admin/competitors/index.php','utf8');
 for(const token of [
  "'all_participants'=>",
- 'SELECT COUNT(*) FROM bdc_result_identities',
+ "SELECT COUNT(*) FROM bdc_competitors WHERE status='active' AND bdc_id LIKE 'BDC-%'",
  "$hasListFilters=",
  "$isAll=$key==='all_participants'",
  "$isActive=$isAll?!$hasListFilters:$filter===$key",

@@ -5,7 +5,7 @@ assert(nav.indexOf('Bachata J&J Competitor')>nav.indexOf('<summary>Jack &amp; Ji
 assert(nav.includes("'admin/dance-cup/competitors.php', '♙', 'Dance Cup Competitor'"),'Dance Cup competitor link missing');
 assert(jj.includes("['bachata','salsa']"),'J&J dashboard scope allowlist missing');
 assert(jj.includes("$dashboard === 'salsa' ? 'sdc' : 'bdc'"),'J&J dashboard council routing missing');
-assert(jj.includes('bdc_sdc_competitors')&&jj.includes("council='bdc'"),'J&J list must join council-specific identity sources');
+assert(jj.includes('bdc_sdc_competitors')&&jj.includes("SELECT id competitor_id,bdc_id identity_code FROM bdc_competitors WHERE bdc_id LIKE 'BDC-%'"),'J&J list must join canonical council-specific identity sources');
 assert(jj.includes('ri.identity_code dashboard_identity_code'),'J&J dashboard must display BDC/SDC identity, not the shared legacy ID');
 assert(jj.includes('LOWER(ri.identity_code) LIKE LOWER'),'J&J identity search must be case-insensitive');
 assert(wdc.includes('FROM bdc_wdc_identities w'),'Dance Cup directory must use WDC identities');

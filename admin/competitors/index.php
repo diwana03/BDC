@@ -113,7 +113,7 @@ $orderSql = strtoupper($order);
 $whereSql = implode(' AND ', $where);
 $identitySource=$dashboardCouncil==='sdc'
     ?"(SELECT competitor_id,sdc_id identity_code FROM bdc_sdc_competitors WHERE status='active')"
-    :"(SELECT competitor_id,identity_code FROM bdc_result_identities WHERE council='bdc')";
+    :"(SELECT id competitor_id,bdc_id identity_code FROM bdc_competitors WHERE bdc_id LIKE 'BDC-%')";
 $salsaProfileSource="(SELECT competitor_id,dance_role,current_division FROM bdc_sdc_competitors WHERE status='active')";
 $categorySource="(SELECT competitor_id,GROUP_CONCAT(CASE WHEN dance_style='bachata' THEN category END ORDER BY category SEPARATOR ',') bachata_special_categories,NULL salsa_special_categories FROM bdc_competitor_special_categories WHERE dance_style='bachata' GROUP BY competitor_id UNION ALL SELECT s.competitor_id,NULL,GROUP_CONCAT(c.category ORDER BY c.category SEPARATOR ',') FROM bdc_sdc_competitors s LEFT JOIN bdc_sdc_competitor_categories c ON c.sdc_competitor_id=s.id WHERE s.status='active' GROUP BY s.competitor_id)";
 
@@ -220,11 +220,11 @@ if($dashboardCouncil==='sdc'){$counts=[
     'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_sdc_competitors WHERE status='active' AND dance_role='unknown'")->fetchColumn(),
     'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT sdc_competitor_id) FROM bdc_sdc_competitor_categories")->fetchColumn(),
 ];}else{$counts=[
-    'all_participants'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities WHERE council='bdc'")->fetchColumn(),
-    'missing_photo'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council='bdc' AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
-    'missing_country'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_result_identities ri JOIN bdc_competitors c ON c.id=ri.competitor_id WHERE ri.council='bdc' AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
-    'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitor_discipline_profiles p JOIN bdc_result_identities ri ON ri.competitor_id=p.competitor_id AND ri.council='bdc' WHERE p.dance_style='bachata' AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
-    'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_result_identities ri ON ri.competitor_id=s.competitor_id AND ri.council='bdc' WHERE s.dance_style='bachata'")->fetchColumn(),
+    'all_participants'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors WHERE status='active' AND bdc_id LIKE 'BDC-%'")->fetchColumn(),
+    'missing_photo'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors c WHERE c.status='active' AND c.bdc_id LIKE 'BDC-%' AND (c.photo_url IS NULL OR TRIM(c.photo_url)='')")->fetchColumn(),
+    'missing_country'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitors c WHERE c.status='active' AND c.bdc_id LIKE 'BDC-%' AND (c.country IS NULL OR TRIM(c.country)='')")->fetchColumn(),
+    'incomplete_profile'=>(int)$pdo->query("SELECT COUNT(*) FROM bdc_competitor_discipline_profiles p JOIN bdc_competitors c ON c.id=p.competitor_id AND c.status='active' AND c.bdc_id LIKE 'BDC-%' WHERE p.dance_style='bachata' AND (p.dance_role='unknown' OR p.current_division='unknown')")->fetchColumn(),
+    'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_competitors c ON c.id=s.competitor_id AND c.status='active' AND c.bdc_id LIKE 'BDC-%' WHERE s.dance_style='bachata'")->fetchColumn(),
 ];}
 $hasListFilters=$q!==''||$filter!==''||$country!==''||($dashboard===''&&$danceStyle!=='')||$role!==''||$division!==''||$status!=='';
 

@@ -11,16 +11,16 @@ for (const marker of [
   "getenv('BDC_REMOVE_BG_API_KEY')",
   "'https://api.remove.bg/v1.0/removebg'",
   "'format' => 'png'",
-  "str_starts_with($result, "\\x89PNG\\r\\n\\x1a\\n")",
+  'str_starts_with($result, "\\x89PNG\\r\\n\\x1a\\n")',
   "Only locally stored portal photos can be processed.",
 ]) assert(service.includes(marker), 'missing service safeguard: ' + marker);
 
 for (const marker of [
   "Auth::isSuperAdmin()",
-  "value="remove_background"",
-  "value="apply_background_removal"",
-  "value="discard_background_preview"",
-  "value="restore_original"",
+  'value="remove_background"',
+  'value="apply_background_removal"',
+  'value="discard_background_preview"',
+  'value="restore_original"',
   "competitor_background_preview_created",
   "competitor_background_removed",
   "competitor_photo_original_restored",
