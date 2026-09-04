@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev608",
-  "build": 3314,
+  "version": "2.3.3-dev609",
+  "build": 3315,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Emergency recovery: restores the known-working dev607 shared projector renderer after dev608 caused the deployed projector page to fail; no database, scoring, judge-link, result or projection-control data is changed.",
     "Fixes the shared Test and Live competitor and judge projector cards with row-aware portrait sizing, a uniform non-overlapping navy card surface, isolated content stacking and dense 19-per-role protection while preserving balanced pagination, bibs, flags, country labels and judge assignments.",
     "Replaces the overlapping horizontal competitor projector layout with a deterministic centered photo, name, prominent bib, flag and country stack using fixed non-shrinking rows while retaining uniform backgrounds, balanced pagination and Test/Live parity.",
     "Adds Super Admin-only true background removal for locally stored BDC and SDC competitor photos through a protected remove.bg credential, creates a transparent PNG preview before any live change, supports apply, discard and original restore, validates source and result files, records audits, and never stores the API key in the repository.",

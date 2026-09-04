@@ -20,7 +20,7 @@ $projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCust
 ob_start(static fn(string $html):string=>str_replace(
     ['</head>','<body>','<div class="stage"><div class="event">'],
     [
-        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v608.css?v=608"></head>',
+        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"></head>',
         '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">',
         '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div><div class="event">',
     ],
@@ -377,7 +377,6 @@ if($splitRoleScreen){
     foreach($competitorRoleItems as $role=>$roleItems){
         $competitorRoleItems[$role]=ProjectionLayoutService::balancedPageSlice($roleItems,$page,$competitorRoleTotalPages);
     }
-    $competitorRoleRows=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCols));
 } elseif (
     in_array($type, ["callbacks", "finalists"], true) &&
     !$splitRoleScreen &&
