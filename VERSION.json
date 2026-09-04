@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev593",
-  "build": 3299,
+  "version": "2.3.3-dev594",
+  "build": 3300,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs Judge Database name search by provisioning the missing country-code column on older installations, restores one valid active-judge suggestion list in Live, and adds the same searchable directory wiring to initial, Final and dynamically added Test judge rows.",
     "Shows the current Leader and Follower roster totals directly in their competitor-entry card headers across both Live and isolated Test Jack and Jill scoring, refreshing after every add or removal.",
     "Corrects MCP Rising/Open roster counts by requiring canonical registered category membership from the Bachata special-category and Salsa SDC category tables before applying role and approval eligibility.",
     "Repairs MCP division competitor listing by passing role and limit in the correct directory signature order and applying the same approved-history eligibility gate used during final roster approval.",
