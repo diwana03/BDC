@@ -1,11 +1,13 @@
 {
-  "version": "2.3.3-dev606",
-  "build": 3312,
+  "version": "2.3.3-dev607",
+  "build": 3313,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the overlapping horizontal competitor projector layout with a deterministic centered photo, name, prominent bib, flag and country stack using fixed non-shrinking rows while retaining uniform backgrounds, balanced pagination and Test/Live parity.",
+    "Adds Super Admin-only true background removal for locally stored BDC and SDC competitor photos through a protected remove.bg credential, creates a transparent PNG preview before any live change, supports apply, discard and original restore, validates source and result files, records audits, and never stores the API key in the repository.",
     "Replaces the still-collapsing competitor projector portrait layout with deterministic horizontal cards using an explicit photo column and separate name, bib and country rows, and reserves exact judge photo-frame height so portraits cannot cover judge names, while preserving uniform backgrounds, balanced pagination and Test/Live parity.",
     "Fixes the uniform projector-card photo regression by restoring stable visible competitor portraits instead of tiny dots and reducing judge portraits with reserved name spacing, while retaining shared backgrounds, balanced pagination, identity rows and Test/Live parity.",
     "Applies the uniform premium projector-card treatment to judges with a shared navy background and neutral photo frame, dedicated name, judge number, Chief status, scoring scope, flag and country rows, a J-number photo fallback, responsive overflow protection and unchanged judge ordering, assignments and Test/Live parity.",
