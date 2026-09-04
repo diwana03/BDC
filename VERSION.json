@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev614",
-  "build": 3320,
+  "version": "2.3.3-dev615",
+  "build": 3321,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Redesigns both competitor and judge projector cards in the approved compact format: BIB or judge assignment on the left, rectangular portrait in the centre, name on the right with flag, country and judging scope directly below; the recovered renderer and all scoring logic remain unchanged.",
     "Fixes competitor and judge projection overlap without changing the recovered PHP renderer: each card reserves independent photo, name, BIB, assignment and country rows through a cache-versioned shared stylesheet across Test and Live displays.",
     "Emergency projector rollback: restores only live-display/feed.php to the last structurally valid dev607 renderer after the incomplete layout merge caused persistent HTTP 500 responses; projector tokens, judge links, scoring, events and database data remain unchanged.",
     "Emergency projector syntax recovery: repairs the duplicated live-display renderer boundary that left an orphaned conditional chain and caused every feed request, including Holding Screen, to fail with HTTP 500; tokens, judge links, scoring, events and database data remain unchanged.",
