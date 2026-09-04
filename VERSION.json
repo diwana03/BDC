@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev619",
-  "build": 3325,
+  "version": "2.3.3-dev620",
+  "build": 3326,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Places the BDC logo inside the same protected header row as the event name and splits Live Contestant Scores into balanced pages of at most 12 Leaders and 12 Followers, with role totals, Page X of Y labels and automatic page cycling through the existing projection delay.",
     "Removes Full Screen controls from the audience-facing Jack and Jill and Dance Cup projector pages, keeps Full Screen only on their administrator projection-control panels, and forces the corrected 5 percent left/right logo and official-badge safe area to refresh under a new cache key.",
     "Shows complete Leader/Follower totals with live Page X of Y projector headers, adds Full Screen controls to both Jack and Jill and Dance Cup projection consoles, and expands audience-safe spacing to 10 percent vertically and 5 percent horizontally across both projector systems.",
     "Limits shared Test and Live Leader/Follower competitor, callback and finalist projection rosters to a maximum of 15 people per role per slide in a three-column grid, balancing every role across the required slides so photos, names, bibs, flags and countries remain readable.",
