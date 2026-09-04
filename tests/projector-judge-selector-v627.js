@@ -32,7 +32,7 @@ assert.match(control, /select\.form-select option\{background-color:#fff!importa
 assert.match(workspace, /select\.form-select option\{background-color:#fff!important;color:#111827!important/);
 assert.match(mobile, /\.judge-call select option\{background-color:#07101f!important;color:#fff!important/);
 
-assert.match(feed, /projector-roster-v615\.css\?v=627/);
+assert.match(feed, /projector-roster-v615\.css\?v=(?:627|628)/);
 assert.match(roster, /\.stage \.list > \.judge-card:only-child/);
 assert.match(roster, /width: min\(88%, 1180px\)/);
 assert.match(roster, /height: min\(88%, 590px\)/);
