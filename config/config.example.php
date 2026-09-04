@@ -46,6 +46,9 @@ return [
         // Optional. Defaults to a profile-integration-secret file beside the
         // configured database password file. It must remain outside public_html.
         'profile_api_secret_file' => '/home/account/.bdc-secrets/profile-integration-secret',
+        // Optional remove.bg API credential. Prefer BDC_REMOVE_BG_API_KEY in
+        // the server environment; otherwise keep this file outside public_html.
+        'remove_bg_api_key_file' => '/home/account/.bdc-secrets/remove-bg-api-key',
     ],
     'deployment' => [
         'enabled' => false,
