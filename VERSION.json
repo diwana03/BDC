@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev605",
-  "build": 3311,
+  "version": "2.3.3-dev606",
+  "build": 3312,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the still-collapsing competitor projector portrait layout with deterministic horizontal cards using an explicit photo column and separate name, bib and country rows, and reserves exact judge photo-frame height so portraits cannot cover judge names, while preserving uniform backgrounds, balanced pagination and Test/Live parity.",
     "Fixes the uniform projector-card photo regression by restoring stable visible competitor portraits instead of tiny dots and reducing judge portraits with reserved name spacing, while retaining shared backgrounds, balanced pagination, identity rows and Test/Live parity.",
     "Applies the uniform premium projector-card treatment to judges with a shared navy background and neutral photo frame, dedicated name, judge number, Chief status, scoring scope, flag and country rows, a J-number photo fallback, responsive overflow protection and unchanged judge ordering, assignments and Test/Live parity.",
     "Redesigns split Leader and Follower projector competitors into uniform premium cards with a shared navy background and neutral photo frame, separates prominent bib, name, flag and country rows, contains long labels, prevents overlap and edge clipping, and preserves balanced pagination and Test/Live parity.",
