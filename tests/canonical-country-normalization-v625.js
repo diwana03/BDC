@@ -11,6 +11,7 @@ const version=JSON.parse(fs.readFileSync('VERSION.json','utf8'));
 
 for(const token of ['canonicalName','CITY_COUNTRIES',"count($codes)>1"])assert.ok(service.includes(token),'country normalizer safeguard missing '+token);
 assert.ok(dashboard.includes('CountryFlagService::canonicalName'),'dashboard country filter must use canonical countries');
+for(const token of ['$countryVariants','country_variant_','c.country IN ('])assert.ok(dashboard.includes(token),'dashboard must match every canonical country variant: '+token);
 assert.ok(editor.includes('CountryFlagService::canonicalName'),'admin saves must canonicalize countries');
 assert.ok(integration.includes('CountryFlagService::canonicalName'),'integration imports must canonicalize countries');
 for(const token of ["'Japan, Tokyo'=>'Japan'","'Korea/Seoul'=>'South Korea'","'Thailand / Bangkok'=>'Thailand'","'Melbourne Australia'=>'Australia'","'USA'=>'United States of America'"]){
