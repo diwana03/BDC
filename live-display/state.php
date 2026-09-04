@@ -134,6 +134,12 @@ if (
         $total=max(1,(int)$layout["pages"]);
     }
 }
+if ($roundId && $s["screen_type"] === "judge_call") {
+    $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
+    $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+    $judgeCountQuery->execute(["r" => $roundId]);
+    $total = max(1, (int) $judgeCountQuery->fetchColumn());
+}
 $dataVersion = "0";
 if ($roundId && ($s["screen_type"] ?? "") === "matching") {
     try {
