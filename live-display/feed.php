@@ -17,15 +17,6 @@ if (!$session) {
     exit("Live Display link is invalid or disabled.");
 }
 $projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCustomHolding=trim((string)($session['holding_background_url']??''))!=='';
-ob_start(static fn(string $html):string=>str_replace(
-    ['</head>','<body>','<div class="stage"><div class="event">'],
-    [
-        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"></head>',
-        '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">',
-        '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div><div class="event">',
-    ],
-    $html,
-));
 $test = $session["data_mode"] === "test";
 $roundId = (int) ($session["current_round_id"] ?? 0);
 $type = (string) ($session["screen_type"] ?? "holding");
