@@ -11,8 +11,8 @@ const fullscreen = read('public/js/projection-control-fullscreen-v618.js');
 const version = JSON.parse(read('VERSION.json'));
 
 assert.match(feed, /\$competitorRoleTotals=\["leader"=>0,"follower"=>0\]/);
-assert.match(feed, /PAGE '.\$competitorRolePage.' OF '.\$competitorRoleTotalPages/);
-assert.match(feed, /str_replace\(\$roleHeaderSearch,\$roleHeaderReplace,\$html\)/);
+assert(feed.includes('PAGE <?=$competitorRolePage?> OF <?=$competitorRoleTotalPages?>'), 'competitor page status is not rendered directly');
+assert.doesNotMatch(feed, /str_replace\(\$roleHeaderSearch,\$roleHeaderReplace,\$html\)/);
 assert(safe.includes('padding-left: 5cqw') && safe.includes('padding-right: 5cqw'), 'Jack & Jill horizontal safe area missing');
 assert(dcProjector.includes('padding:10vh 5vw'), 'Dance Cup four-edge safe area missing');
 assert(jjControl.includes('projection-control-fullscreen-v618.js?v=619'), 'Jack & Jill control fullscreen integration missing');
