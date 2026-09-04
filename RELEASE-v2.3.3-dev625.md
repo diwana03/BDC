@@ -6,6 +6,7 @@
 - Corrects Livii Iabanzhi from `Japan, Tokyo` to `Japan`.
 - Repairs common Japan, South Korea, Thailand, Australia, New Zealand, Indonesia, Philippines, Vietnam, Russia, Taiwan, Italy, France and United States variants found in registered rosters.
 - Uses canonical country values in the Bachata and Salsa dashboard filter, administrator profile saves, profile integration imports and flag rendering.
+- Expands each dashboard country selection to all stored values that resolve to that canonical country, preventing unlisted legacy variants from disappearing.
 - Preserves genuinely ambiguous dual-country values instead of guessing.
 - Archives every migrated value in `bdc_country_normalization_archive` for recovery.
 
