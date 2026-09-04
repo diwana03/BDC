@@ -104,7 +104,6 @@ final class LiveDisplaySessionService
     }
     public static function byToken(PDO $pdo, string $token): ?array
     {
-        self::ensure($pdo);
         if (!preg_match('/^[a-f0-9]{48}$/', $token)) {
             return null;
         }
