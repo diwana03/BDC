@@ -31,7 +31,6 @@ body[data-theme=ivory_wine]{--bg:#fffaf0;--bg2:#f1e2e6;--text:#341525;--muted:#7
 body[data-theme=pearl_navy]{--bg:#f8fbff;--bg2:#dce8f6;--text:#10213d;--muted:#4c6380;--card:rgba(255,255,255,.82);--line:#b9cbe0;--accent:#215d9c}
 body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
 #app{width:100vw;height:100vh;padding:10vh 5vw;display:flex;flex-direction:column;gap:clamp(10px,1.2vh,20px)}
-.projection-fullscreen{position:fixed;z-index:2147483646;right:18px;bottom:18px;border:1px solid rgba(255,255,255,.72);border-radius:999px;padding:10px 16px;background:rgba(10,18,32,.9);color:#fff;font:800 14px Arial;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.45)}:fullscreen .projection-fullscreen{display:none}
 .top{display:grid;grid-template-columns:clamp(64px,7vw,118px) 1fr clamp(120px,13vw,220px);align-items:center;gap:2vw;min-height:clamp(70px,9vh,126px)}
 .logo{width:clamp(64px,7vw,118px);aspect-ratio:1;background:#fff;border-radius:clamp(12px,1.2vw,22px);padding:8px;box-shadow:0 12px 34px #0003}.logo img{width:100%;height:100%;object-fit:contain}
 .event{text-align:center;min-width:0}.event h1{font-size:clamp(26px,3.2vw,62px);line-height:1.05;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.event p:empty{display:none}
@@ -62,12 +61,10 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
  <section class="stage" id="stage"><div class="view"><div class="holding"><h2><?=htmlspecialchars($initialEventName,ENT_QUOTES,'UTF-8')?></h2></div></div></section>
  <footer class="footer"><span class="state" id="screenState">Holding Screen</span><span class="page" id="pageState"></span><span class="live"><i class="dot"></i>Live</span></footer>
 </main>
-<button type="button" id="projectionFullscreen" class="projection-fullscreen">Enter Full Screen</button>
 <div class="connection" id="connection">Live updates temporarily unavailable. Retrying…</div>
 <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
 <script>
 (()=>{'use strict';
-const fullscreenButton=document.getElementById('projectionFullscreen');fullscreenButton.addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}});document.addEventListener('fullscreenchange',()=>{fullscreenButton.textContent=document.fullscreenElement?'Exit Full Screen':'Enter Full Screen'});
 const token=<?=json_encode($token)?>,test=<?=$test?'true':'false'?>,stage=document.getElementById('stage'),eventName=document.getElementById('eventName'),categoryName=document.getElementById('categoryName'),screenState=document.getElementById('screenState'),pageState=document.getElementById('pageState'),connection=document.getElementById('connection'),fxLayer=document.getElementById('fxLayer');
 let lastHash='',lastRevision='',busy=false,pollTimer=null,currentPage=1,pageTotal=1,lastType='holding',nextPageAt=0,backoffUntil=0,lastEffectVersion=0,effectRun=0,revealCountdownTimer=null,cycle={index:0,phase:'contestant',next:0},latest=null;
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
