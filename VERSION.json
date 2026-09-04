@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev603",
-  "build": 3309,
+  "version": "2.3.3-dev604",
+  "build": 3310,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Applies the uniform premium projector-card treatment to judges with a shared navy background and neutral photo frame, dedicated name, judge number, Chief status, scoring scope, flag and country rows, a J-number photo fallback, responsive overflow protection and unchanged judge ordering, assignments and Test/Live parity.",
     "Redesigns split Leader and Follower projector competitors into uniform premium cards with a shared navy background and neutral photo frame, separates prominent bib, name, flag and country rows, contains long labels, prevents overlap and edge clipping, and preserves balanced pagination and Test/Live parity.",
     "Replaces the generic projector Flight Call with separate Flight Round 1, Flight Round 2 and later saved-flight buttons, sends the chosen flight directly to the shared display, highlights the exact active flight, and preserves scoring assignments, scores and Test/Live isolation.",
     "Balances split Leader and Follower projector pagination evenly across every slide instead of filling the first slide to capacity and leaving tiny remainder slides, while preserving bib order, role separation, capacity limits and Test/Live parity.",
