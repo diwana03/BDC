@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__, 2) . "/bootstrap.php";
-ob_start(static fn(string $html):string=>str_replace(['</head>','</body>','Projector Live Feed Link</h2>'],['<script defer src="../../public/assets/js/bdc-theme.js?v=505"></script><script defer src="projector-control-v350.js?v=350"></script></head>','<script src="../../public/js/projection-control-fullscreen-v618.js?v=619"></script></body>','Projector Live Feed Link</h2><button type="button" data-fullscreen-control class="btn btn-dark btn-sm ms-2">Full Screen</button>'],$html));
+ob_start(static fn(string $html):string=>str_replace(['</head>','</body>','Projector Live Feed Link</h2>'],['<style>select.form-select,select.form-select option{background-color:#fff!important;color:#111827!important;-webkit-text-fill-color:#111827!important;color-scheme:light}</style><script defer src="../../public/assets/js/bdc-theme.js?v=505"></script><script defer src="projector-control-v350.js?v=350"></script></head>','<script src="../../public/js/projection-control-fullscreen-v618.js?v=619"></script></body>','Projector Live Feed Link</h2><button type="button" data-fullscreen-control class="btn btn-dark btn-sm ms-2">Full Screen</button>'],$html));
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
@@ -73,6 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && Csrf::verify($_POST["_csrf"] ?? nul
 }
 $session = $sessionId > 0 ? LiveDisplaySessionService::byId($pdo, $sessionId, $test) : LiveDisplaySessionService::forEvent($pdo, $eventId, $test);
 $mobileRemoteLink=$session?MobileProjectionRemoteService::activeLink($pdo,(int)$session['id'],$roundEventId,$test):null;
+$judgeCallOptions=MobileProjectionRemoteService::assignedJudges($pdo,$roundId,$test);
 $emceeLink = $round["round_type"] === "final" ? RandomPairingService::activeLink($pdo, $roundId, $test) : null;
 $randomMatchLocked = $round["round_type"] === "final" && RandomPairingService::scoringStarted($pdo, $roundId, $test);
 $selection = ($_GET["selection"] ?? "") === "1" || $embed;
@@ -87,7 +88,6 @@ $types =
     $round["round_type"] === "heats"
         ? [
             "judges" => "Judges",
-            "judge_call" => "Call Judges One by One",
             "competitors" => "Competitors",
             "scoring" => "Scoring Status",
             "score_matrix" => "Live Score Matrix · Provisional",
@@ -97,7 +97,6 @@ $types =
         : ($round["round_type"] === "semifinal"
             ? [
                 "judges" => "Judges",
-                "judge_call" => "Call Judges One by One",
                 "competitors" => "Semifinal Competitors",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Score Matrix · Provisional",
@@ -105,7 +104,6 @@ $types =
             ]
             : [
                 "judges" => "Judges",
-                "judge_call" => "Call Judges One by One",
                 "competitors" => "Finalists / Couples",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Relative Placement Matrix · Provisional",
@@ -208,7 +206,7 @@ if (
 ) ?>"><h2 class="h5">Live Feed Remote Control</h2><div id="liveState" class="live-state small mb-2">LIVE STATE: <?= e(
     strtoupper((string) ($session["screen_type"] ?? "holding")),
 ) ?> · Round <?= $roundId ?> · Version <?= (int) ($session["state_version"] ??
-     0) ?></div><div id="remoteMessage" class="small mb-2 text-muted">Click a feed and the projector screen will update automatically.</div><div class="d-flex flex-wrap gap-2 mb-3"><button type="button" class="feed btn btn-outline-dark" data-screen="holding">Holding Screen</button><?php foreach($flightButtons as $flightNumber=>$flightLabel):$flightActive=($session["screen_type"]??"")==="flights"&&(int)($session["page_number"]??1)===(int)$flightNumber;?><button type="button" class="feed btn <?=$flightActive?"btn-danger":"btn-outline-danger"?>" data-screen="flights" data-page="<?=(int)$flightNumber?>"><?=e($flightLabel)?></button><?php endforeach;?><?php foreach (
+     0) ?></div><div id="remoteMessage" class="small mb-2 text-muted">Click a feed and the projector screen will update automatically.</div><div class="border border-danger rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">Call a Specific Judge</div><div class="small text-muted mb-2">Choose any assigned judge and place that judge on the projector.</div><div class="row g-2 align-items-end"><div class="col-md-8"><label class="form-label fw-bold" for="judgeCallSelect">Assigned Judge</label><select id="judgeCallSelect" class="form-select form-select-lg" onchange="document.getElementById('callSelectedJudge').dataset.page=this.value" <?=$judgeCallOptions?'':'disabled'?>><?php if(!$judgeCallOptions):?><option>No assigned judges</option><?php endif;?><?php foreach($judgeCallOptions as $judge):?><option value="<?=(int)$judge['page']?>" <?=($session['screen_type']??'')==='judge_call'&&(int)($session['page_number']??1)===(int)$judge['page']?'selected':''?>>J<?=(int)$judge['judge_order']?> · <?=e((string)$judge['judge_name'])?><?=!empty($judge['is_chief'])?' · Chief':''?> · <?=e((string)$judge['scope_label'])?></option><?php endforeach;?></select></div><div class="col-md-4"><button type="button" id="callSelectedJudge" class="feed btn btn-danger btn-lg w-100" data-screen="judge_call" data-page="<?=(int)($session['screen_type']??'')==='judge_call'?(int)($session['page_number']??1):1?>" onclick="this.dataset.page=document.getElementById('judgeCallSelect').value" <?=$judgeCallOptions?'':'disabled'?>>Call Selected Judge</button></div></div></div><div class="d-flex flex-wrap gap-2 mb-3"><button type="button" class="feed btn btn-outline-dark" data-screen="holding">Holding Screen</button><?php foreach($flightButtons as $flightNumber=>$flightLabel):$flightActive=($session["screen_type"]??"")==="flights"&&(int)($session["page_number"]??1)===(int)$flightNumber;?><button type="button" class="feed btn <?=$flightActive?"btn-danger":"btn-outline-danger"?>" data-screen="flights" data-page="<?=(int)$flightNumber?>"><?=e($flightLabel)?></button><?php endforeach;?><?php foreach (
     $types
     as $v => $l
 ):
