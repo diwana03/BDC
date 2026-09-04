@@ -68,7 +68,8 @@ if (!function_exists('absolute_url')) {
     function absolute_url(string $path = ''): string
     {
         if (preg_match('#^https?://#i', $path)) return $path;
-        $relative = str_starts_with($path, '/') ? $path : url($path);
+        $base = rtrim((string) \App\Core\Config::get('app.base_path', '/portal'), '/');
+        $relative = str_starts_with($path, '/') ? $path : $base . '/' . ltrim($path, '/');
         $configured = rtrim((string) \App\Core\Config::get('app.url', ''), '/');
         $parts = $configured !== '' ? parse_url($configured) : false;
         if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
