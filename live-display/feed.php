@@ -93,7 +93,7 @@ $scoringComplete =
     );
 if ($type === "flights") {
     $flightSummary = ScoringFlightService::summary($pdo, $roundId, $test);
-    $flight = max(1, (int)($flightSummary['active_flight'] ?? $page));
+    $flight = max(1, $page);
     $title = "ROUND {$flight} · NOW DANCING";
     ScoringFlightService::ensure($pdo, $test);
     $assignmentTable = $test ? 'bdc_test_scoring_flight_assignments' : 'bdc_scoring_flight_assignments';
@@ -114,8 +114,9 @@ if ($type === "flights") {
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
     $type = "matching_couples";
-} elseif ($type === "judges") {
-    $title = "JUDGES";
+} elseif (in_array($type, ["judges", "judge_call"], true)) {
+    $judgeCall = $type === "judge_call";
+    $title = $judgeCall ? "CALLING JUDGES" : "JUDGES";
     try {
         JudgeDirectoryService::ensure($pdo);
         JudgeDirectoryService::backfillAssignments($pdo);
@@ -126,6 +127,12 @@ if ($type === "flights") {
     );
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
+    if ($judgeCall) {
+        $judgeTotal = count($items);
+        $judgePage = max(1, min($page, max(1, $judgeTotal)));
+        $items = $judgeTotal > 0 ? [$items[$judgePage - 1]] : [];
+        $title = "CALLING JUDGE {$judgePage} OF " . max(1, $judgeTotal);
+    }
 } elseif ($type === "competitors") {
     $isFinalRound = $r["round_type"] === "final";
     $title = $isFinalRound ? "FINALIST COUPLES" : "COMPETITORS";
@@ -284,7 +291,7 @@ $items = ProjectionNameService::abbreviateRows(
 );
 $matrixJudges = ProjectionNameService::abbreviateRows($matrixJudges, ["judge_name"]);
 $finalJudges = ProjectionNameService::abbreviateRows($finalJudges, ["judge_name"]);
-if ($type === "judges") {
+if (in_array($type, ["judges", "judge_call"], true)) {
     $judgeProjectionNames = [];
     foreach ($items as $judgeIndex => $judgeItem) {
         $judgeProjectionNames[(string) $judgeIndex] = trim((string) (
@@ -524,7 +531,7 @@ endforeach; ?></div><?php else: ?><div class="list"><?php if (
 .scoring-progress-total .big{font-size:max(42px,min(6.8cqw,12cqh));line-height:.95}.scoring-progress-total .small{margin-top:.75em;color:#fde7b0;font-weight:850;letter-spacing:.09em}.scoring-progress-bar{width:68%;height:max(5px,min(.42cqw,.72cqh));margin-top:1.1em;border-radius:999px;background:rgba(255,255,255,.13);overflow:hidden}.scoring-progress-bar>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#d8aa37,#34d399);box-shadow:0 0 1.4cqh rgba(52,211,153,.6)}
 @container (aspect-ratio < 6/5){.scoring-progress{grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr)}.scoring-progress-total{grid-column:1/-1;grid-row:1;min-height:15cqh}.judge-status-list{grid-template-columns:1fr}}
 </style><div class="scoring-progress"><section class="judge-status-panel complete"><div class="judge-status-heading"><span>✓ Completed</span><span class="judge-status-count"><?=count($scoringSubmittedJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringSubmittedJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringSubmittedJudges):?><div class="judge-chip"><span class="judge-chip-icon">—</span><span class="judge-chip-name">Waiting for first submission</span></div><?php endif;?></div></section><div class="scoring-progress-total"><div class="big"><?= (int) ($x["submitted"] ?? 0) ?> / <?= (int) ($x["total"] ?? 0) ?></div><div class="small">JUDGES SUBMITTED</div><div class="scoring-progress-bar"><span style="width:<?=((int)($x["total"]??0)>0?round(((int)($x["submitted"]??0)/(int)$x["total"])*100):0)?>%"></span></div></div><section class="judge-status-panel pending"><div class="judge-status-heading"><span>◷ Pending</span><span class="judge-status-count"><?=count($scoringPendingJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringPendingJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">…</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringPendingJudges):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">All judges completed</span></div><?php endif;?></div></section></div><?php endif;
-elseif ($type === "judges"):
+elseif (in_array($type, ["judges", "judge_call"], true)):
     foreach ($items as $x):
         $country = trim((string) ($x["country"] ?? ""));
         $countryCode = trim((string) ($x["country_code"] ?? ""));
