@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__, 2) . "/bootstrap.php";
-ob_start(static fn(string $html):string=>str_replace('</head>','<script defer src="../../public/assets/js/bdc-theme.js?v=505"></script><script defer src="projector-control-v350.js?v=350"></script></head>',$html));
+ob_start(static fn(string $html):string=>str_replace(['</head>','</body>'],['<script defer src="../../public/assets/js/bdc-theme.js?v=505"></script><script defer src="projector-control-v350.js?v=350"></script></head>','<button type="button" data-fullscreen-control class="btn btn-dark position-fixed bottom-0 end-0 m-3 shadow" style="z-index:1080">Full Screen</button><script src="../../public/js/projection-control-fullscreen-v618.js?v=618"></script></body>'],$html));
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Database;
