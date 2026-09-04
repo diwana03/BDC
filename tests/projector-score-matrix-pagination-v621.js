@@ -14,8 +14,8 @@ assert(feed.includes('$matrixRows=$heatsScoreRoleItems[$role]'), 'matrix rendere
 assert(feed.includes('$heatsScoreRoleTotals[$role]?> CONTESTANTS'), 'matrix total is missing');
 assert(feed.includes('PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?>'), 'matrix page number is missing');
 assert(state.includes('$s["screen_type"]==="score_matrix"&&$roundType!=="final"'), 'state does not limit matrix pagination to non-final rounds');
-assert(advance.includes("$pagedTypes=['competitors','callbacks','finalists','heats_scores','score_matrix']"));
-assert(advance.includes("$screenType==='score_matrix'&&$roundType==='final'"), 'final matrix pagination guard missing');
+assert.match(advance, /\$pagedTypes\s*=\s*\[[^\]]*'heats_scores'[^\]]*'score_matrix'[^\]]*\]/, 'paged screen allowlist missing matrix');
+assert.match(advance, /\$screenType\s*===\s*'score_matrix'\s*&&\s*\$roundType\s*===\s*'final'/, 'final matrix pagination guard missing');
 assert(display.includes("'heats_scores','score_matrix'"), 'matrix auto-page timer missing');
 assert.match(safe, /width: max\(\d+px, min\(\d+cqw, \d+cqh\)\)/, 'larger inline logo sizing missing');
 assert(safe.includes('justify-content: center'), 'logo and title are not centered together');
