@@ -11,5 +11,12 @@ final class ProjectionLayoutService{
   [$rows,$cols]=$best;$capacity=$rows*$cols;$pages=(int)ceil($count/$capacity);
   return ['format'=>$label,'ratio'=>$ratio,'density'=>$density,'rows'=>$rows,'columns'=>$cols,'capacity'=>$capacity,'pages'=>$pages,'count'=>$count];
  }
+ public static function balancedPageSlice(array $items,int $page,int $pages):array{
+  $count=count($items);$pages=max(1,$pages);$page=max(1,min($page,$pages));
+  $base=intdiv($count,$pages);$remainder=$count%$pages;
+  $size=$base+($page<=$remainder?1:0);
+  $offset=($page-1)*$base+min($page-1,$remainder);
+  return array_slice($items,$offset,$size);
+ }
  public static function formats():array{return array_keys(self::PRESETS)+['custom'=>'custom'];}
 }
