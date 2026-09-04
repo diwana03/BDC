@@ -164,6 +164,9 @@
   grid-row: 3;
   align-self: start;
   justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: clamp(2px, .65cqh, 5px);
   width: 100%;
   font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
   line-height: 1.08;
@@ -173,7 +176,49 @@
 
 .stage .judge-country-name {
   overflow: hidden;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* One selected judge: large, centred and still inside the projector safe area. */
+.stage .list:has(> .judge-card:only-child) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5% 2% 2.5% !important;
+}
+
+.stage .list > .judge-card:only-child {
+  flex: 0 0 auto !important;
+  width: min(88%, 1180px) !important;
+  height: min(88%, 590px) !important;
+  grid-template-columns: minmax(130px, 20%) minmax(250px, 44%) minmax(220px, 36%);
+  gap: clamp(10px, 2.2cqh, 20px) clamp(12px, 2.4cqw, 28px) !important;
+  padding: clamp(18px, 4cqh, 34px) !important;
+}
+
+.stage .list > .judge-card:only-child .judge-photo-frame {
+  width: clamp(220px, min(36cqw, 78cqh), 390px) !important;
+  height: clamp(240px, min(38cqw, 80cqh), 420px) !important;
+}
+
+.stage .list > .judge-card:only-child .judge-position {
+  font-size: clamp(24px, min(8.8cqw, 10cqh), 48px);
+}
+
+.stage .list > .judge-card:only-child .judge-name {
+  font-size: clamp(30px, min(9.6cqw, 12cqh), 58px);
+}
+
+.stage .list > .judge-card:only-child .judge-scope,
+.stage .list > .judge-card:only-child .judge-country {
+  font-size: clamp(20px, min(6.2cqw, 7.8cqh), 34px);
+}
+
+.stage .list > .judge-card:only-child .judge-flag {
+  width: clamp(52px, 13cqw, 96px) !important;
+  height: auto !important;
 }
