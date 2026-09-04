@@ -1,0 +1,184 @@
+:root {
+  --judge-navy: #0c1930;
+  --judge-navy-soft: #172944;
+  --judge-wine: #7f2942;
+  --judge-gold: #d8aa37;
+  --judge-ink: #172033;
+  --judge-muted: #66758a;
+  --judge-line: #dbe3ee;
+}
+
+body:has(> .wrap) {
+  background: #f3f6fa !important;
+  color: var(--judge-ink) !important;
+}
+
+.wrap {
+  padding: 14px !important;
+}
+
+.wrap > .head {
+  margin: 0 0 16px !important;
+  padding: 16px 18px;
+  border: 1px solid rgba(216, 170, 55, .42);
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(115deg, var(--judge-navy) 0%, var(--judge-navy-soft) 58%, #4d1832 100%);
+  box-shadow: 0 14px 32px rgba(12, 25, 48, .18);
+}
+
+.wrap > .head h2 {
+  font-size: 21px !important;
+  letter-spacing: -.01em;
+}
+
+.wrap > .head .small,
+.wrap > .head #lastRefresh {
+  color: #cbd6e6 !important;
+}
+
+.wrap .grid {
+  gap: 14px !important;
+}
+
+.wrap .judge {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--judge-line) !important;
+  border-top: 4px solid #335f91 !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 26px rgba(25, 45, 76, .09);
+}
+
+.wrap .judge:has(.chief) {
+  border-top-color: var(--judge-gold) !important;
+}
+
+.wrap .judge:has(.status.submitted) {
+  border-top-color: #24945b !important;
+  background: linear-gradient(180deg, #fff 0%, #f3fbf6 100%);
+}
+
+.wrap .name {
+  color: var(--judge-navy) !important;
+  font-size: 15px;
+  letter-spacing: .01em;
+}
+
+.wrap .chief {
+  color: #5a3d00 !important;
+  background: #fde7a8 !important;
+  border: 1px solid #e6bd50;
+  font-weight: 900;
+}
+
+.wrap .status {
+  border: 1px solid #d4dce7;
+  background: #edf1f6 !important;
+  color: #405168 !important;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.wrap .status.submitted {
+  border-color: #a9ddbd;
+  background: #dcf5e5 !important;
+  color: #176b36 !important;
+}
+
+.wrap .status.scoring {
+  border-color: #edd18c;
+  background: #fff1c9 !important;
+  color: #765600 !important;
+}
+
+.wrap .bar {
+  height: 10px !important;
+  border: 1px solid #e1e7ef;
+  background: #e9eef5 !important;
+}
+
+.wrap .bar i {
+  background: linear-gradient(90deg, #245ea9, #2689e5) !important;
+  box-shadow: 0 0 12px rgba(38, 137, 229, .3);
+}
+
+.wrap .judge:has(.status.submitted) .bar i {
+  background: linear-gradient(90deg, #16834b, #35b66f) !important;
+}
+
+.wrap .btn {
+  min-height: 34px;
+  border-radius: 9px !important;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.wrap .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 13px rgba(22, 40, 70, .12);
+}
+
+.wrap .unlock {
+  align-items: stretch;
+  margin-top: 12px !important;
+  padding: 10px;
+  border: 1px solid #e5b1b8;
+  border-radius: 11px;
+  background: #fff4f5;
+}
+
+.wrap .unlock input {
+  min-height: 38px;
+  border-color: #d7a7ae !important;
+  background: #fff !important;
+  color: var(--judge-ink) !important;
+}
+
+.wrap .unlock .btn.danger {
+  min-width: 138px;
+  border-color: #b42332 !important;
+  background: #b42332 !important;
+  color: #fff !important;
+}
+
+.wrap .emergency {
+  margin-top: 12px !important;
+  padding-top: 10px !important;
+}
+
+#automaticJudgeLivePanel {
+  overflow: hidden;
+  border: 1px solid #d8e1ed !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 28px rgba(25, 45, 76, .1) !important;
+}
+
+#automaticJudgeLivePanel > .card-header {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(110deg, var(--judge-navy), #4d1832) !important;
+}
+
+#automaticJudgeLivePanel > .card-header .text-muted {
+  color: #cbd6e6 !important;
+}
+
+#automaticJudgeLivePanel .table thead th {
+  color: #fff;
+  background: var(--judge-navy-soft);
+  border-color: #344762;
+}
+
+#automaticJudgeLivePanel .table tbody tr:nth-child(even) td {
+  background: #f7f9fc;
+}
+
+@media (max-width: 640px) {
+  .wrap { padding: 9px !important; }
+  .wrap > .head { padding: 13px 14px; }
+  .wrap .judge { padding: 13px !important; }
+  .wrap .unlock { flex-direction: column; }
+  .wrap .unlock .btn.danger { width: 100%; }
+}
