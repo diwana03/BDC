@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev622",
-  "build": 3328,
+  "version": "2.3.3-dev623",
+  "build": 3329,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds saved Flight Round buttons to the Mobile Projection Remote, starts a five-second countdown automatically before Callback Reveal, provides a separate standalone countdown on mobile and desktop controls, and adds a one-by-one judge call screen with bounded Previous, Next and optional Auto Page controls across shared Test and Live projectors.",
     "Places the BDC logo in its original solid white rounded tile beside the complete projector heading, aligns it down toward the round title, preserves extra breathing room above it, and keeps all Test and Live projector content inside the approved safe area.",
     "Splits the provisional Live Score Matrix into balanced pages of at most 12 Leaders and 12 Followers, adds totals and Page X of Y to each matrix panel, and enlarges the BDC logo while placing it directly beside the centered event name.",
     "Places the BDC logo inside the same protected header row as the event name and splits Live Contestant Scores into balanced pages of at most 12 Leaders and 12 Followers, with role totals, Page X of Y labels and automatic page cycling through the existing projection delay.",
