@@ -364,6 +364,7 @@ $coupleProjection = in_array($type, ["final_couples", "matching_couples"], true)
 $coupleColumns = min(5, max(1, count($items)));
 $coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
+$competitorRoleTotals=["leader"=>0,"follower"=>0];
 $competitorRolePaged=in_array($type,["competitors","callbacks","finalists"],true);
 $competitorRoleCols=$competitorRolePaged?3:max(1,(int)floor($cols/2));
 $competitorRoleCapacity=$competitorRolePaged?15:max(1,(int)$layout["rows"]*$competitorRoleCols);
@@ -373,7 +374,9 @@ if($splitRoleScreen){
         $role=(string)($competitorItem["dance_role"]??"");
         if(isset($competitorRoleItems[$role]))$competitorRoleItems[$role][]=$competitorItem;
     }
+    foreach($competitorRoleItems as $role=>$roleItems)$competitorRoleTotals[$role]=count($roleItems);
     $competitorRoleTotalPages=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
+    $competitorRolePage=max(1,min($page,$competitorRoleTotalPages));
     foreach($competitorRoleItems as $role=>$roleItems){
         $competitorRoleItems[$role]=ProjectionLayoutService::balancedPageSlice($roleItems,$page,$competitorRoleTotalPages);
     }
@@ -387,6 +390,15 @@ if($splitRoleScreen){
         ($page - 1) * $layout["capacity"],
         $layout["capacity"],
     );
+}
+if($splitRoleScreen){
+    $roleHeaderSearch=[];$roleHeaderReplace=[];
+    foreach(["leader"=>"LEADERS","follower"=>"FOLLOWERS"] as $role=>$label){
+        $visible=count($competitorRoleItems[$role]);
+        $roleHeaderSearch[]='<div class="competitor-role-title"><span>'.$label.' · '.$visible.' COMPETITORS</span></div>';
+        $roleHeaderReplace[]='<div class="competitor-role-title"><span>'.$label.' · '.$competitorRoleTotals[$role].' COMPETITORS</span><span>PAGE '.$competitorRolePage.' OF '.$competitorRoleTotalPages.'</span></div>';
+    }
+    ob_start(static fn(string $html):string=>str_replace($roleHeaderSearch,$roleHeaderReplace,$html));
 }
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
     $title,
