@@ -87,6 +87,7 @@ $types =
     $round["round_type"] === "heats"
         ? [
             "judges" => "Judges",
+            "judge_call" => "Call Judges One by One",
             "competitors" => "Competitors",
             "scoring" => "Scoring Status",
             "score_matrix" => "Live Score Matrix · Provisional",
@@ -96,6 +97,7 @@ $types =
         : ($round["round_type"] === "semifinal"
             ? [
                 "judges" => "Judges",
+                "judge_call" => "Call Judges One by One",
                 "competitors" => "Semifinal Competitors",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Score Matrix · Provisional",
@@ -103,6 +105,7 @@ $types =
             ]
             : [
                 "judges" => "Judges",
+                "judge_call" => "Call Judges One by One",
                 "competitors" => "Finalists / Couples",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Relative Placement Matrix · Provisional",
@@ -228,7 +231,7 @@ $v
 $protected && empty($session["results_unlocked"]) ? "🔒 " : ""
 ?><?= e($l)
 ?></button><?php
-endforeach; ?></div><div class="border rounded p-3 mb-3"><div class="fw-bold">Presentation Effects · Transparent Overlay</div><div class="small text-muted mb-2">The active projector screen remains visible beneath every effect.</div><div class="d-flex flex-wrap gap-2"><button type="button" class="effect btn btn-outline-dark" data-effect="drumroll">Drum Roll</button><button type="button" class="effect btn btn-outline-primary" data-effect="fireworks">Cinematic Fireworks</button><button type="button" class="effect btn btn-outline-warning" data-effect="confetti">Celebration Confetti</button><button type="button" class="effect btn btn-outline-danger" data-effect="hearts">💖 Hearts</button><button type="button" class="effect btn btn-outline-primary" data-effect="balloons">🎈 Balloons</button><button type="button" class="effect btn btn-outline-warning" data-effect="heart_smiles">🥰 Smiling Hearts</button><button type="button" class="effect btn btn-outline-danger" data-effect="finger_hearts">🫰 Korean Finger Hearts</button><button type="button" class="effect btn btn-outline-warning" data-effect="gold_rain">Gold Celebration</button><button type="button" class="effect btn btn-outline-info" data-effect="laser_sweep">Laser Sweep</button><button type="button" class="effect btn btn-outline-danger" data-effect="champion_impact">Champion Impact</button><button type="button" class="effect btn btn-outline-secondary" data-effect="none">Clear Effect</button></div></div><?php if (
+endforeach; ?></div><div class="border rounded p-3 mb-3"><div class="fw-bold">Presentation Effects · Transparent Overlay</div><div class="small text-muted mb-2">The active projector screen remains visible beneath every effect. Callback Reveal automatically starts the countdown.</div><div class="d-flex flex-wrap gap-2"><button type="button" class="effect btn btn-outline-success" data-effect="countdown">5 · 4 · 3 · 2 · 1 Countdown</button><button type="button" class="effect btn btn-outline-dark" data-effect="drumroll">Drum Roll</button><button type="button" class="effect btn btn-outline-primary" data-effect="fireworks">Cinematic Fireworks</button><button type="button" class="effect btn btn-outline-warning" data-effect="confetti">Celebration Confetti</button><button type="button" class="effect btn btn-outline-danger" data-effect="hearts">💖 Hearts</button><button type="button" class="effect btn btn-outline-primary" data-effect="balloons">🎈 Balloons</button><button type="button" class="effect btn btn-outline-warning" data-effect="heart_smiles">🥰 Smiling Hearts</button><button type="button" class="effect btn btn-outline-danger" data-effect="finger_hearts">🫰 Korean Finger Hearts</button><button type="button" class="effect btn btn-outline-warning" data-effect="gold_rain">Gold Celebration</button><button type="button" class="effect btn btn-outline-info" data-effect="laser_sweep">Laser Sweep</button><button type="button" class="effect btn btn-outline-danger" data-effect="champion_impact">Champion Impact</button><button type="button" class="effect btn btn-outline-secondary" data-effect="none">Clear Effect</button></div></div><?php if (
     $round["round_type"] === "final"
 ): ?><div id="podiumReveal" class="reveal-panel mb-3 <?= ($session[
     "screen_type"
