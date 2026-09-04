@@ -45,6 +45,8 @@ $allowedRoles = ['leader', 'follower', 'both', 'unknown'];
 $allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'bachata_rising', 'bachata_open', 'bachata_invitational', 'salsa_rising', 'salsa_open', 'salsa_invitational', 'unknown'];
 $allowedStatuses = ['active', 'pending', 'archived'];
 
+$countryRows = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
+$countries = array_values(array_unique(array_filter(array_map(static fn($value):string=>CountryFlagService::canonicalName((string)$value),$countryRows))));
 sort($countries, SORT_NATURAL | SORT_FLAG_CASE);
 
 $where = ['1=1'];
@@ -240,10 +242,6 @@ if($dashboardCouncil==='sdc'){$counts=[
     'special_category'=>(int)$pdo->query("SELECT COUNT(DISTINCT s.competitor_id) FROM bdc_competitor_special_categories s JOIN bdc_competitors c ON c.id=s.competitor_id AND c.status='active' AND c.bdc_id LIKE 'BDC-%' WHERE s.dance_style='bachata'")->fetchColumn(),
 ];}
 $hasListFilters=$q!==''||$filter!==''||$country!==''||($dashboard===''&&$danceStyle!=='')||$role!==''||$division!==''||$status!=='';
-
-$countryRows = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
-$countries = array_values(array_unique(array_filter(array_map(static fn($value):string=>CountryFlagService::canonicalName((string)$value),$countryRows))));
-sort($countries,SORT_NATURAL|SORT_FLAG_CASE);
 
 function queryUrl(array $changes = []): string
 {
