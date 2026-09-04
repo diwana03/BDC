@@ -20,7 +20,7 @@ $projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCust
 ob_start(static fn(string $html):string=>str_replace(
     ['</head>','<body>','<div class="stage"><div class="event">'],
     [
-        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v614.css?v=614"></head>',
+        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=615"></head>',
         '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">',
         '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div><div class="event">',
     ],
