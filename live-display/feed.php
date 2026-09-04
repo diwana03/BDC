@@ -20,8 +20,8 @@ $projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCust
 ob_start(static fn(string $html):string=>str_replace(
     ['</head>','<body>','<div class="stage"><div class="event">'],
     [
-        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=615"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=616"></head>',
-        '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'"><button type="button" class="projection-fullscreen" onclick="window.parent.document.documentElement.requestFullscreen().then(()=>this.style.display=\'none\').catch(()=>{})">Enter Full Screen</button>',
+        '<link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=615"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=619"></head>',
+        '<body data-projector-theme="'.e($projectorTheme).'" data-custom-background="'.($hasCustomHolding?'1':'0').'">',
         '<div class="stage"><div class="projection-brand"><img src="'.e(url('public/assets/bdc-logo.png')).'" alt="Bachata Dance Council"></div><div class="projection-official">BDC · Official Live Display</div><div class="event">',
     ],
     $html,
