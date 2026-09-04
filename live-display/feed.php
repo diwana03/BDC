@@ -364,8 +364,9 @@ $coupleProjection = in_array($type, ["final_couples", "matching_couples"], true)
 $coupleColumns = min(5, max(1, count($items)));
 $coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
-$competitorRoleCols=max(1,(int)floor($cols/2));
-$competitorRoleCapacity=max(1,(int)$layout["rows"]*$competitorRoleCols);
+$competitorRolePaged=in_array($type,["competitors","callbacks","finalists"],true);
+$competitorRoleCols=$competitorRolePaged?3:max(1,(int)floor($cols/2));
+$competitorRoleCapacity=$competitorRolePaged?15:max(1,(int)$layout["rows"]*$competitorRoleCols);
 $splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&(string)$r["round_type"]!=="final";
 if($splitRoleScreen){
     foreach($items as $competitorItem){
