@@ -18,5 +18,6 @@ assert(
   dashboard.includes("c.status='active' AND c.bdc_id LIKE 'BDC-%'"),
   'Bachata summary counts must use active canonical BDC profiles'
 );
-assert(version.version==='2.3.3-dev624'&&version.build===3330,'version mismatch');
+const releaseMatch=/^2\.3\.3-dev(\d+)$/.exec(version.version);
+assert(releaseMatch&&Number(releaseMatch[1])>=624&&version.build>=3330,'version must remain dev624/build3330 or newer');
 console.log('dev624 canonical Bachata dashboard identity checks passed');

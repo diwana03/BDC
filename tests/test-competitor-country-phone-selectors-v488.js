@@ -12,7 +12,7 @@ for (const marker of [
   'name="phone_dial_code" id="competitorDial"',
   'name="phone_local"',
   'data-country="<?=e($dialCountry)?>"',
-  'strcasecmp(trim($country),$option)===0',
+  '$currentCountry===$option',
   "str_starts_with($localPhone,'+')",
   "trim($dialCode.' '.$localPhone)",
   'item.dataset.country===country'
