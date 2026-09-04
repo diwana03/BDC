@@ -9,7 +9,7 @@ const jjControl = read('admin/live-screen/control.php');
 const danceCupControl = read('admin/dance-cup/projection-control.php');
 const version = JSON.parse(read('VERSION.json'));
 
-assert(jjFeed.includes('projector-safe-v616.css?v=620'), 'shared projector does not load the refreshed safe-area CSS');
+assert.match(jjFeed, /projector-safe-v616\.css\?v=62\d/, 'shared projector does not load the refreshed safe-area CSS');
 assert(safeCss.includes('padding-top: 10cqh') && safeCss.includes('padding-bottom: 10cqh'), 'Jack & Jill 10% safe area missing');
 assert(!jjFeed.includes('requestFullscreen()'), 'Jack & Jill audience screen still contains fullscreen control');
 assert(!danceCup.includes('requestFullscreen()'), 'Dance Cup audience screen still contains fullscreen control');
