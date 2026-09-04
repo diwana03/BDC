@@ -372,8 +372,9 @@ if($splitRoleScreen){
         $role=(string)($competitorItem["dance_role"]??"");
         if(isset($competitorRoleItems[$role]))$competitorRoleItems[$role][]=$competitorItem;
     }
+    $competitorRoleTotalPages=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
     foreach($competitorRoleItems as $role=>$roleItems){
-        $competitorRoleItems[$role]=array_slice($roleItems,($page-1)*$competitorRoleCapacity,$competitorRoleCapacity);
+        $competitorRoleItems[$role]=ProjectionLayoutService::balancedPageSlice($roleItems,$page,$competitorRoleTotalPages);
     }
 } elseif (
     in_array($type, ["callbacks", "finalists"], true) &&
