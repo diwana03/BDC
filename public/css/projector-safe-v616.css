@@ -9,13 +9,32 @@
   padding-right: 5cqw !important;
 }
 
-.stage > .projection-brand,
 .stage > .projection-official {
   top: 10cqh !important;
 }
 
-.stage > .projection-brand {
-  left: 5cqw !important;
+.projection-heading-row {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: max(58px, min(6.2cqw, 10cqh)) minmax(0, 1fr) max(58px, min(6.2cqw, 10cqh));
+  align-items: center;
+  gap: max(8px, min(1cqw, 1.8cqh));
+}
+
+.projection-heading-row > .projection-brand {
+  position: static !important;
+  display: grid;
+  place-items: center;
+}
+
+.projection-heading-row > .projection-brand img {
+  display: block;
+  width: 100% !important;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: max(8px, min(.7cqw, 1.2cqh));
+  background: #fff !important;
 }
 
 .stage > .projection-official {
