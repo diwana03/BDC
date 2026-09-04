@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev617",
-  "build": 3323,
+  "version": "2.3.3-dev618",
+  "build": 3324,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows complete Leader/Follower totals with live Page X of Y projector headers, adds Full Screen controls to both Jack and Jill and Dance Cup projection consoles, and expands audience-safe spacing to 10 percent vertically and 5 percent horizontally across both projector systems.",
     "Limits shared Test and Live Leader/Follower competitor, callback and finalist projection rosters to a maximum of 15 people per role per slide in a three-column grid, balancing every role across the required slides so photos, names, bibs, flags and countries remain readable.",
     "Adds a 10 percent top and bottom audience-safe area to every shared Test/Live Jack and Jill projection and the separate Dance Cup projector, adds a user-activated full-screen control to both projector entry points, and presents internal Bachata/Salsa Rising divisions publicly as Intermediate without changing stored division keys or scoring logic.",
     "Redesigns both competitor and judge projector cards in the approved compact format: BIB or judge assignment on the left, rectangular portrait in the centre, name on the right with flag, country and judging scope directly below; the recovered renderer and all scoring logic remain unchanged.",
