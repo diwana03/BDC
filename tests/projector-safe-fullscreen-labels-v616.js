@@ -15,6 +15,5 @@ assert(danceCup.includes('padding:10vh '), 'Dance Cup 10% safe area missing');
 assert(jjFeed.includes("preg_replace('/(^|_)rising$/', '$1intermediate'"), 'Jack & Jill public Intermediate mapping missing');
 assert(danceCup.includes("replace(/\\brising\\b/gi,'Intermediate')"), 'Dance Cup public Intermediate mapping missing');
 assert(danceCup.includes("const category=label(latest?.state?.category_name"), 'Dance Cup category public-label mapping missing');
-assert.strictEqual(version.version, '2.3.3-dev616');
-assert.strictEqual(version.build, 3322);
+assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3322, 'version predates projector safe-area release');
 console.log('projector safe-area, fullscreen and public labels v616: PASS');
