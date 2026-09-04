@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev613",
-  "build": 3319,
+  "version": "2.3.3-dev614",
+  "build": 3320,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Fixes competitor and judge projection overlap without changing the recovered PHP renderer: each card reserves independent photo, name, BIB, assignment and country rows through a cache-versioned shared stylesheet across Test and Live displays.",
     "Emergency projector rollback: restores only live-display/feed.php to the last structurally valid dev607 renderer after the incomplete layout merge caused persistent HTTP 500 responses; projector tokens, judge links, scoring, events and database data remain unchanged.",
     "Emergency projector syntax recovery: repairs the duplicated live-display renderer boundary that left an orphaned conditional chain and caused every feed request, including Holding Screen, to fail with HTTP 500; tokens, judge links, scoring, events and database data remain unchanged.",
     "Emergency projector recovery: removes the full-page output-buffer rewrite from live-display/feed.php so the valid holding and roster HTML can be returned directly instead of being converted into an empty HTTP 500 during shutdown; scoring queries, tokens and data remain unchanged.",
