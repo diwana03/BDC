@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\DivisionProgressionService;
 use App\Services\SpecialCategoryService;
+use App\Services\CountryFlagService;
 
 Auth::requirePermission('competitors.view');
 
@@ -25,7 +26,7 @@ $dashboardDescription = $dashboard === 'salsa'
 
 $q        = trim((string)($_GET['q'] ?? ''));
 $filter   = (string)($_GET['filter'] ?? '');
-$country  = trim((string)($_GET['country'] ?? ''));
+$country  = CountryFlagService::canonicalName((string)($_GET['country'] ?? ''));
 $role     = (string)($_GET['role'] ?? '');
 $division = (string)($_GET['division'] ?? '');
 $status   = (string)($_GET['status'] ?? '');
@@ -228,7 +229,9 @@ if($dashboardCouncil==='sdc'){$counts=[
 ];}
 $hasListFilters=$q!==''||$filter!==''||$country!==''||($dashboard===''&&$danceStyle!=='')||$role!==''||$division!==''||$status!=='';
 
-$countries = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
+$countryRows = $pdo->query("SELECT DISTINCT country FROM bdc_competitors WHERE country IS NOT NULL AND TRIM(country)<>'' ORDER BY country")->fetchAll(PDO::FETCH_COLUMN);
+$countries = array_values(array_unique(array_filter(array_map(static fn($value):string=>CountryFlagService::canonicalName((string)$value),$countryRows))));
+sort($countries,SORT_NATURAL|SORT_FLAG_CASE);
 
 function queryUrl(array $changes = []): string
 {
