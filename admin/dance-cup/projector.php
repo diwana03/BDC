@@ -30,7 +30,8 @@ body[data-theme=obsidian_gold]{--bg:#050608;--bg2:#44371e;--accent:#d8b761}
 body[data-theme=ivory_wine]{--bg:#fffaf0;--bg2:#f1e2e6;--text:#341525;--muted:#735866;--card:rgba(255,255,255,.78);--line:#d7c4ca;--accent:#8b2948}
 body[data-theme=pearl_navy]{--bg:#f8fbff;--bg2:#dce8f6;--text:#10213d;--muted:#4c6380;--card:rgba(255,255,255,.82);--line:#b9cbe0;--accent:#215d9c}
 body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
-#app{width:100vw;height:100vh;padding:clamp(14px,1.8vw,34px);display:flex;flex-direction:column;gap:clamp(10px,1.2vh,20px)}
+#app{width:100vw;height:100vh;padding:10vh clamp(14px,1.8vw,34px);display:flex;flex-direction:column;gap:clamp(10px,1.2vh,20px)}
+.projection-fullscreen{position:fixed;z-index:2147483646;right:18px;bottom:18px;border:1px solid rgba(255,255,255,.72);border-radius:999px;padding:10px 16px;background:rgba(10,18,32,.9);color:#fff;font:800 14px Arial;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.45)}:fullscreen .projection-fullscreen{display:none}
 .top{display:grid;grid-template-columns:clamp(64px,7vw,118px) 1fr clamp(120px,13vw,220px);align-items:center;gap:2vw;min-height:clamp(70px,9vh,126px)}
 .logo{width:clamp(64px,7vw,118px);aspect-ratio:1;background:#fff;border-radius:clamp(12px,1.2vw,22px);padding:8px;box-shadow:0 12px 34px #0003}.logo img{width:100%;height:100%;object-fit:contain}
 .event{text-align:center;min-width:0}.event h1{font-size:clamp(26px,3.2vw,62px);line-height:1.05;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.event p:empty{display:none}
@@ -61,20 +62,22 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
  <section class="stage" id="stage"><div class="view"><div class="holding"><h2><?=htmlspecialchars($initialEventName,ENT_QUOTES,'UTF-8')?></h2></div></div></section>
  <footer class="footer"><span class="state" id="screenState">Holding Screen</span><span class="page" id="pageState"></span><span class="live"><i class="dot"></i>Live</span></footer>
 </main>
+<button type="button" id="projectionFullscreen" class="projection-fullscreen">Enter Full Screen</button>
 <div class="connection" id="connection">Live updates temporarily unavailable. Retrying…</div>
 <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
 <script>
 (()=>{'use strict';
+const fullscreenButton=document.getElementById('projectionFullscreen');fullscreenButton.addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}});document.addEventListener('fullscreenchange',()=>{fullscreenButton.textContent=document.fullscreenElement?'Exit Full Screen':'Enter Full Screen'});
 const token=<?=json_encode($token)?>,test=<?=$test?'true':'false'?>,stage=document.getElementById('stage'),eventName=document.getElementById('eventName'),categoryName=document.getElementById('categoryName'),screenState=document.getElementById('screenState'),pageState=document.getElementById('pageState'),connection=document.getElementById('connection'),fxLayer=document.getElementById('fxLayer');
 let lastHash='',lastRevision='',busy=false,pollTimer=null,currentPage=1,pageTotal=1,lastType='holding',nextPageAt=0,backoffUntil=0,lastEffectVersion=0,effectRun=0,revealCountdownTimer=null,cycle={index:0,phase:'contestant',next:0},latest=null;
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const label=value=>String(value||'').replaceAll('_',' ').replace(/\b\w/g,char=>char.toUpperCase());
+const label=value=>String(value||'').replace(/\brising\b/gi,'Intermediate').replaceAll('_',' ').replace(/\b\w/g,char=>char.toUpperCase());
 const chunk=(items,size)=>{const pages=[];for(let index=0;index<items.length;index+=size)pages.push(items.slice(index,index+size));return pages.length?pages:[[]]};
 const empty=(title,message)=>'<div class="empty"><strong>'+esc(title)+'</strong><span>'+esc(message)+'</span></div>';
 function setHeader(data){document.body.dataset.theme=data.state.theme||'midnight_wine';eventName.textContent=data.state.event_name||'BDC Dance Cup';categoryName.textContent='';}
 const photo=item=>esc(item?.photo_url||'../../public/assets/img/default-competitor.svg');
 const identity=item=>'<div class="identity-meta"><span class="flag">'+esc(item?.flag||'')+'</span><span>'+esc(item?.country||'Country not set')+'</span></div>';
-function show(html,type,page=0,total=0){pageTotal=Math.max(1,total||1);const category=(latest?.state?.category_name||'Dance Cup Category')+' · '+label(latest?.state?.round_name||'');stage.innerHTML='<div class="view"><div class="screen-category">'+esc(category)+'</div><div class="screen-content">'+html+'</div></div>';screenState.textContent=label(type);pageState.textContent=total>1?'Page '+page+' of '+total:'';}
+function show(html,type,page=0,total=0){pageTotal=Math.max(1,total||1);const category=label(latest?.state?.category_name||'Dance Cup Category')+' · '+label(latest?.state?.round_name||'');stage.innerHTML='<div class="view"><div class="screen-category">'+esc(category)+'</div><div class="screen-content">'+html+'</div></div>';screenState.textContent=label(type);pageState.textContent=total>1?'Page '+page+' of '+total:'';}
 function holding(data){stage.innerHTML='<div class="view" style="grid-template-rows:1fr"><div class="screen-content"><div class="holding"><h2>'+esc(data.state.event_name||'Dance Cup')+'</h2></div></div></div>';screenState.textContent='Holding Screen';pageState.textContent='';}
 function contestant(entry){const eventLabel=latest?.state?.event_name||'Dance Cup';show(entry?'<div class="call"><div class="call-layout"><section class="number-panel"><div class="number-label">Contestant Number</div><div class="number">'+esc(entry.contestant_number)+'</div></section><section class="contestant-identity"><img class="profile-photo" src="'+photo(entry)+'" alt=""><div class="label">NOW PRESENTING</div><h2>'+esc(entry.display_name)+'</h2>'+identity(entry)+'</section><aside class="trophy-showcase"><img src="../../public/assets/img/sbta-dance-cup-champion-trophy.png" alt="SBTA Dance Cup trophy"><strong>'+esc(eventLabel)+'</strong></aside></div></div>':empty('Contestant pending','Select a contestant from Projection Control.'),'Contestant Call');}
 function pagedCards(items,size,type,renderCard,data){const pages=chunk(items,size),total=pages.length;currentPage=Math.max(1,Math.min(total,currentPage));const cards=pages[currentPage-1].map(renderCard).join('');show(cards?'<div class="grid '+(size>=10?'compact':'')+'">'+cards+'</div>':empty(type+' pending','Add records in the Dance Cup category workspace.'),type,currentPage,total);schedulePage(total,data);}
