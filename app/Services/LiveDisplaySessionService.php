@@ -7,7 +7,7 @@ final class LiveDisplaySessionService
     public static function ensure(PDO $pdo): void
     {
         $pdo->exec(
-            "CREATE TABLE IF NOT EXISTS bdc_live_display_sessions(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,data_mode ENUM('real','test') NOT NULL DEFAULT 'real',token_hash CHAR(64) NOT NULL,token_hint VARCHAR(12) NOT NULL,current_round_id BIGINT UNSIGNED NULL,screen_type VARCHAR(32) NOT NULL DEFAULT 'holding',page_number INT UNSIGNED NOT NULL DEFAULT 1,auto_page TINYINT(1) NOT NULL DEFAULT 1,page_delay_seconds INT UNSIGNED NOT NULL DEFAULT 30,is_enabled TINYINT(1) NOT NULL DEFAULT 1,state_version BIGINT UNSIGNED NOT NULL DEFAULT 1,updated_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE INDEX uq_live_display_event_mode(event_id,data_mode),UNIQUE INDEX uq_live_display_token(token_hash)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "CREATE TABLE IF NOT EXISTS bdc_live_display_sessions(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id BIGINT UNSIGNED NOT NULL,data_mode ENUM('real','test') NOT NULL DEFAULT 'real',token_hash CHAR(64) NOT NULL,token_hint VARCHAR(12) NOT NULL,current_round_id BIGINT UNSIGNED NULL,screen_type VARCHAR(32) NOT NULL DEFAULT 'holding',page_number INT UNSIGNED NOT NULL DEFAULT 1,auto_page TINYINT(1) NOT NULL DEFAULT 1,page_delay_seconds INT UNSIGNED NOT NULL DEFAULT 15,is_enabled TINYINT(1) NOT NULL DEFAULT 1,state_version BIGINT UNSIGNED NOT NULL DEFAULT 1,updated_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE INDEX uq_live_display_event_mode(event_id,data_mode),UNIQUE INDEX uq_live_display_token(token_hash)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         );
         try {
             $pdo->exec(
@@ -183,9 +183,9 @@ final class LiveDisplaySessionService
                 "Results Reveal is locked. Unlock it before projecting rankings or winners.",
             );
         }
-        $delay = (int) ($v["page_delay_seconds"] ?? 30);
-        if (!in_array($delay, [10, 15, 30, 45, 60], true)) {
-            $delay = 30;
+        $delay = (int) ($v["page_delay_seconds"] ?? 15);
+        if (!in_array($delay, [5, 10, 15, 20, 30, 45, 60], true)) {
+            $delay = 15;
         }
         $reveal = null;
         if ($type === "winners") {
