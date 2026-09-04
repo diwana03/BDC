@@ -21,7 +21,7 @@ assert.equal(version.version,'2.3.3-dev625');assert.equal(version.build,3331);
 
 const php=[
   "require 'app/Services/CountryFlagService.php';",
-  "$c='App\\\\Services\\\\CountryFlagService';",
+  "$c='App\\Services\\CountryFlagService';",
   "$tests=['Japan, Tokyo'=>'Japan','Jakarta, Indonesia'=>'Indonesia','Korea/Seoul'=>'South Korea','Thailand / Bangkok'=>'Thailand','Melbourne Australia'=>'Australia','USA'=>'United States of America','France/china'=>'France/china','Thailand / Philippines'=>'Thailand / Philippines'];",
   "foreach($tests as $raw=>$expected){if($c::canonicalName($raw)!==$expected){fwrite(STDERR,$raw.' mismatch');exit(1);}}"
 ].join('');
