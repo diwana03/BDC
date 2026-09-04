@@ -1,0 +1,44 @@
+/* Shared Test and Live projector roster cards. Loaded after inline projector CSS. */
+.stage .competitor-photo-frame {
+  width: clamp(58px, 9.4vh, 104px);
+  height: clamp(58px, 9.4vh, 104px);
+}
+
+.stage .competitor-role-rows-4 .competitor-photo-frame {
+  width: clamp(58px, 8.6vh, 94px);
+  height: clamp(58px, 8.6vh, 94px);
+}
+
+.stage .competitor-role-rows-5 .competitor-photo-frame,
+.stage .competitor-role-rows-6 .competitor-photo-frame {
+  width: clamp(54px, 7.8vh, 86px);
+  height: clamp(54px, 7.8vh, 86px);
+}
+
+.stage .competitor-card,
+.stage .judge-card {
+  isolation: isolate;
+  background: linear-gradient(155deg, rgba(31, 43, 65, .98), rgba(12, 20, 35, .99));
+}
+
+.stage .competitor-card > *,
+.stage .judge-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stage .competitor-name,
+.stage .competitor-bib,
+.stage .competitor-country,
+.stage .judge-name,
+.stage .judge-position,
+.stage .judge-scope,
+.stage .judge-country {
+  margin: 0;
+  transform: none;
+}
+
+.stage .judge-photo-frame {
+  max-width: 100%;
+  max-height: 100%;
+}

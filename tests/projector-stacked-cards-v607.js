@@ -9,6 +9,8 @@ assert.match(feed, /\.competitor-photo-frame\{flex:0 0 auto;width:clamp\(46px,6\
 assert.match(feed, /\.competitor-name\{flex:0 0 auto;width:100%/);
 assert.match(feed, /\.competitor-bib\{flex:0 0 auto/);
 assert.match(feed, /\.competitor-country\{flex:0 0 auto/);
+assert.match(feed, /competitor-role-rows-<\?=\$competitorRoleRows\?>/);
+assert.match(feed, /projector-roster-v608\.css\?v=608/);
 assert.doesNotMatch(feed, /\.competitor-card\{display:grid;grid-template-columns/);
 assert.doesNotMatch(feed, /\.competitor-photo-frame\{grid-column/);
 
