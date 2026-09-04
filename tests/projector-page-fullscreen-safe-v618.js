@@ -15,7 +15,7 @@ assert(feed.includes('PAGE <?=$competitorRolePage?> OF <?=$competitorRoleTotalPa
 assert.doesNotMatch(feed, /str_replace\(\$roleHeaderSearch,\$roleHeaderReplace,\$html\)/);
 assert(safe.includes('padding-left: 5cqw') && safe.includes('padding-right: 5cqw'), 'Jack & Jill horizontal safe area missing');
 assert(dcProjector.includes('padding:10vh 5vw'), 'Dance Cup four-edge safe area missing');
-assert(jjControl.includes('projection-control-fullscreen-v618.js?v=619'), 'Jack & Jill control fullscreen integration missing');
+assert.match(jjControl, /projection-control-fullscreen-v618\.js\?v=(?:619|628)/, 'Jack & Jill control fullscreen integration missing');
 assert(dcControl.includes('projection-control-fullscreen-v618.js?v=619'), 'Dance Cup control fullscreen integration missing');
 assert(!jjControl.includes('position-fixed bottom-0 end-0'), 'Jack & Jill fullscreen control must not float over the page');
 assert(!dcControl.includes('position-fixed bottom-0 end-0'), 'Dance Cup fullscreen control must not float over the page');
