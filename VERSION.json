@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev611",
-  "build": 3317,
+  "version": "2.3.3-dev612",
+  "build": 3318,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Emergency projector syntax recovery: repairs the duplicated live-display renderer boundary that left an orphaned conditional chain and caused every feed request, including Holding Screen, to fail with HTTP 500; tokens, judge links, scoring, events and database data remain unchanged.",
     "Emergency projector recovery: removes the full-page output-buffer rewrite from live-display/feed.php so the valid holding and roster HTML can be returned directly instead of being converted into an empty HTTP 500 during shutdown; scoring queries, tokens and data remain unchanged.",
     "Stops public projector token reads from executing repeated CREATE/ALTER schema checks on every 2.5-second poll, preventing metadata-lock pileups that left the outer display alive while feed.php hung with zero response bytes; tokens, scoring data and projector state remain unchanged.",
     "Emergency recovery: restores the known-working dev607 shared projector renderer after dev608 caused the deployed projector page to fail; no database, scoring, judge-link, result or projection-control data is changed.",
