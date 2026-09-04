@@ -12,7 +12,7 @@ for (const country of ['Chile', 'Nepal', 'India', 'Australia', 'New Zealand']) {
 
 for (const marker of [
   "public/assets/flags/countries.json",
-  "mb_strtolower(trim((string)$item['name']))",
+  "$byName[mb_strtolower($name)]",
   "strtoupper((string)$item['code'])",
   "'usa'=>'US'",
   "'uk'=>'GB'",
