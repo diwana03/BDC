@@ -119,8 +119,7 @@ if (
         $set["custom_height"] ?: null,
     );
     if(in_array($s["screen_type"],["competitors","callbacks","finalists"],true)){
-        $roleColumns=max(1,(int)floor((int)$layout["columns"]/2));
-        $roleCapacity=max(1,(int)$layout["rows"]*$roleColumns);
+        $roleCapacity=15;
         $total=max(1,(int)ceil(max($roleCounts)/$roleCapacity));
     }else{
         $total=max(1,(int)$layout["pages"]);
