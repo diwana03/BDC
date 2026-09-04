@@ -118,6 +118,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <input id="projectorUrl" class="form-control" readonly value="<?=e($projector)?>">
 <button id="copyProjector" class="btn btn-outline-primary">Copy</button>
 <a class="btn btn-danger" target="_blank" rel="noopener" href="<?=e($projector)?>">Open Projector</a>
+<button type="button" data-fullscreen-control class="btn btn-dark">Full Screen</button>
 </div>
 </div>
 </section>
@@ -284,8 +285,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </div>
 </div>
 </main>
-<button type="button" data-fullscreen-control class="btn btn-dark position-fixed bottom-0 end-0 m-3 shadow" style="z-index:1080">Full Screen</button>
 <script>document.getElementById('copyProjector').onclick=async e=>{const x=document.getElementById('projectorUrl');try{await navigator.clipboard.writeText(x.value)}catch{x.select();document.execCommand('copy')}e.currentTarget.textContent='Copied'}</script>
-<script src="../../public/js/projection-control-fullscreen-v618.js?v=618"></script>
+<script src="../../public/js/projection-control-fullscreen-v618.js?v=619"></script>
 </body>
 </html>
