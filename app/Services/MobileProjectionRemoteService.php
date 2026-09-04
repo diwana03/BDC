@@ -37,7 +37,25 @@ final class MobileProjectionRemoteService
     {
         $test=$link['data_mode']==='test';$session=LiveDisplaySessionService::byId($pdo,(int)$link['session_id'],$test);if(!$session)throw new RuntimeException('The projector session is no longer available.');self::assertActiveEvent($session,(int)$link['event_id']);
         $roundId=(int)($session['current_round_id']??0);$round=null;if($roundId>0){$table=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';$q=$pdo->prepare("SELECT id,division,round_type FROM {$table} WHERE id=:r AND event_id=:e LIMIT 1");$q->execute(['r'=>$roundId,'e'=>(int)$link['event_id']]);$round=$q->fetch()?:null;}
-        return ['session'=>$session,'round'=>$round];
+        return ['session'=>$session,'round'=>$round,'judges'=>$round?self::assignedJudges($pdo,(int)$round['id'],$test):[]];
+    }
+
+    public static function assignedJudges(PDO $pdo,int $roundId,bool $test):array
+    {
+        $table=$test?'bdc_test_scoring_judges':'bdc_scoring_judges';
+        $q=$pdo->prepare("SELECT judge_order,judge_name,is_chief,scoring_scope FROM {$table} WHERE round_id=:r ORDER BY is_chief DESC,judge_order,id");
+        $q->execute(['r'=>$roundId]);
+        $rows=$q->fetchAll()?:[];
+        return array_map(static function(array $row,int $index):array{
+            $scope=(string)($row['scoring_scope']??'all');
+            return [
+                'page'=>$index+1,
+                'judge_order'=>(int)($row['judge_order']??0),
+                'judge_name'=>(string)($row['judge_name']??'Judge'),
+                'is_chief'=>(int)($row['is_chief']??0)===1,
+                'scope_label'=>$scope==='leader'?'Leaders Only':($scope==='follower'?'Followers Only':'Leaders & Followers'),
+            ];
+        },$rows,array_keys($rows));
     }
 
     public static function command(PDO $pdo,array $link,string $action,array $input):array
