@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev598",
-  "build": 3304,
+  "version": "2.3.3-dev599",
+  "build": 3305,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Restores Copy Link, Open, WhatsApp and Email controls for Automatic judges whose previous plaintext token is hidden, securely rotating only when an administrator chooses an action and preserving assignments, marks and progress.",
     "Restores a compact responsive Automatic Judge progress layout with two columns on desktop and one on smaller screens, reducing the oversized nested scroll without changing assignments, links, marks, progress, or scores.",
     "Shows every Automatic Scoring judge exactly once in a stable selectable suggestion list, keeps name, Judge ID and country searchable within that single result, and resolves selection to the canonical Judge Database record.",
     "Makes Automatic Scoring Judge Database lookup reliably searchable by judge name, permanent Judge ID, or country, then resolves every selected alias back to the canonical judge name and directory ID while preserving duplicate protection.",
