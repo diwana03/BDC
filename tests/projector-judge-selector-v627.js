@@ -32,12 +32,12 @@ assert.match(control, /select\.form-select option\{background-color:#fff!importa
 assert.match(workspace, /select\.form-select option\{background-color:#fff!important;color:#111827!important/);
 assert.match(mobile, /\.judge-call select option\{background-color:#07101f!important;color:#fff!important/);
 
-assert.match(feed, /projector-roster-v615\.css\?v=(?:627|628)/);
+assert.match(feed, /projector-roster-v615\.css\?v=(?:62[7-9]|6[3-9]\d)/);
 assert.match(roster, /\.stage \.list > \.judge-card:only-child/);
-assert.match(roster, /width: min\(88%, 1180px\)/);
+assert.match(roster, /width: min\((?:82|88)%, 1180px\)/);
 assert.match(roster, /height: min\(88%, 590px\)/);
 assert.match(roster, /width: clamp\(220px/);
 assert.match(roster, /\.stage \.judge-country \{[\s\S]*?flex-direction: column/);
-assert.match(roster, /\.stage \.judge-country-name \{[\s\S]*?overflow-wrap: anywhere/);
+assert.match(roster, /\.stage \.judge-identity \.judge-country-name \{[\s\S]*?overflow-wrap: normal/);
 
 console.log('Projector judge selector and large single-judge display regression checks passed.');

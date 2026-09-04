@@ -311,3 +311,111 @@
   width: clamp(52px, 13cqw, 96px) !important;
   height: auto !important;
 }
+
+/* dev635: approved identity order — number, portrait, flags, name, full countries. */
+.stage .competitor-card {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.stage .competitor-bib,
+.stage .competitor-photo-frame {
+  grid-row: 1 !important;
+}
+
+.stage .competitor-identity {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .7cqh, 5px);
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.stage .competitor-flags,
+.stage .judge-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .65cqw, 5px);
+  width: 100%;
+  min-height: 1em;
+}
+
+.stage .competitor-identity .competitor-name {
+  width: 100%;
+  padding: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: clip;
+}
+
+.stage .competitor-identity .competitor-country-name,
+.stage .judge-identity .judge-country-name {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: clip;
+  line-height: 1.12;
+  text-align: center;
+}
+
+.stage .judge-card {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.stage .judge-position,
+.stage .judge-photo-frame,
+.stage .judge-identity {
+  grid-row: 1 !important;
+}
+
+.stage .judge-position {
+  grid-column: 1;
+}
+
+.stage .judge-photo-frame {
+  grid-column: 2;
+}
+
+.stage .judge-identity {
+  grid-column: 3;
+  align-self: center;
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .65cqh, 5px);
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.stage .judge-identity .judge-name,
+.stage .judge-identity .judge-scope {
+  width: 100%;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: clip;
+}
+
+.stage .list > .judge-card:only-child .judge-identity {
+  justify-self: center;
+  width: 100%;
+  font-size: clamp(20px, min(6.2cqw, 7.8cqh), 34px);
+}

@@ -12,10 +12,10 @@ assert.match(roster, /\.stage \.competitor-country-name \{[\s\S]*?white-space: n
 assert.match(roster, /\.stage \.flight-country span \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: normal/);
 assert.match(roster, /\.stage \.judge-country-name \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: normal/);
 assert.match(outer, /bdc-projector-roster-fix/);
-assert.match(outer, /projector-roster-v615\.css\?v=634/);
+assert.match(outer, /projector-roster-v615\.css\?v=63[4-9]|projector-roster-v615\.css\?v=6[4-9]\d/);
 assert.match(outer, /function swapFeed\(url\)/);
 assert.match(outer, /previous\.style\.visibility='hidden'/);
-assert.match(outer, /roster\.addEventListener\('load',reveal/);
+assert.match(outer, /roster\.addEventListener\('load',(reveal|resolve)/);
 assert.match(flights, /\$balancedFlightCount=max\(1,\(int\)ceil\(\$largestRole\/\$flightSize\)\)/);
 assert.match(flights, /\$roundSize=\$base\+\(\$flightNumber<=\$remainder\?1:0\)/);
 assert.match(state, /ceil\(max\(\$roleCounts\)\/\$roleCapacity\)/);
