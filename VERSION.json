@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev595",
-  "build": 3301,
+  "version": "2.3.3-dev596",
+  "build": 3302,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes Automatic Scoring Judge Database lookup reliably searchable by judge name, permanent Judge ID, or country, then resolves every selected alias back to the canonical judge name and directory ID while preserving duplicate protection.",
     "Shows high-contrast live Leader and Follower roster totals in the actual shared Automatic Scoring setup component, while retaining the existing counted headers in Manual and isolated Test workflows.",
     "Repairs Judge Database name search by provisioning the missing country-code column on older installations, restores one valid active-judge suggestion list in Live, and adds the same searchable directory wiring to initial, Final and dynamically added Test judge rows.",
     "Shows the current Leader and Follower roster totals directly in their competitor-entry card headers across both Live and isolated Test Jack and Jill scoring, refreshing after every add or removal.",
