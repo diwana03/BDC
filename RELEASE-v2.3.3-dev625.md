@@ -12,8 +12,8 @@
 
 ## Validation
 
-- Canonical-country behavioral regression: pending.
-- Full PHP 8.1 lint and JavaScript regression gate: pending.
+- Canonical-country behavioral regression: passed.
+- Full PHP 8.1 lint and JavaScript regression gate: passed (GitHub Actions run 246).
 - Staging runtime verification: not performed and required before Production promotion.
 
 ## Database
