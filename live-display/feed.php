@@ -6,6 +6,7 @@ use App\Services\LiveDisplaySessionService;
 use App\Services\ProjectionSettingsService;
 use App\Services\ProjectionLayoutService;
 use App\Services\CountryFlagService;
+use App\Services\CountrySetService;
 use App\Services\JudgeDirectoryService;
 use App\Services\ScoringFlightService;
 use App\Services\ProjectionNameService;
@@ -103,7 +104,7 @@ if ($type === "flights") {
         $items = $q->fetchAll();
         $type = 'final_couples';
     } else {
-        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
+        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
         $q->execute(['r'=>$roundId,'flight'=>$flight]);
         $items = $q->fetchAll();
         $type = 'flight_competitors';
@@ -123,7 +124,7 @@ if ($type === "flights") {
     } catch (Throwable) {
     }
     $q = $pdo->prepare(
-        "SELECT sj.judge_name,sj.judge_order,sj.is_chief,sj.scoring_scope,j.full_name,j.country,j.country_code,j.photo_url FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:r ORDER BY sj.is_chief DESC,sj.judge_order,sj.id",
+        "SELECT sj.judge_name,sj.judge_order,sj.is_chief,sj.scoring_scope,j.full_name,j.country,j.countries_json,j.country_code,j.photo_url FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:r ORDER BY sj.is_chief DESC,sj.judge_order,sj.id",
     );
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
@@ -142,7 +143,7 @@ if ($type === "flights") {
         );
     } else {
         $q = $pdo->prepare(
-            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
         );
     }
     $q->execute(["r" => $roundId]);
@@ -283,6 +284,15 @@ if ($type === "flights") {
     }
 }
 
+// Preserve up to five represented countries on compact competitor cards. The
+// primary country still drives legacy single-flag consumers.
+foreach($items as &$countryItem){
+    if(empty($countryItem['countries_json']))continue;
+    $countrySet=CountrySetService::fromRow($countryItem);
+    if(count($countrySet)>1)$countryItem['country']=implode(' · ',array_map(static fn(string $name):string=>CountryFlagService::label($name),$countrySet));
+}
+unset($countryItem);
+
 // Audience screens use compact first names. When the same first name appears
 // more than once on the current screen, add the surname initial to both names.
 $items = ProjectionNameService::abbreviateRows(
@@ -408,7 +418,7 @@ if($splitRoleScreen){
 }
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
     $title,
-) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=628"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
+) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=629"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
     (string) $ratio,
 ) ?>;width:min(100vw,calc(100vh * <?= e(
     (string) $ratio,
@@ -540,8 +550,8 @@ elseif (in_array($type, ["judges", "judge_call"], true)):
         $isChief=(int)($x["is_chief"]??0)===1;
         $judgeName=(string)($x["full_name"]?:$x["judge_name"]);
         $judgeOrder=(int)($x["judge_order"]??0);
-        $flagUrl=country_flag_url($countryCode!==""?$countryCode:$country);
-        ?><article class="judge-card<?=$isChief?" chief":""?>"><div class="judge-photo-frame"><div class="judge-photo-fallback">J<?=$judgeOrder?></div><?php if(!empty($x["photo_url"])):?><img class="judge-photo" src="<?=e((string)$x["photo_url"])?>" alt="<?=e($judgeName)?>" onerror="this.remove()"><?php endif;?></div><div class="judge-name"><?=e($judgeName)?></div><div class="judge-position"><span>J<?=$judgeOrder?></span><span>·</span><span><?=$isChief?"★ CHIEF JUDGE":"JUDGE"?></span></div><div class="judge-scope"><?=e($scopeLabel)?></div><div class="judge-country"><?php if($flagUrl):?><img class="judge-flag" src="<?=e($flagUrl)?>" alt="<?=e($country?:$countryCode)?> flag"><?php endif;?><span class="judge-country-name"><?=e($country!==""?$country:"Country not listed")?></span></div></article><?php
+        $judgeCountries=CountrySetService::fromRow($x);
+        ?><article class="judge-card<?=$isChief?" chief":""?>"><div class="judge-photo-frame"><div class="judge-photo-fallback">J<?=$judgeOrder?></div><?php if(!empty($x["photo_url"])):?><img class="judge-photo" src="<?=e((string)$x["photo_url"])?>" alt="<?=e($judgeName)?>" onerror="this.remove()"><?php endif;?></div><div class="judge-name"><?=e($judgeName)?></div><div class="judge-position"><span>J<?=$judgeOrder?></span><span>·</span><span><?=$isChief?"★ CHIEF JUDGE":"JUDGE"?></span></div><div class="judge-scope"><?=e($scopeLabel)?></div><div class="judge-country"><?php if($judgeCountries):foreach($judgeCountries as $judgeCountry):$flagUrl=country_flag_url($judgeCountry);?><span class="judge-country-entry"><?php if($flagUrl):?><img class="judge-flag" src="<?=e($flagUrl)?>" alt="<?=e($judgeCountry)?> flag"><?php endif;?><span class="judge-country-name"><?=e($judgeCountry)?></span></span><?php endforeach;else:?><span class="judge-country-name">Country not listed</span><?php endif;?></div></article><?php
     endforeach;
 else:
     foreach ($items as $x):

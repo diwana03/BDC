@@ -60,6 +60,8 @@ final class SchemaUpdater
   self::addColumn($pdo,'bdc_events','points_tier',"ENUM('1','2','3') NULL AFTER event_mode");
   self::addColumn($pdo,'bdc_competitors','import_batch_id','BIGINT UNSIGNED NULL AFTER is_historical');
   self::addColumn($pdo,'bdc_competitors','photo_url','VARCHAR(1000) NULL AFTER country');
+  self::addColumn($pdo,'bdc_competitors','countries_json','TEXT NULL AFTER country');
+  self::addColumn($pdo,'bdc_test_competitors','countries_json','TEXT NULL AFTER country');
   self::addColumn($pdo,'bdc_competitors','bdc_id','VARCHAR(20) NULL AFTER id');
   self::addColumn($pdo,'bdc_competitors','current_division',"ENUM('novice','intermediate','advanced','all_star','professional','unknown') NOT NULL DEFAULT 'unknown' AFTER dance_role");
   self::addColumn($pdo,'bdc_competitors','instagram','VARCHAR(190) NULL AFTER email');

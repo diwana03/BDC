@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev628",
-  "build": 3334,
+  "version": "2.3.3-dev629",
+  "build": 3335,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds backward-compatible Flag 1 through Flag 5 country representation for shared BDC/SDC competitors, isolated Test competitors, WDC identities and judges; renders multi-country identities across Jack and Jill and Dance Cup projection feeds; and rebuilds the Call Judges One by One layout so judge assignment, portrait, name, scope and flags align inside the projector safe area.",
     "Upgrades Test and Live automatic Judge Browser Scoring with a premium BDC navy, burgundy and champagne interface, stronger submitted and progress states, and a prominent audited Reopen Scoring control on every submitted and locked judge without exposing invalid reopen actions on active judges.",
     "Adds a large assigned-judge selector directly above the projector controls on desktop and mobile, lets operators call any judge without stepping through the list, retains Previous/Next and Auto Page navigation, enlarges the centred single-judge projector card within the approved safe area, forces readable high-contrast judge and round dropdown options, and stacks long judge countries below their flags without clipping in every round.",
     "Canonicalizes competitor country values across dashboard filters, administrator edits and integration imports, safely migrates existing unambiguous city/country and case variants with a recoverable archive, and preserves ambiguous dual-country values for manual review.",

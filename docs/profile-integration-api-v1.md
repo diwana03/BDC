@@ -2,6 +2,8 @@
 
 This server-to-server API stages bulk Jack & Jill competitor profiles, judge profiles, and WDC identity/category registrations for administrator review. It never updates points, results, scoring rounds, placements or leaderboards.
 
+Competitor, judge, and WDC identity payloads may include `countries`, an ordered array of one to five country names or ISO alpha-2 codes. The first value is Flag 1 and remains the backward-compatible primary `country`; values two through five are optional. Empty and duplicate values are removed. Existing clients may continue sending only `country`.
+
 ## Authentication
 
 Set a random secret of at least 32 characters as `BDC_PROFILE_INTEGRATION_SECRET`. The secret remains valid until it is rotated. Every request is signed and expires after five minutes.

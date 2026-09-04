@@ -238,3 +238,27 @@
   wrap.setAttribute('aria-label', 'Bachata Dance Council');
   document.body.insertBefore(wrap, document.body.firstChild);
 })();
+
+/* Country representation editor shared by compact BDC/SDC and WDC forms. */
+(function(){
+  const path=location.pathname,competitor=path.endsWith('/admin/competitors/edit.php'),wdc=path.endsWith('/admin/dance-cup/competitor-edit.php');
+  if(!competitor&&!wdc)return;
+  const form=document.querySelector('form'),primary=form?.querySelector('select[name="country"]');
+  if(!form||!primary||form.querySelector('[name="country_2"]'))return;
+  primary.name='country_1';
+  const wrapper=primary.closest('[class*="col-"]')||primary.parentElement,label=wrapper?.querySelector('label');
+  if(label)label.textContent='Flag 1 · Primary country';
+  const values=[''];
+  const build=()=>{let cursor=wrapper;
+    for(let index=2;index<=5;index++){
+      const box=wrapper.cloneNode(true),select=box.querySelector('select'),boxLabel=box.querySelector('label');
+      select.name='country_'+index;select.id='countryFlag'+index;select.value=values[index-1]||'';
+      if(boxLabel){boxLabel.textContent='Flag '+index+' · Optional';boxLabel.htmlFor=select.id;}
+      cursor.parentElement.insertBefore(box,cursor.nextSibling);cursor=box;
+    }
+    const note=document.createElement('div');note.className='form-text mt-1';note.textContent='Add up to five represented countries. Flag 1 remains the primary country used by older reports.';wrapper.appendChild(note);
+  };
+  const id=Number(form.querySelector('[name="id"]')?.value||0);if(!id){build();return;}
+  const entity=wdc?'wdc':'competitor',adminRoot=path.slice(0,path.indexOf('/admin/')+7);
+  fetch(adminRoot+'country-set.php?entity='+entity+'&id='+id,{credentials:'same-origin',headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(Array.isArray(data.countries))values.splice(0,values.length,...data.countries);build();}).catch(build);
+})();

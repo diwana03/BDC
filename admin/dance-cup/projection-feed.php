@@ -3,6 +3,7 @@ declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Database;
 use App\Services\CountryFlagService;
+use App\Services\CountrySetService;
 use App\Services\DanceCupScoringService;
 use App\Services\ProjectionNameService;
 header('Content-Type: application/json; charset=utf-8');
@@ -42,13 +43,13 @@ if(strlen($clientRevision)===64&&hash_equals($revision,$clientRevision)){
  echo json_encode(['ok'=>true,'unchanged'=>true,'revision'=>$revision],JSON_UNESCAPED_SLASHES);exit;
 }
 $fetch=function(string $sql,string $scope,array $params=[])use($pdo,$competition):array{try{$q=$pdo->prepare($sql);$q->execute(['competition'=>$competition]+$params);return $q->fetchAll();}catch(Throwable $e){error_log('BDC Dance Cup projector '.$scope.' feed fallback: '.$e->getMessage());return [];}};
-$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant');
+$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.countries_json,c.photo_url FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant');
 if(!$entries)$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,NULL country,NULL photo_url FROM {$p}_entries e WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant-minimal');
 $activeEntryId=(int)($state['active_entry_id']??0);
 if(!$activeEntryId&&$entries)$activeEntryId=(int)$entries[0]['id'];
 $criteriaRows=$fetch("SELECT id FROM {$p}_criteria WHERE competition_id=:competition",'criteria');
 $criteriaRequired=count($criteriaRows);
-$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,d.country,d.country_code,d.photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN bdc_judges d ON d.id=j.judge_id LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge');
+$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,d.country,d.countries_json,d.country_code,d.photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN bdc_judges d ON d.id=j.judge_id LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge');
 if(!$judges)$judges=$fetch("SELECT j.id,j.judge_name,j.judge_order,j.is_chief,NULL country,NULL country_code,NULL photo_url,COALESCE(s.status,'not_started') status,s.submitted_at FROM {$p}_judges j LEFT JOIN {$p}_judge_sessions s ON s.judge_assignment_id=j.id AND s.competition_id=j.competition_id WHERE j.competition_id=:competition ORDER BY j.is_chief DESC,j.judge_order,j.id",'judge-minimal');
 $markCounts=$fetch("SELECT m.entry_id,m.judge_id,COUNT(m.criterion_id) mark_count FROM {$p}_marks m WHERE m.competition_id=:competition GROUP BY m.entry_id,m.judge_id",'judge-contestant-progress');
 $marksByEntry=[];
@@ -79,8 +80,10 @@ if(!$results){
 // All Contestants. This also survives a result-query fallback on older hosts.
 $entryIdentity=[];
 foreach($entries as &$entry){
-    $entry['flag']=CountryFlagService::emoji($entry['country']??null);
-    $entryIdentity[(int)$entry['id']]=['photo_url'=>$entry['photo_url']??null,'country'=>$entry['country']??null];
+    $entry['countries']=CountrySetService::fromRow($entry);
+    $entry['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$entry['countries']);
+    $entry['flag']=$entry['flags'][0]??'';
+    $entryIdentity[(int)$entry['id']]=['photo_url'=>$entry['photo_url']??null,'country'=>$entry['country']??null,'countries'=>$entry['countries'],'flags'=>$entry['flags']];
 }
 unset($entry);
 foreach($results as &$result){
@@ -88,11 +91,12 @@ foreach($results as &$result){
     if($identity){
         if(empty($result['photo_url']))$result['photo_url']=$identity['photo_url'];
         if(empty($result['country']))$result['country']=$identity['country'];
+        $result['countries']=$identity['countries'];$result['flags']=$identity['flags'];
     }
 }
 unset($result);
-foreach($judges as &$judge)$judge['flag']=CountryFlagService::emoji($judge['country_code']?:($judge['country']??null));unset($judge);
-foreach($results as &$result)$result['flag']=CountryFlagService::emoji($result['country']??null);unset($result);
+foreach($judges as &$judge){$judge['countries']=CountrySetService::fromRow($judge);$judge['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$judge['countries']);$judge['flag']=$judge['flags'][0]??'';}unset($judge);
+foreach($results as &$result)$result['flag']=$result['flags'][0]??CountryFlagService::emoji($result['country']??null);unset($result);
 // Match Jack and Jill projection naming: first name only, with a surname
 // initial when the current projected group contains duplicate first names.
 $entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
