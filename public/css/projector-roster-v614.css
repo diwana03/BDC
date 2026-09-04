@@ -1,0 +1,90 @@
+/* Non-overlapping shared competitor and judge cards for Test and Live projection. */
+.stage .competitor-card {
+  container-type: size;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  place-items: center;
+  align-content: stretch;
+  gap: clamp(2px, .7cqh, 6px) !important;
+  padding: clamp(4px, 1.8cqh, 10px) !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.stage .competitor-card > * {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.stage .competitor-photo-frame {
+  align-self: center;
+  width: clamp(48px, min(30cqw, 48cqh), 110px) !important;
+  height: clamp(48px, min(30cqw, 48cqh), 110px) !important;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.stage .competitor-card .photo {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  object-fit: cover;
+  object-position: center 24%;
+}
+
+.stage .competitor-name,
+.stage .competitor-bib,
+.stage .competitor-country {
+  position: static;
+  width: 100%;
+  max-width: 100%;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage .competitor-name { font-size: clamp(10px, min(8.5cqw, 10cqh), 20px); }
+.stage .competitor-bib { font-size: clamp(13px, min(10cqw, 12cqh), 25px); }
+.stage .competitor-country { font-size: clamp(8px, min(6.5cqw, 7.5cqh), 14px); }
+
+.stage .judge-card {
+  grid-template-rows: minmax(0, 1fr) auto auto auto auto !important;
+  align-content: stretch;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.stage .judge-card > * {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.stage .judge-photo-frame {
+  width: clamp(54px, min(30cqw, 48cqh), 150px) !important;
+  height: clamp(54px, min(30cqw, 48cqh), 150px) !important;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.stage .judge-name,
+.stage .judge-position,
+.stage .judge-scope,
+.stage .judge-country {
+  position: static;
+  width: 100%;
+  max-width: 100%;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
