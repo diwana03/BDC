@@ -1,2 +1,52 @@
 <?php
-declare(strict_types=1);require dirname(__DIR__).'/bootstrap.php';use App\Core\Database;use App\Services\LiveDisplaySessionService;$pdo=Database::connection();$token=trim((string)($_GET['token']??''));$s=LiveDisplaySessionService::byToken($pdo,$token);if(!$s||!$s['auto_page']){http_response_code(204);exit;}$test=$s['data_mode']==='test';$screenType=(string)$s['screen_type'];$roundId=(int)$s['current_round_id'];$roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';$roundTypeQuery=$pdo->prepare("SELECT round_type FROM {$roundTable} WHERE id=:r LIMIT 1");$roundTypeQuery->execute(['r'=>$roundId]);$roundType=(string)($roundTypeQuery->fetchColumn()?:'');$pagedTypes=['competitors','callbacks','finalists','heats_scores','score_matrix'];if(!in_array($screenType,$pagedTypes,true)||($screenType==='score_matrix'&&$roundType==='final')){http_response_code(204);exit;}$entryTable=$test?'bdc_test_scoring_entries':'bdc_scoring_entries';$resultTable=$test?'bdc_test_scoring_results':'bdc_scoring_results';$roleCounts=['leader'=>0,'follower'=>0];$usesActiveEntries=in_array($screenType,['competitors','heats_scores','score_matrix'],true);$q=$pdo->prepare($usesActiveEntries?"SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role":"SELECT se.dance_role,COUNT(*) total FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') GROUP BY se.dance_role");$q->execute(['r'=>$roundId]);foreach($q->fetchAll() as $row){$role=(string)($row['dance_role']??'');if(isset($roleCounts[$role]))$roleCounts[$role]=(int)$row['total'];}$roleCapacity=in_array($screenType,['heats_scores','score_matrix'],true)?12:15;$pages=max(1,(int)ceil(max($roleCounts)/$roleCapacity));$next=((int)$s['page_number']%$pages)+1;$pdo->prepare("UPDATE bdc_live_display_sessions SET page_number=:p,state_version=state_version+1,updated_at=NOW() WHERE id=:id")->execute(['p'=>$next,'id'=>$s['id']]);http_response_code(204);
+declare(strict_types=1);
+require dirname(__DIR__) . '/bootstrap.php';
+
+use App\Core\Database;
+use App\Services\LiveDisplaySessionService;
+
+$pdo = Database::connection();
+$token = trim((string) ($_GET['token'] ?? ''));
+$session = LiveDisplaySessionService::byToken($pdo, $token);
+if (!$session || !$session['auto_page']) {
+    http_response_code(204);
+    exit;
+}
+$test = $session['data_mode'] === 'test';
+$screenType = (string) $session['screen_type'];
+$roundId = (int) $session['current_round_id'];
+$roundTable = $test ? 'bdc_test_scoring_rounds' : 'bdc_scoring_rounds';
+$roundTypeQuery = $pdo->prepare("SELECT round_type FROM {$roundTable} WHERE id=:r LIMIT 1");
+$roundTypeQuery->execute(['r' => $roundId]);
+$roundType = (string) ($roundTypeQuery->fetchColumn() ?: '');
+$pagedTypes = ['competitors', 'callbacks', 'finalists', 'heats_scores', 'score_matrix', 'judge_call'];
+if (!in_array($screenType, $pagedTypes, true) || ($screenType === 'score_matrix' && $roundType === 'final')) {
+    http_response_code(204);
+    exit;
+}
+
+if ($screenType === 'judge_call') {
+    $judgeTable = $test ? 'bdc_test_scoring_judges' : 'bdc_scoring_judges';
+    $countQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+    $countQuery->execute(['r' => $roundId]);
+    $pages = max(1, (int) $countQuery->fetchColumn());
+} else {
+    $entryTable = $test ? 'bdc_test_scoring_entries' : 'bdc_scoring_entries';
+    $resultTable = $test ? 'bdc_test_scoring_results' : 'bdc_scoring_results';
+    $roleCounts = ['leader' => 0, 'follower' => 0];
+    $usesActiveEntries = in_array($screenType, ['competitors', 'heats_scores', 'score_matrix'], true);
+    $query = $pdo->prepare($usesActiveEntries
+        ? "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role"
+        : "SELECT se.dance_role,COUNT(*) total FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') GROUP BY se.dance_role");
+    $query->execute(['r' => $roundId]);
+    foreach ($query->fetchAll() as $row) {
+        $role = (string) ($row['dance_role'] ?? '');
+        if (isset($roleCounts[$role])) $roleCounts[$role] = (int) $row['total'];
+    }
+    $roleCapacity = in_array($screenType, ['heats_scores', 'score_matrix'], true) ? 12 : 15;
+    $pages = max(1, (int) ceil(max($roleCounts) / $roleCapacity));
+}
+$next = ((int) $session['page_number'] % $pages) + 1;
+$pdo->prepare('UPDATE bdc_live_display_sessions SET page_number=:p,state_version=state_version+1,updated_at=NOW() WHERE id=:id')
+    ->execute(['p' => $next, 'id' => $session['id']]);
+http_response_code(204);
