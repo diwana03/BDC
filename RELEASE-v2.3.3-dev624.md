@@ -9,8 +9,8 @@
 
 ## Validation
 
-- Focused canonical dashboard identity regression: candidate check pending GitHub Actions.
-- Full repository PHP 8.1 and JavaScript regression gate: candidate check pending GitHub Actions.
+- Focused canonical dashboard identity regression: passed.
+- Full repository PHP 8.1 lint and JavaScript regression gate: passed in PR #14.
 - Staging runtime verification: not performed; required before Production promotion.
 
 ## Database
