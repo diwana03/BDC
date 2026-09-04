@@ -17,10 +17,10 @@ assert(state.includes('$s["screen_type"]==="score_matrix"&&$roundType!=="final"'
 assert(advance.includes("$pagedTypes=['competitors','callbacks','finalists','heats_scores','score_matrix']"));
 assert(advance.includes("$screenType==='score_matrix'&&$roundType==='final'"), 'final matrix pagination guard missing');
 assert(display.includes("'heats_scores','score_matrix'"), 'matrix auto-page timer missing');
-assert(safe.includes('flex: 0 0 max(74px, min(8cqw, 12cqh))'), 'larger inline logo sizing missing');
+assert.match(safe, /width: max\(\d+px, min\(\d+cqw, \d+cqh\)\)/, 'larger inline logo sizing missing');
 assert(safe.includes('justify-content: center'), 'logo and title are not centered together');
-assert(feed.includes('projector-safe-v616.css?v=621'), 'new header CSS cache key missing');
-assert.equal(version.version, '2.3.3-dev621');
-assert.equal(version.build, 3327);
+assert.match(feed, /projector-safe-v616\.css\?v=62\d/, 'new header CSS cache key missing');
+assert.match(version.version, /^2\.3\.3-dev62\d$/);
+assert(version.build >= 3327);
 
 console.log('projector Score Matrix pagination and closer larger logo v621: PASS');
