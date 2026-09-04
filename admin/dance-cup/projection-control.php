@@ -284,6 +284,8 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </div>
 </div>
 </main>
+<button type="button" data-fullscreen-control class="btn btn-dark position-fixed bottom-0 end-0 m-3 shadow" style="z-index:1080">Full Screen</button>
 <script>document.getElementById('copyProjector').onclick=async e=>{const x=document.getElementById('projectorUrl');try{await navigator.clipboard.writeText(x.value)}catch{x.select();document.execCommand('copy')}e.currentTarget.textContent='Copied'}</script>
+<script src="../../public/js/projection-control-fullscreen-v618.js?v=618"></script>
 </body>
 </html>
