@@ -21,6 +21,5 @@ assert.match(feed, /\$competitorRoleCapacity=\$competitorRolePaged\?15:/);
 assert.match(feed, /ProjectionLayoutService::balancedPageSlice\(\$roleItems,\$page,\$competitorRoleTotalPages\)/);
 assert.match(state, /\$roleCapacity=15;/);
 assert.match(service, /function balancedPageSlice\(array \$items,int \$page,int \$pages\):array/);
-assert.strictEqual(version.version, '2.3.3-dev617');
-assert.strictEqual(version.build, 3323);
+assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3323, 'version predates 15-per-role release');
 console.log('15-per-role balanced projector pagination v617: PASS');
