@@ -19,7 +19,7 @@ assert.match(feed, /\$competitorRolePaged=in_array\(\$type,\["competitors","call
 assert.match(feed, /\$competitorRoleCols=\$competitorRolePaged\?3:/);
 assert.match(feed, /\$competitorRoleCapacity=\$competitorRolePaged\?15:/);
 assert.match(feed, /ProjectionLayoutService::balancedPageSlice\(\$roleItems,\$page,\$competitorRoleTotalPages\)/);
-assert.match(state, /\$roleCapacity=15;/);
+assert.match(state, /\$roleCapacity=\$s\["screen_type"\]==="heats_scores"\?12:15;/);
 assert.match(service, /function balancedPageSlice\(array \$items,int \$page,int \$pages\):array/);
 assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3323, 'version predates 15-per-role release');
 console.log('15-per-role balanced projector pagination v617: PASS');
