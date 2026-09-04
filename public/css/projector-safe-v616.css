@@ -21,18 +21,3 @@
 .stage > .projection-official {
   right: 5cqw !important;
 }
-
-.projection-fullscreen {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 2147483646;
-  padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, .72);
-  border-radius: 999px;
-  background: rgba(10, 18, 32, .9);
-  color: #fff;
-  font: 800 14px Arial, sans-serif;
-  cursor: pointer;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, .45);
-}
