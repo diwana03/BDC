@@ -228,7 +228,8 @@
 .stage .judge-country-name {
   overflow: hidden;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -270,6 +271,17 @@
 .stage .list > .judge-card:only-child .judge-country-entry {
   width: min(30%, 135px);
   max-width: 135px;
+}
+
+.stage .list > .judge-card:only-child .judge-country-entry:only-child {
+  width: auto;
+  max-width: 100%;
+}
+
+.stage .list > .judge-card:only-child .judge-country-entry:only-child .judge-country-name {
+  display: block;
+  white-space: nowrap;
+  text-overflow: clip;
 }
 
 .stage .list > .judge-card:only-child .judge-photo-frame {
