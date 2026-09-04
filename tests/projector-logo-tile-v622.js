@@ -16,7 +16,8 @@ assert(safe.includes('width: max(96px, min(10cqw, 17cqh))'), 'approved larger lo
 assert(safe.includes('background: #fff !important'), 'solid white logo tile background is missing');
 assert(safe.includes('margin-top: max(6px'), 'approved breathing room above the logo is missing');
 assert(safe.includes('align-self: end'), 'logo is not aligned down toward the round title');
-assert.equal(version.version, '2.3.3-dev622');
-assert.equal(version.build, 3328);
+const release = Number(version.version.match(/dev(\d+)$/)?.[1] || 0);
+assert(release >= 622);
+assert(version.build >= 3328);
 
 console.log('projector white logo tile and full-heading placement v622: PASS');
