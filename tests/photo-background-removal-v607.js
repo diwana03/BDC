@@ -17,10 +17,10 @@ for (const marker of [
 
 for (const marker of [
   "Auth::isSuperAdmin()",
-  "value="remove_background"",
-  "value="apply_background_removal"",
-  "value="discard_background_preview"",
-  "value="restore_original"",
+  'value="remove_background"',
+  'value="apply_background_removal"',
+  'value="discard_background_preview"',
+  'value="restore_original"',
   "competitor_background_preview_created",
   "competitor_background_removed",
   "competitor_photo_original_restored",
