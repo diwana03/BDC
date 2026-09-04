@@ -45,6 +45,8 @@ $allowedRoles = ['leader', 'follower', 'both', 'unknown'];
 $allowedDivisions = ['novice', 'intermediate', 'advanced', 'all_star', 'professional', 'bachata_rising', 'bachata_open', 'bachata_invitational', 'salsa_rising', 'salsa_open', 'salsa_invitational', 'unknown'];
 $allowedStatuses = ['active', 'pending', 'archived'];
 
+sort($countries, SORT_NATURAL | SORT_FLAG_CASE);
+
 $where = ['1=1'];
 $params = [];
 
@@ -73,8 +75,18 @@ if ($filter === 'missing_photo') {
 }
 
 if ($country !== '') {
-    $where[] = 'c.country = :country';
-    $params['country'] = $country;
+    $countryVariants=[];
+    foreach($countryRows as $rawCountry){
+        if(CountryFlagService::canonicalName((string)$rawCountry)===$country)$countryVariants[]=(string)$rawCountry;
+    }
+    $countryVariants=array_values(array_unique(array_merge([$country],$countryVariants)));
+    $countryPlaceholders=[];
+    foreach($countryVariants as $index=>$rawCountry){
+        $key='country_variant_'.$index;
+        $countryPlaceholders[]=':'.$key;
+        $params[$key]=$rawCountry;
+    }
+    $where[]='c.country IN ('.implode(',',$countryPlaceholders).')';
 }
 if ($danceStyle !== '') {
     $where[] = 'EXISTS (SELECT 1 FROM bdc_competitor_discipline_profiles ds WHERE ds.competitor_id=c.id AND ds.dance_style=:dance_style)';
