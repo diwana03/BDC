@@ -15,16 +15,21 @@
 
 .projection-heading-row {
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: max(58px, min(6.2cqw, 10cqh)) minmax(0, 1fr) max(58px, min(6.2cqw, 10cqh));
+  display: flex;
   align-items: center;
-  gap: max(8px, min(1cqw, 1.8cqh));
+  justify-content: center;
+  gap: max(6px, min(.7cqw, 1.2cqh));
 }
 
 .projection-heading-row > .projection-brand {
+  flex: 0 0 max(74px, min(8cqw, 12cqh));
   position: static !important;
   display: grid;
   place-items: center;
+}
+
+.projection-heading-row > .event {
+  min-width: 0;
 }
 
 .projection-heading-row > .projection-brand img {
