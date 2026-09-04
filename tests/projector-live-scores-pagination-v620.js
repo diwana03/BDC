@@ -19,7 +19,7 @@ assert.match(feed, /ProjectionLayoutService::balancedPageSlice\(\$scoreRows,\$he
 assert(feed.includes('PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?>'), 'Live Contestant Scores page label missing');
 assert(feed.includes('$scoreRows=$heatsScoreRoleItems[$role]'), 'Live Contestant Scores renderer is not using the paged role rows');
 assert(state.includes('["heats_scores","score_matrix"],true)?12:15'), 'state page count does not use 12 rows for Live Contestant Scores');
-assert(advance.includes("'heats_scores','score_matrix'"), 'advance endpoint does not support Live Contestant Scores');
+assert.match(advance, /\[[^\]]*'heats_scores'[^\]]*'score_matrix'[^\]]*\]/, 'advance endpoint does not support Live Contestant Scores');
 assert(display.includes("'heats_scores','score_matrix'"), 'audience auto-page timer does not support Live Contestant Scores');
 const release = Number(version.version.match(/dev(\d+)$/)?.[1] || 0);
 assert(release >= 620);
