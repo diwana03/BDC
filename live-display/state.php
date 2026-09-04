@@ -81,16 +81,25 @@ $e = $pdo->prepare("SELECT name FROM {$eventTable} WHERE id=:id");
 $e->execute(["id" => (int)($s["active_event_id"]??$s["event_id"])]);
 $eventName = (string) ($e->fetchColumn() ?: "BDC Event");
 $roundId = (int) ($s["current_round_id"] ?? 0);
+$roundTable=$test?"bdc_test_scoring_rounds":"bdc_scoring_rounds";
+$roundType="";
+if($roundId){
+    $roundTypeQuery=$pdo->prepare("SELECT round_type FROM {$roundTable} WHERE id=:r LIMIT 1");
+    $roundTypeQuery->execute(["r"=>$roundId]);
+    $roundType=(string)($roundTypeQuery->fetchColumn()?:"");
+}
+$pagedRoleScreen=in_array($s["screen_type"],["competitors","callbacks","finalists","heats_scores"],true)
+    ||($s["screen_type"]==="score_matrix"&&$roundType!=="final");
 $total = 1;
 if (
     $roundId &&
-    in_array($s["screen_type"], ["competitors", "callbacks", "finalists", "heats_scores"], true)
+    $pagedRoleScreen
 ) {
     $count = 0;
     $roleCounts=["leader"=>0,"follower"=>0];
-    if (in_array($s["screen_type"],["competitors","callbacks","finalists","heats_scores"],true)) {
+    if ($pagedRoleScreen) {
         $q = $pdo->prepare(
-            in_array($s["screen_type"],["competitors","heats_scores"],true)
+            in_array($s["screen_type"],["competitors","heats_scores","score_matrix"],true)
               ? "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role"
               : "SELECT se.dance_role,COUNT(*) total FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') GROUP BY se.dance_role",
         );
@@ -118,8 +127,8 @@ if (
         $set["custom_width"] ?: null,
         $set["custom_height"] ?: null,
     );
-    if(in_array($s["screen_type"],["competitors","callbacks","finalists","heats_scores"],true)){
-        $roleCapacity=$s["screen_type"]==="heats_scores"?12:15;
+    if($pagedRoleScreen){
+        $roleCapacity=in_array($s["screen_type"],["heats_scores","score_matrix"],true)?12:15;
         $total=max(1,(int)ceil(max($roleCounts)/$roleCapacity));
     }else{
         $total=max(1,(int)$layout["pages"]);
