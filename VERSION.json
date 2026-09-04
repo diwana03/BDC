@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev591",
-  "build": 3297,
+  "version": "2.3.3-dev593",
+  "build": 3299,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows the current Leader and Follower roster totals directly in their competitor-entry card headers across both Live and isolated Test Jack and Jill scoring, refreshing after every add or removal.",
     "Corrects MCP Rising/Open roster counts by requiring canonical registered category membership from the Bachata special-category and Salsa SDC category tables before applying role and approval eligibility.",
     "Repairs MCP division competitor listing by passing role and limit in the correct directory signature order and applying the same approved-history eligibility gate used during final roster approval.",
     "Corrects the MCP OAuth authorization page to open the real BDC Super Admin login entry at /portal/admin/ instead of the nonexistent public /portal/login route.",
