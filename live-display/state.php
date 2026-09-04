@@ -84,13 +84,13 @@ $roundId = (int) ($s["current_round_id"] ?? 0);
 $total = 1;
 if (
     $roundId &&
-    in_array($s["screen_type"], ["competitors", "callbacks", "finalists"], true)
+    in_array($s["screen_type"], ["competitors", "callbacks", "finalists", "heats_scores"], true)
 ) {
     $count = 0;
     $roleCounts=["leader"=>0,"follower"=>0];
-    if (in_array($s["screen_type"],["competitors","callbacks","finalists"],true)) {
+    if (in_array($s["screen_type"],["competitors","callbacks","finalists","heats_scores"],true)) {
         $q = $pdo->prepare(
-            $s["screen_type"]==="competitors"
+            in_array($s["screen_type"],["competitors","heats_scores"],true)
               ? "SELECT dance_role,COUNT(*) total FROM {$entryTable} WHERE round_id=:r AND entry_status='active' GROUP BY dance_role"
               : "SELECT se.dance_role,COUNT(*) total FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') GROUP BY se.dance_role",
         );
@@ -118,8 +118,8 @@ if (
         $set["custom_width"] ?: null,
         $set["custom_height"] ?: null,
     );
-    if(in_array($s["screen_type"],["competitors","callbacks","finalists"],true)){
-        $roleCapacity=15;
+    if(in_array($s["screen_type"],["competitors","callbacks","finalists","heats_scores"],true)){
+        $roleCapacity=$s["screen_type"]==="heats_scores"?12:15;
         $total=max(1,(int)ceil(max($roleCounts)/$roleCapacity));
     }else{
         $total=max(1,(int)$layout["pages"]);
