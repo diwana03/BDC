@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev630",
-  "build": 3336,
+  "version": "2.3.3-dev631",
+  "build": 3337,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Extends the natural-width single-country rule from the one-by-one judge call to every full Judges projector card, preventing long country names such as Switzerland from being clipped while preserving multi-country wrapping.",
     "Keeps single-country judge-call labels at their natural full width and prevents country names such as Switzerland from breaking inside words, while preserving the wrapped Flag 1 through Flag 5 layout.",
     "Adds backward-compatible Flag 1 through Flag 5 country representation for shared BDC/SDC competitors, isolated Test competitors, WDC identities and judges; renders multi-country identities across Jack and Jill and Dance Cup projection feeds; and rebuilds the Call Judges One by One layout so judge assignment, portrait, name, scope and flags align inside the projector safe area.",
     "Upgrades Test and Live automatic Judge Browser Scoring with a premium BDC navy, burgundy and champagne interface, stronger submitted and progress states, and a prominent audited Reopen Scoring control on every submitted and locked judge without exposing invalid reopen actions on active judges.",

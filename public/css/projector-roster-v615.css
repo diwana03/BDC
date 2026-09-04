@@ -225,6 +225,17 @@
   text-align: center;
 }
 
+.stage .judge-country-entry:only-child {
+  width: auto;
+  max-width: 100%;
+}
+
+.stage .judge-country-entry:only-child .judge-country-name {
+  display: block;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
 .stage .judge-country-name {
   overflow: hidden;
   max-width: 100%;
@@ -271,17 +282,6 @@
 .stage .list > .judge-card:only-child .judge-country-entry {
   width: min(30%, 135px);
   max-width: 135px;
-}
-
-.stage .list > .judge-card:only-child .judge-country-entry:only-child {
-  width: auto;
-  max-width: 100%;
-}
-
-.stage .list > .judge-card:only-child .judge-country-entry:only-child .judge-country-name {
-  display: block;
-  white-space: nowrap;
-  text-overflow: clip;
 }
 
 .stage .list > .judge-card:only-child .judge-photo-frame {
