@@ -43,18 +43,21 @@ final class MobileProjectionRemoteService
     public static function command(PDO $pdo,array $link,string $action,array $input):array
     {
         $test=$link['data_mode']==='test';$state=self::state($pdo,$link);$session=$state['session'];$round=$state['round'];if(!$round)throw new RuntimeException('Select this event and round from the main Projection Control first.');$sessionId=(int)$session['id'];$eventId=(int)$link['event_id'];
-        if($action==='effect'){$effect=(string)($input['effect_type']??'none');if(!in_array($effect,['none','hearts','balloons','heart_smiles','finger_hearts'],true))throw new RuntimeException('This effect is not available on the mobile remote.');return LiveDisplaySessionService::effect($pdo,$eventId,$test,$effect,0,$sessionId);}
+        if($action==='effect'){$effect=(string)($input['effect_type']??'none');if(!in_array($effect,['none','countdown','hearts','balloons','heart_smiles','finger_hearts'],true))throw new RuntimeException('This effect is not available on the mobile remote.');return LiveDisplaySessionService::effect($pdo,$eventId,$test,$effect,0,$sessionId);}
         $safe=self::safeScreens((string)$round['round_type']);$screen=(string)($input['screen_type']??$session['screen_type']??'holding');if($action==='screen'&&!in_array($screen,array_keys($safe),true))throw new RuntimeException('This projector screen is protected from the mobile remote.');if($action!=='screen'&&!in_array((string)$session['screen_type'],array_keys($safe),true))throw new RuntimeException('Return to a mobile-safe screen before using page controls.');
-        $page=max(1,(int)($session['page_number']??1));if($action==='previous_page')$page=max(1,$page-1);elseif($action==='next_page')$page++;$auto=(bool)($session['auto_page']??false);if($action==='auto_on')$auto=true;elseif($action==='auto_off')$auto=false;
+        $page=max(1,(int)($session['page_number']??1));if($action==='screen')$page=max(1,(int)($input['page_number']??1));elseif($action==='previous_page')$page=max(1,$page-1);elseif($action==='next_page')$page++;$auto=(bool)($session['auto_page']??false);if($action==='auto_on')$auto=true;elseif($action==='auto_off')$auto=false;
+        if($action==='screen'&&$screen==='flights'){$summary=ScoringFlightService::summary($pdo,(int)$round['id'],$test);$available=array_map(static fn(array $flight):int=>(int)($flight['number']??0),$summary['flights']??[]);if(!in_array($page,$available,true))throw new RuntimeException('That Flight Round is not configured for this scoring round.');}
         if(!in_array($action,['screen','previous_page','next_page','auto_on','auto_off'],true))throw new RuntimeException('Unsupported mobile remote command.');
-        return LiveDisplaySessionService::update($pdo,$eventId,$test,['round_id'=>(int)$round['id'],'screen_type'=>$action==='screen'?$screen:(string)$session['screen_type'],'page_number'=>$page,'auto_page'=>$auto?1:0,'page_delay_seconds'=>(int)($session['page_delay_seconds']??30),'loop_enabled'=>0],0,$sessionId);
+        $callbackReveal=$action==='screen'&&$screen==='callbacks';
+        $updated=LiveDisplaySessionService::update($pdo,$eventId,$test,['round_id'=>(int)$round['id'],'screen_type'=>$action==='screen'?$screen:(string)$session['screen_type'],'page_number'=>$page,'auto_page'=>$auto?1:0,'page_delay_seconds'=>(int)($session['page_delay_seconds']??30),'loop_enabled'=>0,'effect_type'=>$callbackReveal?'countdown':''],0,$sessionId);
+        return $updated;
     }
 
     public static function safeScreens(string $roundType):array
     {
-        if($roundType==='heats')return ['holding'=>'Holding','judges'=>'Judges','competitors'=>'Competitors','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','callbacks'=>'Callbacks'];
-        if($roundType==='semifinal')return ['holding'=>'Holding','judges'=>'Judges','competitors'=>'Competitors','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','finalists'=>'Finalists'];
-        return ['holding'=>'Holding','judges'=>'Judges','competitors'=>'Finalists / Couples','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','matching'=>'Emcee Live Matching'];
+        if($roundType==='heats')return ['holding'=>'Holding','flights'=>'Flight Round','judges'=>'Judges','judge_call'=>'Call Judges One by One','competitors'=>'Competitors','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','callbacks'=>'Callbacks'];
+        if($roundType==='semifinal')return ['holding'=>'Holding','flights'=>'Flight Round','judges'=>'Judges','judge_call'=>'Call Judges One by One','competitors'=>'Competitors','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','finalists'=>'Finalists'];
+        return ['holding'=>'Holding','flights'=>'Flight Round','judges'=>'Judges','judge_call'=>'Call Judges One by One','competitors'=>'Finalists / Couples','scoring'=>'Scoring Status','score_matrix'=>'Live Score Matrix','matching'=>'Emcee Live Matching'];
     }
 
     public static function url(string $token):string
