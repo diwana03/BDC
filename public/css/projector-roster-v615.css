@@ -1,0 +1,179 @@
+/* Approved compact projector roster: identity number, portrait, then details. */
+.stage .competitor-card {
+  container-type: size;
+  display: grid !important;
+  grid-template-columns: minmax(42px, 22%) minmax(58px, 42%) minmax(48px, 36%);
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  gap: clamp(3px, 1.4cqh, 8px) clamp(3px, 1.5cqw, 9px) !important;
+  padding: clamp(4px, 2cqh, 10px) !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.stage .competitor-card > * {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.stage .competitor-bib {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: 100%;
+  font-size: clamp(14px, min(11cqw, 15cqh), 28px);
+  font-weight: 950;
+  line-height: 1.05;
+  color: #ffcf45;
+  text-align: center;
+  white-space: normal;
+}
+
+.stage .competitor-photo-frame {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  justify-self: center;
+  width: clamp(52px, min(38cqw, 78cqh), 126px) !important;
+  height: clamp(58px, min(38cqw, 78cqh), 136px) !important;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.stage .competitor-card .photo {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: clamp(7px, 2cqw, 12px) !important;
+  object-fit: cover;
+  object-position: center 24%;
+}
+
+.stage .competitor-name {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+  max-width: 100%;
+  padding-bottom: clamp(2px, 1cqh, 5px);
+  font-size: clamp(10px, min(8.5cqw, 11cqh), 20px);
+  font-weight: 950;
+  line-height: 1.08;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.stage .competitor-country {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: start;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  padding-top: clamp(2px, 1cqh, 5px);
+  font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
+  line-height: 1.08;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.stage .competitor-country-name {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.stage .judge-card {
+  container-type: size;
+  display: grid !important;
+  grid-template-columns: minmax(46px, 22%) minmax(64px, 42%) minmax(52px, 36%);
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  gap: clamp(2px, 1.2cqh, 7px) clamp(3px, 1.4cqw, 9px) !important;
+  padding: clamp(4px, 1.8cqh, 10px) !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.stage .judge-card > * {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.stage .judge-position {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, .8cqh, 5px);
+  font-size: clamp(9px, min(7.5cqw, 8.5cqh), 18px);
+  line-height: 1.08;
+  text-align: center;
+  white-space: normal;
+}
+
+.stage .judge-photo-frame {
+  grid-column: 2;
+  grid-row: 1 / 4;
+  align-self: center;
+  justify-self: center;
+  width: clamp(58px, min(38cqw, 72cqh), 146px) !important;
+  height: clamp(62px, min(38cqw, 72cqh), 150px) !important;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.stage .judge-photo,
+.stage .judge-photo-fallback {
+  border-radius: clamp(7px, 2cqw, 12px) !important;
+}
+
+.stage .judge-name {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+  font-size: clamp(10px, min(8.2cqw, 10.5cqh), 20px);
+  line-height: 1.08;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.stage .judge-scope {
+  grid-column: 3;
+  grid-row: 2;
+  width: 100%;
+  font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
+  line-height: 1.08;
+  white-space: normal;
+}
+
+.stage .judge-country {
+  grid-column: 3;
+  grid-row: 3;
+  align-self: start;
+  justify-content: flex-start;
+  width: 100%;
+  font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
+  line-height: 1.08;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.stage .judge-country-name {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
