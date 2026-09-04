@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev633",
-  "build": 3339,
+  "version": "2.3.3-dev634",
+  "build": 3340,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs projector country presentation by giving every competitor flag and country a full-width bottom row without mid-word breaks, balances Leaders and Followers across configured Scoring Rounds so Round 2 is not starved, keeps role-based page totals correct, and double-buffers Jack and Jill projector refreshes to eliminate visible page flashes.",
     "Adds a real user-activated Full Screen button inside both Jack and Jill and Dance Cup projector browsers, hides it after entry, restores it after exit, and retains the 15-competitor-per-role slide limit with true Leader and Follower totals.",
     "Guarantees the shared Test and Live projector countdown effect clears immediately after the five-second sequence so the final 1 cannot remain frozen over the active screen.",
     "Extends the natural-width single-country rule from the one-by-one judge call to every full Judges projector card, preventing long country names such as Switzerland from being clipped while preserving multi-country wrapping.",

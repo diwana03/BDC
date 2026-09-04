@@ -40,6 +40,6 @@ assert.match(feed, /PAGE <\?=\$competitorRolePage\?> OF <\?=\$competitorRoleTota
 assert.match(feed, /class="small flight-country"/);
 assert.match(roster, /\.stage \.competitor-country \{[\s\S]*?flex-direction: column/);
 assert.match(roster, /\.stage \.flight-country \{[\s\S]*?flex-direction: column/);
-assert.match(roster, /\.stage \.flight-country span \{[\s\S]*?overflow-wrap: anywhere/);
+assert.match(roster, /\.stage \.flight-country span \{[\s\S]*?white-space: nowrap[\s\S]*?overflow-wrap: normal/);
 
 console.log('Projector controls, 15-second paging, fullscreen placement and country wrapping v628: PASS');

@@ -40,7 +40,27 @@ final class ScoringFlightService
         if($isFinal){
             $q=$pdo->prepare("SELECT p.id subject_id,'pair' subject_type,NULL dance_role,l.bib_number primary_bib,f.bib_number secondary_bib FROM {$t['pairs']} p JOIN {$t['entries']} l ON l.id=p.leader_entry_id LEFT JOIN {$t['entries']} f ON f.id=p.follower_entry_id WHERE p.round_id=:r AND p.pairing_status='confirmed' ORDER BY l.bib_number IS NULL,l.bib_number,f.bib_number IS NULL,f.bib_number,p.id");$q->execute(['r'=>$roundId]);$rows=$q->fetchAll();foreach($rows as $index=>$row){$row['flight_number']=intdiv($index,$flightSize)+1;$row['position_number']=($index%$flightSize)+1;$subjects[]=$row;}
         }else{
-            $q=$pdo->prepare("SELECT id subject_id,'entry' subject_type,dance_role,bib_number primary_bib,NULL secondary_bib FROM {$t['entries']} WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number IS NULL,bib_number,id");$q->execute(['r'=>$roundId]);$byRole=['leader'=>[],'follower'=>[]];foreach($q->fetchAll() as $row)$byRole[(string)$row['dance_role']][]=$row;foreach($byRole as $rows){foreach($rows as $index=>$row){$row['flight_number']=intdiv($index,$flightSize)+1;$row['position_number']=($index%$flightSize)+1;$subjects[]=$row;}}
+            $q=$pdo->prepare("SELECT id subject_id,'entry' subject_type,dance_role,bib_number primary_bib,NULL secondary_bib FROM {$t['entries']} WHERE round_id=:r AND entry_status='active' ORDER BY dance_role,bib_number IS NULL,bib_number,id");
+            $q->execute(['r'=>$roundId]);
+            $byRole=['leader'=>[],'follower'=>[]];
+            foreach($q->fetchAll() as $row)$byRole[(string)$row['dance_role']][]=$row;
+            $largestRole=max(array_map('count',$byRole));
+            $balancedFlightCount=max(1,(int)ceil($largestRole/$flightSize));
+            foreach($byRole as $rows){
+                $roleCount=count($rows);
+                $base=intdiv($roleCount,$balancedFlightCount);
+                $remainder=$roleCount%$balancedFlightCount;
+                $offset=0;
+                for($flightNumber=1;$flightNumber<=$balancedFlightCount;$flightNumber++){
+                    $roundSize=$base+($flightNumber<=$remainder?1:0);
+                    foreach(array_slice($rows,$offset,$roundSize) as $position=>$row){
+                        $row['flight_number']=$flightNumber;
+                        $row['position_number']=$position+1;
+                        $subjects[]=$row;
+                    }
+                    $offset+=$roundSize;
+                }
+            }
         }
         if(!$subjects)throw new RuntimeException($isFinal?'Confirm Final couples before creating flights.':'Add active competitors before creating flights.');
         $flightCount=max(array_map(static fn(array $x):int=>(int)$x['flight_number'],$subjects));

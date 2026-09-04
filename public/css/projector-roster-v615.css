@@ -3,7 +3,7 @@
   container-type: size;
   display: grid !important;
   grid-template-columns: minmax(42px, 22%) minmax(58px, 42%) minmax(48px, 36%);
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(3px, 1.4cqh, 8px) clamp(3px, 1.5cqw, 9px) !important;
   padding: clamp(4px, 2cqh, 10px) !important;
@@ -21,7 +21,7 @@
 
 .stage .competitor-bib {
   grid-column: 1;
-  grid-row: 1 / 3;
+  grid-row: 1;
   width: 100%;
   font-size: clamp(14px, min(11cqw, 15cqh), 28px);
   font-weight: 950;
@@ -33,7 +33,7 @@
 
 .stage .competitor-photo-frame {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1;
   align-self: center;
   justify-self: center;
   width: clamp(52px, min(38cqw, 78cqh), 126px) !important;
@@ -56,7 +56,7 @@
 .stage .competitor-name {
   grid-column: 3;
   grid-row: 1;
-  align-self: end;
+  align-self: center;
   width: 100%;
   max-width: 100%;
   padding-bottom: clamp(2px, 1cqh, 5px);
@@ -69,16 +69,16 @@
 }
 
 .stage .competitor-country {
-  grid-column: 3;
+  grid-column: 1 / -1;
   grid-row: 2;
-  align-self: start;
-  justify-content: flex-start;
-  align-items: flex-start;
+  align-self: center;
+  justify-content: center;
+  align-items: center;
   flex-direction: column;
   gap: clamp(2px, .65cqh, 5px);
   width: 100%;
   max-width: 100%;
-  padding-top: clamp(2px, 1cqh, 5px);
+  padding-top: clamp(1px, .55cqh, 3px);
   font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
   line-height: 1.08;
   white-space: normal;
@@ -88,10 +88,14 @@
 .stage .competitor-country-name {
   overflow: hidden;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: ellipsis;
+}
+
+.stage .competitor-flag {
+  width: clamp(18px, min(8cqw, 8cqh), 30px) !important;
 }
 
 /* Flight Round 1, Round 2 and later rounds: keep the country name below the flag. */
@@ -124,7 +128,9 @@
 .stage .flight-country span {
   display: block;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   text-align: center;
 }
 
@@ -239,11 +245,10 @@
 .stage .judge-country-name {
   overflow: hidden;
   max-width: 100%;
+  white-space: nowrap;
   overflow-wrap: normal;
   word-break: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
 }
 
 /* One selected judge: large, centred and still inside the projector safe area. */
