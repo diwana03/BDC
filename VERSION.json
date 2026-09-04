@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev596",
-  "build": 3302,
+  "version": "2.3.3-dev597",
+  "build": 3303,
   "status": "development",
   "release_date": "2026-09-03",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Shows every Automatic Scoring judge exactly once in a stable selectable suggestion list, keeps name, Judge ID and country searchable within that single result, and resolves selection to the canonical Judge Database record.",
     "Makes Automatic Scoring Judge Database lookup reliably searchable by judge name, permanent Judge ID, or country, then resolves every selected alias back to the canonical judge name and directory ID while preserving duplicate protection.",
     "Shows high-contrast live Leader and Follower roster totals in the actual shared Automatic Scoring setup component, while retaining the existing counted headers in Manual and isolated Test workflows.",
     "Repairs Judge Database name search by provisioning the missing country-code column on older installations, restores one valid active-judge suggestion list in Live, and adds the same searchable directory wiring to initial, Final and dynamically added Test judge rows.",
