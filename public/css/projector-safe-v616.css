@@ -15,20 +15,31 @@
 
 .projection-heading-row {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, auto);
+  align-items: end;
   justify-content: center;
-  gap: max(6px, min(.7cqw, 1.2cqh));
+  gap: max(14px, min(1.35cqw, 2.4cqh));
 }
 
 .projection-heading-row > .projection-brand {
-  flex: 0 0 max(74px, min(8cqw, 12cqh));
+  width: max(96px, min(10cqw, 17cqh));
   position: static !important;
   display: grid;
   place-items: center;
+  align-self: end;
+  margin-top: max(6px, min(.7cqh, .4cqw));
+  margin-bottom: max(2px, min(.3cqh, .18cqw));
 }
 
-.projection-heading-row > .event {
+.projection-heading-row > .projection-heading-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.projection-heading-copy > .event {
   min-width: 0;
 }
 
@@ -40,6 +51,8 @@
   object-fit: contain;
   border-radius: max(8px, min(.7cqw, 1.2cqh));
   background: #fff !important;
+  padding: max(3px, min(.35cqw, .62cqh));
+  box-shadow: 0 max(4px, min(.7cqh, .4cqw)) max(12px, min(2cqh, 1.2cqw)) rgba(0, 0, 0, .32);
 }
 
 .stage > .projection-official {
