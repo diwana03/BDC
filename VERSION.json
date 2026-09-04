@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev631",
-  "build": 3337,
+  "version": "2.3.3-dev632",
+  "build": 3338,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Guarantees the shared Test and Live projector countdown effect clears immediately after the five-second sequence so the final 1 cannot remain frozen over the active screen.",
     "Extends the natural-width single-country rule from the one-by-one judge call to every full Judges projector card, preventing long country names such as Switzerland from being clipped while preserving multi-country wrapping.",
     "Keeps single-country judge-call labels at their natural full width and prevents country names such as Switzerland from breaking inside words, while preserving the wrapped Flag 1 through Flag 5 layout.",
     "Adds backward-compatible Flag 1 through Flag 5 country representation for shared BDC/SDC competitors, isolated Test competitors, WDC identities and judges; renders multi-country identities across Jack and Jill and Dance Cup projection feeds; and rebuilds the Call Judges One by One layout so judge assignment, portrait, name, scope and flags align inside the projector safe area.",
