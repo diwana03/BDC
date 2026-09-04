@@ -54,6 +54,7 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
 @media(max-aspect-ratio:1/1){.grid,.grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.podium{grid-template-columns:1fr;height:auto;align-items:stretch;overflow:auto}.podium-card{height:auto;min-height:0}.top{grid-template-columns:64px 1fr}.identity{display:none}.event h1{white-space:normal}.rank-row{grid-template-columns:42px 44px 70px 1fr 76px;gap:8px}.call-layout{grid-template-columns:minmax(130px,.58fr) minmax(300px,1.3fr) minmax(170px,.72fr);gap:10px}.call .number{font-size:clamp(190px,28vw,360px)}.call .profile-photo{width:clamp(190px,24vw,280px);height:clamp(190px,24vw,280px)}.trophy-showcase img{height:min(39vh,410px)}}
 @media(max-width:640px){.call-layout{height:auto;grid-template-columns:minmax(105px,.55fr) minmax(0,1.45fr)}.trophy-showcase{display:none}.call .number{font-size:clamp(150px,34vw,240px)}.call .profile-photo{width:clamp(150px,38vw,220px);height:clamp(150px,38vw,220px)}.call h2{font-size:clamp(25px,7vw,40px)}.call .identity-meta{font-size:clamp(22px,6vw,34px)}}
 .identity-meta.multi-country{flex-wrap:wrap;align-content:center}.identity-country{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;max-width:18%;line-height:1.05;text-align:center;overflow-wrap:anywhere}
+.projector-fullscreen{position:fixed;right:5vw;bottom:5vh;z-index:2147483646;border:2px solid rgba(255,255,255,.9);border-radius:999px;padding:12px 18px;background:rgba(10,18,32,.92);color:#fff;font:900 14px Inter,Arial,sans-serif;letter-spacing:.06em;box-shadow:0 10px 32px rgba(0,0,0,.48);cursor:pointer}.projector-fullscreen:hover,.projector-fullscreen:focus-visible{background:#9f1239;outline:3px solid rgba(255,255,255,.35);outline-offset:2px}.projector-fullscreen[hidden]{display:none!important}
 </style>
 </head>
 <body class="dc-projector-presentation">
@@ -64,9 +65,11 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
 </main>
 <div class="connection" id="connection">Live updates temporarily unavailable. Retrying…</div>
 <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+<button class="projector-fullscreen" id="projectorFullscreen" type="button">ENTER FULL SCREEN</button>
 <script>
 (()=>{'use strict';
 const token=<?=json_encode($token)?>,test=<?=$test?'true':'false'?>,stage=document.getElementById('stage'),eventName=document.getElementById('eventName'),categoryName=document.getElementById('categoryName'),screenState=document.getElementById('screenState'),pageState=document.getElementById('pageState'),connection=document.getElementById('connection'),fxLayer=document.getElementById('fxLayer');
+const fullscreenButton=document.getElementById('projectorFullscreen');fullscreenButton.addEventListener('click',async()=>{try{const enter=document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen;if(!enter)throw new Error('unsupported');await enter.call(document.documentElement)}catch(e){fullscreenButton.textContent='PRESS F11 FOR FULL SCREEN'}});const syncFullscreenButton=()=>{const active=!!(document.fullscreenElement||document.webkitFullscreenElement);fullscreenButton.hidden=active;if(!active)fullscreenButton.textContent='ENTER FULL SCREEN'};document.addEventListener('fullscreenchange',syncFullscreenButton);document.addEventListener('webkitfullscreenchange',syncFullscreenButton);
 let lastHash='',lastRevision='',busy=false,pollTimer=null,currentPage=1,pageTotal=1,lastType='holding',nextPageAt=0,backoffUntil=0,lastEffectVersion=0,effectRun=0,revealCountdownTimer=null,cycle={index:0,phase:'contestant',next:0},latest=null;
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const label=value=>String(value||'').replace(/\brising\b/gi,'Intermediate').replaceAll('_',' ').replace(/\b\w/g,char=>char.toUpperCase());
