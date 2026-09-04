@@ -5,11 +5,21 @@
 .viewport > .stage {
   padding-top: 10cqh !important;
   padding-bottom: 10cqh !important;
+  padding-left: 5cqw !important;
+  padding-right: 5cqw !important;
 }
 
 .stage > .projection-brand,
 .stage > .projection-official {
   top: 10cqh !important;
+}
+
+.stage > .projection-brand {
+  left: 5cqw !important;
+}
+
+.stage > .projection-official {
+  right: 5cqw !important;
 }
 
 .projection-fullscreen {
