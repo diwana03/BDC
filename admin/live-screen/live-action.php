@@ -57,7 +57,7 @@ try {
         'screen_theme' => $session['screen_theme'] ?? 'midnight_burgundy', 'music_name' => $session['music_name'] ?? null,
         'music_status' => $session['music_status'] ?? 'stopped', 'music_volume' => (int) ($session['music_volume'] ?? 60),
         'music_version' => (int) ($session['music_version'] ?? 0), 'page_number' => (int) ($session['page_number'] ?? 1),
-        'auto_page' => (bool) ($session['auto_page'] ?? false), 'page_delay_seconds' => (int) ($session['page_delay_seconds'] ?? 30),
+        'auto_page' => (bool) ($session['auto_page'] ?? false), 'page_delay_seconds' => (int) ($session['page_delay_seconds'] ?? 15),
         'loop_enabled' => (bool) ($session['loop_enabled'] ?? false), 'loop_screens' => $session['loop_screens'] ?? '',
         'loop_delay_seconds' => (int) ($session['loop_delay_seconds'] ?? 15), 'results_unlocked' => (bool) ($session['results_unlocked'] ?? false),
         'state_version' => (int) ($session['state_version'] ?? 0),
