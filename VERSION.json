@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev601",
-  "build": 3307,
+  "version": "2.3.3-dev602",
+  "build": 3308,
   "status": "development",
   "release_date": "2026-09-04",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Replaces the generic projector Flight Call with separate Flight Round 1, Flight Round 2 and later saved-flight buttons, sends the chosen flight directly to the shared display, highlights the exact active flight, and preserves scoring assignments, scores and Test/Live isolation.",
     "Balances split Leader and Follower projector pagination evenly across every slide instead of filling the first slide to capacity and leaving tiny remainder slides, while preserving bib order, role separation, capacity limits and Test/Live parity.",
     "Critically fixes recursive secure-link URL construction that duplicated the public host, producing one canonical HTTPS portal URL for Automatic and Test judge scoring, judge profiles, stage displays and projection remotes without rotating existing tokens.",
     "Restores Copy Link, Open, WhatsApp and Email controls for Automatic judges whose previous plaintext token is hidden, securely rotating only when an administrator chooses an action and preserving assignments, marks and progress.",
