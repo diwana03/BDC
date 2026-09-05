@@ -31,8 +31,10 @@ assert.ok(!/\b(?:INSERT|UPDATE|DELETE|ALTER|CREATE|REPLACE|TRUNCATE)\b\s+/i.test
 assert.ok(!service.includes('token_value')&&!service.includes('access_token'),'diagnostics must not read or return projection tokens');
 assert.ok(endpoint.includes("$versionManifest")&&endpoint.includes("'version'=>$serverVersion"),'MCP handshake must report VERSION.json dynamically');
 assert.ok(docs.includes('diagnose_projection')&&release.includes('No schema or data writes'),'diagnostic documentation missing');
-assert.equal(version.version,'2.3.3-dev638');
-assert.equal(version.build,3344);
+const match=/^2\.3\.3-dev(\d+)$/.exec(String(version.version||''));
+assert.ok(match,'VERSION.json must retain the 2.3.3-dev release line');
+assert.ok(Number(match[1])>=638,'projection diagnostics requires dev638 or newer');
+assert.ok(Number(version.build)>=3344,'projection diagnostics requires build 3344 or newer');
 
 const php=[
   "require 'app/Services/ProjectionDiagnosticsService.php';",
