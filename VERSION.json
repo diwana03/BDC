@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev646",
-  "build": 3352,
+  "version": "2.3.3-dev647",
+  "build": 3353,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes Live Contestant Scores names venue-readable and keeps them on one line, replacing tiny emoji country codes before names with real national flag images after each name, including multi-country profiles.",
     "Clarifies judge assignment labels across the audience projector and mobile projection state as Judging Leaders, Judging Followers, or Judging Leaders & Followers.",
     "Turns the existing BDC Official Live Display badge into a clean, keyboard-accessible fullscreen control that expands the outer projector browser without adding a separate audience button.",
     "Centers every judge name, scope, flag and country on one shared identity-column axis across full judge boards and individual judge calls.",
