@@ -23,8 +23,8 @@
 ## Validation
 
 - Pre-change baseline: the MCP connector exposed roster and approval tools only; no projection diagnostic tool or read-only projector integrity response existed.
-- Projection diagnostics behavioral and integration regression: pending.
-- Full PHP 8.1 lint and JavaScript regression gate: pending.
+- Projection diagnostics behavioral and integration regression: passed.
+- Full PHP 8.1 lint and JavaScript regression gate: passed (GitHub Actions run 289).
 - Staging Test Jack & Jill runtime: not tested.
 - Staging Live Jack & Jill runtime: not tested.
 - Staging Test Dance Cup runtime: not tested.
@@ -37,7 +37,7 @@
 - Live Scoring Dashboard and real projection tables: statically covered.
 - Shared Jack & Jill projector: `live-display/index.php`, `live-display/state.php` and `live-display/feed.php`.
 - Dance Cup projector: `admin/dance-cup/projector.php` and `admin/dance-cup/projection-feed.php`.
-- Candidate/static validation: pending.
+- Candidate/static validation: passed for Test/Live Jack & Jill and Dance Cup source paths.
 - Staging/runtime validation: required and not yet performed.
 
 ## Database
