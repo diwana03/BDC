@@ -86,12 +86,13 @@
 }
 
 .stage .competitor-country-name {
-  overflow: hidden;
+  overflow: visible;
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
   overflow-wrap: normal;
   word-break: normal;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  line-height: 1.08;
 }
 
 .stage .competitor-flag {
@@ -172,8 +173,8 @@
   grid-row: 1 / 4;
   align-self: center;
   justify-self: center;
-  width: clamp(58px, min(38cqw, 72cqh), 146px) !important;
-  height: clamp(62px, min(38cqw, 72cqh), 150px) !important;
+  width: clamp(66px, min(40cqw, 76cqh), 166px) !important;
+  height: clamp(70px, min(40cqw, 76cqh), 172px) !important;
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
@@ -189,7 +190,7 @@
   grid-row: 1;
   align-self: end;
   width: 100%;
-  font-size: clamp(10px, min(8.2cqw, 10.5cqh), 20px);
+  font-size: clamp(12px, min(9.2cqw, 11.5cqh), 24px);
   line-height: 1.08;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -238,17 +239,17 @@
 
 .stage .judge-country-entry:only-child .judge-country-name {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
   text-overflow: clip;
 }
 
 .stage .judge-country-name {
-  overflow: hidden;
+  overflow: visible;
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
   overflow-wrap: normal;
   word-break: normal;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* One selected judge: large, centred and still inside the projector safe area. */
@@ -310,112 +311,4 @@
 .stage .list > .judge-card:only-child .judge-flag {
   width: clamp(52px, 13cqw, 96px) !important;
   height: auto !important;
-}
-
-/* dev635: approved identity order — number, portrait, flags, name, full countries. */
-.stage .competitor-card {
-  grid-template-rows: minmax(0, 1fr) !important;
-}
-
-.stage .competitor-bib,
-.stage .competitor-photo-frame {
-  grid-row: 1 !important;
-}
-
-.stage .competitor-identity {
-  grid-column: 3;
-  grid-row: 1;
-  align-self: center;
-  justify-self: stretch;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2px, .7cqh, 5px);
-  min-width: 0;
-  max-width: 100%;
-  text-align: center;
-}
-
-.stage .competitor-flags,
-.stage .judge-flags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2px, .65cqw, 5px);
-  width: 100%;
-  min-height: 1em;
-}
-
-.stage .competitor-identity .competitor-name {
-  width: 100%;
-  padding: 0;
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: normal;
-  word-break: normal;
-  text-overflow: clip;
-}
-
-.stage .competitor-identity .competitor-country-name,
-.stage .judge-identity .judge-country-name {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  overflow: visible;
-  white-space: normal;
-  overflow-wrap: normal;
-  word-break: normal;
-  text-overflow: clip;
-  line-height: 1.12;
-  text-align: center;
-}
-
-.stage .judge-card {
-  grid-template-rows: minmax(0, 1fr) !important;
-}
-
-.stage .judge-position,
-.stage .judge-photo-frame,
-.stage .judge-identity {
-  grid-row: 1 !important;
-}
-
-.stage .judge-position {
-  grid-column: 1;
-}
-
-.stage .judge-photo-frame {
-  grid-column: 2;
-}
-
-.stage .judge-identity {
-  grid-column: 3;
-  align-self: center;
-  justify-self: stretch;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2px, .65cqh, 5px);
-  min-width: 0;
-  max-width: 100%;
-  text-align: center;
-}
-
-.stage .judge-identity .judge-name,
-.stage .judge-identity .judge-scope {
-  width: 100%;
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: normal;
-  word-break: normal;
-  text-overflow: clip;
-}
-
-.stage .list > .judge-card:only-child .judge-identity {
-  justify-self: center;
-  width: 100%;
-  font-size: clamp(20px, min(6.2cqw, 7.8cqh), 34px);
 }

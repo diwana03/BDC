@@ -284,15 +284,6 @@ if ($type === "flights") {
     }
 }
 
-// Preserve up to five represented countries on compact competitor cards. The
-// primary country still drives legacy single-flag consumers.
-foreach($items as &$countryItem){
-    if(empty($countryItem['countries_json']))continue;
-    $countrySet=CountrySetService::fromRow($countryItem);
-    if(count($countrySet)>1)$countryItem['country']=implode(' · ',array_map(static fn(string $name):string=>CountryFlagService::label($name),$countrySet));
-}
-unset($countryItem);
-
 // Audience screens use compact first names. When the same first name appears
 // more than once on the current screen, add the surname initial to both names.
 $items = ProjectionNameService::abbreviateRows(
@@ -390,7 +381,7 @@ $coupleColumns = min(5, max(1, count($items)));
 $coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
 $competitorRoleTotals=["leader"=>0,"follower"=>0];
-$competitorRolePaged=in_array($type,["competitors","callbacks","finalists"],true);
+$competitorRolePaged=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true);
 $competitorRoleCols=$competitorRolePaged?3:max(1,(int)floor($cols/2));
 $competitorRoleCapacity=$competitorRolePaged?15:max(1,(int)$layout["rows"]*$competitorRoleCols);
 $splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&(string)$r["round_type"]!=="final";
@@ -403,7 +394,7 @@ if($splitRoleScreen){
     $competitorRoleTotalPages=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
     $competitorRolePage=max(1,min($page,$competitorRoleTotalPages));
     foreach($competitorRoleItems as $role=>$roleItems){
-        $competitorRoleItems[$role]=ProjectionLayoutService::balancedPageSlice($roleItems,$page,$competitorRoleTotalPages);
+        $competitorRoleItems[$role]=array_slice($roleItems,($competitorRolePage-1)*$competitorRoleCapacity,$competitorRoleCapacity);
     }
 } elseif (
     in_array($type, ["callbacks", "finalists"], true) &&

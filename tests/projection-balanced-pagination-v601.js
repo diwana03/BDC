@@ -20,7 +20,7 @@ const feed = fs.readFileSync(path.join(root, 'live-display/feed.php'), 'utf8');
 
 assert.match(service, /function balancedPageSlice\(array \$items,int \$page,int \$pages\):array/);
 assert.match(service, /\$offset=\(\$page-1\)\*\$base\+min\(\$page-1,\$remainder\)/);
-assert.match(feed, /ProjectionLayoutService::balancedPageSlice\(\$roleItems,\$page,\$competitorRoleTotalPages\)/);
-assert.doesNotMatch(feed, /array_slice\(\$roleItems,\(\$page-1\)\*\$competitorRoleCapacity/);
+assert.match(feed, /array_slice\(\$roleItems,\(\$competitorRolePage-1\)\*\$competitorRoleCapacity,\$competitorRoleCapacity\)/);
+assert.doesNotMatch(feed, /ProjectionLayoutService::balancedPageSlice\(\$roleItems,\$page,\$competitorRoleTotalPages\)/);
 
-console.log('Balanced projector pagination regression checks passed.');
+console.log('Projector pagination service and strict 15-person roster pages passed.');

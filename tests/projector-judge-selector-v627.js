@@ -38,6 +38,7 @@ assert.match(roster, /width: min\((?:82|88)%, 1180px\)/);
 assert.match(roster, /height: min\(88%, 590px\)/);
 assert.match(roster, /width: clamp\(220px/);
 assert.match(roster, /\.stage \.judge-country \{[\s\S]*?flex-direction: column/);
-assert.match(roster, /\.stage \.judge-identity \.judge-country-name \{[\s\S]*?overflow-wrap: normal/);
+assert.match(roster, /\.stage \.judge-country-name \{[\s\S]*?overflow: visible;[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: normal/);
+assert.doesNotMatch(roster, /\.stage \.judge-identity/);
 
 console.log('Projector judge selector and large single-judge display regression checks passed.');

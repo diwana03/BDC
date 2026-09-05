@@ -8,9 +8,9 @@ const flights = fs.readFileSync('app/Services/ScoringFlightService.php', 'utf8')
 const state = fs.readFileSync('live-display/state.php', 'utf8');
 
 assert.match(roster, /\.stage \.competitor-country \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?flex-direction: column/);
-assert.match(roster, /\.stage \.competitor-country-name \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: normal/);
+assert.match(roster, /\.stage \.competitor-country-name \{[\s\S]*?white-space: normal;[\s\S]*?word-break: normal;[\s\S]*?text-overflow: clip/);
 assert.match(roster, /\.stage \.flight-country span \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: normal/);
-assert.match(roster, /\.stage \.judge-country-name \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: normal/);
+assert.match(roster, /\.stage \.judge-country-name \{[\s\S]*?white-space: normal;[\s\S]*?word-break: normal;[\s\S]*?text-overflow: clip/);
 assert.match(outer, /bdc-projector-roster-fix/);
 assert.match(outer, /projector-roster-v615\.css\?v=63[4-9]|projector-roster-v615\.css\?v=6[4-9]\d/);
 assert.match(outer, /function swapFeed\(url\)/);
@@ -20,5 +20,8 @@ assert.match(flights, /\$balancedFlightCount=max\(1,\(int\)ceil\(\$largestRole\/
 assert.match(flights, /\$roundSize=\$base\+\(\$flightNumber<=\$remainder\?1:0\)/);
 assert.match(state, /ceil\(max\(\$roleCounts\)\/\$roleCapacity\)/);
 assert.match(feed, /\$competitorRoleCapacity=\$competitorRolePaged\?15:/);
+assert.match(feed, /"flight_competitors"\],true\)/);
+assert.match(feed, /array_slice\(\$roleItems,\(\$competitorRolePage-1\)\*\$competitorRoleCapacity,\$competitorRoleCapacity\)/);
+assert(!feed.includes("CountryFlagService::label($name),$countrySet"), 'multi-country labels must not corrupt the primary flag lookup');
 
 console.log('Projector roster, balanced rounds, page totals and silent refresh v634: PASS');

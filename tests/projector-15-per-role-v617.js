@@ -15,11 +15,11 @@ const balancedSizes = (count, pages) => {
 assert.deepEqual(balancedSizes(26, Math.ceil(26 / 15)), [13, 13]);
 assert.deepEqual(balancedSizes(27, Math.ceil(27 / 15)), [14, 13]);
 assert.deepEqual(balancedSizes(46, Math.ceil(46 / 15)), [12, 12, 11, 11]);
-assert.match(feed, /\$competitorRolePaged=in_array\(\$type,\["competitors","callbacks","finalists"\],true\)/);
+assert.match(feed, /\$competitorRolePaged=in_array\(\$type,\["competitors","callbacks","finalists","flight_competitors"\],true\)/);
 assert.match(feed, /\$competitorRoleCols=\$competitorRolePaged\?3:/);
 assert.match(feed, /\$competitorRoleCapacity=\$competitorRolePaged\?15:/);
-assert.match(feed, /ProjectionLayoutService::balancedPageSlice\(\$roleItems,\$page,\$competitorRoleTotalPages\)/);
+assert.match(feed, /array_slice\(\$roleItems,\(\$competitorRolePage-1\)\*\$competitorRoleCapacity,\$competitorRoleCapacity\)/);
 assert.match(state, /\$roleCapacity=in_array\(\$s\["screen_type"\],\["heats_scores","score_matrix"\],true\)\?12:15;/);
 assert.match(service, /function balancedPageSlice\(array \$items,int \$page,int \$pages\):array/);
 assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3323, 'version predates 15-per-role release');
-console.log('15-per-role balanced projector pagination v617: PASS');
+console.log('15-per-role projector pagination v636: PASS');

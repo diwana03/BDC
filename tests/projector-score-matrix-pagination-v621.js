@@ -20,7 +20,7 @@ assert(display.includes("'heats_scores','score_matrix'"), 'matrix auto-page time
 assert.match(safe, /width: max\(\d+px, min\(\d+cqw, \d+cqh\)\)/, 'larger inline logo sizing missing');
 assert(safe.includes('justify-content: center'), 'logo and title are not centered together');
 assert.match(feed, /projector-safe-v616\.css\?v=62\d/, 'new header CSS cache key missing');
-assert.match(version.version, /^2\.3\.3-dev62\d$/);
+assert.match(version.version, /^2\.3\.3-dev\d+$/);
 assert(version.build >= 3327);
 
 console.log('projector Score Matrix pagination and closer larger logo v621: PASS');
