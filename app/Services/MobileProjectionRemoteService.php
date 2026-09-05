@@ -53,7 +53,7 @@ final class MobileProjectionRemoteService
                 'judge_order'=>(int)($row['judge_order']??0),
                 'judge_name'=>(string)($row['judge_name']??'Judge'),
                 'is_chief'=>(int)($row['is_chief']??0)===1,
-                'scope_label'=>$scope==='leader'?'Leaders Only':($scope==='follower'?'Followers Only':'Leaders & Followers'),
+                'scope_label'=>$scope==='leader'?'JUDGING LEADERS':($scope==='follower'?'JUDGING FOLLOWERS':'JUDGING LEADERS & FOLLOWERS'),
             ];
         },$rows,array_keys($rows));
     }

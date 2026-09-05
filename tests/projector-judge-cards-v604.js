@@ -13,7 +13,7 @@ assert.match(feed, /class="judge-scope"/);
 assert.match(feed, /class="judge-country"/);
 assert.match(feed, /class="judge-flag"/);
 assert.match(feed, /\.judge-card\.chief\{/);
-assert.match(feed, /\$scopeLabel=\$scope==="leader"\?"Leaders Only"/);
+assert.match(feed, /\$scopeLabel=\$scope==="leader"\?"JUDGING LEADERS"/);
 assert.doesNotMatch(feed, /min-height:clamp\(240px,28vh,520px\)/);
 
 console.log('Uniform judge projector card regression checks passed.');

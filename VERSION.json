@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev645",
-  "build": 3351,
+  "version": "2.3.3-dev646",
+  "build": 3352,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Clarifies judge assignment labels across the audience projector and mobile projection state as Judging Leaders, Judging Followers, or Judging Leaders & Followers.",
     "Turns the existing BDC Official Live Display badge into a clean, keyboard-accessible fullscreen control that expands the outer projector browser without adding a separate audience button.",
     "Centers every judge name, scope, flag and country on one shared identity-column axis across full judge boards and individual judge calls.",
     "Stops Flight Round projector compression by silently paging each selected round at a maximum of 15 Leaders and 15 Followers, keeps names on one line with responsive sizing, and enlarges country flags while preserving full country labels.",

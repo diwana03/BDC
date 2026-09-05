@@ -555,7 +555,7 @@ elseif (in_array($type, ["judges", "judge_call"], true)):
         $country = trim((string) ($x["country"] ?? ""));
         $countryCode = trim((string) ($x["country_code"] ?? ""));
         $scope=(string)($x["scoring_scope"]??"all");
-        $scopeLabel=$scope==="leader"?"Leaders Only":($scope==="follower"?"Followers Only":"Leaders & Followers");
+        $scopeLabel=$scope==="leader"?"JUDGING LEADERS":($scope==="follower"?"JUDGING FOLLOWERS":"JUDGING LEADERS & FOLLOWERS");
         $isChief=(int)($x["is_chief"]??0)===1;
         $judgeName=(string)($x["full_name"]?:$x["judge_name"]);
         $judgeOrder=(int)($x["judge_order"]??0);
