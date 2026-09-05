@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev639",
-  "build": 3345,
+  "version": "2.3.3-dev640",
+  "build": 3346,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs the 16:9 competitor and judge projector boards: competitor flags and full country names now stay in the right identity column below the name, while eleven judges use a centred 4 + 4 + 3 grid with larger consistent cards and unbroken judge names.",
     "Repairs shared and festival Live Display round selection by deriving the active event from the selected round, validating that event against the projector session membership, and safely recovering already-mismatched sessions without changing scoring data, judge links or round assignments.",
     "Adds an OAuth-protected read-only Projection Diagnostics MCP tool for Jack & Jill and Dance Cup in Test or Live, checking projector runtime files, event and round/category selection, session state, rosters, bibs, profile links, judges, countries, flags, photos, flights, pagination, results and reveal safety without changing data or exposing display tokens.",
     "Adds a dedicated 9:16 portrait layout for one-by-one judge calls without changing the 10 m × 5.5 m 16:9 4K presentation, keeps complete judge identity and country text inside the mobile viewport, removes audience-side fullscreen/F11 controls, and prevents Flight Round numbers from being misread as competitor-page offsets.",

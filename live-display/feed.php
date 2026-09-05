@@ -428,7 +428,7 @@ if($splitRoleScreen){
 }
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
     $title,
-) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=637"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
+) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=640"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
     (string) $ratio,
 ) ?>;width:min(100vw,calc(100vh * <?= e(
     (string) $ratio,
@@ -520,7 +520,7 @@ foreach ($people as $person) {
 }
 ?></div></div><div class="block p<?= $rank ?>"><?= $rank ?></div><?php
 endif; ?></div><?php
-endforeach; ?></div><?php else: ?><div class="list"><?php if (
+endforeach; ?></div><?php else: ?><div class="list<?= $type === 'judges' ? ' judge-list judge-count-' . count($items) : '' ?>"><?php if (
     $type === "scoring"
 ):
     $x = $items[0];
