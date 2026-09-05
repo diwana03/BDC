@@ -12,6 +12,6 @@ assert(css.includes('overflow:hidden;background:linear-gradient'), 'fallback bar
 assert(!css.includes('.bdc-theme-control{position:fixed;'), 'fixed desktop theme overlay must be removed');
 assert(!css.includes('bottom:8px'), 'fixed mobile theme overlay must be removed');
 assert(branding.includes('box-shadow:none!important'), 'navbar theme control must not cast a protruding overlay shadow');
-assert(bootstrap.includes('bdc-global-branding.js?v=505'), 'global branding cache key must be refreshed');
+const brandingCache=/bdc-global-branding\.js\?v=(\d+)/.exec(bootstrap);assert(brandingCache&&Number(brandingCache[1])>=505,'global branding cache key must remain v505 or newer');
 
 console.log('Global theme no-overlay v505 passed.');
