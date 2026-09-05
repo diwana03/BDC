@@ -12,6 +12,6 @@ requireText(css, '.stage .list.judge-list.judge-count-11', 'eleven-judge layout'
 requireText(css, 'grid-column: 2 / span 3;', 'centred final judge row start');
 requireText(css, 'overflow-wrap: normal;', 'whole-word judge names');
 requireText(feed, "' judge-list judge-count-' . count($items)", 'runtime judge count class');
-requireText(feed, 'projector-roster-v615.css?v=641', 'roster cache version');
+requireText(feed, 'projector-roster-v615.css?v=643', 'roster cache version');
 
 console.log('Projector roster layout v640: PASS');

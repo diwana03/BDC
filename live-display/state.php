@@ -140,6 +140,21 @@ if ($roundId && $s["screen_type"] === "judge_call") {
     $judgeCountQuery->execute(["r" => $roundId]);
     $total = max(1, (int) $judgeCountQuery->fetchColumn());
 }
+if ($roundId && $s["screen_type"] === "flights") {
+    $assignmentTable = $test ? "bdc_test_scoring_flight_assignments" : "bdc_scoring_flight_assignments";
+    try {
+        $roleCounts = ["leader" => 0, "follower" => 0];
+        $flightCountQuery = $pdo->prepare("SELECT dance_role,COUNT(*) total FROM {$assignmentTable} WHERE round_id=:r AND subject_type='entry' AND flight_number=:flight GROUP BY dance_role");
+        $flightCountQuery->execute(["r" => $roundId, "flight" => max(1, (int) $s["page_number"])]);
+        foreach ($flightCountQuery->fetchAll() as $row) {
+            $role = (string) ($row["dance_role"] ?? "");
+            if (isset($roleCounts[$role])) $roleCounts[$role] = (int) $row["total"];
+        }
+        $total = max(1, (int) ceil(max($roleCounts) / 15));
+    } catch (Throwable) {
+        $total = 1;
+    }
+}
 $dataVersion = "0";
 if ($roundId && ($s["screen_type"] ?? "") === "matching") {
     try {

@@ -19,11 +19,11 @@ assert.match(outer, /roster\.addEventListener\('load',(reveal|resolve)/);
 assert.match(flights, /\$balancedFlightCount=max\(1,\(int\)ceil\(\$largestRole\/\$flightSize\)\)/);
 assert.match(flights, /\$roundSize=\$base\+\(\$flightNumber<=\$remainder\?1:0\)/);
 assert.match(state, /ceil\(max\(\$roleCounts\)\/\$roleCapacity\)/);
-assert.match(feed, /\$competitorRoleCapacity=\$competitorRolePaged\?15:/);
+assert.match(feed, /\$competitorRoleCapacity=\(\$competitorRolePaged\|\|\$isFlightRoster\)\?15:/);
 assert.match(feed, /\$isFlightRoster=\$type==="flight_competitors"/);
 assert.match(feed, /\$competitorRolePaged=in_array\(\$type,\["competitors","callbacks","finalists"\],true\)/);
 assert.match(feed, /array_slice\(\$roleItems,\(\$competitorRolePage-1\)\*\$competitorRoleCapacity,\$competitorRoleCapacity\)/);
-assert.match(feed, /if\(!\$isFlightRoster\)\{/);
+assert.match(feed, /\$competitorRolePage=\$isFlightRoster\?min\(\$flightDisplayPage,\$competitorRoleTotalPages\):/);
 assert(!feed.includes("CountryFlagService::label($name),$countrySet"), 'multi-country labels must not corrupt the primary flag lookup');
 
 console.log('Projector roster, balanced rounds, page totals and silent refresh v634: PASS');

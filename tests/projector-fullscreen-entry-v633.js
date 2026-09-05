@@ -18,7 +18,7 @@ for (const [name, source] of [['Jack & Jill', jackJillControl], ['Dance Cup', da
 }
 assert(fullscreenHelper.includes('requestFullscreen'), 'Control-panel fullscreen helper is missing');
 
-assert(feed.includes('$competitorRoleCapacity=$competitorRolePaged?15:'), 'Competitor slides must remain capped at 15 per role');
+assert(feed.includes('$competitorRoleCapacity=($competitorRolePaged||$isFlightRoster)?15:'), 'Competitor slides must remain capped at 15 per role');
 assert(feed.includes('$competitorRoleTotals[$role]=count($roleItems)'), 'Headers must retain true Leader and Follower totals');
 
 console.log('Projector fullscreen and 15-per-role pagination regression checks passed.');

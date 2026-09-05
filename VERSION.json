@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev642",
-  "build": 3348,
+  "version": "2.3.3-dev643",
+  "build": 3349,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Stops Flight Round projector compression by silently paging each selected round at a maximum of 15 Leaders and 15 Followers, keeps names on one line with responsive sizing, and enlarges country flags while preserving full country labels.",
     "Adds an audited Regenerate Login Token control to the two-factor step at /admin, invalidates the previous email code, enforces a 30-second resend cooldown, and keeps the legacy /admin/login.php route as a redirect without exposing the control there.",
     "Makes competitor identity placement structural rather than positional so silent projector refreshes cannot move flags under portraits, enlarges responsive first names and flags while preserving full country labels, fits long judge names without mid-word breaks, and restores a prominent Full Screen control in the Live Projection Control header.",
     "Repairs the 16:9 competitor and judge projector boards: competitor flags and full country names now stay in the right identity column below the name, while eleven judges use a centred 4 + 4 + 3 grid with larger consistent cards and unbroken judge names.",

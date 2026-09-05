@@ -72,12 +72,14 @@
   width: 100%;
   max-width: 100%;
   padding-bottom: clamp(2px, 1cqh, 5px);
-  font-size: clamp(12px, min(9.5cqw, 12cqh), 22px);
+  font-size: clamp(10px, min(8.1cqw, 11cqh), 21px);
   font-weight: 950;
   line-height: 1.08;
-  white-space: normal;
+  white-space: nowrap !important;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: ellipsis;
 }
 
 .stage .competitor-country {
@@ -106,7 +108,7 @@
 }
 
 .stage .competitor-flag {
-  width: clamp(24px, min(11cqw, 10cqh), 38px) !important;
+  width: clamp(30px, min(15cqw, 13cqh), 48px) !important;
 }
 
 /* Flight Round 1, Round 2 and later rounds: keep the country name below the flag. */
@@ -200,10 +202,9 @@
   grid-row: 1;
   align-self: end;
   width: 100%;
-  font-size: clamp(12px, min(9.2cqw, 11.5cqh), 24px);
   line-height: 1.08;
-  font-size: clamp(11px, min(8cqw, 10cqh), 21px);
-  white-space: nowrap;
+  font-size: clamp(10px, min(7.2cqw, 9.2cqh), 20px);
+  white-space: nowrap !important;
   overflow: hidden;
   text-overflow: ellipsis;
   overflow-wrap: normal;
@@ -286,6 +287,10 @@
   overflow-wrap: normal;
   word-break: normal;
   text-overflow: clip;
+}
+
+.stage .judge-flag {
+  width: clamp(28px, min(17cqw, 16cqh), 50px) !important;
 }
 
 /* One selected judge: large, centred and still inside the projector safe area. */
