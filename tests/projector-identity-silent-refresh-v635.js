@@ -5,7 +5,7 @@ const outer = fs.readFileSync('live-display/index.php', 'utf8');
 const css = fs.readFileSync('public/css/projector-roster-v615.css', 'utf8');
 
 for (const marker of [
-  "roster.href='../public/css/projector-roster-v615.css?v=643'",
+  "roster.href='../public/css/projector-roster-v615.css?v=644'",
   "await Promise.race([Promise.all(images.map",
   "transition:'opacity 140ms ease'",
 ]) assert(outer.includes(marker), `missing active projector integration: ${marker}`);

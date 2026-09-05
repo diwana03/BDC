@@ -12,7 +12,7 @@ assert.match(css, /\.stage \.list > \.judge-card:only-child \.judge-name \{[\s\S
 assert.match(css, /\.stage \.list > \.judge-card:only-child \.judge-country-name \{[\s\S]*?white-space: normal;[\s\S]*?word-break: normal;/);
 assert(!outer.includes('projectorFullscreen'), 'Audience projector must not render a fullscreen button');
 assert(!outer.includes('PRESS F11 FOR FULL SCREEN'), 'Audience projector must not show desktop F11 text on mobile');
-assert(outer.includes("projector-roster-v615.css?v=643"), 'Mobile stylesheet cache key is stale');
+assert(outer.includes("projector-roster-v615.css?v=644"), 'Mobile stylesheet cache key is stale');
 assert(feed.includes('$competitorRolePage=$isFlightRoster?min($flightDisplayPage,$competitorRoleTotalPages):'), 'Flight number must not be reused as a roster page offset');
 assert(feed.includes('$flightDisplayPage=$isFlightRoster?max(1,(int)($_GET["display_page"]??1)):1;'), 'Flight contestants need an independent display page');
 

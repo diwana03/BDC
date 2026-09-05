@@ -209,6 +209,7 @@
   text-overflow: ellipsis;
   overflow-wrap: normal;
   word-break: normal;
+  text-align: center;
 }
 
 /* Twelve tracks allow an incomplete final row to stay centred without
@@ -240,14 +241,15 @@
   font-size: clamp(8px, min(6.2cqw, 7.5cqh), 14px);
   line-height: 1.08;
   white-space: normal;
+  text-align: center;
 }
 
 .stage .judge-country {
   grid-column: 3;
   grid-row: 3;
   align-self: start;
-  justify-content: flex-start;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   flex-direction: row;
   flex-wrap: wrap;
   gap: clamp(2px, .65cqh, 5px);
@@ -270,7 +272,7 @@
 }
 
 .stage .judge-country-entry:only-child {
-  width: auto;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -290,6 +292,8 @@
 }
 
 .stage .judge-flag {
+  display: block;
+  margin-inline: auto !important;
   width: clamp(28px, min(17cqw, 16cqh), 50px) !important;
 }
 
