@@ -155,6 +155,27 @@ final class LiveDisplaySessionService
                 "Live Display link has not been generated.",
             );
         }
+        $requestedRoundId = (int) ($v["round_id"] ?? 0);
+        $activeEventId = $eventId;
+        if ($requestedRoundId > 0) {
+            $roundTable = $test ? "bdc_test_scoring_rounds" : "bdc_scoring_rounds";
+            $roundEventQuery = $pdo->prepare("SELECT event_id FROM {$roundTable} WHERE id=:r LIMIT 1");
+            $roundEventQuery->execute(["r" => $requestedRoundId]);
+            $roundEventId = (int) $roundEventQuery->fetchColumn();
+            if ($roundEventId < 1) {
+                throw new \RuntimeException("Selected projection round was not found.");
+            }
+            $isMember = $roundEventId === (int) $current["event_id"];
+            if (!$isMember) {
+                $memberQuery = $pdo->prepare("SELECT 1 FROM bdc_live_display_session_events WHERE session_id=:s AND event_id=:e LIMIT 1");
+                $memberQuery->execute(["s" => (int) $current["id"], "e" => $roundEventId]);
+                $isMember = (bool) $memberQuery->fetchColumn();
+            }
+            if (!$isMember) {
+                throw new \RuntimeException("Selected event is not part of this Live Display.");
+            }
+            $activeEventId = $roundEventId;
+        }
         $type = (string) ($v["screen_type"] ?? "holding");
         $allowed = [
             "holding",
@@ -253,8 +274,8 @@ final class LiveDisplaySessionService
         $pdo->prepare(
             "UPDATE bdc_live_display_sessions SET active_event_id=:ae,current_round_id=:r,screen_type=:t,effect_type=CASE WHEN :set_fx=1 THEN :fx ELSE effect_type END,effect_version=effect_version+:fx_bump,reveal_place=:rp,page_number=:p,auto_page=:a,page_delay_seconds=:d,results_unlocked=:lock,loop_enabled=:le,loop_screens=:ls,loop_delay_seconds=:ld,playlist_enabled=0,state_version=state_version+1,updated_by=:u,updated_at=NOW() WHERE id=:id AND data_mode=:m AND is_enabled=1",
         )->execute([
-            "ae" => $eventId,
-            "r" => (int) ($v["round_id"] ?? 0) ?: null,
+            "ae" => $activeEventId,
+            "r" => $requestedRoundId ?: null,
             "t" => $type,
             "set_fx" => $setEffect ? 1 : 0,
             "fx" => $setEffect ? $effect : null,

@@ -60,9 +60,25 @@ $s = $pdo->prepare(
 );
 $s->execute(["id" => $roundId]);
 $r = $s->fetch();
-if (!$r || (int) $r["event_id"] !== $activeEventId) {
+if (!$r) {
     http_response_code(404);
     exit("Selected round is not available for this Live Display.");
+}
+$roundEventId = (int) $r["event_id"];
+if ($roundEventId !== $activeEventId) {
+    $roundBelongsToSession = $roundEventId === (int) $session["event_id"];
+    if (!$roundBelongsToSession) {
+        $memberQuery = $pdo->prepare("SELECT 1 FROM bdc_live_display_session_events WHERE session_id=:s AND event_id=:e LIMIT 1");
+        $memberQuery->execute(["s" => (int) $session["id"], "e" => $roundEventId]);
+        $roundBelongsToSession = (bool) $memberQuery->fetchColumn();
+    }
+    if (!$roundBelongsToSession) {
+        http_response_code(404);
+        exit("Selected round is not available for this Live Display.");
+    }
+    $activeEventId = $roundEventId;
+    $eventStmt->execute(["id" => $activeEventId]);
+    $eventName = (string) ($eventStmt->fetchColumn() ?: $r["event_name"] ?: "BACHATA DANCE COUNCIL");
 }
 $settings = ProjectionSettingsService::get($pdo, $roundId, $test);
 $items = [];
