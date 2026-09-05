@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev640",
-  "build": 3346,
+  "version": "2.3.3-dev641",
+  "build": 3347,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Makes competitor identity placement structural rather than positional so silent projector refreshes cannot move flags under portraits, enlarges responsive first names and flags while preserving full country labels, fits long judge names without mid-word breaks, and restores a prominent Full Screen control in the Live Projection Control header.",
     "Repairs the 16:9 competitor and judge projector boards: competitor flags and full country names now stay in the right identity column below the name, while eleven judges use a centred 4 + 4 + 3 grid with larger consistent cards and unbroken judge names.",
     "Repairs shared and festival Live Display round selection by deriving the active event from the selected round, validating that event against the projector session membership, and safely recovering already-mismatched sessions without changing scoring data, judge links or round assignments.",
     "Adds an OAuth-protected read-only Projection Diagnostics MCP tool for Jack & Jill and Dance Cup in Test or Live, checking projector runtime files, event and round/category selection, session state, rosters, bibs, profile links, judges, countries, flags, photos, flights, pagination, results and reveal safety without changing data or exposing display tokens.",
