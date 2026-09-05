@@ -381,7 +381,8 @@ $coupleColumns = min(5, max(1, count($items)));
 $coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
 $competitorRoleItems=["leader"=>[],"follower"=>[]];
 $competitorRoleTotals=["leader"=>0,"follower"=>0];
-$competitorRolePaged=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true);
+$isFlightRoster=$type==="flight_competitors";
+$competitorRolePaged=in_array($type,["competitors","callbacks","finalists"],true);
 $competitorRoleCols=$competitorRolePaged?3:max(1,(int)floor($cols/2));
 $competitorRoleCapacity=$competitorRolePaged?15:max(1,(int)$layout["rows"]*$competitorRoleCols);
 $splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&(string)$r["round_type"]!=="final";
@@ -391,10 +392,12 @@ if($splitRoleScreen){
         if(isset($competitorRoleItems[$role]))$competitorRoleItems[$role][]=$competitorItem;
     }
     foreach($competitorRoleItems as $role=>$roleItems)$competitorRoleTotals[$role]=count($roleItems);
-    $competitorRoleTotalPages=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
-    $competitorRolePage=max(1,min($page,$competitorRoleTotalPages));
-    foreach($competitorRoleItems as $role=>$roleItems){
-        $competitorRoleItems[$role]=array_slice($roleItems,($competitorRolePage-1)*$competitorRoleCapacity,$competitorRoleCapacity);
+    $competitorRoleTotalPages=$isFlightRoster?1:max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
+    $competitorRolePage=$isFlightRoster?1:max(1,min($page,$competitorRoleTotalPages));
+    if(!$isFlightRoster){
+        foreach($competitorRoleItems as $role=>$roleItems){
+            $competitorRoleItems[$role]=array_slice($roleItems,($competitorRolePage-1)*$competitorRoleCapacity,$competitorRoleCapacity);
+        }
     }
 } elseif (
     in_array($type, ["callbacks", "finalists"], true) &&
@@ -409,7 +412,7 @@ if($splitRoleScreen){
 }
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
     $title,
-) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=631"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
+) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link rel="stylesheet" href="../public/css/projector-roster-v615.css?v=637"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=622"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
     (string) $ratio,
 ) ?>;width:min(100vw,calc(100vh * <?= e(
     (string) $ratio,

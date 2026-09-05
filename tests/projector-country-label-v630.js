@@ -9,6 +9,6 @@ assert(css.includes('width: auto;'), 'Single-country judge label must use its na
 assert(css.includes('white-space: nowrap;'), 'Single-country judge name must remain on one line.');
 assert(css.includes('overflow-wrap: normal;'), 'Country labels must not break inside words.');
 assert(css.includes('word-break: normal;'), 'Country word-breaking must remain disabled.');
-assert(feed.includes('projector-roster-v615.css?v=631'), 'Projector stylesheet cache key was not advanced.');
+assert.match(feed, /projector-roster-v615\.css\?v=(?:63[7-9]|6[4-9]\d)/, 'Projector stylesheet cache key was not advanced.');
 
 console.log('Projector country label v630: PASS');

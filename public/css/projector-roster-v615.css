@@ -312,3 +312,89 @@
   width: clamp(52px, 13cqw, 96px) !important;
   height: auto !important;
 }
+
+/* Portrait/mobile projector preview: stack a called judge without touching 16:9. */
+@container (aspect-ratio < 9/10) {
+  .stage .list:has(> .judge-card:only-child) {
+    align-items: stretch;
+    justify-content: center;
+    padding: 1% 0 2% !important;
+  }
+
+  .stage .list > .judge-card:only-child {
+    width: min(100%, 520px) !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0 auto;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto !important;
+    gap: clamp(5px, 1.15cqh, 12px) !important;
+    padding: clamp(12px, 2.4cqh, 24px) !important;
+  }
+
+  .stage .list > .judge-card:only-child .judge-position {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    gap: .45em;
+    font-size: clamp(18px, min(6.5cqw, 4.2cqh), 30px);
+  }
+
+  .stage .list > .judge-card:only-child .judge-photo-frame {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    justify-self: center;
+    width: clamp(150px, min(62cqw, 34cqh), 300px) !important;
+    height: clamp(180px, min(72cqw, 40cqh), 350px) !important;
+  }
+
+  .stage .list > .judge-card:only-child .judge-name {
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+    font-size: clamp(26px, min(9cqw, 5.2cqh), 44px);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .stage .list > .judge-card:only-child .judge-scope {
+    grid-column: 1;
+    grid-row: 4;
+    width: 100%;
+    font-size: clamp(16px, min(5.5cqw, 3.5cqh), 26px);
+  }
+
+  .stage .list > .judge-card:only-child .judge-country {
+    grid-column: 1;
+    grid-row: 5;
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(8px, 2cqw, 16px);
+    font-size: clamp(14px, min(4.8cqw, 3cqh), 23px);
+    overflow: visible;
+  }
+
+  .stage .list > .judge-card:only-child .judge-country-entry {
+    width: auto;
+    min-width: min(30%, 110px);
+    max-width: 46%;
+  }
+
+  .stage .list > .judge-card:only-child .judge-country-name {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .stage .list > .judge-card:only-child .judge-flag {
+    width: clamp(40px, 11cqw, 72px) !important;
+  }
+}

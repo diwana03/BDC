@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev636",
-  "build": 3342,
+  "version": "2.3.3-dev637",
+  "build": 3343,
   "status": "development",
   "release_date": "2026-09-05",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a dedicated 9:16 portrait layout for one-by-one judge calls without changing the 10 m × 5.5 m 16:9 4K presentation, keeps complete judge identity and country text inside the mobile viewport, removes audience-side fullscreen/F11 controls, and prevents Flight Round numbers from being misread as competitor-page offsets.",
     "Restores native projector roster cards after the dev635 DOM rewrite compressed judge identities, repairs Round 2 country flags by preserving valid primary country values, and enforces a true maximum of 15 Leaders and 15 Followers per roster page.",
     "Aligns competitor and judge flags in a fixed right-side identity column with the name directly below the flags and complete non-truncated country names below the name, while delaying each silent projector swap until its stylesheet and images are ready.",
     "Repairs projector country presentation by giving every competitor flag and country a full-width bottom row without mid-word breaks, balances Leaders and Followers across configured Scoring Rounds so Round 2 is not starved, keeps role-based page totals correct, and double-buffers Jack and Jill projector refreshes to eliminate visible page flashes.",
