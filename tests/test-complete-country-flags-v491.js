@@ -20,7 +20,7 @@ for (const marker of [
 ]) assert(service.includes(marker), `complete flag service missing: ${marker}`);
 
 assert(!service.includes('private const MAP='), 'limited hardcoded country map must not remain');
-assert(feed.includes("CountryFlagService::emoji($entry['country']??null)"), 'contestant projection must use the complete flag service');
-assert(feed.includes("CountryFlagService::emoji($judge['country_code']?:($judge['country']??null))"), 'judge projection must use the complete flag service');
+assert(feed.includes("$entry['countries']=CountrySetService::fromRow($entry)")&&feed.includes("CountryFlagService::emoji($country)"), 'contestant projection must resolve every country through the complete flag service');
+assert(feed.includes("$judge['countries']=CountrySetService::fromRow($judge)")&&feed.includes("$judge['flags']"), 'judge projection must resolve every country through the complete flag service');
 
 console.log('dev491 complete country flag checks passed');
