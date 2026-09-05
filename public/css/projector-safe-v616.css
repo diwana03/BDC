@@ -13,6 +13,21 @@
   top: 10cqh !important;
 }
 
+.stage > .projection-official[data-fullscreen-ready="1"] {
+  cursor: pointer;
+  user-select: none;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.stage > .projection-official[data-fullscreen-ready="1"]:hover,
+.stage > .projection-official[data-fullscreen-ready="1"]:focus-visible {
+  color: #fff !important;
+  border-color: rgba(255, 207, 69, .9) !important;
+  background: rgba(125, 38, 56, .92) !important;
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .projection-heading-row {
   flex: 0 0 auto;
   display: grid;

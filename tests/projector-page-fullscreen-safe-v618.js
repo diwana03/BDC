@@ -20,7 +20,7 @@ assert(dcControl.includes('projection-control-fullscreen-v618.js?v=619'), 'Dance
 assert(!jjControl.includes('position-fixed bottom-0 end-0'), 'Jack & Jill fullscreen control must not float over the page');
 assert(!dcControl.includes('position-fixed bottom-0 end-0'), 'Dance Cup fullscreen control must not float over the page');
 assert(fullscreen.includes('document.documentElement.requestFullscreen()'), 'fullscreen action missing');
-assert.match(feed, /projector-safe-v616\.css\?v=(?:619|62\d)/, 'fresh safe-area cache key missing');
+assert.match(feed, /projector-safe-v616\.css\?v=(?:619|62\d|645)/, 'fresh safe-area cache key missing');
 assert(!feed.includes('class="projection-fullscreen"'), 'audience Jack & Jill display must not show a fullscreen button');
 assert(!dcProjector.includes('id="projectionFullscreen"'), 'audience Dance Cup display must not show a fullscreen button');
 const release = Number(version.version.match(/dev(\d+)$/)?.[1] || 0);

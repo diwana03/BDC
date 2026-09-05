@@ -10,7 +10,7 @@ const safe = read('public/css/projector-safe-v616.css');
 const version = JSON.parse(read('VERSION.json'));
 
 assert(feed.includes('projection-heading-row'), 'logo and event heading row missing');
-assert.match(feed, /projector-safe-v616\.css\?v=62\d/, 'projector safe CSS cache key not refreshed');
+assert.match(feed, /projector-safe-v616\.css\?v=(?:62\d|645)/, 'projector safe CSS cache key not refreshed');
 assert(safe.includes('.projection-heading-row > .projection-brand'), 'inline logo layout missing');
 assert(!feed.includes('<div class="stage"><div class="projection-brand">'), 'logo still positioned as a detached stage overlay');
 

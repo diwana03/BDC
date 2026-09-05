@@ -19,7 +19,7 @@ assert.match(advance, /\$screenType\s*===\s*'score_matrix'\s*&&\s*\$roundType\s*
 assert(display.includes("'heats_scores','score_matrix'"), 'matrix auto-page timer missing');
 assert.match(safe, /width: max\(\d+px, min\(\d+cqw, \d+cqh\)\)/, 'larger inline logo sizing missing');
 assert(safe.includes('justify-content: center'), 'logo and title are not centered together');
-assert.match(feed, /projector-safe-v616\.css\?v=62\d/, 'new header CSS cache key missing');
+assert.match(feed, /projector-safe-v616\.css\?v=(?:62\d|645)/, 'new header CSS cache key missing');
 assert.match(version.version, /^2\.3\.3-dev\d+$/);
 assert(version.build >= 3327);
 
