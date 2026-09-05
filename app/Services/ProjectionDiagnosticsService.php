@@ -188,6 +188,8 @@ final class ProjectionDiagnosticsService
     {try{$query=$pdo->prepare($sql);$query->execute($params);return [$query->fetchAll(),null];}catch(Throwable $e){return [[],self::safeError($e)];}}
     private static function safeError(Throwable $e):string
     {$message=preg_replace('/\s+/',' ',trim($e->getMessage()))?:'Database query failed.';return substr($message,0,300);}
+    public static function summarizeChecks(array $checks):array
+    {$totals=['pass'=>0,'warning'=>0,'fail'=>0];foreach($checks as $check){$status=(string)($check['status']??'');if(isset($totals[$status]))$totals[$status]++;}return $totals;}
     private static function finish(string $system,string $mode,int $eventId,array $result,array $checks):array
-    {$totals=['pass'=>0,'warning'=>0,'fail'=>0];foreach($checks as $check)$totals[$check['status']]++;return ['ok'=>$totals['fail']===0,'event_system'=>$system,'data_mode'=>$mode,'event_id'=>$eventId,'checked_at'=>gmdate('c'),'summary'=>$totals,'checks'=>$checks,'projection'=>$result,'limitations'=>['This read-only diagnostic validates runtime files, database state, roster metadata, page bounds and reveal safety.','It does not judge pixel alignment, animation smoothness, browser fullscreen behaviour or the physical projector image; use a screenshot or the 10 m x 5.5 m 4K display for those visual checks.']];}
+    {$totals=self::summarizeChecks($checks);return ['ok'=>$totals['fail']===0,'event_system'=>$system,'data_mode'=>$mode,'event_id'=>$eventId,'checked_at'=>gmdate('c'),'summary'=>$totals,'checks'=>$checks,'projection'=>$result,'limitations'=>['This read-only diagnostic validates runtime files, database state, roster metadata, page bounds and reveal safety.','It does not judge pixel alignment, animation smoothness, browser fullscreen behaviour or the physical projector image; use a screenshot or the 10 m x 5.5 m 4K display for those visual checks.']];}
 }
