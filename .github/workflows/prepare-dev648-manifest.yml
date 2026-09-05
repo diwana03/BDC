@@ -1,0 +1,46 @@
+name: Prepare dev648 manifest
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/prepare-dev648-manifest.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Update release manifest
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('VERSION.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          if data.get('version') != '2.3.3-dev647' or int(data.get('build', 0)) != 3353:
+              raise SystemExit(f"Unexpected release baseline: {data.get('version')} build {data.get('build')}")
+          data['version'] = '2.3.3-dev648'
+          data['build'] = 3354
+          data['release_date'] = '2026-09-06'
+          feature = 'Keeps Judge Database autocomplete usable for active judges with no country by normalizing optional country metadata to blank values while preserving name, Judge ID and canonical profile selection.'
+          features = list(data.get('features') or [])
+          if feature not in features:
+              features.insert(0, feature)
+          data['features'] = features
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+          rm .github/workflows/prepare-dev648-manifest.yml
+      - name: Commit manifest
+        run: |
+          git config user.name "diwana03"
+          git config user.email "dhar.ashish03@gmail.com"
+          git add VERSION.json .github/workflows/prepare-dev648-manifest.yml
+          git commit -m "Bump BDC to v2.3.3-dev648"
+          git push origin HEAD:develop
