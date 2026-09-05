@@ -20,5 +20,5 @@ assert(token.includes("$resource=(string)($_POST['resource']??'')"),'token endpo
 assert(token.includes('exchangeCode(')&&token.includes('$resource);'),'authorization code exchange must validate resource');
 assert(token.includes('refresh(')&&token.includes('$resource);'),'refresh grant must validate resource');
 assert(resource.includes("'resource'=>McpOAuthService::resource()"),'protected-resource metadata must use the canonical OAuth service resource');
-assert(/'version'=>'2\.3\.3-dev\d+'/.test(endpoint),'MCP server must advertise a versioned release');
+assert(endpoint.includes("$versionManifest")&&endpoint.includes("'version'=>$serverVersion"),'MCP server must advertise the current VERSION.json release');
 console.log('MCP OAuth resource and routing checks passed');
