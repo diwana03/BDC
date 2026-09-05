@@ -22,6 +22,7 @@
 
 ## Validation
 
+- Pre-change baseline: the MCP connector exposed roster and approval tools only; no projection diagnostic tool or read-only projector integrity response existed.
 - Projection diagnostics behavioral and integration regression: pending.
 - Full PHP 8.1 lint and JavaScript regression gate: pending.
 - Staging Test Jack & Jill runtime: not tested.
