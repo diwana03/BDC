@@ -23,12 +23,8 @@ final class Auth
             self::audit(null,'login_failed',['email_hash'=>$emailHash]); return false;
         }
         if (in_array((string)$user['role'],['super_admin','admin','master_scorer','scorer'],true) && !self::trustedDevice((int)$user['id'])) {
-            $code=(string)random_int(100000,999999);
-            $pdo->prepare('DELETE FROM bdc_two_factor_codes WHERE user_id=:u OR expires_at<NOW()')->execute(['u'=>$user['id']]);
-            $pdo->prepare('INSERT INTO bdc_two_factor_codes(user_id,code_hash,expires_at) VALUES(:u,:h,DATE_ADD(NOW(),INTERVAL 10 MINUTE))')->execute(['u'=>$user['id'],'h'=>hash('sha256',$code)]);
             $_SESSION['pending_2fa_user']=['id'=>(int)$user['id'],'email'=>$user['email'],'full_name'=>$user['full_name'],'role'=>$user['role']];
-            @mail((string)$user['email'],'BDC login verification code',"Your BDC verification code is {$code}. It expires in 10 minutes.","From: no-reply@bachatadancecouncil.com\r\nContent-Type: text/plain; charset=UTF-8");
-            self::audit((int)$user['id'],'two_factor_code_sent',[]);return true;
+            self::issueTwoFactorCode($user,'two_factor_code_sent');return true;
         }
         self::completeLogin($user);
         $pdo->prepare('DELETE FROM bdc_login_attempts WHERE ip_address=:ip AND email_hash=:email')->execute(['ip'=>$ip,'email'=>$emailHash]);
@@ -37,6 +33,17 @@ final class Auth
     }
 
     public static function pendingTwoFactor(): bool { return !empty($_SESSION['pending_2fa_user']); }
+    public static function regenerateTwoFactorCode(): string
+    {
+        $user=$_SESSION['pending_2fa_user']??null;
+        if(!is_array($user)||empty($user['id'])||empty($user['email']))return 'missing';
+        $pdo=Database::connection();
+        $recent=$pdo->prepare('SELECT created_at FROM bdc_two_factor_codes WHERE user_id=:u AND used_at IS NULL ORDER BY id DESC LIMIT 1');
+        $recent->execute(['u'=>(int)$user['id']]);$created=$recent->fetchColumn();
+        if($created!==false&&time()-strtotime((string)$created)<30)return 'cooldown';
+        self::issueTwoFactorCode($user,'two_factor_code_regenerated');
+        return 'sent';
+    }
     public static function verifyTwoFactor(string $code,bool $remember):bool
     {
         $user=$_SESSION['pending_2fa_user']??null;if(!$user||!preg_match('/^\d{6}$/',$code))return false;
@@ -46,6 +53,14 @@ final class Auth
         if($remember)self::rememberDevice((int)$user['id']);self::audit((int)$user['id'],'two_factor_verified',['remembered'=>$remember]);return true;
     }
     private static function completeLogin(array $user):void{session_regenerate_id(true);$_SESSION['user']=['id'=>(int)$user['id'],'email'=>$user['email'],'full_name'=>$user['full_name'],'role'=>$user['role']];$_SESSION['last_activity']=time();}
+    private static function issueTwoFactorCode(array $user,string $auditAction):void
+    {
+        $pdo=Database::connection();$code=(string)random_int(100000,999999);
+        $pdo->prepare('DELETE FROM bdc_two_factor_codes WHERE user_id=:u OR expires_at<NOW()')->execute(['u'=>(int)$user['id']]);
+        $pdo->prepare('INSERT INTO bdc_two_factor_codes(user_id,code_hash,expires_at) VALUES(:u,:h,DATE_ADD(NOW(),INTERVAL 10 MINUTE))')->execute(['u'=>(int)$user['id'],'h'=>hash('sha256',$code)]);
+        @mail((string)$user['email'],'BDC login verification code',"Your BDC verification code is {$code}. It expires in 10 minutes. Any previous code is no longer valid.","From: no-reply@bachatadancecouncil.com\r\nContent-Type: text/plain; charset=UTF-8");
+        self::audit((int)$user['id'],$auditAction,[]);
+    }
     private static function trustedDevice(int $userId):bool
     {
         $cookie=(string)($_COOKIE['bdc_trusted_device']??'');if(!str_contains($cookie,':'))return false;[$selector,$token]=explode(':',$cookie,2);

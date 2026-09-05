@@ -11,6 +11,7 @@
 <div class="card shadow-sm"><div class="card-body p-4">
 <h1 class="h4 mb-4">BDC Admin Login</h1>
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
+<?php if (!empty($notice)): ?><div class="alert alert-success"><?= e($notice) ?></div><?php endif; ?>
 <form method="post">
 <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
 <?php if (\App\Core\Auth::pendingTwoFactor()): ?>
@@ -24,6 +25,14 @@
 <button class="btn btn-dark w-100">Log in</button>
 <?php endif; ?>
 </form>
+<?php if (\App\Core\Auth::pendingTwoFactor()): ?>
+<form method="post" class="mt-3" onsubmit="this.querySelector('button').disabled=true">
+<input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+<input type="hidden" name="action" value="regenerate_2fa">
+<button class="btn btn-outline-primary w-100" type="submit">Regenerate Login Token</button>
+<div class="form-text text-center">Available here at <strong>/admin</strong>. A new code invalidates the previous one.</div>
+</form>
+<?php endif; ?>
 </div></div>
 </div>
 </body>

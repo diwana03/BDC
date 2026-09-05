@@ -1,0 +1,13 @@
+const fs=require('fs');
+const assert=(ok,message)=>{if(!ok)throw new Error(message)};
+const admin=fs.readFileSync('admin/index.php','utf8');
+const view=fs.readFileSync('app/Views/auth/login.php','utf8');
+const auth=fs.readFileSync('app/Core/Auth.php','utf8');
+const redirect=fs.readFileSync('admin/login.php','utf8');
+assert(admin.includes("($_POST['action']??'')==='regenerate_2fa'"),'the /admin entry point must handle token regeneration');
+assert(admin.includes('Csrf::verify'),'token regeneration must remain CSRF protected');
+assert(view.includes('Regenerate Login Token')&&view.includes('pendingTwoFactor()'),'the control must appear only during /admin two-factor verification');
+assert(auth.includes('regenerateTwoFactorCode')&&auth.includes("<30")&&auth.includes("'two_factor_code_regenerated'"),'regeneration needs cooldown and audit coverage');
+assert(auth.includes('Any previous code is no longer valid.'),'the replacement code email must explain invalidation');
+assert(redirect.includes("header('Location: ./');"),'legacy /admin/login.php must continue redirecting to /admin');
+console.log('admin login token regeneration v642 passed');
