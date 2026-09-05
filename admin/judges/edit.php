@@ -77,11 +77,13 @@ $has=static fn(string $field,string $value):bool=>in_array($value,explode(',',(s
 <label class="form-label">Flag <?=$countryIndex?> <?=$countryIndex===1?'· Primary':'· Optional'?></label>
 <div class="input-group">
 <span class="input-group-text" title="Flag <?=$countryIndex?>"><?=$countryFlag!==''?e($countryFlag):'🏳️'?></span>
-<input class="form-control" name="country_<?=$countryIndex?>" list="judgeCountries" value="<?=e($countryValue)?>" placeholder="<?=$countryIndex===1?'Select or type country':'No additional country'?>">
+<select class="form-select" name="country_<?=$countryIndex?>">
+<option value=""><?=$countryIndex===1?'Select country':'No additional country'?></option>
+<?php foreach($countries as $country):?><option value="<?=e($country)?>" <?=$countryValue===$country?'selected':''?>><?=e($country)?></option><?php endforeach;?>
+</select>
 </div>
 </div>
 <?php endfor;?>
-<datalist id="judgeCountries"><?php foreach($countries as $country):?><option value="<?=e($country)?>"><?php endforeach;?></datalist>
 <div class="col-12"><div class="form-text">Flag 1 is the primary country. Add up to four more countries; duplicate selections are removed.</div></div>
 <div class="col-md-6">
 <label class="form-label">City</label>
