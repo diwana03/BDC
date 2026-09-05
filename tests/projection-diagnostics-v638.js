@@ -20,7 +20,7 @@ for(const marker of [
 
 for(const marker of [
   'bdc_test_scoring_entries','bdc_scoring_entries',
-  'bdc_test_dance_cup_entries','bdc_dance_cup_entries',
+  "'bdc_test_dance_cup'","'bdc_dance_cup'","$prefix.'_entries'",
   'missing_bibs','duplicate_bibs','invalid_countries','missing_photos',
   'judge_profiles','flights','page_bounds','result_reveal_lock',
   'runtime_file_','limitations'
