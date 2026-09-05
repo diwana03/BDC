@@ -24,7 +24,7 @@ const checks = {
     branding.split("const fallbackBar = control.closest('.bdc-theme-fallback-bar')").length - 1 === 2
       && branding.split('fallbackBar?.remove()').length - 1 === 2,
   'theme stylesheet cache is current': controller.includes('/css/bdc-theme.css?v=505'),
-  'global branding cache is current': bootstrap.includes('bdc-global-branding.js?v=505'),
+  'global branding cache is current': (()=>{const match=/bdc-global-branding\.js\?v=(\d+)/.exec(bootstrap);return !!match&&Number(match[1])>=505})(),
 };
 
 const themeEntryPoints = [
