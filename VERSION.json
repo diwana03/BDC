@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev665",
-  "build": 3371,
+  "version": "2.3.3-dev666",
+  "build": 3372,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final Relative Placement Matrix preserves the existing one-BIB-per-dancer real-flag renderer, removes the legacy DOM text rewrite that flattened flags/identity markup, and keeps large couple identities with compact judge columns and all 12 rows visible.",
     "Heats projector identity redesign: separate BIB column, real flag beside large competitor name, only applicable judges, compact support columns, no N/A or country codes.",
     "Final relative placement matrix now shows real country flags beside each finalist name and removes tiny country-code clutter, while preserving large couple text and the guaranteed 12-row 16:9 fit.",
     "Final projector matrix readability: keeps all 12 couples within the 16:9 safe area while substantially enlarging couple text and placement values; judge headings remain compact. Heats layout is unchanged.",
