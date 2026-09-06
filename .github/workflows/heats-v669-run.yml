@@ -1,0 +1,17 @@
+name: Heats v669 Run
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/heats-v669-run.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply patch
+        run: bash .github/scripts/heats-v669.sh
