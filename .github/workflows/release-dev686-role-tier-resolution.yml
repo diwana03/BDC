@@ -1,0 +1,21 @@
+name: Release dev686 Role Tier Resolution
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev686-role-tier-resolution.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev686-role-tier-resolution
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev686 role tier resolution
+        run: bash .github/scripts/release-dev686-role-tier-resolution.sh
