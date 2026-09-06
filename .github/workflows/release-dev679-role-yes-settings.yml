@@ -19,3 +19,4 @@ jobs:
           fetch-depth: 0
       - name: Apply dev679 release
         run: bash .github/scripts/release-dev679-role-yes-settings.sh
+# retry 2
