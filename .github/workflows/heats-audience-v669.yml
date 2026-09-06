@@ -1,0 +1,207 @@
+name: Heats Audience Projection v669
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/heats-audience-v669.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Apply Heats audience layout
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          feed = Path('live-display/feed.php')
+          s = feed.read_text()
+          old = '''        } else {\n            $flag = CountryFlagService::emoji($projectionItem["country"] ?? null);\n            if ($flag !== "") $projectionItem["display_name"] = $flag . " " . $projectionItem["display_name"];\n        }'''
+          new = '''        } else {\n            // Heats matrix renders a real flag image beside the clean audience name.\n            // Do not prefix emoji/country-code text into display_name.\n        }'''
+          if s.count(old) != 1:
+              raise SystemExit('heats display-name prefix anchor mismatch')
+          feed.write_text(s.replace(old, new, 1))
+
+          css_path = Path('public/css/projector-safe-v616.css')
+          css = css_path.read_text()
+          marker = '/* dev669: audience-first Heats live score matrix */'
+          if marker in css:
+              raise SystemExit('dev669 CSS already present')
+          css += r'''
+
+/* dev669: audience-first Heats live score matrix */
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .stage {
+  padding: 3.2cqh 2.6cqw 2.8cqh !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .projection-official {
+  top: 2.5cqh !important;
+  right: 2.6cqw !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .projection-heading-row {
+  grid-template-columns: auto minmax(0, auto) !important;
+  gap: clamp(16px,1.35cqw,28px) !important;
+  margin-bottom: clamp(8px,1.15cqh,16px) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .projection-heading-row > .projection-brand {
+  width: clamp(92px,8.4cqh,138px) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .event {
+  font-size: clamp(28px,2.05vw,50px) !important;
+  line-height: 1.04 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .meta {
+  font-size: clamp(14px,1vw,24px) !important;
+  line-height: 1.05 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .title {
+  font-size: clamp(28px,2.25vw,54px) !important;
+  line-height: 1.02 !important;
+  margin: .16em 0 .1em !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-wrap {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .provisional-label {
+  flex: 0 0 auto !important;
+  margin: 0 0 .35cqh !important;
+  font-size: clamp(10px,.72vw,16px) !important;
+  letter-spacing: .08em !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-split {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 1.15cqw !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-panel {
+  border: 1px solid rgba(216,170,55,.58) !important;
+  background: rgba(3,7,14,.38) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-role {
+  min-height: clamp(36px,4.2cqh,50px) !important;
+  align-items: center !important;
+  padding: 0 .58em !important;
+  background: linear-gradient(90deg,#8a6515,#a37818) !important;
+  border: 0 !important;
+  color: #fff !important;
+  font-size: clamp(15px,1.18vw,27px) !important;
+  line-height: 1 !important;
+  letter-spacing: .035em !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats {
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  table-layout: fixed !important;
+  font-size: clamp(15px,1vw,23px) !important;
+  background: rgba(6,10,15,.92) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats thead {
+  height: 10.5% !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats tbody {
+  height: 89.5% !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats tbody tr {
+  height: auto !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th,
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td {
+  padding: 0 .24em !important;
+  vertical-align: middle !important;
+  border-color: rgba(216,170,55,.36) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th {
+  background: #8a6515 !important;
+  color: #fff !important;
+  font-weight: 950 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:first-child,
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:first-child {
+  width: 7.5% !important;
+  font-size: clamp(13px,.82vw,19px) !important;
+  font-weight: 950 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(2),
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(2) {
+  width: 10.5% !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(2) {
+  font-size: clamp(13px,.8vw,18px) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(2) {
+  font-size: clamp(22px,1.45vw,34px) !important;
+  font-weight: 950 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(3),
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(3) {
+  width: 34% !important;
+  text-align: left !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(3) {
+  font-size: clamp(14px,.9vw,21px) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) {
+  font-size: clamp(13px,.82vw,19px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) small {
+  display: block !important;
+  margin-top: .18em !important;
+  font-size: clamp(8px,.5vw,12px) !important;
+  line-height: 1 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(n+4) {
+  font-size: clamp(18px,1.14vw,27px) !important;
+  font-weight: 950 !important;
+  text-align: center !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child {
+  font-size: clamp(20px,1.3vw,31px) !important;
+  font-weight: 950 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-competitor {
+  gap: clamp(8px,.55vw,14px) !important;
+  font-size: clamp(20px,1.34vw,32px) !important;
+  line-height: 1 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-flag {
+  width: clamp(34px,2.05vw,48px) !important;
+  border-radius: 3px !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-competitor-name {
+  font-weight: 950 !important;
+}
+'''
+          css_path.write_text(css)
+
+          v = Path('VERSION.json')
+          d = json.loads(v.read_text())
+          d['version'] = '2.3.3-dev669'
+          d['build'] = 3375
+          d.setdefault('features', []).insert(0, 'Heats projector audience pass: larger J labels, judge names, YES/A marks, Score, provisional rank and BIB; clean real-flag + name identity without duplicate country-code text; two balanced Leader/Follower panels fill the 16:9 display without dead space.')
+          v.write_text(json.dumps(d, indent=2, ensure_ascii=False) + '\n')
+          Path('RELEASE-v2.3.3-dev669.md').write_text('# BDC v2.3.3-dev669 — Heats audience projection\n\nBuild 3375\n\nFinishes the Heats Live Score Matrix first. Audience-readable BIB, names, flags, J labels, marks, scores and provisional rank; only applicable judges remain visible; no duplicated country-code text; balanced full-screen 16:9 use.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/heats-audience-v669.yml
+          git add live-display/feed.php public/css/projector-safe-v616.css VERSION.json RELEASE-v2.3.3-dev669.md
+          git diff --cached --check
+          git commit -m 'Release dev669 audience friendly Heats projection'
+          git push origin HEAD:develop
