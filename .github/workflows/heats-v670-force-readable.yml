@@ -53,7 +53,8 @@ CSS
           d=json.loads(p.read_text())
           d['version']='2.3.3-dev670'
           d['build']=3376
-          d.setdefault('features',[]).insert(0,'Heats ballroom readability pass: Prov., J labels, judge names, YES/A marks and Score are enlarged aggressively without shrinking BIB, flags or competitor names.')
+          feature='Heats ballroom readability pass: Prov., J labels, judge names, YES/A marks and Score are enlarged aggressively without shrinking BIB, flags or competitor names.'
+          if feature not in d.setdefault('features',[]): d['features'].insert(0,feature)
           p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
           PY
           git diff --check
@@ -65,3 +66,4 @@ CSS
           git add public/css/projector-safe-v616.css VERSION.json
           git commit -m 'Release dev670 force readable Heats scoring typography'
           git push origin HEAD:develop
+# trigger 2
