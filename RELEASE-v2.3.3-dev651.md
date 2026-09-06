@@ -1,14 +1,19 @@
-# BDC 2.3.3-dev651
+# BDC v2.3.3-dev651 — responsive finalist couple projector grid
 
 Build 3357
 
-## Judge Directory workflow fix
+## Fix
 
-- Removes the always-open Add Judge Internally box from directly above Judge Search.
-- Adds a compact + Add Judge action at the top of Judge Directory.
-- Quick creation now collects only the minimum identity fields and immediately redirects to the full Edit Judge Profile page.
-- Keeps Judge Search and Sort as the primary directory workspace.
-- Preserves pending judge approvals, registration links, update links, duplicate review, status controls and historical scoring safety.
-- Full judge profile editing remains the canonical place to save country flags, contact details, qualifications, biography, status, notes and photo adjustments.
+- Finalist Couples and Emcee Random Final Match now use the same fixed five-card row basis.
+- 1–5 couples display as one centered row.
+- 6–10 couples display as two rows.
+- 11–15 couples display as three rows.
+- Incomplete final rows keep the exact same card width and are centered instead of stretching.
+- Card sizing is constrained so BIB/name content stays inside the card.
+- Existing BDC logo, header, BDC Official Live Display badge, scoring, matching and result logic are untouched.
 
-Branch: develop
+## Validation
+
+- PHP 8.1 syntax check on live-display/feed.php.
+- Focused regression checks five-column basis, no flex-grow stretching, centered incomplete rows, and unchanged official branding references.
+- No database migration.
