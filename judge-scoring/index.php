@@ -18,6 +18,7 @@ use App\Services\AutomaticJudgeBrowserService;
 use App\Services\JudgingCriteriaService;
 use App\Services\ScoringFlightService;
 use App\Services\RoleAdvancementService;
+use App\Services\RoleYesConfigurationService;
 
 $pdo=Database::connection();
 $token=trim((string)($_GET['token']??$_POST['token']??''));
@@ -43,32 +44,11 @@ $a1Place=$judgeOrdinal($yesLimit+1);$a2Place=$judgeOrdinal($yesLimit+2);$a3Place
 $roleCountStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:round AND entry_status='active' GROUP BY dance_role");
 $roleCountStmt->execute(['round'=>$roundId]);$allRoleCounts=['leader'=>0,'follower'=>0];
 foreach($roleCountStmt->fetchAll() as $countRow){$countRole=(string)$countRow['dance_role'];if(isset($allRoleCounts[$countRole]))$allRoleCounts[$countRole]=(int)$countRow['total'];}
-function bdcJudgeRoleTier(int $count,int $fallbackYes):array
-{
-    $count=max(0,$count);
-    if($count>=31)return ['tier'=>3,'yes'=>15];
-    if($count>=16)return ['tier'=>2,'yes'=>10];
-    if($count>=5)return ['tier'=>1,'yes'=>5];
-    return ['tier'=>0,'yes'=>min(max(1,$fallbackYes),max(1,$count))];
-}
-$roleTierConfig=[
-    'leader'=>bdcJudgeRoleTier($allRoleCounts['leader'],$yesLimit),
-    'follower'=>bdcJudgeRoleTier($allRoleCounts['follower'],$yesLimit),
-];
+$roleTierConfig=RoleYesConfigurationService::resolve($pdo,$roundId,$yesLimit);
 $roleYesLimits=['leader'=>$roleTierConfig['leader']['yes'],'follower'=>$roleTierConfig['follower']['yes']];
 $roleTiers=['leader'=>$roleTierConfig['leader']['tier'],'follower'=>$roleTierConfig['follower']['tier']];
-$rolePlan=[
-    'leader'=>RoleAdvancementService::rolePlan($allRoleCounts['leader'],$roleYesLimits['leader']),
-    'follower'=>RoleAdvancementService::rolePlan($allRoleCounts['follower'],$roleYesLimits['follower']),
-];
-$roleAltPlaces=[];
-foreach(['leader','follower'] as $tierRole){
-    $roleAltPlaces[$tierRole]=[
-        'A1'=>$judgeOrdinal($roleYesLimits[$tierRole]+1),
-        'A2'=>$judgeOrdinal($roleYesLimits[$tierRole]+2),
-        'A3'=>$judgeOrdinal($roleYesLimits[$tierRole]+3),
-    ];
-}
+$rolePlan=['leader'=>RoleAdvancementService::rolePlan($allRoleCounts['leader'],$roleYesLimits['leader']),'follower'=>RoleAdvancementService::rolePlan($allRoleCounts['follower'],$roleYesLimits['follower'])];
+$roleAltPlaces=[];foreach(['leader','follower'] as $tierRole){$roleAltPlaces[$tierRole]=['A1'=>$judgeOrdinal($roleYesLimits[$tierRole]+1),'A2'=>$judgeOrdinal($roleYesLimits[$tierRole]+2),'A3'=>$judgeOrdinal($roleYesLimits[$tierRole]+3)];}
 
 function judgeJson(array $data,int $status=200):never{while(ob_get_level()>0)ob_end_clean();http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');echo json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);exit;}
 
@@ -106,7 +86,8 @@ function saveHeatsJudgeMark(PDO $pdo,int $roundId,int $judgeId,int $entryId,stri
     if($type==='yes'){
         $totalStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_entries WHERE round_id=:round AND dance_role=:role AND entry_status='active'");
         $totalStmt->execute(['round'=>$roundId,'role'=>$role]);
-        $limit=bdcJudgeRoleTier((int)$totalStmt->fetchColumn(),max(1,(int)($weights['yes_count']??10)))['yes'];
+        $roleCfg=RoleYesConfigurationService::resolve($pdo,$roundId,max(1,(int)($weights['yes_count']??10)));
+        $limit=(int)$roleCfg[$role]['yes'];
         $count=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks m JOIN bdc_scoring_entries e ON e.id=m.entry_id WHERE m.round_id=:round AND m.judge_id=:judge AND e.dance_role=:role AND e.entry_status='active' AND m.mark_type='yes' AND m.entry_id<>:entry");
         $count->execute(['round'=>$roundId,'judge'=>$judgeId,'role'=>$role,'entry'=>$entryId]);
         if((int)$count->fetchColumn()>=$limit)throw new RuntimeException('Maximum '.$limit.' YES selections allowed for '.ucfirst($role).'s in this round. Clear or change another YES first.');
@@ -149,8 +130,8 @@ function validateJudgeComplete(PDO $pdo,array $session,int $yesLimit,int $rankLi
         if(!in_array($scope,['all',$role],true))continue;
         $totalStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_entries WHERE round_id=:round AND dance_role=:role AND entry_status='active'");$totalStmt->execute(['round'=>$roundId,'role'=>$role]);$total=(int)$totalStmt->fetchColumn();
         if($total<1)continue;
-        $tier=bdcJudgeRoleTier($total,$yesLimit);
-        $requiredYes=(int)$tier['yes'];
+        $roleCfg=RoleYesConfigurationService::resolve($pdo,$roundId,$yesLimit);
+        $requiredYes=(int)$roleCfg[$role]['yes'];
         if($total<=$requiredYes)continue;
         $state=heatsSelectionState($pdo,$roundId,$judgeId,$role);
         if($state['yes']!==$requiredYes)throw new RuntimeException('Select exactly '.$requiredYes.' YES for '.ucfirst($role).'s before submitting. Currently selected: '.$state['yes'].'.');
@@ -184,7 +165,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 $criteriaRequired=JudgingCriteriaService::requiresAcceptance($session);
 if($criteriaRequired){
     $category=ucwords(str_replace('_',' ',(string)$session['division']));
-    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Judging Criteria | BDC</title><style>*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,sans-serif}.top{background:linear-gradient(110deg,#111,#42101c);color:#fff;padding:22px 18px;border-bottom:5px solid #d10f32}.wrap{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #dfe3e8;border-radius:14px;padding:20px;box-shadow:0 3px 12px rgba(15,23,42,.06)}.weights{display:grid;grid-template-columns:1fr 1fr;gap:8px}.weight{border:1px solid #dfe3e8;border-radius:9px;padding:10px;display:flex;justify-content:space-between}.rule{background:#eaf3ff;border-left:4px solid #0D6EFD;padding:12px;margin:16px 0}.rule ul{margin:8px 0 0;padding-left:20px}.rule li{margin:7px 0}.confirm{display:flex;gap:10px;align-items:flex-start;margin:18px 0}.start{width:100%;border:0;border-radius:10px;padding:14px;background:#146C43;color:#fff;font-size:17px;font-weight:800}.start:disabled{opacity:.4}.error{background:#ffe6e6;color:#8a1010;padding:12px;border-radius:9px;margin-bottom:12px}@media(max-width:520px){.weights{grid-template-columns:1fr}}</style></head><body><header class="top"><div class="wrap" style="padding:0"><strong>BDC AUTOMATIC SCORING</strong><h1><?=e($session['event_name'])?></h1><div><?=e($category)?> · <?=e(strtoupper((string)$session['round_type']))?> · <?=e($session['judge_name'])?></div></div></header><main class="wrap"><div class="card"><h2>Judging Criteria</h2><?php if($error):?><div class="error"><?=e($error)?></div><?php endif;?><div class="weights"><?php foreach(JudgingCriteriaService::weights() as [$name,$weight]):?><div class="weight"><strong><?=e($name)?></strong><span><?=e($weight)?></span></div><?php endforeach;?></div><div class="rule"><?php if($isFinal):?><strong>Final, Relative Placement:</strong> Rank your <strong>TOP <?=$configuredFinalRankLimit?></strong> best couples from 1 to <?=$configuredFinalRankLimit?>. Use each rank once. Leave all other couples as <strong>NO RANK</strong>.<?php else:$criteriaScope=(string)$session['scoring_scope'];?><strong><?=e($selectionRoundLabel)?> Instructions</strong><ul><?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $criteriaRole=>$criteriaLabel):if(!in_array($criteriaScope,['all',$criteriaRole],true)||($rolePlan[$criteriaRole]['direct_to_final']??false))continue;$cfg=$roleTierConfig[$criteriaRole];$places=$roleAltPlaces[$criteriaRole];?><li><strong><?=e($criteriaLabel)?> · Tier <?=(int)$cfg['tier']?> · <?=$allRoleCounts[$criteriaRole]?> competitors:</strong> choose <strong><?=(int)$cfg['yes']?> YES</strong>. A1 = <strong><?=e($places['A1'])?> place</strong>, A2 = <strong><?=e($places['A2'])?> place</strong>, A3 = <strong><?=e($places['A3'])?> place</strong>.</li><?php endforeach;?><li>Mark everyone else <strong>NO</strong>.</li><li>Use the optional comment field for a private note.</li></ul><?php endif;?></div><p>Judge independently and confidentially. Do not discuss or compare selections with another judge before submitting.</p><form method="post"><input type="hidden" name="token" value="<?=e($token)?>"><input type="hidden" name="action" value="accept_criteria"><label class="confirm"><input id="criteriaConfirm" type="checkbox" name="criteria_confirm" value="1"><span>I have read and accept the judging criteria.</span></label><button id="startScoring" class="start" disabled>Start Scoring</button></form></div></main><script>const c=document.getElementById('criteriaConfirm'),b=document.getElementById('startScoring');c.onchange=()=>b.disabled=!c.checked;</script></body></html><?php
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Judging Criteria | BDC</title><style>*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,sans-serif}.top{background:linear-gradient(110deg,#111,#42101c);color:#fff;padding:22px 18px;border-bottom:5px solid #d10f32}.wrap{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #dfe3e8;border-radius:14px;padding:20px;box-shadow:0 3px 12px rgba(15,23,42,.06)}.weights{display:grid;grid-template-columns:1fr 1fr;gap:8px}.weight{border:1px solid #dfe3e8;border-radius:9px;padding:10px;display:flex;justify-content:space-between}.rule{background:#eaf3ff;border-left:4px solid #0D6EFD;padding:12px;margin:16px 0}.rule ul{margin:8px 0 0;padding-left:20px}.rule li{margin:7px 0}.confirm{display:flex;gap:10px;align-items:flex-start;margin:18px 0}.start{width:100%;border:0;border-radius:10px;padding:14px;background:#146C43;color:#fff;font-size:17px;font-weight:800}.start:disabled{opacity:.4}.error{background:#ffe6e6;color:#8a1010;padding:12px;border-radius:9px;margin-bottom:12px}@media(max-width:520px){.weights{grid-template-columns:1fr}}</style></head><body><header class="top"><div class="wrap" style="padding:0"><strong>BDC AUTOMATIC SCORING</strong><h1><?=e($session['event_name'])?></h1><div><?=e($category)?> · <?=e(strtoupper((string)$session['round_type']))?> · <?=e($session['judge_name'])?></div></div></header><main class="wrap"><div class="card"><h2>Judging Criteria</h2><?php if($error):?><div class="error"><?=e($error)?></div><?php endif;?><div class="weights"><?php foreach(JudgingCriteriaService::weights() as [$name,$weight]):?><div class="weight"><strong><?=e($name)?></strong><span><?=e($weight)?></span></div><?php endforeach;?></div><div class="rule"><?php if($isFinal):?><strong>Final, Relative Placement:</strong> Rank your <strong>TOP <?=$configuredFinalRankLimit?></strong> best couples from 1 to <?=$configuredFinalRankLimit?>. Use each rank once. Leave all other couples as <strong>NO RANK</strong>.<?php else:$criteriaScope=(string)$session['scoring_scope'];?><strong><?=e($selectionRoundLabel)?> Instructions</strong><ul><?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $criteriaRole=>$criteriaLabel):if(!in_array($criteriaScope,['all',$criteriaRole],true)||($rolePlan[$criteriaRole]['direct_to_final']??false))continue;$cfg=$roleTierConfig[$criteriaRole];$places=$roleAltPlaces[$criteriaRole];?><li><strong><?=e($criteriaLabel)?>:</strong> Choose <strong><?=(int)$cfg['yes']?> YES</strong> for your <strong>Top <?=(int)$cfg['yes']?> best dancers</strong>. A1 = <strong><?=e($places['A1'])?> place</strong>, A2 = <strong><?=e($places['A2'])?> place</strong>, A3 = <strong><?=e($places['A3'])?> place</strong>.</li><?php endforeach;?><li>Mark everyone else <strong>NO</strong>.</li><li>Use the optional comment field for a private note.</li></ul><?php endif;?></div><p>Judge independently and confidentially. Do not discuss or compare selections with another judge before submitting.</p><form method="post"><input type="hidden" name="token" value="<?=e($token)?>"><input type="hidden" name="action" value="accept_criteria"><label class="confirm"><input id="criteriaConfirm" type="checkbox" name="criteria_confirm" value="1"><span>I have read and accept the judging criteria.</span></label><button id="startScoring" class="start" disabled>Start Scoring</button></form></div></main><script>const c=document.getElementById('criteriaConfirm'),b=document.getElementById('startScoring');c.onchange=()=>b.disabled=!c.checked;</script></body></html><?php
     exit;
 }
 

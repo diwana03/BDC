@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev678",
-  "build": 3384,
+  "version": "2.3.3-dev679",
+  "build": 3386,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Role-specific YES source of truth for Special Category Heats: independently saves and locks Lead and Follow YES counts, keeps legacy shared yes_count as fallback until saved, makes judge limits, submission validation, counters and callback generation consume the saved role values, and keeps judge instructions simple without exposing tier logic; weights, Salsa Open fixed points, Finals and projection are unchanged.",
     "Dance Cup projector exact-screen repair: removes the rigid 10vh/5vw dead space, shows 10 contestants as a full 2×5 audience board, shows the complete judge panel on one adaptive screen including five judges in one row, prevents country names from vertical character wrapping, and renders real local SVG flags without changing scoring, marks, results or competition data.",
     "Adaptive one-screen Judges projector: always fits the full judge panel on one audience screen, uses a clean five-card row for five judges, balanced multi-row grids for larger panels, preserves prominent real flags with horizontal country labels, and replaces rigid judge-screen dead space with responsive safe padding without changing Heats, Finals, matrix, scoring or results.",
     "Final projection couple identity cleanup: removes duplicated BIB prefixes and legacy 2/3-letter country-code prefixes from finalist names while preserving real flags, current 10%/5% safe area, matrix sizing, judge columns, Heats and scoring logic.",

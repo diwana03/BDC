@@ -25,6 +25,7 @@ use App\Services\NextRankedFinalistService;
 use App\Services\ScoringBackupService;
 use App\Services\ScoringRosterCheckpointService;
 use App\Services\RoleAdvancementService;
+use App\Services\RoleYesConfigurationService;
 use App\Services\JackJillCompetitorEligibilityService;
 
 Auth::requireAdmin();
@@ -169,7 +170,8 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
     $rid=(int)$round['id'];
     $roleCountStmt=$pdo->prepare("SELECT dance_role,COUNT(*) total FROM bdc_scoring_entries WHERE round_id=:r AND entry_status='active' GROUP BY dance_role");
     $roleCountStmt->execute(['r'=>$rid]);$roleCounts=['leader'=>0,'follower'=>0];foreach($roleCountStmt->fetchAll() as $row)$roleCounts[$row['dance_role']]=(int)$row['total'];
-    $rolePlan=RoleAdvancementService::roundPlan($roleCounts['leader'],$roleCounts['follower'],(int)$round['yes_count']);
+    $roleYesConfig=RoleYesConfigurationService::resolve($pdo,$rid,(int)$round['yes_count']);
+    $rolePlan=['leader'=>RoleAdvancementService::rolePlan($roleCounts['leader'],(int)$roleYesConfig['leader']['yes']),'follower'=>RoleAdvancementService::rolePlan($roleCounts['follower'],(int)$roleYesConfig['follower']['yes'])];
     $judges=$pdo->prepare('SELECT * FROM bdc_scoring_judges WHERE round_id=:r ORDER BY judge_order');$judges->execute(['r'=>$rid]);$judges=$judges->fetchAll();
     $judgingRequired=($rolePlan['leader']['requires_judging']??false)||($rolePlan['follower']['requires_judging']??false);
     if($judgingRequired&&count($judges)<3) throw new RuntimeException('At least 3 judges are required.');
@@ -208,7 +210,7 @@ function computeResults(PDO $pdo,array $round,int $userId):void{
             $list=$rows[$role]??[];
             usort($list,fn($a,$b)=>$b['total']<=>$a['total']);
 
-            $callbackLimit=min((int)$round['callback_count'],count($list));
+            $callbackLimit=min((int)($roleYesConfig[$role]['yes']??$round['callback_count']),count($list));
             $alternateLimit=min($callbackLimit+3,count($list));
             $i=0;
 
