@@ -1,0 +1,67 @@
+name: Heats v670 Force Readable
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/heats-v670-force-readable.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply typography override
+        run: |
+          cat >> public/css/projector-safe-v616.css <<'CSS'
+
+/* dev670 force audience-readable scoring typography */
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:first-child,
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:first-child {
+  font-size: clamp(16px,1.05vw,24px) !important;
+  font-weight: 950 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) {
+  font-size: clamp(17px,1.08vw,25px) !important;
+  line-height: 1 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) small {
+  font-size: clamp(11px,.68vw,16px) !important;
+  line-height: 1 !important;
+  margin-top: .22em !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(n+4) {
+  font-size: clamp(24px,1.52vw,36px) !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:last-child {
+  font-size: clamp(16px,1vw,23px) !important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child {
+  font-size: clamp(25px,1.6vw,38px) !important;
+  font-weight: 950 !important;
+}
+CSS
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('VERSION.json')
+          d=json.loads(p.read_text())
+          d['version']='2.3.3-dev670'
+          d['build']=3376
+          d.setdefault('features',[]).insert(0,'Heats ballroom readability pass: Prov., J labels, judge names, YES/A marks and Score are enlarged aggressively without shrinking BIB, flags or competitor names.')
+          p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          PY
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/heats-v670-force-readable.yml
+          git add public/css/projector-safe-v616.css VERSION.json
+          git commit -m 'Release dev670 force readable Heats scoring typography'
+          git push origin HEAD:develop
