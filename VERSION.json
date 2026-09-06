@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev654",
-  "build": 3360,
+  "version": "2.3.3-dev655",
+  "build": 3361,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Finalist Couples only: enlarges dancer names, positions the real country flag immediately after each name, visually removes country text, and keeps BIB below while preserving the separate Finalists screen and five-card couple grid.",
     "Restores the Finalists leader/follower projector presentation exactly as it was before dev653; Finalist Couples remains a separate renderer.",
     "Projector competitor cards now show first name only in a substantially larger single-line responsive label with the country flag immediately after the name; removes country-code/country-text clutter while preserving bib, photo, pagination, role split and responsive grid logic.",
     "Adds safe breathing room below each dancer identity in Finalist Couples and Emcee Random Final Match so BIBs never sit on the card edge, and changes only Final judge presentation wording to JUDGING ALL COUPLES while preserving all Heats judge scope wording and logic, the existing BDC logo, and the BDC Official Live Display badge.",
