@@ -1,0 +1,72 @@
+name: Restore Finalists Screen v654
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/restore-finalists-screen-v654.yml']
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Restore pre-dev653 Finalists presentation only
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+
+          new_css='.competitor-identity{flex:0 0 auto;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;gap:clamp(6px,.55vw,12px);white-space:nowrap;overflow:hidden}.competitor-name{min-width:0;max-width:calc(100% - clamp(30px,2.3vw,50px));font-size:clamp(16px,1.35vw,30px);font-weight:950;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.competitor-bib{flex:0 0 auto;font-size:clamp(14px,1.1vw,24px);font-weight:950;line-height:1;color:#fff;letter-spacing:.025em}.competitor-flag{flex:0 0 auto;width:clamp(28px,2.05vw,44px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'
+          old_css='.competitor-name{flex:0 0 auto;width:100%;font-size:clamp(11px,.9vw,19px);font-weight:950;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.competitor-bib{flex:0 0 auto;font-size:clamp(14px,1.1vw,24px);font-weight:950;line-height:1;color:#fff;letter-spacing:.025em}.competitor-country{flex:0 0 auto;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;font-size:clamp(8px,.62vw,13px);line-height:1.05;color:#cbd5e1;white-space:nowrap;overflow:hidden}.competitor-country-name{overflow:hidden;text-overflow:ellipsis}.competitor-flag{flex:0 0 auto;width:clamp(16px,1.2vw,25px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:2px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'
+          if s.count(new_css)!=1:
+              raise SystemExit(f'new finalist CSS match count {s.count(new_css)}')
+          s=s.replace(new_css,old_css,1)
+
+          new_markup='<div class="competitor-identity"><div class="competitor-name"><?=e(ProjectionNameService::firstName((string)$x["display_name"]))?></div><?php if(!empty($x["country"])&&($flagUrl=country_flag_url((string)$x["country"]))):?><img class="competitor-flag" src="<?=e($flagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?></div>'
+          old_markup='<div class="competitor-identity"><div class="competitor-name"><?=e((string)$x["display_name"])?></div><div class="competitor-country"><?php if(!empty($x["country"])):$flagUrl=country_flag_url((string)$x["country"]);?><?php if($flagUrl):?><img class="competitor-flag" src="<?=e($flagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?><span class="competitor-country-name"><?=e((string)$x["country"])?></span><?php else:?><span class="competitor-country-name">Country not listed</span><?php endif;?></div></div>'
+          if s.count(new_markup)!=1:
+              raise SystemExit(f'new finalist markup match count {s.count(new_markup)}')
+          s=s.replace(new_markup,old_markup,1)
+          p.write_text(s)
+
+          v=Path('VERSION.json'); data=json.loads(v.read_text())
+          if data.get('version')!='2.3.3-dev653' or data.get('build')!=3359:
+              raise SystemExit(f'Unexpected VERSION.json {data.get("version")} build {data.get("build")}')
+          data['version']='2.3.3-dev654'; data['build']=3360; data['release_date']='2026-09-06'
+          data.setdefault('features',[]).insert(0,'Restores the existing Finalists leader/follower projector presentation exactly as it was before dev653. The name/flag redesign is no longer applied to the Finalists screen; Finalist Couples remains a separate renderer and must be changed independently.')
+          v.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+
+          Path('RELEASE-v2.3.3-dev654.md').write_text('''# BDC v2.3.3-dev654 — Restore Finalists screen\n\nBuild 3360\n\n## Changes\n\n- Restores the Finalists Leaders/Followers projector cards to the exact pre-dev653 presentation.\n- Reverts the accidental first-name-only and inline-flag change on Finalists.\n- Does not alter scoring, finalist data, photos, BIBs, role panels, pagination or grid logic.\n- Finalist Couples is a separate renderer and is not changed by this rollback.\n\n## Validation\n\n- PHP 8.1 syntax check.\n- Guarded assertions ensure the Finalists country row and original name sizing are restored.\n''')
+
+          test=Path('tests/restore-finalists-screen-v654.php')
+          test.write_text(r'''<?php
+declare(strict_types=1);
+$f=file_get_contents(__DIR__.'/../live-display/feed.php');
+if(!str_contains($f,'font-size:clamp(11px,.9vw,19px)'))throw new RuntimeException('Original Finalists name sizing not restored');
+if(!str_contains($f,'competitor-country-name'))throw new RuntimeException('Original Finalists country row not restored');
+if(!str_contains($f,'<?=e((string)$x["display_name"])?>'))throw new RuntimeException('Full Finalists display name not restored');
+echo "restore finalists screen v654: PASS\n";
+''')
+          PY
+          php -l live-display/feed.php
+          php tests/restore-finalists-screen-v654.php
+          git diff --check
+      - name: Commit restored screen
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/restore-finalists-screen-v654.yml
+          git rm -f .github/workflows/apply-final-couple-name-flag-v654.yml 2>/dev/null || true
+          git add live-display/feed.php tests/restore-finalists-screen-v654.php VERSION.json RELEASE-v2.3.3-dev654.md
+          git diff --cached --check
+          git commit -m 'Release dev654 restore Finalists projector screen'
+          git push origin HEAD:develop
