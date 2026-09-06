@@ -1,0 +1,40 @@
+name: Restore Feed to dev652 v654
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/restore-feed-dev652-v654.yml
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Restore known good projector feed
+        run: |
+          git checkout 38c2c88ce534d0040dd3f5eeba97601ffd0802cc -- live-display/feed.php
+          php -l live-display/feed.php
+          grep -q 'font-size:clamp(11px,.9vw,19px)' live-display/feed.php
+          grep -q 'competitor-country-name' live-display/feed.php
+          python3 -c "import json; p='VERSION.json'; d=json.load(open(p)); assert d['version']=='2.3.3-dev653' and d['build']==3359; d['version']='2.3.3-dev654'; d['build']=3360; d['release_date']='2026-09-06'; d['features'].insert(0,'Restores live-display/feed.php exactly to the known-good dev652 projector state after the accidental dev653 Finalists screen modification.'); open(p,'w').write(json.dumps(d,indent=2,ensure_ascii=False)+'\\n')"
+          printf '# BDC v2.3.3-dev654 — Restore known-good projector feed\n\nBuild 3360\n\nRestores live-display/feed.php exactly to dev652 after the accidental dev653 Finalists screen change.\n' > RELEASE-v2.3.3-dev654.md
+          git diff --check
+      - name: Commit rollback
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/restore-feed-dev652-v654.yml
+          git rm -f .github/workflows/restore-finalists-screen-v654.yml 2>/dev/null || true
+          git rm -f .github/workflows/apply-final-couple-name-flag-v654.yml 2>/dev/null || true
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev654.md
+          git diff --cached --check
+          git commit -m 'Release dev654 restore known-good projector feed'
+          git push origin HEAD:develop
