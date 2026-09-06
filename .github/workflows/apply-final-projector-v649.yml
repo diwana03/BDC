@@ -1,0 +1,99 @@
+name: Apply Final Projector v649
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/apply-final-projector-v649.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Apply guarded projector patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace_once(path, old, new, label):
+              p=Path(path); s=p.read_text()
+              n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {n}')
+              p.write_text(s.replace(old,new,1))
+
+          replace_once('admin/live-screen/control.php',
+          '''                "judges" => "Judges",\n                "competitors" => "Finalists / Couples",''',
+          '''                "judges" => "Judges",\n                "finalists" => "Finalists",\n                "competitors" => "Finalist Couples",''',
+          'final control sequence')
+
+          old='''} elseif (in_array($type, ["callbacks", "finalists"], true)) {\n    $title = $type === "callbacks" ? "CALLBACKS" : "FINALISTS";\n    $q = $pdo->prepare(\n        "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url,sr.rank_number FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') ORDER BY sr.rank_number,se.display_name",\n    );\n    $q->execute(["r" => $roundId]);\n    $items = $q->fetchAll();\n} elseif ($type === "score_matrix") {'''
+          new='''} elseif (in_array($type, ["callbacks", "finalists"], true)) {\n    $title = $type === "callbacks" ? "CALLBACKS" : "FINALISTS";\n    if ($type === "finalists" && (string) $r["round_type"] === "final") {\n        $q = $pdo->prepare(\n            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 WHEN 'follower' THEN 2 ELSE 3 END,se.bib_number IS NULL,se.bib_number,se.display_name",\n        );\n    } else {\n        $q = $pdo->prepare(\n            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url,sr.rank_number FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') ORDER BY sr.rank_number,se.display_name",\n        );\n    }\n    $q->execute(["r" => $roundId]);\n    $items = $q->fetchAll();\n} elseif ($type === "score_matrix") {'''
+          replace_once('live-display/feed.php',old,new,'final finalists query')
+
+          replace_once('live-display/feed.php',
+          '''$splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&(string)$r["round_type"]!=="final";''',
+          '''$splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&((string)$r["round_type"]!=="final"||$type==="finalists");''',
+          'final finalists split roster')
+
+          replace_once('live-display/feed.php',
+          '''<body data-projector-theme="<?=e($projectorTheme)?>" data-custom-background="<?=$hasCustomHolding?'1':'0'?>">''',
+          '''<body data-projector-theme="<?=e($projectorTheme)?>" data-custom-background="<?=$hasCustomHolding?'1':'0'?>" data-screen-type="<?=e($type)?>">''',
+          'projector body screen type')
+
+          replace_once('live-display/feed.php',
+          '''../public/css/projector-safe-v616.css?v=645''',
+          '''../public/css/projector-safe-v616.css?v=650''',
+          'feed safe css cache')
+
+          replace_once('live-display/index.php',
+          '''safe.href='../public/css/projector-safe-v616.css?v=649' ''',
+          '''safe.href='../public/css/projector-safe-v616.css?v=650' ''',
+          'wrapper safe css cache')
+
+          safe=Path('public/css/projector-safe-v616.css')
+          css=safe.read_text()
+          marker='/* Final couple board v649: equal five-column cards, centred incomplete row, full BIB visibility. */'
+          if marker in css:
+              raise SystemExit('final couple css already present')
+          css += '''\n\n/* Final couple board v649: equal five-column cards, centred incomplete row, full BIB visibility. */\nbody[data-screen-type="final_couples"] .stage .list {\n  grid-template-columns:repeat(10,minmax(0,1fr)) !important;\n  grid-auto-rows:minmax(0,1fr) !important;\n  gap:.7% !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item {\n  grid-column:span 2;\n  justify-content:flex-start !important;\n  min-height:0 !important;\n  padding:clamp(4px,.55vw,10px) !important;\n  font-size:clamp(10px,.92vw,22px) !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item:last-child:nth-child(5n+1) { grid-column:5 / span 2; }\nbody[data-screen-type="final_couples"] .stage .list > .item:nth-last-child(2):nth-child(5n+1) { grid-column:4 / span 2; }\nbody[data-screen-type="final_couples"] .stage .list > .item:nth-last-child(3):nth-child(5n+1) { grid-column:3 / span 2; }\nbody[data-screen-type="final_couples"] .stage .list > .item:nth-last-child(4):nth-child(5n+1) { grid-column:2 / span 2; }\nbody[data-screen-type="final_couples"] .stage .list > .item > .small:first-child {\n  flex:0 0 auto;\n  line-height:1 !important;\n  margin-bottom:clamp(2px,.25vh,4px) !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item > div:nth-child(2) {\n  flex:1 1 auto;\n  min-height:0;\n  align-items:flex-start !important;\n  margin:.12em 0 0 !important;\n  gap:clamp(6px,.55vw,12px) !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item > div:nth-child(2) > div {\n  height:100%;\n  justify-content:flex-start !important;\n  gap:clamp(1px,.18vh,3px);\n}\nbody[data-screen-type="final_couples"] .stage .list > .item .photo {\n  width:min(5.8vw,7.8vh) !important;\n  height:min(5.8vw,7.8vh) !important;\n  margin:0 0 clamp(2px,.25vh,4px) !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item .name {\n  font-size:clamp(9px,.78vw,18px) !important;\n  line-height:1.02 !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item .small { line-height:1.02 !important; }\nbody[data-screen-type="final_couples"] .stage .list > .item .flight-country {\n  margin-top:clamp(1px,.15vh,3px) !important;\n  font-size:.58em !important;\n  gap:clamp(1px,.15vh,3px) !important;\n}\nbody[data-screen-type="final_couples"] .stage .list > .item .flight-country img {\n  width:clamp(22px,1.8vw,38px) !important;\n}\n'''
+          safe.write_text(css)
+
+          replace_once('tests/projector-judge-country-runtime-v648.js',
+          '''safe.href='../public/css/projector-safe-v616.css?v=649' ''',
+          '''safe.href='../public/css/projector-safe-v616.css?v=650' ''',
+          'judge projector regression cache')
+
+          test=Path('tests/projector-finalists-v649.js')
+          test.write_text('''const fs = require('fs');\nconst control=fs.readFileSync('admin/live-screen/control.php','utf8');\nconst feed=fs.readFileSync('live-display/feed.php','utf8');\nconst safe=fs.readFileSync('public/css/projector-safe-v616.css','utf8');\nif(!control.includes('"finalists" => "Finalists"')||!control.includes('"competitors" => "Finalist Couples"')) throw new Error('Final controls must separate Finalists and Finalist Couples.');\nif(!feed.includes('$type === "finalists" && (string) $r["round_type"] === "final"')) throw new Error('Finalists must read Final round entries before matching.');\nif(!feed.includes('$type==="finalists"')) throw new Error('Final Finalists must use split Leader/Follower roster.');\nif(!feed.includes('data-screen-type="<?=e($type)?>"')) throw new Error('Projector renderer must expose screen type for scoped layout.');\nif(!safe.includes('body[data-screen-type="final_couples"] .stage .list')) throw new Error('Final couple layout must be scoped.');\nif(!safe.includes('nth-last-child(2):nth-child(5n+1)')) throw new Error('Two-card incomplete row must stay centred at fixed width.');\nconsole.log('projector finalists v649: PASS');\n''')
+
+          version=Path('VERSION.json')
+          data=json.loads(version.read_text())
+          if data.get('version')!='2.3.3-dev648' or data.get('build')!=3354:
+              raise SystemExit(f'Unexpected VERSION.json {data.get("version")} build {data.get("build")}')
+          data['version']='2.3.3-dev649'; data['build']=3355; data['release_date']='2026-09-06'
+          feature='Adds a separate Finalists projector screen before matching with Leaders and Followers shown individually, then keeps Finalist Couples on equal five-column cards with centred incomplete rows and fully visible BIBs without changing scoring, matching, judge or header logic.'
+          data.setdefault('features',[]).insert(0,feature)
+          version.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+
+          Path('RELEASE-v2.3.3-dev649.md').write_text('''# BDC v2.3.3-dev649 — Final projector roster and couple layout\n\nBuild 3355\n\n## Changes\n\n- Adds a dedicated Finalists screen before Finalist Couples in Final projection controls.\n- Finalists reads the active Final round entries directly and reuses the existing split Leader / Follower roster cards with photo, BIB, name, flag and country.\n- Keeps matching and scoring data untouched; Finalist Couples remains the paired view.\n- Keeps every Finalist Couple card at the same five-column width, centres incomplete final rows, tightens only the pair-card interior, and prevents BIB clipping.\n- Preserves the existing logo/header gap, judge layout, scoring status, relative placement matrix, Emcee matching, podium and result logic.\n- Bumps the projector safe stylesheet cache so the layout cannot remain stale in the outer projector browser.\n\n## Validation\n\n- PHP 8.1 syntax validation for the changed PHP files.\n- Full JavaScript regression suite.\n- No database migration.\n\n## Deployment status\n\n- Candidate source: `develop`.\n- Production remains blocked until the exact Staging commit is runtime verified.\n''')
+          PY
+          php -l admin/live-screen/control.php
+          php -l live-display/feed.php
+          php -l live-display/index.php
+          find tests -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node
+          git diff --check
+      - name: Commit guarded patch
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add admin/live-screen/control.php live-display/feed.php live-display/index.php public/css/projector-safe-v616.css tests/projector-judge-country-runtime-v648.js tests/projector-finalists-v649.js VERSION.json RELEASE-v2.3.3-dev649.md
+          git commit -m 'Release dev649 Final projector roster and couple layout'
+          git push origin HEAD:develop
