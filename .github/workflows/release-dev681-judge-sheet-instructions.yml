@@ -1,0 +1,21 @@
+name: Release dev681 Judge Sheet Instructions
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev681-judge-sheet-instructions.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev681-judge-sheet-instructions
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev681 release
+        run: bash .github/scripts/release-dev681-judge-sheet-instructions.sh
