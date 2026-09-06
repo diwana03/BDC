@@ -1,0 +1,56 @@
+name: Audience Projection v668
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/audience-projection-v668.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: develop}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.1', coverage: none}
+      - name: Audience readability pass
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php'); s=p.read_text()
+          anchor='.matrix-heats .heats-flag{flex:0 0 auto;width:clamp(28px,1.75vw,42px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'
+          if s.count(anchor)!=1: raise SystemExit('matrix anchor mismatch')
+          css='''
+/* Audience-first projector typography: identity and live marks must read from ballroom distance. */
+.matrix-heats th:first-child,.matrix-heats td:first-child{font-size:clamp(12px,.78vw,18px)!important;font-weight:950}
+.matrix-heats th:nth-child(2){font-size:clamp(11px,.7vw,16px)!important}.matrix-heats td:nth-child(2){font-size:clamp(19px,1.35vw,32px)!important;font-weight:950!important}
+.matrix-heats th:nth-child(n+4){font-size:clamp(11px,.68vw,16px)!important;line-height:1.02}.matrix-heats th:nth-child(n+4) small{font-size:clamp(7px,.42vw,10px)!important;line-height:1}
+.matrix-heats td:nth-child(n+4){font-size:clamp(15px,1vw,24px)!important;font-weight:950!important}
+.matrix-heats th:last-child{font-size:clamp(10px,.62vw,15px)!important}.matrix-heats td:last-child{font-size:clamp(16px,1.05vw,25px)!important;font-weight:950!important}
+.matrix-final th:first-child,.matrix-final td:first-child{width:11%!important}.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:45%!important}
+.matrix-final .final-matrix-couple{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);width:100%;max-width:none!important;overflow:visible!important;font-size:clamp(16px,1.05vw,25px)!important}
+.matrix-final .final-matrix-person{display:grid!important;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;max-width:none!important;overflow:hidden}
+.matrix-final .final-matrix-person strong{font-size:.9em!important;white-space:nowrap}.matrix-final .final-matrix-person span{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1em!important}
+.matrix-final .final-matrix-flag{width:clamp(25px,1.5vw,36px)!important}.matrix-final .final-matrix-amp{margin:0!important;font-size:1.05em}
+.matrix-final th:nth-child(n+3){font-size:clamp(9px,.54vw,13px)!important}.matrix-final th:nth-child(n+3) small{font-size:clamp(6px,.38vw,9px)!important}.matrix-final td:nth-child(n+3){font-size:clamp(14px,.88vw,21px)!important;font-weight:950!important}
+'''
+          s=s.replace(anchor,anchor+css,1); p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev667' or d.get('build')!=3373: raise SystemExit('unexpected baseline')
+          d['version']='2.3.3-dev668'; d['build']=3374
+          d.setdefault('features',[]).insert(0,'Audience-friendly projection rule: Heats live marks, judge labels, provisional rank and score are ballroom-readable; Final couple identities use the full Couple column with readable BIB, real flags and names while preserving all 12 rows.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev668.md').write_text('# BDC v2.3.3-dev668 — Audience-friendly projection\n\nBuild 3374\n\nHeats: larger live marks, judge labels, rank and score without shrinking competitor identity. Final: full-width couple identities with BIB + real flag + readable name, compact judges, all 12 rows. Projection rule: prioritize ballroom audience readability over desktop density.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/audience-projection-v668.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev668.md
+          git diff --cached --check
+          git commit -m 'Release dev668 audience friendly projection matrices'
+          git push origin HEAD:develop
