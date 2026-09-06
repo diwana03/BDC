@@ -17,6 +17,7 @@ assert(page.includes('str_contains($r[\'search\'],wdcpLower($q))'),'premium sear
 assert(!nav.includes('WDC Premium Preview')&&!fs.existsSync('admin/dance-cup/competitors-premium.php'),'unrequested preview remains');
 assert(edit.includes('WDC COMPETITOR PROFILE')&&!edit.includes('name="photo_url"'),'premium editor or raw photo URL removal missing');
 for(const marker of ['WDC PHOTO STUDIO','cropped_photo_data','Save adjusted photo','Upload replacement','pointermove','toDataURL'])assert(photo.includes(marker),'photo studio missing '+marker);
+for(const marker of ['replaceForm','replacementPhoto','createImageBitmap','DataTransfer','Uploading optimized photo','UPLOAD_ERR_INI_SIZE'])assert(photo.includes(marker),'resilient WDC replacement upload missing '+marker);
 assert(formSync.includes("static fn(array $c):int=>(int)$c['id']")&&!formSync.includes("static fn(array $c):(int)"),'PHP gate blocker in Google Form sync remains');
 assert(eventIntegration.includes("$role=$roles?strtolower(trim((string)($row['role']??''))):'';")&&!eventIntegration.includes("($row['role']??'')):''"),'PHP gate blocker in event integration remains');
 assert(automaticLiveData.includes(".'/bootstrap.php';"),'PHP gate blocker in automatic scoring live-data endpoint remains');
