@@ -1,0 +1,76 @@
+name: Heats Readability v670
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/heats-readability-v670.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply audience scoring text pass
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          css_path=Path('public/css/projector-safe-v616.css')
+          css=css_path.read_text()
+          marker='/* dev670 Heats secondary scoring readability */'
+          if marker in css:
+              raise SystemExit('dev670 already applied')
+          css += r'''
+
+/* dev670 Heats secondary scoring readability */
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:first-child,
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:first-child{
+  font-size:clamp(16px,1vw,24px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4){
+  font-size:clamp(17px,1.02vw,24px)!important;
+  font-weight:950!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) small{
+  font-size:clamp(11px,.68vw,16px)!important;
+  font-weight:900!important;
+  margin-top:.22em!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(n+4){
+  font-size:clamp(23px,1.45vw,34px)!important;
+  font-weight:950!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child{
+  font-size:clamp(25px,1.58vw,37px)!important;
+  font-weight:950!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .provisional-label{
+  font-size:clamp(13px,.84vw,19px)!important;
+  font-weight:950!important;
+}
+'''
+          css_path.write_text(css)
+          v=Path('VERSION.json')
+          d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev669' or d.get('build')!=3375:
+              raise SystemExit('unexpected version baseline')
+          d['version']='2.3.3-dev670'
+          d['build']=3376
+          d.setdefault('features',[]).insert(0,'Heats audience readability refinement: larger J labels, judge names, YES/A marks, Score and provisional rank while preserving the approved BIB, flag and competitor-name sizing and two-panel layout.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev670.md').write_text('# BDC v2.3.3-dev670 — Heats scoring readability\n\nBuild 3376\n\nEnlarges J labels, judge names, live marks, Score and provisional rank on the Heats projector while preserving the approved identity sizing and layout.\n')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/heats-readability-v670.yml
+          git add public/css/projector-safe-v616.css VERSION.json RELEASE-v2.3.3-dev670.md
+          git diff --cached --check
+          git commit -m 'Release dev670 Heats scoring readability'
+          git push origin HEAD:develop
