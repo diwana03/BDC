@@ -1,0 +1,21 @@
+name: Release dev680 Migration Judge Instructions
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev680-migration-judge-instructions.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev680-migration-judge-instructions
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev680 release
+        run: bash .github/scripts/release-dev680-migration-judge-instructions.sh
