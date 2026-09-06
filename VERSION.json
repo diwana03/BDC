@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev681",
-  "build": 3388,
+  "version": "2.3.3-dev682",
+  "build": 3389,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Approval-gated MCP competitor photo replacement: stages a validated JPG, PNG or WebP against one exact BDC or SDC identity, changes no profile or division fields, deduplicates retries, rechecks identity at approval, and publishes only after Super Admin review.",
     "Completes tier-aware Heats wording on the active judge scoring sheet as well as the criteria screen: each assigned role shows Tier, competitor count, “Choose N YES for your Top N best dancers,” dynamic A1/A2/A3 places, NO guidance and private-comment guidance.",
     "Production migration repair and tier-aware judge instructions: the role-specific YES migration now returns the callable required by MigrationRunner, and Heats instructions show role, Tier, competitor count, “Choose N YES for your Top N best dancers,” dynamic A1/A2/A3 places, NO guidance and private-comment guidance using the saved role YES configuration.",
     "Role-specific YES source of truth for Special Category Heats: independently saves and locks Lead and Follow YES counts, keeps legacy shared yes_count as fallback until saved, makes judge limits, submission validation, counters and callback generation consume the saved role values, and keeps judge instructions simple without exposing tier logic; weights, Salsa Open fixed points, Finals and projection are unchanged.",

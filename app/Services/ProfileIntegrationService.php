@@ -13,6 +13,16 @@ final class ProfileIntegrationService
 
     public static function submitBatch(PDO $pdo,array $input):array
     {
+        return self::submit($pdo,$input,false);
+    }
+
+    public static function submitMcpCompetitorPhotoBatch(PDO $pdo,array $input):array
+    {
+        return self::submit($pdo,$input,true);
+    }
+
+    private static function submit(PDO $pdo,array $input,bool $mcpPhotoOnly):array
+    {
         $batchKey=substr(trim((string)($input['batch_key']??'')),0,191);
         $source=substr(trim((string)($input['source_system']??'profile_api')),0,80)?:'profile_api';
         $items=$input['items']??null;
@@ -24,19 +34,20 @@ final class ProfileIntegrationService
         if(!$batch||!hash_equals((string)$batch['source_system'],$source))throw new RuntimeException('This batch_key belongs to another source system.');
         $results=[];
         foreach($items as $index=>$item){
-            try{$results[]=self::stageItem($pdo,(int)$batch['id'],$source,is_array($item)?$item:[],(int)$index);}
+            try{$results[]=self::stageItem($pdo,(int)$batch['id'],$source,is_array($item)?$item:[],(int)$index,$mcpPhotoOnly);}
             catch(Throwable $e){$results[]=['index'=>$index,'status'=>'failed','error'=>$e->getMessage()];}
         }
         self::refreshBatch($pdo,(int)$batch['id']);
         return ['batch_key'=>$batchKey,'batch_id'=>(int)$batch['id'],'status'=>'pending_review','items'=>$results];
     }
 
-    private static function stageItem(PDO $pdo,int $batchId,string $source,array $item,int $index):array
+    private static function stageItem(PDO $pdo,int $batchId,string $source,array $item,int $index,bool $mcpPhotoOnly=false):array
     {
         $entity=strtolower(trim((string)($item['entity_type']??'')));
         if(!in_array($entity,['competitor','judge','wdc_identity'],true))throw new RuntimeException('entity_type must be competitor, judge or wdc_identity.');
         $scopeEntity=$entity==='wdc_identity'?'competitor':$entity;
-        if(!ProfileIntegrationAuth::allowed($scopeEntity))throw new RuntimeException('The integration token is not permitted to submit '.$entity.' updates.');
+        if($mcpPhotoOnly){if($entity!=='competitor')throw new RuntimeException('The MCP photo tool may stage competitor photos only.');}
+        elseif(!ProfileIntegrationAuth::allowed($scopeEntity))throw new RuntimeException('The integration token is not permitted to submit '.$entity.' updates.');
         $sourceKey=substr(trim((string)($item['source_key']??'')),0,191);if($sourceKey==='')throw new RuntimeException('source_key is required for every item.');
         $payload=is_array($item['payload']??null)?$item['payload']:[];
         $canonical=$entity==='competitor'?self::competitorPayload($payload):($entity==='judge'?self::judgePayload($payload):self::wdcPayload($payload));
@@ -55,6 +66,16 @@ final class ProfileIntegrationService
 
     private static function competitorPayload(array $p):array
     {
+        $operation=strtolower(trim((string)($p['operation']??'upsert')));
+        if($operation==='photo_replace'){
+            $allowed=['operation','identity_code','photo_base64','photo_mime','photo_name'];
+            if(array_diff(array_keys($p),$allowed))throw new RuntimeException('Competitor photo replacement contains unsupported fields.');
+            $identity=strtoupper(trim((string)($p['identity_code']??'')));
+            if(!preg_match('/^(BDC|SDC)-\d+$/',$identity))throw new RuntimeException('Competitor photo replacement requires a valid BDC or SDC ID.');
+            if(trim((string)($p['photo_base64']??''))==='')throw new RuntimeException('Competitor photo replacement requires an original JPG, PNG or WebP image.');
+            return ['operation'=>'photo_replace','bdc_id'=>str_starts_with($identity,'BDC-')?$identity:'','sdc_id'=>str_starts_with($identity,'SDC-')?$identity:'','identity_code'=>$identity,'photo_base64'=>(string)$p['photo_base64'],'photo_mime'=>(string)($p['photo_mime']??''),'photo_name'=>(string)($p['photo_name']??'')];
+        }
+        if($operation!=='upsert')throw new RuntimeException('Invalid competitor operation.');
         $kind=strtolower(trim((string)($p['form_kind']??'')));if(!in_array($kind,['amateur','open'],true))throw new RuntimeException('Competitor form_kind must be amateur or open.');
         $name=trim((string)($p['full_name']??''));if($name===''||mb_strlen($name)>190)throw new RuntimeException('A valid competitor full_name is required.');
         $role=strtolower(trim((string)($p['role']??'')));$role=str_contains($role,'follow')?'follower':(str_contains($role,'lead')?'leader':$role);if(!in_array($role,['leader','follower','both'],true))throw new RuntimeException('Competitor role must be Lead, Follow or Both.');
@@ -173,6 +194,14 @@ final class ProfileIntegrationService
     {
         $id=(int)($u['target_id']??0);if(!$id){$created=CompetitorIdentityService::findOrCreateOfficial($pdo,$p['full_name'],$p['role']);$id=(int)$created['id'];}
         $q=$pdo->prepare('SELECT * FROM bdc_competitors WHERE id=:id');$q->execute(['id'=>$id]);$current=$q->fetch();if(!$current)throw new RuntimeException('Matched competitor no longer exists.');
+        if(($p['operation']??'upsert')==='photo_replace'){
+            if(str_starts_with((string)$p['identity_code'],'BDC-'))$actual=(string)($current['bdc_id']??'');
+            else{$identity=$pdo->prepare("SELECT sdc_id FROM bdc_sdc_competitors WHERE competitor_id=:id AND status='active' LIMIT 1");$identity->execute(['id'=>$id]);$actual=(string)($identity->fetchColumn()?:'');}
+            if(!hash_equals((string)$p['identity_code'],$actual))throw new RuntimeException('Competitor identity changed after review submission.');
+            [$photo,$path]=self::publishPhoto($u,'competitors','competitor-'.$id);if(!$photo||!$path)throw new RuntimeException('The approved competitor photo replacement is missing.');
+            $pdo->prepare('UPDATE bdc_competitors SET photo_url=:photo,original_photo_url=:original WHERE id=:id')->execute(['photo'=>$photo,'original'=>$photo,'id'=>$id]);
+            return ['id'=>$id,'new_photo_path'=>$path];
+        }
         if(in_array('bachata',$p['styles'],true)&&trim((string)($current['bdc_id']??''))===''){$code=self::allocateBdcIdentity($pdo,$id);$current['bdc_id']=$code;}
         $replace=(array)($p['replace_fields']??[]);$value=static fn(string $field,string $incoming):?string=>$incoming!==''&&((string)($current[$field]??'')===''||in_array($field==='exact_name'?'full_name':$field,$replace,true))?$incoming:($current[$field]??null);
         [$photo,$path]=self::publishPhoto($u,'competitors','competitor-'.$id);if(!$photo)$photo=(string)($current['photo_url']??'');

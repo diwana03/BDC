@@ -9,5 +9,5 @@ if(!feed.includes('$type==="finalists"'))throw new Error('Finalists must use exi
 if(!feed.includes('data-screen-type="<?=e($type)?>"'))throw new Error('Scoped projector screen type missing');
 if(!safe.includes('body[data-screen-type="final_couples"] .stage .list'))throw new Error('Final couple layout is not scoped');
 if(!safe.includes('nth-last-child(2):nth-child(5n+1)'))throw new Error('Two-card final row centering missing');
-if(!shell.includes('projector-safe-v616.css?v=650'))throw new Error('Outer projector safe CSS cache not refreshed');
+if(!shell.includes('projector-safe-v616.css?v=675'))throw new Error('Outer projector safe CSS cache not refreshed');
 console.log('projector finalists v649: PASS');
