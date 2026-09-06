@@ -1,0 +1,102 @@
+name: Audience Projection v668 Fix
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/audience-projection-v668-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Apply audience-friendly projector pass
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          feed = Path('live-display/feed.php')
+          s = feed.read_text()
+          anchor = '.matrix-heats .heats-flag{flex:0 0 auto;width:clamp(28px,1.75vw,42px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'
+          if s.count(anchor) != 1:
+              raise SystemExit('feed matrix anchor mismatch')
+          css = '''
+/* Audience-first projector typography. */
+.matrix-heats th:first-child,.matrix-heats td:first-child{font-size:clamp(12px,.78vw,18px)!important;font-weight:950}
+.matrix-heats th:nth-child(2){font-size:clamp(11px,.7vw,16px)!important}.matrix-heats td:nth-child(2){font-size:clamp(19px,1.35vw,32px)!important;font-weight:950!important}
+.matrix-heats th:nth-child(n+4){font-size:clamp(11px,.68vw,16px)!important;line-height:1.02}.matrix-heats th:nth-child(n+4) small{font-size:clamp(7px,.42vw,10px)!important;line-height:1}
+.matrix-heats td:nth-child(n+4){font-size:clamp(15px,1vw,24px)!important;font-weight:950!important}
+.matrix-heats th:last-child{font-size:clamp(10px,.62vw,15px)!important}.matrix-heats td:last-child{font-size:clamp(16px,1.05vw,25px)!important;font-weight:950!important}
+.matrix-final th:first-child,.matrix-final td:first-child{width:11%!important}.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:45%!important}
+.matrix-final .final-matrix-couple{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);width:100%;max-width:none!important;overflow:visible!important;font-size:clamp(16px,1.05vw,25px)!important}
+.matrix-final .final-matrix-person{display:grid!important;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;max-width:none!important;overflow:hidden}
+.matrix-final .final-matrix-person strong{font-size:.9em!important;white-space:nowrap}.matrix-final .final-matrix-person span{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1em!important}
+.matrix-final .final-matrix-flag{width:clamp(25px,1.5vw,36px)!important}.matrix-final .final-matrix-amp{margin:0!important;font-size:1.05em}
+.matrix-final th:nth-child(n+3){font-size:clamp(9px,.54vw,13px)!important}.matrix-final th:nth-child(n+3) small{font-size:clamp(6px,.38vw,9px)!important}.matrix-final td:nth-child(n+3){font-size:clamp(14px,.88vw,21px)!important;font-weight:950!important}
+'''
+          if css not in s:
+              s = s.replace(anchor, anchor + css, 1)
+          feed.write_text(s)
+
+          legacy = Path('live-display/final-relative-placement.php')
+          t = legacy.read_text()
+          old_query = 'SELECT fp.id,fp.pair_number,le.display_name leader_name,fe.display_name follower_name,lc.country leader_country,fc.country follower_country,fr.final_rank'
+          new_query = 'SELECT fp.id,fp.pair_number,le.bib_number leader_bib,le.display_name leader_name,fe.bib_number follower_bib,fe.display_name follower_name,lc.country leader_country,fc.country follower_country,fr.final_rank'
+          if old_query not in t:
+              raise SystemExit('legacy query anchor missing')
+          t = t.replace(old_query, new_query, 1)
+          t = t.replace("$pairs=ProjectionNameService::abbreviateRows($pairs,['leader_name','follower_name']);\n", '', 1)
+          old_head = "<?php foreach($judges as $j):?><th>J<?=(int)$j['judge_order']?><?=(int)$j['is_chief']?'★':''?></th><?php endforeach;?>"
+          new_head = "<?php foreach($judges as $j):?><th>J<?=(int)$j['judge_order']?><?=(int)$j['is_chief']?'★':''?><br><small><?=e((string)($j['full_name']?:$j['judge_name']))?></small></th><?php endforeach;?>"
+          if old_head not in t:
+              raise SystemExit('legacy judge header anchor missing')
+          t = t.replace(old_head, new_head, 1)
+          old_cell = "<td><strong>Couple <?=(int)$p['pair_number']?></strong> · <?=$leaderFlag!==''?e($leaderFlag).' ':''?><?=e($p['leader_name'])?> &amp; <?=$followerFlag!==''?e($followerFlag).' ':''?><?=e($p['follower_name'])?></td>"
+          new_cell = "<td class=\"aud-couple\"><span class=\"aud-person\"><strong>BIB <?=(int)$p['leader_bib']?></strong><?php if($lf=country_flag_url((string)($p['leader_country']??''))):?><img src=\"<?=e($lf)?>\" alt=\"flag\"><?php endif;?><span><?=e((string)$p['leader_name'])?></span></span><span class=\"aud-amp\">&amp;</span><span class=\"aud-person\"><strong>BIB <?=(int)$p['follower_bib']?></strong><?php if($ff=country_flag_url((string)($p['follower_country']??''))):?><img src=\"<?=e($ff)?>\" alt=\"flag\"><?php endif;?><span><?=e((string)$p['follower_name'])?></span></span></td>"
+          if old_cell not in t:
+              raise SystemExit('legacy couple cell anchor missing')
+          t = t.replace(old_cell, new_cell, 1)
+          legacy_css = '''
+<style>
+.stage{padding:1.15vw 1.55vw .85vw!important}.event{font-size:clamp(24px,2.05vw,50px)!important}.meta{font-size:clamp(13px,1vw,24px)!important}h1{font-size:clamp(28px,2.35vw,58px)!important;margin:.28em 0 .42em!important}.wrap{align-items:stretch!important}.wrap table{height:100%!important;font-size:clamp(13px,.92vw,22px)!important}.wrap thead{height:7%}.wrap tbody{height:93%}.wrap tbody tr{height:8.333%}.wrap th,.wrap td{padding:0 .28em!important}.wrap th:first-child,.wrap td:first-child{width:9%!important;font-size:clamp(14px,.9vw,21px)!important;font-weight:950}.wrap th:nth-child(2),.wrap td:nth-child(2){width:43%!important;text-align:left!important;padding-left:.45em!important}.wrap th:nth-child(n+3){font-size:clamp(10px,.62vw,15px)!important;line-height:1.02}.wrap th:nth-child(n+3) small{display:block;font-size:clamp(7px,.42vw,10px)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wrap td:nth-child(n+3){font-size:clamp(15px,.95vw,23px)!important;font-weight:950}.aud-couple{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);font-size:clamp(16px,1.08vw,26px)!important;overflow:hidden}.aud-person{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;overflow:hidden}.aud-person strong{font-size:.9em;white-space:nowrap}.aud-person img{width:clamp(25px,1.5vw,36px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}.aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950}.aud-amp{font-weight:950}.key{display:none!important}
+</style>
+'''
+          if legacy_css not in t:
+              t = t.replace('</style></head>', '</style>' + legacy_css + '</head>', 1)
+          legacy.write_text(t)
+
+          v = Path('VERSION.json')
+          d = json.loads(v.read_text())
+          if d.get('version') != '2.3.3-dev667' or d.get('build') != 3373:
+              raise SystemExit('unexpected version baseline')
+          d['version'] = '2.3.3-dev668'
+          d['build'] = 3374
+          d.setdefault('features', []).insert(0, 'Audience-friendly projection rule now covers Heats Live Score Matrix, Final Live Relative Placement Matrix, and the legacy Final Relative Placement screen: readable BIBs, names, flags, live marks, scores and judge labels from ballroom distance without changing scoring logic.')
+          v.write_text(json.dumps(d, indent=2, ensure_ascii=False) + '\n')
+          Path('RELEASE-v2.3.3-dev668.md').write_text('# BDC v2.3.3-dev668 — Audience-friendly projection\n\nBuild 3374\n\nApplies ballroom-readable typography and identity layout to Heats, Final Live Relative Placement, and the legacy Final Relative Placement projector. No scoring logic changes.\n')
+          PY
+          php -l live-display/feed.php
+          php -l live-display/final-relative-placement.php
+          git diff --check
+      - name: Commit verified release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/audience-projection-v668-fix.yml
+          git rm -f .github/workflows/audience-projection-v668.yml || true
+          git add live-display/feed.php live-display/final-relative-placement.php VERSION.json RELEASE-v2.3.3-dev668.md
+          git diff --cached --check
+          git commit -m 'Release dev668 audience friendly projection including legacy final'
+          git push origin HEAD:develop
