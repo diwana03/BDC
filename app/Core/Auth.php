@@ -102,7 +102,7 @@ final class Auth
     {
         $parsed=self::parseTrustedDeviceCookie();if(!$parsed)return false;
         $pdo=Database::connection();
-        $s=$pdo->prepare("SELECT d.id trusted_id,d.user_id,d.token_hash,d.user_agent_hash,u.email,u.full_name,u.role,u.status FROM bdc_trusted_devices d JOIN bdc_users u ON u.id=d.user_id WHERE d.selector=:s AND d.revoked_at IS NULL AND d.expires_at>=NOW() LIMIT 1");
+        $s=$pdo->prepare("SELECT d.id trusted_id,d.user_id,d.user_id id,d.token_hash,d.user_agent_hash,u.email,u.full_name,u.role,u.status FROM bdc_trusted_devices d JOIN bdc_users u ON u.id=d.user_id WHERE d.selector=:s AND d.revoked_at IS NULL AND d.expires_at>=NOW() LIMIT 1");
         $s->execute(['s'=>$parsed['selector']]);$row=$s->fetch();
         $valid=$row
             && (string)$row['status']==='active'
