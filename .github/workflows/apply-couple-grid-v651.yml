@@ -1,0 +1,80 @@
+name: Apply Responsive Finalist Couple Grid v651
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/apply-couple-grid-v651.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Apply guarded finalist couple grid fix
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          def one(path, old, new, label):
+              p=Path(path); s=p.read_text(); n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {n}')
+              p.write_text(s.replace(old,new,1))
+
+          feed='live-display/feed.php'
+          one(feed,
+              '$coupleColumns = min(5, max(1, count($items)));',
+              '$coupleColumns = 5;',
+              'fixed five-column couple basis')
+
+          old_css=".list{display:flex;flex-wrap:wrap;align-content:stretch;gap:.65%;padding-bottom:.45%}.list .item{flex:1 1 calc(<?=number_format(100/$coupleColumns,4,'.','')?>% - .65%);height:calc((100% - <?=number_format(max(0,$coupleRows-1)*.65,2,'.','')?>%)/<?=$coupleRows?>);padding:1%;justify-content:space-evenly}"
+          new_css=".list{display:flex;flex-wrap:wrap;align-content:stretch;justify-content:center;gap:.65%;padding-bottom:.45%}.list .item{box-sizing:border-box;flex:0 0 calc(<?=number_format(100/$coupleColumns,4,'.','')?>% - .65%);height:calc((100% - <?=number_format(max(0,$coupleRows-1)*.65,2,'.','')?>%)/<?=$coupleRows?>);padding:clamp(5px,.7vw,13px);justify-content:space-evenly;min-height:0}"
+          one(feed,old_css,new_css,'non-stretching centered couple rows')
+
+          # Guard the existing official branding so this release cannot alter it.
+          s=Path(feed).read_text()
+          if "<div class=\"projection-official\">BDC · Official Live Display</div>" not in s:
+              raise SystemExit('Existing BDC Official Live Display badge changed unexpectedly')
+          if "url('public/assets/bdc-logo.png')" not in s:
+              raise SystemExit('Existing official BDC logo reference changed unexpectedly')
+
+          Path('tests/final-couple-grid-v651.php').write_text(r'''<?php
+          declare(strict_types=1);
+          $feed=file_get_contents(__DIR__.'/../live-display/feed.php');
+          if(!str_contains($feed,'$coupleColumns = 5;'))throw new RuntimeException('Couple grid is not locked to the standard five-card row');
+          if(!str_contains($feed,'justify-content:center'))throw new RuntimeException('Incomplete couple rows are not centered');
+          if(!str_contains($feed,'flex:0 0 calc('))throw new RuntimeException('Couple cards can still stretch on incomplete rows');
+          if(str_contains($feed,'flex:1 1 calc(<?=number_format(100/$coupleColumns'))throw new RuntimeException('Old stretching couple rule still present');
+          if(!str_contains($feed,'BDC · Official Live Display'))throw new RuntimeException('Official Live Display badge missing');
+          if(!str_contains($feed,"url('public/assets/bdc-logo.png')"))throw new RuntimeException('Official BDC logo reference missing');
+          echo "final couple grid v651: PASS\n";
+          ''')
+
+          version=Path('VERSION.json'); data=json.loads(version.read_text())
+          if data.get('version')!='2.3.3-dev650' or data.get('build')!=3356:
+              raise SystemExit(f'Unexpected VERSION.json {data.get("version")} build {data.get("build")}')
+          data['version']='2.3.3-dev651'; data['build']=3357; data['release_date']='2026-09-06'
+          data.setdefault('features',[]).insert(0,'Makes Finalist Couples and Emcee Random Final Match use one count-safe five-card row system: 1–5 couples form one centered row, 6–10 two rows, 11–15 three rows, and every incomplete last row stays centered at the same card width without stretching; preserves the existing official BDC logo and BDC Official Live Display badge unchanged.')
+          version.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+
+          Path('RELEASE-v2.3.3-dev651.md').write_text('''# BDC v2.3.3-dev651 — responsive finalist couple projector grid\n\nBuild 3357\n\n## Fix\n\n- Finalist Couples and Emcee Random Final Match now use the same fixed five-card row basis.\n- 1–5 couples display as one centered row.\n- 6–10 couples display as two rows.\n- 11–15 couples display as three rows.\n- Incomplete final rows keep the exact same card width and are centered instead of stretching.\n- Card sizing is constrained so BIB/name content stays inside the card.\n- Existing BDC logo, header, BDC Official Live Display badge, scoring, matching and result logic are untouched.\n\n## Validation\n\n- PHP 8.1 syntax check on live-display/feed.php.\n- Focused regression checks five-column basis, no flex-grow stretching, centered incomplete rows, and unchanged official branding references.\n- No database migration.\n''')
+          PY
+          php -l live-display/feed.php
+          php tests/final-couple-grid-v651.php
+          git diff --check
+      - name: Commit verified fix and remove temporary workflow
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/apply-couple-grid-v651.yml
+          git add live-display/feed.php tests/final-couple-grid-v651.php VERSION.json RELEASE-v2.3.3-dev651.md
+          git diff --cached --check
+          git commit -m 'Release dev651 responsive finalist couple grid'
+          git push origin HEAD:develop
