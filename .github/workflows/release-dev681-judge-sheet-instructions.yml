@@ -19,3 +19,4 @@ jobs:
           fetch-depth: 0
       - name: Apply dev681 release
         run: bash .github/scripts/release-dev681-judge-sheet-instructions.sh
+# retry after assertion repair
