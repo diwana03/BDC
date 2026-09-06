@@ -1,0 +1,21 @@
+name: Release dev678 Dance Cup Projection
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev678-dancecup-projection.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev678-dancecup-projection
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev678 release
+        run: bash .github/scripts/release-dev678-dancecup-projection.sh
