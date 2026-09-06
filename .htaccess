@@ -1,5 +1,11 @@
 RewriteEngine On
 
+# dev692: preserve OAuth Bearer Authorization through Apache/FastCGI.
+# Some shared-hosting stacks strip Authorization before PHP unless it is
+# explicitly copied into HTTP_AUTHORIZATION.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Route both the canonical no-slash MCP URL and the directory URL directly to
 # the Streamable HTTP endpoint. This prevents Apache DirectorySlash from
 # redirecting an MCP POST and changing the request method.

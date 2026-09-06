@@ -59,7 +59,7 @@ final class McpOAuthService
 
     public static function refresh(PDO $pdo,string $refresh,string $clientId,string $resource):array
     {
-        self::requireResource($resource);self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_tokens WHERE refresh_hash=:hash AND client_id=:client AND revoked_at IS NULL AND refresh_expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$refresh),'client'=>$clientId]);$row=$s->fetch();if(!$row)throw new RuntimeException('Invalid or expired refresh token.');$pdo->prepare('UPDATE bdc_mcp_oauth_tokens SET revoked_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,$clientId,(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        if($resource!=='')self::requireResource($resource);self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_tokens WHERE refresh_hash=:hash AND client_id=:client AND revoked_at IS NULL AND refresh_expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$refresh),'client'=>$clientId]);$row=$s->fetch();if(!$row)throw new RuntimeException('Invalid or expired refresh token.');$pdo->prepare('UPDATE bdc_mcp_oauth_tokens SET revoked_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,$clientId,(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
     public static function authenticate(PDO $pdo,string $bearer,string $requiredScope):?array
