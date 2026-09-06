@@ -1,0 +1,17 @@
+name: Apply dev672
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/apply-dev672.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply dev672
+        run: bash .github/scripts/heats-v672.sh
