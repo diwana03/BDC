@@ -82,8 +82,9 @@ $entryIdentity=[];
 foreach($entries as &$entry){
     $entry['countries']=CountrySetService::fromRow($entry);
     $entry['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$entry['countries']);
+    $entry['country_codes']=array_map(static fn(string $country):string=>strtolower((string)(CountryFlagService::code($country)??'')),$entry['countries']);
     $entry['flag']=$entry['flags'][0]??'';
-    $entryIdentity[(int)$entry['id']]=['photo_url'=>$entry['photo_url']??null,'country'=>$entry['country']??null,'countries'=>$entry['countries'],'flags'=>$entry['flags']];
+    $entryIdentity[(int)$entry['id']]=['photo_url'=>$entry['photo_url']??null,'country'=>$entry['country']??null,'countries'=>$entry['countries'],'flags'=>$entry['flags'],'country_codes'=>$entry['country_codes']];
 }
 unset($entry);
 foreach($results as &$result){
@@ -91,11 +92,11 @@ foreach($results as &$result){
     if($identity){
         if(empty($result['photo_url']))$result['photo_url']=$identity['photo_url'];
         if(empty($result['country']))$result['country']=$identity['country'];
-        $result['countries']=$identity['countries'];$result['flags']=$identity['flags'];
+        $result['countries']=$identity['countries'];$result['flags']=$identity['flags'];$result['country_codes']=$identity['country_codes'];
     }
 }
 unset($result);
-foreach($judges as &$judge){$judge['countries']=CountrySetService::fromRow($judge);$judge['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$judge['countries']);$judge['flag']=$judge['flags'][0]??'';}unset($judge);
+foreach($judges as &$judge){$judge['countries']=CountrySetService::fromRow($judge);$judge['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$judge['countries']);$judge['country_codes']=array_map(static fn(string $country):string=>strtolower((string)(CountryFlagService::code($country)??'')),$judge['countries']);$judge['flag']=$judge['flags'][0]??'';}unset($judge);
 foreach($results as &$result)$result['flag']=$result['flags'][0]??CountryFlagService::emoji($result['country']??null);unset($result);
 // Match Jack and Jill projection naming: first name only, with a surname
 // initial when the current projected group contains duplicate first names.
