@@ -1,0 +1,21 @@
+name: Release dev679 Role YES Settings
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev679-role-yes-settings.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev679-role-yes-settings
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev679 release
+        run: bash .github/scripts/release-dev679-role-yes-settings.sh
