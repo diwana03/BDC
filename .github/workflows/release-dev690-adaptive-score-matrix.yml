@@ -1,0 +1,21 @@
+name: Release dev690 Adaptive Score Matrix
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev690-adaptive-score-matrix.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev690-adaptive-score-matrix
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply adaptive score matrix
+        run: bash .github/scripts/release-dev690-adaptive-score-matrix.sh
