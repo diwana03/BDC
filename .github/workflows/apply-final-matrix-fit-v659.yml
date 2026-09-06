@@ -1,0 +1,44 @@
+name: Apply Final Matrix Fit v659
+on:
+  push:
+    branches: [develop]
+    paths: [.github/workflows/apply-final-matrix-fit-v659.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: develop}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.1', coverage: none}
+      - name: Fit all 12 final couples without clipping
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+          old='body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix{font-size:clamp(13px,1.12vw,25px);table-layout:fixed}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th,body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td{padding:.48em .38em}'
+          new='body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix{font-size:clamp(12px,1.02vw,23px);table-layout:fixed;height:100%;line-height:1}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th{padding:.32em .34em;line-height:1}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td{padding:.26em .34em;line-height:1}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix tbody tr{height:auto}'
+          if s.count(old)!=1: raise SystemExit(f'final matrix style anchor mismatch {s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev658' or d.get('build')!=3364: raise SystemExit('unexpected version')
+          d['version']='2.3.3-dev659'; d['build']=3365
+          d.setdefault('features',[]).insert(0,'Final matrix safe fit: preserves large readable text while reducing vertical cell padding so all 12 finalist couples remain fully visible inside the 16:9 projector safe area.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev659.md').write_text('# BDC v2.3.3-dev659 — Final matrix safe fit\n\nBuild 3365\n\nKeeps the enlarged Final Live Relative Placement Matrix but tightens vertical row spacing so all 12 finalist couples fit without bottom clipping. No scoring/data changes.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/apply-final-matrix-fit-v659.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev659.md
+          git commit -m 'Release dev659 fit all 12 final matrix rows'
+          git push origin HEAD:develop
