@@ -1,0 +1,21 @@
+name: Release dev687 Clean Heats Instructions
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev687-clean-heats-instructions.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev687-clean-heats-instructions
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev687 clean Heats instructions
+        run: bash .github/scripts/release-dev687-clean-heats-instructions.sh
