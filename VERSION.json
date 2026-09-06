@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev680",
-  "build": 3387,
+  "version": "2.3.3-dev681",
+  "build": 3388,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Completes tier-aware Heats wording on the active judge scoring sheet as well as the criteria screen: each assigned role shows Tier, competitor count, “Choose N YES for your Top N best dancers,” dynamic A1/A2/A3 places, NO guidance and private-comment guidance.",
     "Production migration repair and tier-aware judge instructions: the role-specific YES migration now returns the callable required by MigrationRunner, and Heats instructions show role, Tier, competitor count, “Choose N YES for your Top N best dancers,” dynamic A1/A2/A3 places, NO guidance and private-comment guidance using the saved role YES configuration.",
     "Role-specific YES source of truth for Special Category Heats: independently saves and locks Lead and Follow YES counts, keeps legacy shared yes_count as fallback until saved, makes judge limits, submission validation, counters and callback generation consume the saved role values, and keeps judge instructions simple without exposing tier logic; weights, Salsa Open fixed points, Finals and projection are unchanged.",
     "Dance Cup projector exact-screen repair: removes the rigid 10vh/5vw dead space, shows 10 contestants as a full 2×5 audience board, shows the complete judge panel on one adaptive screen including five judges in one row, prevents country names from vertical character wrapping, and renders real local SVG flags without changing scoring, marks, results or competition data.",
