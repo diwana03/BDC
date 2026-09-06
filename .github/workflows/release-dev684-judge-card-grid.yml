@@ -1,0 +1,21 @@
+name: Release dev684 Judge Card Grid
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev684-judge-card-grid.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev684-judge-card-grid
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev684 judge card grid repair
+        run: bash .github/scripts/release-dev684-judge-card-grid.sh
