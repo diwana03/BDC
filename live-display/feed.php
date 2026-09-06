@@ -347,8 +347,8 @@ if ($type === "score_matrix") {
             $projectionItem["leader_name"] = "BIB " . ($projectionItem["leader_bib"] ?: "—") . ($leaderFlag !== "" ? " " . $leaderFlag : "") . " " . $projectionItem["leader_name"];
             $projectionItem["follower_name"] = "BIB " . ($projectionItem["follower_bib"] ?: "—") . ($followerFlag !== "" ? " " . $followerFlag : "") . " " . $projectionItem["follower_name"];
         } else {
-            $flag = CountryFlagService::emoji($projectionItem["country"] ?? null);
-            if ($flag !== "") $projectionItem["display_name"] = $flag . " " . $projectionItem["display_name"];
+            // Heats matrix renders a real flag image beside the clean audience name.
+            // Do not prefix emoji/country-code text into display_name.
         }
     }
     unset($projectionItem);
