@@ -61,24 +61,106 @@ final class Auth
         @mail((string)$user['email'],'BDC login verification code',"Your BDC verification code is {$code}. It expires in 10 minutes. Any previous code is no longer valid.","From: no-reply@bachatadancecouncil.com\r\nContent-Type: text/plain; charset=UTF-8");
         self::audit((int)$user['id'],$auditAction,[]);
     }
+
+    private static function trustedDeviceCookieName():string
+    {
+        $environment=strtolower(trim((string)Config::get('app.environment','production')));
+        $suffix=preg_replace('/[^a-z0-9_]+/','_',$environment)?:'production';
+        return 'bdc_trusted_device_'.$suffix;
+    }
+
+    private static function trustedDeviceCookiePath():string
+    {
+        $path='/' . trim((string)Config::get('app.base_path','/portal'),'/');
+        return $path==='/'?'/':$path;
+    }
+
+    private static function trustedDeviceCookieValue():string
+    {
+        return (string)($_COOKIE[self::trustedDeviceCookieName()]??'');
+    }
+
+    private static function parseTrustedDeviceCookie():?array
+    {
+        $cookie=self::trustedDeviceCookieValue();
+        if(!str_contains($cookie,':'))return null;
+        [$selector,$token]=explode(':',$cookie,2);
+        if(!preg_match('/^[a-f0-9]{24}$/',$selector)||!preg_match('/^[a-f0-9]{64}$/',$token))return null;
+        return ['selector'=>$selector,'token'=>$token];
+    }
+
     private static function trustedDevice(int $userId):bool
     {
-        $cookie=(string)($_COOKIE['bdc_trusted_device']??'');if(!str_contains($cookie,':'))return false;[$selector,$token]=explode(':',$cookie,2);
-        $s=Database::connection()->prepare('SELECT * FROM bdc_trusted_devices WHERE user_id=:u AND selector=:s AND revoked_at IS NULL AND expires_at>=NOW()');$s->execute(['u'=>$userId,'s'=>$selector]);$row=$s->fetch();
-        $valid=$row&&hash_equals((string)$row['token_hash'],hash('sha256',$token))&&hash_equals((string)$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??'')));
+        $parsed=self::parseTrustedDeviceCookie();if(!$parsed)return false;
+        $s=Database::connection()->prepare('SELECT * FROM bdc_trusted_devices WHERE user_id=:u AND selector=:s AND revoked_at IS NULL AND expires_at>=NOW()');
+        $s->execute(['u'=>$userId,'s'=>$parsed['selector']]);$row=$s->fetch();
+        $valid=$row&&hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']))&&hash_equals((string)$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??'')));
         if($valid)Database::connection()->prepare('UPDATE bdc_trusted_devices SET last_used_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);return(bool)$valid;
     }
+
+    private static function restoreRememberedLogin():bool
+    {
+        $parsed=self::parseTrustedDeviceCookie();if(!$parsed)return false;
+        $pdo=Database::connection();
+        $s=$pdo->prepare("SELECT d.id trusted_id,d.user_id,d.token_hash,d.user_agent_hash,u.email,u.full_name,u.role,u.status FROM bdc_trusted_devices d JOIN bdc_users u ON u.id=d.user_id WHERE d.selector=:s AND d.revoked_at IS NULL AND d.expires_at>=NOW() LIMIT 1");
+        $s->execute(['s'=>$parsed['selector']]);$row=$s->fetch();
+        $valid=$row
+            && (string)$row['status']==='active'
+            && in_array((string)$row['role'],['super_admin','admin','master_scorer','scorer'],true)
+            && hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']))
+            && hash_equals((string)$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??'')));
+        if(!$valid){
+            if($row)$pdo->prepare('UPDATE bdc_trusted_devices SET revoked_at=COALESCE(revoked_at,NOW()) WHERE id=:id')->execute(['id'=>$row['trusted_id']]);
+            self::expireTrustedDeviceCookie();
+            return false;
+        }
+        $pdo->prepare('UPDATE bdc_trusted_devices SET last_used_at=NOW() WHERE id=:id')->execute(['id'=>$row['trusted_id']]);
+        self::completeLogin($row);
+        $pdo->prepare('UPDATE bdc_users SET last_login_at=NOW() WHERE id=:id')->execute(['id'=>$row['user_id']]);
+        self::audit((int)$row['user_id'],'remembered_login_restored',['environment'=>(string)Config::get('app.environment','production')]);
+        return true;
+    }
+
     private static function rememberDevice(int $userId):void
     {
-        $selector=bin2hex(random_bytes(12));$token=bin2hex(random_bytes(32));Database::connection()->prepare('INSERT INTO bdc_trusted_devices(user_id,selector,token_hash,user_agent_hash,expires_at) VALUES(:u,:s,:t,:a,DATE_ADD(NOW(),INTERVAL 30 DAY))')->execute(['u'=>$userId,'s'=>$selector,'t'=>hash('sha256',$token),'a'=>hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??''))]);
-        setcookie('bdc_trusted_device',$selector.':'.$token,['expires'=>time()+2592000,'path'=>'/','secure'=>!empty($_SERVER['HTTPS']),'httponly'=>true,'samesite'=>'Lax']);
+        $pdo=Database::connection();
+        $pdo->prepare('DELETE FROM bdc_trusted_devices WHERE expires_at<NOW() OR revoked_at IS NOT NULL')->execute();
+        $selector=bin2hex(random_bytes(12));$token=bin2hex(random_bytes(32));
+        $pdo->prepare('INSERT INTO bdc_trusted_devices(user_id,selector,token_hash,user_agent_hash,expires_at) VALUES(:u,:s,:t,:a,DATE_ADD(NOW(),INTERVAL 30 DAY))')->execute(['u'=>$userId,'s'=>$selector,'t'=>hash('sha256',$token),'a'=>hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??''))]);
+        setcookie(self::trustedDeviceCookieName(),$selector.':'.$token,[
+            'expires'=>time()+2592000,
+            'path'=>self::trustedDeviceCookiePath(),
+            'secure'=>(bool)Config::get('security.secure_cookies',true),
+            'httponly'=>true,
+            'samesite'=>'Lax'
+        ]);
+        $_COOKIE[self::trustedDeviceCookieName()]=$selector.':'.$token;
+    }
+
+    private static function expireTrustedDeviceCookie():void
+    {
+        $name=self::trustedDeviceCookieName();
+        setcookie($name,'',['expires'=>time()-3600,'path'=>self::trustedDeviceCookiePath(),'secure'=>(bool)Config::get('security.secure_cookies',true),'httponly'=>true,'samesite'=>'Lax']);
+        unset($_COOKIE[$name]);
+    }
+
+    private static function revokeCurrentTrustedDevice():void
+    {
+        $parsed=self::parseTrustedDeviceCookie();
+        if($parsed){
+            try{Database::connection()->prepare('UPDATE bdc_trusted_devices SET revoked_at=COALESCE(revoked_at,NOW()) WHERE selector=:s')->execute(['s'=>$parsed['selector']]);}catch(\Throwable){}
+        }
+        self::expireTrustedDeviceCookie();
     }
 
     public static function check(): bool
     {
-        if (empty($_SESSION['user'])) return false;
+        if (empty($_SESSION['user'])) return self::restoreRememberedLogin();
         $timeout=(int)Config::get('security.session_timeout_minutes',120)*60;
-        if (!empty($_SESSION['last_activity']) && time()-(int)$_SESSION['last_activity']>$timeout) { self::logout(); return false; }
+        if (!empty($_SESSION['last_activity']) && time()-(int)$_SESSION['last_activity']>$timeout) {
+            unset($_SESSION['user'],$_SESSION['last_activity']);
+            return self::restoreRememberedLogin();
+        }
         $_SESSION['last_activity']=time(); return true;
     }
 
@@ -128,7 +210,6 @@ final class Auth
             $stmt=Database::connection()->prepare('SELECT COUNT(*) FROM bdc_user_permissions WHERE user_id=:uid AND permission_key=:p AND allowed=1');
             $stmt->execute(['uid'=>$user['id'],'p'=>$permission]);
             if ((int)$stmt->fetchColumn()>0) return true;
-            // Safe default for existing admins during upgrade.
             return in_array($permission,['competitors.view','competitors.edit','transactions.edit','points.adjust.request','leaderboard.view','registrations.manage'],true);
         } catch (\Throwable) {
             return in_array($permission,['competitors.view','competitors.edit','transactions.edit','points.adjust.request','leaderboard.view','registrations.manage'],true);
@@ -142,7 +223,14 @@ final class Auth
     }
 
     public static function user(): ?array { return self::check()?$_SESSION['user']:null; }
-    public static function logout(): void { $id=$_SESSION['user']['id']??null; if($id) self::audit((int)$id,'logout',[]); $_SESSION=[]; session_destroy(); }
+    public static function logout(): void
+    {
+        $id=$_SESSION['user']['id']??null;
+        if($id)self::audit((int)$id,'logout',[]);
+        self::revokeCurrentTrustedDevice();
+        $_SESSION=[];
+        if(session_status()===PHP_SESSION_ACTIVE)session_destroy();
+    }
 
     public static function audit(?int $userId,string $action,array $details,string $entityType='authentication',?int $entityId=null): void
     {
