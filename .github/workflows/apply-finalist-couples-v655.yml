@@ -41,17 +41,8 @@ jobs:
           d['version']='2.3.3-dev655'; d['build']=3361; d['release_date']='2026-09-06'
           d.setdefault('features',[]).insert(0,'Finalist Couples only: enlarges dancer names, places the real country flag immediately after each name, removes the country text row, and keeps BIB below while preserving the separate Finalists screen and the five-card couple grid.')
           v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
-          Path('RELEASE-v2.3.3-dev655.md').write_text('''# BDC v2.3.3-dev655 — Finalist Couples identity layout\n\nBuild 3361\n\n- Changes only the Finalist Couples / matched-couple renderer.\n- Larger single-line dancer names.\n- Real flag immediately after each name.\n- Removes country text below the flag.\n- Keeps BIB large directly below the name row.\n- Preserves the separate Finalists Leaders/Followers screen, photos, couple numbers, matching, scoring and five-card responsive grid.\n''')
-          Path('tests/finalist-couples-v655.php').write_text(r'''<?php
-declare(strict_types=1);
-$f=file_get_contents(__DIR__.'/../live-display/feed.php');
-if(!str_contains($f,'final-couple-name-row'))throw new RuntimeException('Final couple name row missing');
-if(!str_contains($f,'final-couple-flag'))throw new RuntimeException('Final couple flag missing');
-if(!str_contains($f,'font-size:clamp(16px,1.18vw,28px)!important'))throw new RuntimeException('Final couple larger name missing');
-if(!str_contains($f,'$coupleColumns = 5;'))throw new RuntimeException('Five-card grid changed');
-if(!str_contains($f,'competitor-country-name'))throw new RuntimeException('Separate Finalists screen was altered');
-echo "finalist couples v655: PASS\n";
-''')
+          Path('RELEASE-v2.3.3-dev655.md').write_text('# BDC v2.3.3-dev655 — Finalist Couples identity layout\n\nBuild 3361\n\nChanges only Finalist Couples: larger single-line names, real flag after name, no country text row, BIB below. Separate Finalists screen and five-card responsive grid are preserved.\n')
+          Path('tests/finalist-couples-v655.php').write_text('<?php\ndeclare(strict_types=1);\n$f=file_get_contents(__DIR__."/../live-display/feed.php");\nif(!str_contains($f,"final-couple-name-row"))throw new RuntimeException("Final couple name row missing");\nif(!str_contains($f,"final-couple-flag"))throw new RuntimeException("Final couple flag missing");\nif(!str_contains($f,"font-size:clamp(16px,1.18vw,28px)!important"))throw new RuntimeException("Final couple larger name missing");\nif(!str_contains($f,"$coupleColumns = 5;"))throw new RuntimeException("Five-card grid changed");\nif(!str_contains($f,"competitor-country-name"))throw new RuntimeException("Separate Finalists screen was altered");\necho "finalist couples v655: PASS\\n";\n')
           PY
           php -l live-display/feed.php
           php tests/finalist-couples-v655.php
