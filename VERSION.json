@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev673",
-  "build": 3379,
+  "version": "2.3.3-dev674",
+  "build": 3380,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Heats projector keeps the 10% top/bottom and 5% left/right safe area while slightly reducing only YES/A1/A2/A3 judge marks so every value fits cleanly inside its judge cell; BIB, flags, competitor names, headers and Score remain unchanged.",
     "Repairs WDC replacement-photo uploads by optimizing large JPG, PNG and WebP images in the browser before submission and reporting the real server upload failure while keeping BDC and SDC photos untouched.",
     "Projector CSS cache busting is now automatic from each deployed stylesheet modification time, so audience-display typography and layout fixes load immediately instead of being masked by stale hard-coded CSS query versions.",
     "Heats ballroom readability pass: Prov., J labels, judge names, YES/A marks and Score are enlarged aggressively without shrinking BIB, flags or competitor names.",

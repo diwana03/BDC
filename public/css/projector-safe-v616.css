@@ -205,3 +205,12 @@ body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-ch
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(n+4){font-size:clamp(18px,1.05vw,25px)!important;line-height:1!important}
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:last-child,body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child{width:9%!important}
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child{font-size:clamp(18px,1.08vw,26px)!important}
+
+/* dev674 Heats: slightly reduce only YES/A1/A2/A3 marks so every judge value fits its cell. */
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats tbody td:nth-child(n+4):not(:last-child){
+  font-size:clamp(14px,.88vw,21px)!important;
+  letter-spacing:-.015em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:clip!important;
+}
