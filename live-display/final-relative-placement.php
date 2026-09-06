@@ -48,6 +48,17 @@ $pairs=$q->fetchAll();
 
 $q=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM {$mt} WHERE round_id=:r");
 $q->execute(['r'=>$roundId]);
+$cleanFinalProjectionName = static function (mixed $value, mixed $bib = null): string {
+    $name = trim((string) $value);
+    $bibNumber = (int) $bib;
+    if ($bibNumber > 0) {
+        $name = preg_replace('/^\s*BIB\s*' . preg_quote((string) $bibNumber, '/') . '\b\s*/i', '', $name) ?? $name;
+    }
+    $name = preg_replace('/^\s*[A-Z]{2,3}\s+(?=\S)/u', '', $name) ?? $name;
+    $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+    return trim($name);
+};
+
 $marks=[];
 foreach($q->fetchAll() as $m){$marks[(int)$m['pair_id']][(int)$m['judge_id']]=$m['rank_value'];}
 
@@ -85,5 +96,5 @@ td:nth-child(n+3){font-size:clamp(15px,.94vw,22px);font-weight:950}
 <?php if($test):?><div class="test">TEST MODE</div><?php endif;?>
 <div class="event"><?=e($round['event_name'])?></div><div class="meta"><?=e(strtoupper(str_replace('_',' ',$round['division'])))?> · FINAL</div><h1>FINAL RELATIVE PLACEMENT</h1>
 <div class="wrap"><table><thead><tr><th>Final</th><th>Couple</th><?php foreach($judges as $j):?><th>J<?=(int)$j['judge_order']?><?=(int)$j['is_chief']?'★':''?><br><small><?=e((string)($j['full_name']?:$j['judge_name']))?></small></th><?php endforeach;?></tr></thead><tbody>
-<?php foreach($pairs as $p):?><tr><td><?=isset($p['final_rank'])?'#'.(int)$p['final_rank']:'—'?></td><td class="aud-couple"><span class="aud-person"><strong>BIB <?=(int)$p['leader_bib']?></strong><?php if($lf=country_flag_url((string)($p['leader_country']??''))):?><img src="<?=e($lf)?>" alt="<?=e((string)$p['leader_country'])?> flag"><?php endif;?><span><?=e((string)$p['leader_name'])?></span></span><span class="aud-amp">&amp;</span><span class="aud-person"><strong>BIB <?=(int)$p['follower_bib']?></strong><?php if($ff=country_flag_url((string)($p['follower_country']??''))):?><img src="<?=e($ff)?>" alt="<?=e((string)$p['follower_country'])?> flag"><?php endif;?><span><?=e((string)$p['follower_name'])?></span></span></td><?php foreach($judges as $j):?><td><?=e((string)($marks[(int)$p['id']][(int)$j['id']]??''))?></td><?php endforeach;?></tr><?php endforeach;?>
+<?php foreach($pairs as $p):?><tr><td><?=isset($p['final_rank'])?'#'.(int)$p['final_rank']:'—'?></td><td class="aud-couple"><span class="aud-person"><strong>BIB <?=(int)$p['leader_bib']?></strong><?php if($lf=country_flag_url((string)($p['leader_country']??''))):?><img src="<?=e($lf)?>" alt="<?=e((string)$p['leader_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['leader_name'] ?? '', $p['leader_bib'] ?? null))?></span></span><span class="aud-amp">&amp;</span><span class="aud-person"><strong>BIB <?=(int)$p['follower_bib']?></strong><?php if($ff=country_flag_url((string)($p['follower_country']??''))):?><img src="<?=e($ff)?>" alt="<?=e((string)$p['follower_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['follower_name'] ?? '', $p['follower_bib'] ?? null))?></span></span></td><?php foreach($judges as $j):?><td><?=e((string)($marks[(int)$p['id']][(int)$j['id']]??''))?></td><?php endforeach;?></tr><?php endforeach;?>
 </tbody></table></div></div></body></html>

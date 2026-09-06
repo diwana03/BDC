@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev675",
-  "build": 3381,
+  "version": "2.3.3-dev676",
+  "build": 3382,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final projection couple identity cleanup: removes duplicated BIB prefixes and legacy 2/3-letter country-code prefixes from finalist names while preserving real flags, current 10%/5% safe area, matrix sizing, judge columns, Heats and scoring logic.",
     "Projection and Dance Cup audience release: callback countdowns blank the underlying projector, Finalist Couples and both Final placement screens use the proven Heats safe-area/readability rules, Dance Cup adds J&J-style screen-format choices and click-to-fullscreen Official Live Display, and Automatic Dance Cup contestant search prioritizes current-category WDC registrations with BDC fallback.",
     "Heats projector keeps the 10% top/bottom and 5% left/right safe area while slightly reducing only YES/A1/A2/A3 judge marks so every value fits cleanly inside its judge cell; BIB, flags, competitor names, headers and Score remain unchanged.",
     "Repairs WDC replacement-photo uploads by optimizing large JPG, PNG and WebP images in the browser before submission and reporting the real server upload failure while keeping BDC and SDC photos untouched.",
