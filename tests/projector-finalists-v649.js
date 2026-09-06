@@ -1,0 +1,13 @@
+const fs=require('fs');
+const control=fs.readFileSync('admin/live-screen/control.php','utf8');
+const feed=fs.readFileSync('live-display/feed.php','utf8');
+const safe=fs.readFileSync('public/css/projector-safe-v616.css','utf8');
+const shell=fs.readFileSync('live-display/index.php','utf8');
+if(!control.includes('"finalists" => "Finalists"')||!control.includes('"competitors" => "Finalist Couples"'))throw new Error('Final controls must separate Finalists and Finalist Couples');
+if(!feed.includes('$type === "finalists" && (string) $r["round_type"] === "final"'))throw new Error('Finalists must load active Final entries before matching');
+if(!feed.includes('$type==="finalists"'))throw new Error('Finalists must use existing split Leader/Follower presentation');
+if(!feed.includes('data-screen-type="<?=e($type)?>"'))throw new Error('Scoped projector screen type missing');
+if(!safe.includes('body[data-screen-type="final_couples"] .stage .list'))throw new Error('Final couple layout is not scoped');
+if(!safe.includes('nth-last-child(2):nth-child(5n+1)'))throw new Error('Two-card final row centering missing');
+if(!shell.includes('projector-safe-v616.css?v=650'))throw new Error('Outer projector safe CSS cache not refreshed');
+console.log('projector finalists v649: PASS');

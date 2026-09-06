@@ -104,7 +104,8 @@ $types =
             ]
             : [
                 "judges" => "Judges",
-                "competitors" => "Finalists / Couples",
+                "finalists" => "Finalists",
+                "competitors" => "Finalist Couples",
                 "scoring" => "Scoring Status",
                 "score_matrix" => "Live Relative Placement Matrix · Provisional",
                 "matching" => "Emcee Live Matching",

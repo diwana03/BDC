@@ -17,7 +17,7 @@ for (const code of requiredCodes) {
   if (!wrapper.includes(code)) throw new Error(`Missing projector display code ${code}`);
 }
 
-if (!wrapper.includes("safe.href='../public/css/projector-safe-v616.css?v=649'")) {
+if (!wrapper.includes("safe.href='../public/css/projector-safe-v616.css?v=650'")) {
   throw new Error('Outer projector wrapper must force-refresh the safe stylesheet.');
 }
 if (!wrapper.includes("roster.href='../public/css/projector-roster-v615.css?v=649'")) {

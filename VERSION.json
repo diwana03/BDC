@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev648",
-  "build": 3354,
+  "version": "2.3.3-dev649",
+  "build": 3355,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Adds a separate Finalists projector screen before matching with Leaders and Followers shown individually, then keeps Finalist Couples on equal five-column cards with centred incomplete rows and fully visible BIBs without changing scoring, matching, judge or header logic.",
     "Keeps Judge Database autocomplete usable for active judges with no country by normalizing optional country metadata to blank values while preserving name, Judge ID and canonical profile selection.",
     "Makes Live Contestant Scores names venue-readable and keeps them on one line, replacing tiny emoji country codes before names with real national flag images after each name, including multi-country profiles.",
     "Clarifies judge assignment labels across the audience projector and mobile projection state as Judging Leaders, Judging Followers, or Judging Leaders & Followers.",
