@@ -1,4 +1,4 @@
-name: Heats v669 Run
+name: Heats v674 Run
 on:
   push:
     branches: [develop]
@@ -13,5 +13,5 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: develop
-      - name: Apply patch
-        run: bash .github/scripts/heats-v669.sh
+      - name: Apply dev674 patch
+        run: bash .github/scripts/heats-v674.sh
