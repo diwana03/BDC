@@ -1,3 +1,4 @@
+# Code 12 retrigger: apply the existing dev678 Dance Cup projection repair on develop.
 name: Release dev678 Dance Cup Projection
 on:
   push:
