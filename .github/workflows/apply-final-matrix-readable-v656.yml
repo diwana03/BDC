@@ -1,0 +1,51 @@
+name: Apply Final Matrix Readability v656
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/apply-final-matrix-readable-v656.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Enlarge final relative placement matrix only
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+          old='<style>.matrix-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding-bottom:.2%}'
+          new='<style>.matrix-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding-bottom:.2%}'
+          if s.count(old)!=1: raise SystemExit('matrix style anchor not unique')
+          # Scope the override to final matrix through body screen type + final table class; heats matrix remains unchanged.
+          extra='body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix{font-size:clamp(13px,1.12vw,25px);table-layout:fixed}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th,body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td{padding:.48em .38em}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th:first-child,body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td:first-child{width:10%;font-size:1.05em}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th:nth-child(2),body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td:nth-child(2){width:38%;font-size:1.06em;font-weight:900}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th:nth-child(n+3){font-size:.9em;line-height:1.05}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix th:nth-child(n+3) small{font-size:.72em}body[data-screen-type="score_matrix"] .matrix-wrap>.score-table.matrix td:nth-child(n+3){font-size:1.08em;font-weight:850}'
+          s=s.replace(old,old+extra,1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev655' or d.get('build')!=3361: raise SystemExit('unexpected version')
+          d['version']='2.3.3-dev656'; d['build']=3362; d['release_date']='2026-09-06'
+          d.setdefault('features',[]).insert(0,'Final Live Relative Placement Matrix readability: uses the available 16:9 space with substantially larger couple, judge and placement text while preserving all matrix data and heats layouts.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev656.md').write_text('# BDC v2.3.3-dev656 — Final matrix readability\n\nBuild 3362\n\nEnlarges the Final Live Relative Placement Matrix typography and allocates more width to Couple, using the available 16:9 projector space. No scoring or matrix data logic changes.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit verified release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/apply-final-matrix-readable-v656.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev656.md
+          git diff --cached --check
+          git commit -m 'Release dev656 enlarge Final relative placement matrix'
+          git push origin HEAD:develop
