@@ -19,3 +19,4 @@ jobs:
           fetch-depth: 0
       - name: Apply dev679 role YES recovery
         run: bash .github/scripts/release-dev679b-role-yes-settings.sh
+# retry 2
