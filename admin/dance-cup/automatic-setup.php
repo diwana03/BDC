@@ -57,6 +57,7 @@ try{
                 $name=$directoryName;
             }
             if($name===''||$number<1)throw new RuntimeException('Contestant name and number are required.');
+            if($directoryCompetitorId<1){$duplicateName=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active' AND LOWER(TRIM(display_name))=LOWER(TRIM(:name))");$duplicateName->execute(['competition'=>$id,'name'=>$name]);if((int)$duplicateName->fetchColumn()>0)throw new RuntimeException('This contestant is already assigned to this category.');}
             $q=$pdo->prepare("INSERT INTO {$prefix}_entries(competition_id,competitor_id,bib_number,display_name) VALUES(:competition,:directory,:number,:name)");
             $q->execute(['competition'=>$id,'directory'=>$directoryCompetitorId?:null,'number'=>$number,'name'=>$name]);$notice='Contestant added to Automatic Scoring.';
         }elseif($action==='add_judge'){

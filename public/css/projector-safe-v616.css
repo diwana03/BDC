@@ -214,3 +214,82 @@ body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats tbody td:
   overflow:hidden!important;
   text-overflow:clip!important;
 }
+
+
+/* dev675 audience pass: Finalist Couples and Final matrix */
+body[data-screen-type="final_couples"] .projection-heading-row{
+  margin-bottom:clamp(8px,1.15cqh,16px)!important;
+  gap:clamp(12px,1cqw,22px)!important;
+}
+body[data-screen-type="final_couples"] .projection-heading-row>.projection-brand{width:clamp(78px,8.2cqh,118px)!important}
+body[data-screen-type="final_couples"] .event{font-size:clamp(24px,1.75vw,42px)!important;line-height:1.02!important}
+body[data-screen-type="final_couples"] .meta{font-size:clamp(12px,.82vw,19px)!important;line-height:1!important}
+body[data-screen-type="final_couples"] .title{font-size:clamp(24px,1.9vw,46px)!important;line-height:1!important;margin:.08em 0!important}
+body[data-screen-type="final_couples"] .stage .list{
+  width:100%!important;height:100%!important;min-height:0!important;
+  display:flex!important;flex-wrap:wrap!important;align-content:stretch!important;justify-content:center!important;
+  gap:.55cqh .55cqw!important;padding:0!important;
+}
+body[data-screen-type="final_couples"] .stage .list>.item{
+  flex:0 0 calc(20% - .55cqw)!important;
+  height:calc((100% - 1.1cqh)/3)!important;
+  min-height:0!important;padding:clamp(4px,.42vw,8px)!important;
+  justify-content:flex-start!important;overflow:hidden!important;
+}
+body[data-screen-type="final_couples"] .stage .list>.item>.small:first-child{
+  font-size:clamp(13px,.86vw,20px)!important;line-height:1!important;margin:0 0 .18cqh!important;
+}
+body[data-screen-type="final_couples"] .stage .list>.item>div:nth-child(2){
+  flex:1 1 auto!important;min-height:0!important;width:100%!important;gap:clamp(7px,.55vw,12px)!important;margin:0!important;
+}
+body[data-screen-type="final_couples"] .final-couple-person{
+  flex:1 1 0!important;max-width:calc(50% - 4px)!important;min-width:0!important;
+  padding:0!important;row-gap:clamp(1px,.14cqh,3px)!important;
+}
+body[data-screen-type="final_couples"] .final-couple-person>.photo{
+  width:clamp(52px,6.7cqh,92px)!important;height:clamp(52px,6.7cqh,92px)!important;margin:0!important;
+}
+body[data-screen-type="final_couples"] .final-couple-person>.name{
+  font-size:clamp(13px,.9vw,21px)!important;line-height:1!important;letter-spacing:-.01em!important;
+}
+body[data-screen-type="final_couples"] .final-couple-person>.flight-country img{width:clamp(25px,1.55vw,36px)!important}
+body[data-screen-type="final_couples"] .final-couple-person>.small:not(.flight-country){
+  font-size:clamp(17px,1.28vw,30px)!important;line-height:.96!important;margin:.05cqh 0 0!important;
+}
+
+body[data-screen-type="score_matrix"]:has(.matrix-final) .stage{
+  padding-top:10cqh!important;padding-bottom:10cqh!important;padding-left:5cqw!important;padding-right:5cqw!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-official{top:10cqh!important;right:5cqw!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-heading-row{
+  margin-bottom:clamp(6px,.65cqh,10px)!important;gap:clamp(12px,1cqw,20px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-heading-row>.projection-brand{width:clamp(76px,7cqh,108px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .event{font-size:clamp(23px,1.62vw,40px)!important;line-height:1.02!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .meta{font-size:clamp(11px,.78vw,18px)!important;line-height:1!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .title{font-size:clamp(23px,1.72vw,42px)!important;line-height:1!important;margin:.08em 0!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-wrap{flex:1 1 auto!important;min-height:0!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final{height:100%!important;font-size:clamp(14px,.92vw,21px)!important;table-layout:fixed!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final thead{height:7%!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final tbody{height:93%!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final tbody tr{height:8.333%!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final th,
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final td{padding:0 .26em!important;overflow:hidden!important;text-overflow:clip!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final th:first-child,
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final td:first-child{font-size:clamp(14px,.9vw,21px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final th:nth-child(2){font-size:clamp(14px,.92vw,22px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final td:nth-child(2){font-size:clamp(15px,1vw,23px)!important;padding-left:.5em!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final th:nth-child(n+3){font-size:clamp(10px,.61vw,14px)!important;line-height:1!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final th:nth-child(n+3) small{font-size:clamp(7px,.42vw,10px)!important;line-height:1!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final td:nth-child(n+3){font-size:clamp(15px,.94vw,22px)!important;font-weight:950!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-couple{
+  display:flex!important;align-items:center!important;gap:clamp(5px,.35vw,9px)!important;width:100%!important;min-width:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person{
+  flex:1 1 0!important;max-width:calc(50% - 12px)!important;min-width:0!important;gap:clamp(4px,.28vw,7px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person strong{font-size:.86em!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person>span:last-child{
+  min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-flag{width:clamp(23px,1.35vw,33px)!important}

@@ -98,7 +98,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <?=e($error)?>
 </div>
 <?php endif;?>
-<?php if($changed==='theme'):?><div class="console-status mb-3">✓ Premium background applied to the live projector.</div><?php elseif($changed==='effect'):?><div class="console-status mb-3">✓ Presentation effect sent to the live projector.</div><?php endif;?>
+<?php if($changed==='theme'):?><div class="console-status mb-3">✓ Premium background applied to the live projector.</div><?php elseif($changed==='effect'):?><div class="console-status mb-3">✓ Presentation effect sent to the live projector.</div><?php endif;?><section class="card border-0 shadow-sm mb-4"><div class="card-body p-3 p-md-4"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap"><div><span class="badge text-bg-primary">SCREEN &amp; LAYOUT</span><h2 class="h4 mt-2 mb-1">Projector Size</h2><p class="text-muted mb-0">Main venue target is 16:9 4K. Other formats open with the same responsive Dance Cup presentation and safe area.</p></div><span class="badge text-bg-dark">10% TOP/BOTTOM · 5% LEFT/RIGHT</span></div><div class="row g-2 align-items-end mt-2"><div class="col-md-4"><label class="form-label fw-bold" for="dcScreenFormat">Screen Format</label><select id="dcScreenFormat" class="form-select"><option value="16:9" selected>16:9 Landscape · Main 4K</option><option value="9:16">9:16 Portrait</option><option value="4:3">4:3 Standard</option><option value="16:10">16:10 Landscape</option><option value="21:9">21:9 Ultra-wide</option><option value="32:9">32:9 Super-wide</option><option value="1:1">1:1 Square</option><option value="custom">Custom Resolution</option></select></div><div class="col-md-2"><label class="form-label" for="dcCustomWidth">Custom Width</label><input id="dcCustomWidth" class="form-control" type="number" min="100" value="1920"></div><div class="col-md-2"><label class="form-label" for="dcCustomHeight">Custom Height</label><input id="dcCustomHeight" class="form-control" type="number" min="100" value="1080"></div><div class="col-md-4"><button type="button" id="dcOpenProjector" class="btn btn-primary w-100">Open Projector</button></div></div><div class="small text-muted mt-2">On the audience screen, click <strong>BDC · Official Live Display</strong> to enter browser fullscreen exactly like J&amp;J.</div></div></section>
 <section class="card border-0 shadow-sm mb-4 presentation-console">
 <div class="card-body p-3 p-md-4">
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3"><div><span class="badge text-bg-warning">LIVE PRESENTATION CONSOLE</span><h2 class="h4 mt-2 mb-1">Background &amp; Effects</h2><p class="text-muted mb-0">These controls update the already-open projector. Do not reopen the projector after applying them.</p></div><span class="badge text-bg-dark">Active: <?=e($themes[$state['theme']][0]??'Midnight Wine')?></span></div>
@@ -287,5 +287,15 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </main>
 <script>document.getElementById('copyProjector').onclick=async e=>{const x=document.getElementById('projectorUrl');try{await navigator.clipboard.writeText(x.value)}catch{x.select();document.execCommand('copy')}e.currentTarget.textContent='Copied'}</script>
 <script src="../../public/js/projection-control-fullscreen-v618.js?v=619"></script>
+<script>
+(function(){
+ const button=document.getElementById('dcOpenProjector'),format=document.getElementById('dcScreenFormat'),width=document.getElementById('dcCustomWidth'),height=document.getElementById('dcCustomHeight');
+ if(!button||!format)return;
+ const sizes={'16:9':[1920,1080],'9:16':[900,1600],'4:3':[1280,960],'16:10':[1440,900],'21:9':[1680,720],'32:9':[1920,540],'1:1':[1000,1000]};
+ function applyPreset(){if(format.value==='custom')return;const size=sizes[format.value]||sizes['16:9'];width.value=size[0];height.value=size[1];}
+ format.addEventListener('change',applyPreset);
+ button.addEventListener('click',()=>{const w=Math.max(100,Number(width.value)||1920),h=Math.max(100,Number(height.value)||1080),url=new URL(<?=json_encode($projector)?>,location.href);url.searchParams.set('format',format.value);url.searchParams.set('width',String(w));url.searchParams.set('height',String(h));window.open(url.toString(),'_blank','noopener,width='+w+',height='+h);});
+})();
+</script>
 </body>
 </html>

@@ -65,7 +65,7 @@ ob_start(static fn(string $html):string=>str_replace(
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Final Relative Placement</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#030509;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
-.stage{width:100vw;height:100vh;padding:5vh 5vw;background:radial-gradient(circle at top,#4a101e,#111827 52%,#030509);display:flex;flex-direction:column}
+.stage{width:100vw;height:100vh;padding:10vh 5vw;background:radial-gradient(circle at top,#4a101e,#111827 52%,#030509);display:flex;flex-direction:column}
 .event{text-align:center;font-size:clamp(24px,2.05vw,50px);font-weight:900;line-height:1.05}
 .meta{text-align:center;color:#ffb7c3;font-size:clamp(13px,1vw,24px);margin-top:.12em}
 h1{text-align:center;font-size:clamp(28px,2.35vw,58px);margin:.18em 0 .32em;line-height:1}
@@ -73,14 +73,14 @@ h1{text-align:center;font-size:clamp(28px,2.35vw,58px);margin:.18em 0 .32em;line
 table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;background:rgba(17,24,39,.88);font-size:clamp(13px,.92vw,22px)}
 thead{height:7%}tbody{height:93%}tbody tr{height:8.333%}
 th,td{border:1px solid rgba(255,255,255,.28);padding:0 .28em;text-align:center}
-th{background:#7d2638}th:first-child,td:first-child{width:9%;font-size:clamp(14px,.9vw,21px);font-weight:950}
-th:nth-child(2),td:nth-child(2){width:43%;text-align:left;padding-left:.45em}
+th{background:#7d2638}th:first-child,td:first-child{width:10%;font-size:clamp(14px,.9vw,21px);font-weight:950}
+th:nth-child(2),td:nth-child(2){width:36%;text-align:left;padding-left:.45em}
 th:nth-child(n+3){font-size:clamp(10px,.62vw,15px);line-height:1.02}th:nth-child(n+3) small{display:block;font-size:clamp(7px,.42vw,10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td:nth-child(n+3){font-size:clamp(15px,.95vw,23px);font-weight:950}
-.aud-couple{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);font-size:clamp(16px,1.08vw,26px);overflow:hidden}
+td:nth-child(n+3){font-size:clamp(15px,.94vw,22px);font-weight:950}
+.aud-couple{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);font-size:clamp(15px,1vw,23px);overflow:hidden}
 .aud-person{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;overflow:hidden}.aud-person strong{font-size:.9em;white-space:nowrap}
 .aud-person img{width:clamp(25px,1.5vw,36px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}.aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950}.aud-amp{font-weight:950}
-.test{position:absolute;top:5vh;left:5vw;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}
+.test{position:absolute;top:10vh;left:5vw;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}
 </style></head><body><div class="stage">
 <?php if($test):?><div class="test">TEST MODE</div><?php endif;?>
 <div class="event"><?=e($round['event_name'])?></div><div class="meta"><?=e(strtoupper(str_replace('_',' ',$round['division'])))?> · FINAL</div><h1>FINAL RELATIVE PLACEMENT</h1>

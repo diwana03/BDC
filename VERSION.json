@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev674",
-  "build": 3380,
+  "version": "2.3.3-dev675",
+  "build": 3381,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Projection and Dance Cup audience release: callback countdowns blank the underlying projector, Finalist Couples and both Final placement screens use the proven Heats safe-area/readability rules, Dance Cup adds J&J-style screen-format choices and click-to-fullscreen Official Live Display, and Automatic Dance Cup contestant search prioritizes current-category WDC registrations with BDC fallback.",
     "Heats projector keeps the 10% top/bottom and 5% left/right safe area while slightly reducing only YES/A1/A2/A3 judge marks so every value fits cleanly inside its judge cell; BIB, flags, competitor names, headers and Score remain unchanged.",
     "Repairs WDC replacement-photo uploads by optimizing large JPG, PNG and WebP images in the browser before submission and reporting the real server upload failure while keeping BDC and SDC photos untouched.",
     "Projector CSS cache busting is now automatic from each deployed stylesheet modification time, so audience-display typography and layout fixes load immediately instead of being masked by stale hard-coded CSS query versions.",
