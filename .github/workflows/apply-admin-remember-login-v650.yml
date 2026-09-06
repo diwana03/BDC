@@ -51,17 +51,7 @@ jobs:
               '<div class="alert alert-secondary py-2 small mb-3">This browser will stay signed in for 30 days after verification. Explicit logout still signs it out immediately.</div>',
               'login screen 30-day policy text')
 
-          Path('tests/admin-remember-login-v650.php').write_text(r'''<?php
-          declare(strict_types=1);
-          $auth=file_get_contents(__DIR__.'/../app/Core/Auth.php');
-          $login=file_get_contents(__DIR__.'/../app/Views/auth/login.php');
-          if(substr_count($auth,"self::rememberDevice((int)$user['id']);")<1)throw new RuntimeException('30-day trusted device is not created after 2FA');
-          if(str_contains($auth,"$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??''))"))throw new RuntimeException('Trusted login is still invalidated by exact User-Agent changes');
-          if(!str_contains($auth,"'remember_days'=>30"))throw new RuntimeException('30-day auth audit marker missing');
-          if(!str_contains($login,'stay signed in for 30 days'))throw new RuntimeException('30-day login policy is not visible at 2FA');
-          if(str_contains($login,'name="remember_device"'))throw new RuntimeException('30-day persistence must not depend on an unchecked checkbox');
-          echo "admin remember login v650: PASS\n";
-          ''')
+          Path('tests/admin-remember-login-v650.js').write_text('''const fs=require('fs');\nconst auth=fs.readFileSync('app/Core/Auth.php','utf8');\nconst login=fs.readFileSync('app/Views/auth/login.php','utf8');\nif(!auth.includes("self::rememberDevice((int)$user['id']);"))throw new Error('30-day trusted device is not created after 2FA');\nif(auth.includes("$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??''))"))throw new Error('Trusted login is still invalidated by exact User-Agent changes');\nif(!auth.includes("'remember_days'=>30"))throw new Error('30-day auth audit marker missing');\nif(!login.includes('stay signed in for 30 days'))throw new Error('30-day login policy is not visible at 2FA');\nif(login.includes('name="remember_device"'))throw new Error('30-day persistence must not depend on an unchecked checkbox');\nconsole.log('admin remember login v650: PASS');\n''')
 
           version=Path('VERSION.json'); data=json.loads(version.read_text())
           if data.get('version')!='2.3.3-dev649' or data.get('build')!=3355:
@@ -74,14 +64,14 @@ jobs:
           PY
           php -l app/Core/Auth.php
           php -l app/Views/auth/login.php
-          php tests/admin-remember-login-v650.php
+          node tests/admin-remember-login-v650.js
           git diff --check
       - name: Commit verified fix and remove temporary workflow
         run: |
           git config user.name 'BDC Release Bot'
           git config user.email 'actions@users.noreply.github.com'
           git rm -f .github/workflows/apply-admin-remember-login-v650.yml
-          git add app/Core/Auth.php app/Views/auth/login.php tests/admin-remember-login-v650.php VERSION.json RELEASE-v2.3.3-dev650.md
+          git add app/Core/Auth.php app/Views/auth/login.php tests/admin-remember-login-v650.js VERSION.json RELEASE-v2.3.3-dev650.md
           git diff --cached --check
           git commit -m 'Release dev650 30-day admin login persistence'
           git push origin HEAD:develop
