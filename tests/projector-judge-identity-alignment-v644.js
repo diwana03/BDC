@@ -12,7 +12,7 @@ has('justify-content: center;', 'centred country row');
 has('.stage .judge-country-entry:only-child {\n  width: 100%;', 'full-width single country');
 has('margin-inline: auto !important;', 'centred judge flag');
 has('white-space: nowrap !important;', 'one-line judge names');
-if (!feed.includes('projector-roster-v615.css?v=644')) throw new Error('Feed cache key is stale');
-if (!shell.includes("projector-roster-v615.css?v=644")) throw new Error('Shell cache key is stale');
+if (!feed.includes('projector-roster-v615.css?v=<?=')) throw new Error('Feed cache key is not dynamic');
+if (!shell.includes("projector-roster-v615.css?v=649")) throw new Error('Shell cache key is stale');
 
 console.log('Projector judge identity alignment v644: PASS');

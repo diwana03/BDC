@@ -15,6 +15,6 @@ requireText(shell, "badge.addEventListener('click',enterAudienceFullscreen)", 'b
 requireText(shell, "event.key==='Enter'||event.key===' '", 'keyboard action');
 requireText(feed, 'BDC · Official Live Display', 'existing official badge');
 requireText(safe, '[data-fullscreen-ready="1"]', 'interactive badge styling');
-requireText(feed, 'projector-safe-v616.css?v=645', 'feed safe-style cache key');
+requireText(feed, 'projector-safe-v616.css?v=<?=', 'feed dynamic safe-style cache key');
 
 console.log('Projector integrated fullscreen v645: PASS');
