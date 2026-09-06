@@ -1,0 +1,51 @@
+name: Heats Hide N-A v662
+on:
+  push:
+    branches: [develop]
+    paths: [.github/workflows/heats-hide-na-v662.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Hide non-applicable judge columns on Heats projector
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+          old='''<div class="matrix-split"><?php foreach(["leader"=>"LEADERS","follower"=>"FOLLOWERS"] as $role=>$label):$matrixRows=$heatsScoreRoleItems[$role];?><section class="matrix-panel"><div class="matrix-role"><span><?=e($label)?> · <?=$heatsScoreRoleTotals[$role]?> CONTESTANTS</span><span><?=e(strtoupper((string)$r["round_type"]))?> · PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?></span></div><table class="score-table matrix matrix-heats"><thead><tr><th>Prov.</th><th class="name">Competitor</th><?php foreach($matrixJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Score</th></tr></thead><tbody><?php foreach($matrixRows as $x):?><tr><td class="num"><?=(int)$x["rank_number"]?></td><td class="name">#<?=(int)$x["bib_number"]?> <?=e((string)$x["display_name"])?></td><?php foreach($matrixJudges as $judge):$judgeScope=(string)($judge["scoring_scope"]??"all");$notApplicable=$judgeScope!=="all"&&$judgeScope!==$role;?><td<?=$notApplicable?' class="not-applicable" title="Judge not assigned to this role"':''?>><?=$notApplicable?"N/A":e((string)($matrixMarks[(int)$x["id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=number_format((float)$x["total_score"],1)?></td></tr><?php endforeach;?></tbody></table></section><?php endforeach;?></div>'''
+          new='''<div class="matrix-split"><?php foreach(["leader"=>"LEADERS","follower"=>"FOLLOWERS"] as $role=>$label):$matrixRows=$heatsScoreRoleItems[$role];$roleJudges=array_values(array_filter($matrixJudges,static function(array $judge)use($role):bool{$scope=(string)($judge["scoring_scope"]??"all");return $scope==="all"||$scope===$role;}));?><section class="matrix-panel"><div class="matrix-role"><span><?=e($label)?> · <?=$heatsScoreRoleTotals[$role]?> CONTESTANTS</span><span><?=e(strtoupper((string)$r["round_type"]))?> · PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?></span></div><table class="score-table matrix matrix-heats"><thead><tr><th>Prov.</th><th class="name">Competitor</th><?php foreach($roleJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Score</th></tr></thead><tbody><?php foreach($matrixRows as $x):?><tr><td class="num"><?=(int)$x["rank_number"]?></td><td class="name">#<?=(int)$x["bib_number"]?> <?=e((string)$x["display_name"])?></td><?php foreach($roleJudges as $judge):?><td><?=e((string)($matrixMarks[(int)$x["id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=number_format((float)$x["total_score"],1)?></td></tr><?php endforeach;?></tbody></table></section><?php endforeach;?></div>'''
+          if s.count(old)!=1:
+              raise SystemExit(f'Heats matrix renderer anchor mismatch: {s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev661' or d.get('build')!=3367:
+              raise SystemExit(f'unexpected version {d.get("version")} build {d.get("build")}')
+          d['version']='2.3.3-dev662'; d['build']=3368; d['release_date']='2026-09-06'
+          d.setdefault('features',[]).insert(0,'Heats projector hides judges who are not assigned to the displayed role instead of showing N/A columns; Leader and Follower panels show only applicable judges while preserving large competitor names, scores, pagination and admin data.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev662.md').write_text('# BDC v2.3.3-dev662 — Heats projector judge filtering\n\nBuild 3368\n\nHeats projection now displays only judges applicable to each role. Non-applicable judge columns and N/A values remain an admin concern and are not shown to the audience. No scoring or judge-assignment data is changed.\n')
+          PY
+          php -l live-display/feed.php
+          grep -q 'roleJudges=array_values' live-display/feed.php
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/heats-hide-na-v662.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev662.md
+          git diff --cached --check
+          git commit -m 'Release dev662 hide non-applicable Heats judge columns'
+          git push origin HEAD:develop
