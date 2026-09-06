@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+python3 <<'PY'
+from pathlib import Path
+import json
+
+def replace_once(path, old, new):
+    p=Path(path); s=p.read_text()
+    if old not in s: raise SystemExit(f'anchor missing in {path}: {old[:100]!r}')
+    p.write_text(s.replace(old,new,1))
+
+# Admin UI: replace only the old special-category single-tier block.
+p=Path('admin/scoring/automatic-common-setup.php'); s=p.read_text()
+if 'RoleYesConfigurationService' not in s:
+    s=s.replace('use App\\Services\\JackJillCompetitorEligibilityService;','use App\\Services\\JackJillCompetitorEligibilityService;\nuse App\\Services\\RoleYesConfigurationService;',1)
+start=s.index('        $locked=(int)$round[\'tier_manual_override\']===1;', s.index('if($special){'))
+end_marker="        $html.='<div class=\"small text-muted mt-2\">All Admin Scorers can configure this before judging. Participant-count tiers do not change special-category points.</div>';"
+end=s.index(end_marker,start)+len(end_marker)
+block=r'''        $roleConfig=RoleYesConfigurationService::resolve($pdo,$roundId,(int)$round['yes_count']);
+        $roleSaved=$roleConfig['leader']['saved']&&$roleConfig['follower']['saved'];
+        $startedStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks WHERE round_id=:round AND (mark_type<>'blank' OR weighted_score>0)");$startedStmt->execute(['round'=>$roundId]);$scoringStarted=(int)$startedStmt->fetchColumn()>0;
+        $html.='<form method="post" action="special-settings.php" class="row g-3"><input type="hidden" name="_csrf" value="'.$e($csrf).'"><input type="hidden" name="round_id" value="'.$roundId.'"><input type="hidden" name="return_to" value="automatic-round.php">';
+        foreach(['leader'=>'LEAD','follower'=>'FOLLOW'] as $role=>$label){
+            $count=$roleConfig[$role]['count'];$recommend=RoleYesConfigurationService::recommended($count,(int)$round['yes_count']);$selected=$roleSaved?$roleConfig[$role]['yes']:$recommend['yes'];
+            $html.='<div class="col-12"><div class="border rounded p-3"><div class="fw-bold mb-2">'.$label.'</div><div class="small text-muted mb-2">'.$count.' competitors · Recommended Tier '.$recommend['tier'].' · '.$recommend['yes'].' YES</div><label class="form-label">YES count</label><select class="form-select" name="'.$role.'_yes_count" '.(($roleSaved||$scoringStarted)?'disabled':'').'><option value="5" '.($selected===5?'selected':'').'>5 YES</option><option value="10" '.($selected===10?'selected':'').'>10 YES</option><option value="15" '.($selected===15?'selected':'').'>15 YES</option></select>'.(($roleSaved||$scoringStarted)?'<input type="hidden" name="'.$role.'_yes_count" value="'.$selected.'">':'').'</div></div>';
+        }
+        $html.='<div class="col-12"><div class="border rounded p-3 bg-light"><div class="fw-semibold mb-2">Alternates · Locked</div><div class="row g-2 text-center"><div class="col-4"><small class="text-muted d-block">ALT 1</small><strong>4.5</strong></div><div class="col-4"><small class="text-muted d-block">ALT 2</small><strong>4.3</strong></div><div class="col-4"><small class="text-muted d-block">ALT 3</small><strong>4.2</strong></div></div></div></div>';
+        $html.='<div class="col-12">'.($scoringStarted?'<span class="badge text-bg-secondary">Locked because judging has started</span>':($roleSaved?'<span class="badge text-bg-success">Role YES counts locked</span>':'<button class="btn btn-dark btn-sm" name="action" value="special_role_settings_lock">Save &amp; Lock Role YES Counts</button>')).'</div></form>';
+        $html.='<div class="small text-muted mt-2">Lead and Follow are configured independently. Fixed-point rules and A1/A2/A3 weights remain unchanged.</div>';'''
+s=s[:start]+block+s[end:];p.write_text(s)
+
+# Judge sheet: saved role settings are authoritative; legacy rounds retain shared yes_count.
+p=Path('judge-scoring/index.php'); s=p.read_text()
+if 'RoleYesConfigurationService' not in s:
+    s=s.replace('use App\\Services\\RoleAdvancementService;','use App\\Services\\RoleAdvancementService;\nuse App\\Services\\RoleYesConfigurationService;',1)
+start=s.index('function bdcJudgeRoleTier(')
+end=s.index('\nfunction judgeJson',start)
+block=r'''$roleTierConfig=RoleYesConfigurationService::resolve($pdo,$roundId,$yesLimit);
+$roleYesLimits=['leader'=>$roleTierConfig['leader']['yes'],'follower'=>$roleTierConfig['follower']['yes']];
+$roleTiers=['leader'=>$roleTierConfig['leader']['tier'],'follower'=>$roleTierConfig['follower']['tier']];
+$rolePlan=[
+    'leader'=>RoleAdvancementService::rolePlan($allRoleCounts['leader'],$roleYesLimits['leader']),
+    'follower'=>RoleAdvancementService::rolePlan($allRoleCounts['follower'],$roleYesLimits['follower']),
+];
+$roleAltPlaces=[];
+foreach(['leader','follower'] as $tierRole){$roleAltPlaces[$tierRole]=['A1'=>$judgeOrdinal($roleYesLimits[$tierRole]+1),'A2'=>$judgeOrdinal($roleYesLimits[$tierRole]+2),'A3'=>$judgeOrdinal($roleYesLimits[$tierRole]+3)];}
+'''
+s=s[:start]+block+s[end:]
+s=s.replace("$limit=bdcJudgeRoleTier((int)$totalStmt->fetchColumn(),max(1,(int)($weights['yes_count']??10)))['yes'];","$roleCfg=RoleYesConfigurationService::resolve($pdo,$roundId,max(1,(int)($weights['yes_count']??10)));\n        $limit=(int)$roleCfg[$role]['yes'];",1)
+s=s.replace("$tier=bdcJudgeRoleTier($total,$yesLimit);\n        $requiredYes=(int)$tier['yes'];","$roleCfg=RoleYesConfigurationService::resolve($pdo,$roundId,$yesLimit);\n        $requiredYes=(int)$roleCfg[$role]['yes'];",1)
+# Judge-facing wording deliberately hides tier/admin logic.
+old="<li><strong><?=e($criteriaLabel)?> · Tier <?=(int)$cfg['tier']?> · <?=$allRoleCounts[$criteriaRole]?> competitors:</strong> choose <strong><?=(int)$cfg['yes']?> YES</strong>. A1 = <strong><?=e($places['A1'])?> place</strong>, A2 = <strong><?=e($places['A2'])?> place</strong>, A3 = <strong><?=e($places['A3'])?> place</strong>.</li>"
+new="<li><strong><?=e($criteriaLabel)?>:</strong> Choose <strong><?=(int)$cfg['yes']?> YES</strong> for your <strong>Top <?=(int)$cfg['yes']?> best dancers</strong>. A1 = <strong><?=e($places['A1'])?> place</strong>, A2 = <strong><?=e($places['A2'])?> place</strong>, A3 = <strong><?=e($places['A3'])?> place</strong>.</li>"
+if old not in s: raise SystemExit('judge criteria wording anchor missing')
+s=s.replace(old,new,1);p.write_text(s)
+
+# Callback/result generation consumes the same role-specific source of truth.
+p=Path('admin/scoring/core.php'); s=p.read_text()
+if 'RoleYesConfigurationService' not in s:
+    s=s.replace('use App\\Services\\RoleAdvancementService;','use App\\Services\\RoleAdvancementService;\nuse App\\Services\\RoleYesConfigurationService;',1)
+s=s.replace("$rolePlan=RoleAdvancementService::roundPlan($roleCounts['leader'],$roleCounts['follower'],(int)$round['yes_count']);","$roleYesConfig=RoleYesConfigurationService::resolve($pdo,$rid,(int)$round['yes_count']);\n    $rolePlan=['leader'=>RoleAdvancementService::rolePlan($roleCounts['leader'],(int)$roleYesConfig['leader']['yes']),'follower'=>RoleAdvancementService::rolePlan($roleCounts['follower'],(int)$roleYesConfig['follower']['yes'])];",1)
+s=s.replace("$callbackLimit=min((int)$round['callback_count'],count($list));","$callbackLimit=min((int)($roleYesConfig[$role]['yes']??$round['callback_count']),count($list));",1)
+p.write_text(s)
+
+# Release metadata.
+vp=Path('VERSION.json'); data=json.loads(vp.read_text());data['version']='2.3.3-dev679';data['build']=3386;data['release_date']='2026-09-07';feature='Role-specific YES source of truth for Special Category Heats: independently saves and locks Lead and Follow YES counts, keeps legacy shared yes_count as fallback until saved, makes judge limits, submission validation, counters and callback generation consume the saved role values, and keeps judge instructions simple without exposing tier logic; weights, Salsa Open fixed points, Finals and projection are unchanged.';features=data.setdefault('features',[]);features.insert(0,feature) if not features or features[0]!=feature else None;vp.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+PY
+php -l app/Services/RoleYesConfigurationService.php
+php -l admin/scoring/special-settings.php
+php -l admin/scoring/automatic-common-setup.php
+php -l judge-scoring/index.php
+php -l admin/scoring/core.php
+php -l database/migrations/20260907_0438_role_yes_settings.php
+python3 - <<'PY'
+from pathlib import Path
+j=Path('judge-scoring/index.php').read_text(); a=Path('admin/scoring/automatic-common-setup.php').read_text(); c=Path('admin/scoring/core.php').read_text(); s=Path('app/Services/RoleYesConfigurationService.php').read_text()
+assert 'Save &amp; Lock Role YES Counts' in a and 'leader_yes_count' in a and 'follower_yes_count' in a
+assert 'Choose <strong><?=(int)$cfg[\'yes\']?> YES</strong> for your <strong>Top' in j
+assert 'Tier <?=(int)$cfg' not in j
+assert 'RoleYesConfigurationService::resolve' in j and 'RoleYesConfigurationService::resolve' in c
+assert 'Backward compatibility' in s and 'bdc_scoring_role_yes_settings' in s
+print('dev679 role YES assertions passed')
+PY
+git config user.name 'BDC Release Bot'
+git config user.email 'actions@users.noreply.github.com'
+git add app/Services/RoleYesConfigurationService.php database/migrations/20260907_0438_role_yes_settings.php admin/scoring/special-settings.php admin/scoring/automatic-common-setup.php judge-scoring/index.php admin/scoring/core.php VERSION.json
+git commit -m 'Release dev679 role-specific YES settings'
+git push origin HEAD:develop
