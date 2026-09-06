@@ -17,7 +17,7 @@
 <?php if (\App\Core\Auth::pendingTwoFactor()): ?>
 <p class="text-muted">Enter the six-digit code sent to your email.</p>
 <div class="mb-3"><label class="form-label">Verification code</label><input class="form-control form-control-lg text-center" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" name="verification_code" required autofocus></div>
-<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="remember_device" id="rememberDevice"><label class="form-check-label" for="rememberDevice">Remember this computer for 30 days</label></div>
+<div class="alert alert-secondary py-2 small mb-3">This browser will stay signed in for 30 days after verification. Explicit logout still signs it out immediately.</div>
 <button class="btn btn-dark w-100">Verify and log in</button>
 <?php else: ?>
 <div class="mb-3"><label class="form-label">Email</label><input class="form-control" type="email" name="email" required></div>

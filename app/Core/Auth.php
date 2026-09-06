@@ -50,7 +50,9 @@ final class Auth
         $pdo=Database::connection();$s=$pdo->prepare('SELECT * FROM bdc_two_factor_codes WHERE user_id=:u AND used_at IS NULL AND expires_at>=NOW() ORDER BY id DESC LIMIT 1');$s->execute(['u'=>$user['id']]);$row=$s->fetch();
         if(!$row||!hash_equals((string)$row['code_hash'],hash('sha256',$code))){if($row)$pdo->prepare('UPDATE bdc_two_factor_codes SET attempts=attempts+1 WHERE id=:id')->execute(['id'=>$row['id']]);return false;}
         $pdo->prepare('UPDATE bdc_two_factor_codes SET used_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);unset($_SESSION['pending_2fa_user']);self::completeLogin($user);
-        if($remember)self::rememberDevice((int)$user['id']);self::audit((int)$user['id'],'two_factor_verified',['remembered'=>$remember]);return true;
+        // BDC admin policy: a successful two-factor login is remembered for 30 days.
+        // Explicit logout still revokes the trusted token immediately.
+        self::rememberDevice((int)$user['id']);self::audit((int)$user['id'],'two_factor_verified',['remembered'=>true,'remember_days'=>30]);return true;
     }
     private static function completeLogin(array $user):void{session_regenerate_id(true);$_SESSION['user']=['id'=>(int)$user['id'],'email'=>$user['email'],'full_name'=>$user['full_name'],'role'=>$user['role']];$_SESSION['last_activity']=time();}
     private static function issueTwoFactorCode(array $user,string $auditAction):void
@@ -94,7 +96,9 @@ final class Auth
         $parsed=self::parseTrustedDeviceCookie();if(!$parsed)return false;
         $s=Database::connection()->prepare('SELECT * FROM bdc_trusted_devices WHERE user_id=:u AND selector=:s AND revoked_at IS NULL AND expires_at>=NOW()');
         $s->execute(['u'=>$userId,'s'=>$parsed['selector']]);$row=$s->fetch();
-        $valid=$row&&hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']))&&hash_equals((string)$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??'')));
+        // The secure random trusted-device token is the authentication credential.
+        // Do not invalidate it merely because the browser's User-Agent version changes during the 30-day window.
+        $valid=$row&&hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']));
         if($valid)Database::connection()->prepare('UPDATE bdc_trusted_devices SET last_used_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);return(bool)$valid;
     }
 
@@ -107,8 +111,7 @@ final class Auth
         $valid=$row
             && (string)$row['status']==='active'
             && in_array((string)$row['role'],['super_admin','admin','master_scorer','scorer'],true)
-            && hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']))
-            && hash_equals((string)$row['user_agent_hash'],hash('sha256',(string)($_SERVER['HTTP_USER_AGENT']??'')));
+            && hash_equals((string)$row['token_hash'],hash('sha256',$parsed['token']));
         if(!$valid){
             if($row)$pdo->prepare('UPDATE bdc_trusted_devices SET revoked_at=COALESCE(revoked_at,NOW()) WHERE id=:id')->execute(['id'=>$row['trusted_id']]);
             self::expireTrustedDeviceCookie();
