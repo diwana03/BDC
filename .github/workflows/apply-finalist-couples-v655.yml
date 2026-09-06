@@ -1,0 +1,68 @@
+name: Apply Finalist Couples v655
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/apply-finalist-couples-v655.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Patch Finalist Couples only
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+          old='''<div style="display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%"><img class="photo" src="<?= e($displayPhoto) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'" style="margin-bottom:.25em"><div class="name" style="font-size:.86em"><?= e($person["name"] ?: "Partner pending") ?></div><div class="small">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div><?php if (!empty($person["country"])): ?><div class="small flight-country"><?php if ($flagUrl = country_flag_url($person["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag" style="width:clamp(30px,2.25vw,56px);height:clamp(20px,1.5vw,37px);object-fit:cover;border:1px solid rgba(255,255,255,.7);border-radius:4px"><?php endif; ?><?= e($person["country"]) ?></div><?php endif; ?></div>'''
+          new='''<div class="final-couple-person" style="display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%"><img class="photo" src="<?= e($displayPhoto) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'" style="margin-bottom:.25em"><div class="final-couple-name-row"><div class="name final-couple-name"><?= e($person["name"] ?: "Partner pending") ?></div><?php if (!empty($person["country"]) && ($flagUrl = country_flag_url($person["country"])): ?><img class="final-couple-flag" src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag"><?php endif; ?></div><div class="small final-couple-bib">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div></div>'''
+          if s.count(old)!=1:
+              raise SystemExit(f'Finalist Couples person renderer expected once, found {s.count(old)}')
+          s=s.replace(old,new,1)
+          marker='.list .item>div:nth-child(2)>div>div:nth-of-type(2){font-size:clamp(19px,1.55vw,38px);font-weight:950;line-height:1;color:#fff;margin:.04em 0}'
+          add=marker+'.final-couple-name-row{width:100%;display:flex;align-items:center;justify-content:center;gap:clamp(5px,.42vw,10px);white-space:nowrap;overflow:hidden}.final-couple-name{min-width:0;max-width:calc(100% - clamp(28px,2vw,44px));font-size:clamp(16px,1.18vw,28px)!important;font-weight:950;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.final-couple-flag{flex:0 0 auto;width:clamp(27px,1.9vw,42px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.3)}.final-couple-bib{font-size:clamp(19px,1.55vw,38px)!important;font-weight:950;line-height:1;color:#fff;margin:.08em 0 0}'
+          if s.count(marker)!=1:
+              raise SystemExit(f'Couple style marker expected once, found {s.count(marker)}')
+          s=s.replace(marker,add,1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev654' or d.get('build')!=3360:
+              raise SystemExit(f'Unexpected version {d.get("version")} build {d.get("build")}')
+          d['version']='2.3.3-dev655'; d['build']=3361; d['release_date']='2026-09-06'
+          d.setdefault('features',[]).insert(0,'Finalist Couples only: enlarges dancer names, places the real country flag immediately after each name, removes the country text row, and keeps BIB below while preserving the separate Finalists screen and the five-card couple grid.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev655.md').write_text('''# BDC v2.3.3-dev655 — Finalist Couples identity layout\n\nBuild 3361\n\n- Changes only the Finalist Couples / matched-couple renderer.\n- Larger single-line dancer names.\n- Real flag immediately after each name.\n- Removes country text below the flag.\n- Keeps BIB large directly below the name row.\n- Preserves the separate Finalists Leaders/Followers screen, photos, couple numbers, matching, scoring and five-card responsive grid.\n''')
+          Path('tests/finalist-couples-v655.php').write_text(r'''<?php
+declare(strict_types=1);
+$f=file_get_contents(__DIR__.'/../live-display/feed.php');
+if(!str_contains($f,'final-couple-name-row'))throw new RuntimeException('Final couple name row missing');
+if(!str_contains($f,'final-couple-flag'))throw new RuntimeException('Final couple flag missing');
+if(!str_contains($f,'font-size:clamp(16px,1.18vw,28px)!important'))throw new RuntimeException('Final couple larger name missing');
+if(!str_contains($f,'$coupleColumns = 5;'))throw new RuntimeException('Five-card grid changed');
+if(!str_contains($f,'competitor-country-name'))throw new RuntimeException('Separate Finalists screen was altered');
+echo "finalist couples v655: PASS\n";
+''')
+          PY
+          php -l live-display/feed.php
+          php tests/finalist-couples-v655.php
+          git diff --check
+      - name: Commit verified release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/apply-finalist-couples-v655.yml
+          git rm -f .github/workflows/restore-feed-dev652-v654.yml 2>/dev/null || true
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev655.md tests/finalist-couples-v655.php
+          git diff --cached --check
+          git commit -m 'Release dev655 Finalist Couples name and flag layout'
+          git push origin HEAD:develop
