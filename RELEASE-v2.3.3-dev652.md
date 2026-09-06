@@ -1,14 +1,15 @@
-# BDC 2.3.3-dev652
+# BDC v2.3.3-dev652 — Final projector polish
 
 Build 3358
 
-## Judge Profile editor recovery
+## Changes
 
-- Restores the complete Edit Judge Profile form after the previous country-dropdown change truncated the page before the save controls.
-- Restores the visible Save Judge Profile action and complete profile fields.
-- Keeps Flag 1 through Flag 5 on the full canonical ISO country dataset from public/assets/flags/countries.json.
-- Preserves legacy saved country values instead of silently deleting them.
-- Returns the empty judge photo frame to a clean white background while preserving upload, zoom, drag, crop and remove-photo behavior.
-- No scoring data, judge assignments, results or historical records are changed.
+- Adds bottom breathing room inside every Finalist Couples and Emcee Random Final Match dancer identity so the BIB line stays visibly clear of the card edge.
+- On Final rounds only, judge scope is presented as `JUDGING ALL COUPLES`.
+- Heats wording remains exactly `JUDGING LEADERS`, `JUDGING FOLLOWERS`, or `JUDGING LEADERS & FOLLOWERS` according to the existing scoring scope.
+- Does not change scoring assignments, matching, pair generation, five-card responsive grid logic, BDC logo, or `BDC · Official Live Display` badge.
 
-Branch: develop
+## Validation
+
+- PHP 8.1 syntax check on the projector feed.
+- Focused regression checks Final-only wording, unchanged Heats wording, BIB bottom spacing, five-card grid, logo and official badge.
