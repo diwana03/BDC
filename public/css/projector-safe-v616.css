@@ -88,7 +88,6 @@
 .stage .list > .judge-card:only-child .judge-country { gap:clamp(14px,2.4cqw,28px) !important; }
 .stage .list > .judge-card:only-child .judge-country-entry { width:auto !important;min-width:0 !important;max-width:none !important; }
 
-
 /* Final couple board v649: equal five-column cards, centred incomplete row, full BIB visibility. */
 body[data-screen-type="final_couples"] .stage .list {
   grid-template-columns:repeat(10,minmax(0,1fr)) !important;
@@ -142,7 +141,6 @@ body[data-screen-type="final_couples"] .stage .list > .item .flight-country img 
   width:clamp(22px,1.8vw,38px) !important;
 }
 
-
 /* dev669 audience-first Heats matrix */
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .stage{padding:3.2cqh 2.6cqw 2.8cqh!important}
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .projection-official{top:2.5cqh!important;right:2.6cqw!important}
@@ -174,3 +172,12 @@ body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-c
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-competitor{gap:clamp(8px,.55vw,14px)!important;font-size:clamp(20px,1.34vw,32px)!important;line-height:1!important}
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-flag{width:clamp(34px,2.05vw,48px)!important;border-radius:3px!important}
 body[data-screen-type="score_matrix"]:has(.matrix-heats) .heats-competitor-name{font-weight:950!important}
+
+/* dev670 force audience-readable scoring typography */
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:first-child,
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:first-child{font-size:clamp(16px,1.05vw,24px)!important;font-weight:950!important}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4){font-size:clamp(17px,1.08vw,25px)!important;line-height:1!important}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:nth-child(n+4) small{font-size:clamp(11px,.68vw,16px)!important;line-height:1!important;margin-top:.22em!important}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:nth-child(n+4){font-size:clamp(24px,1.52vw,36px)!important;font-weight:950!important;line-height:1!important}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats th:last-child{font-size:clamp(16px,1vw,23px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-heats) .matrix-heats td:last-child{font-size:clamp(25px,1.6vw,38px)!important;font-weight:950!important}
