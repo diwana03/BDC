@@ -83,11 +83,11 @@ ob_start(static fn(string $html):string=>str_replace(
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;background:#030509;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
-.stage{width:100vw;height:100vh;padding:1.15vw 1.55vw .85vw;background:radial-gradient(circle at top,#4a101e,#111827 52%,#030509);display:flex;flex-direction:column}
-.event{text-align:center;font-size:clamp(24px,2.05vw,50px);font-weight:900}
-.meta{text-align:center;color:#ffb7c3;font-size:clamp(13px,1vw,24px)}
-h1{text-align:center;font-size:clamp(28px,2.35vw,58px);margin:.28em 0 .42em}
-.wrap{flex:1;min-height:0;display:flex;align-items:stretch;justify-content:center}
+.stage{width:100vw;height:100vh;padding:10vh 5vw;background:radial-gradient(circle at top,#4a101e,#111827 52%,#030509);display:flex;flex-direction:column;justify-content:center}
+.event{text-align:center;font-size:clamp(24px,2.05vw,50px);font-weight:900;line-height:1.05}
+.meta{text-align:center;color:#ffb7c3;font-size:clamp(13px,1vw,24px);margin-top:.16em}
+h1{text-align:center;font-size:clamp(28px,2.35vw,58px);margin:.2em 0 .38em;line-height:1}
+.wrap{height:58vh;min-height:0;display:flex;align-items:stretch;justify-content:center}
 table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;background:rgba(17,24,39,.88);font-size:clamp(13px,.92vw,22px)}
 thead{height:7%}tbody{height:93%}tbody tr{height:8.333%}
 th,td{border:1px solid rgba(255,255,255,.28);padding:0 .28em;text-align:center}
@@ -103,7 +103,7 @@ td:nth-child(n+3){font-size:clamp(15px,.95vw,23px);font-weight:950}
 .aud-person img{width:clamp(25px,1.5vw,36px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}
 .aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950}
 .aud-amp{font-weight:950}
-.test{position:absolute;top:.7em;left:.7em;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}
+.test{position:absolute;top:10vh;left:5vw;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}
 </style>
 </head>
 <body>
