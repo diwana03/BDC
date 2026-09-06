@@ -1,13 +1,17 @@
-# BDC 2.3.3-dev653
+# BDC v2.3.3-dev653 — Projector name and flag layout
 
 Build 3359
 
-## Judge projector multi-country layout
+## Changes
 
-- Keeps all judge country flags on one row in the Judge projector.
-- Replaces long country labels under judge flags with compact three-character uppercase labels so two or more countries cannot overlap.
-- Supports up to five judge countries with responsive flag sizing and spacing.
-- Preserves the existing judge card proportions, Chief Judge treatment, name sizing, role labels and shared Test/Live projector engine.
-- Applies the same safe layout to individual Judge Call projection.
+- Competitor projector cards now use first name only.
+- Makes the name substantially larger while keeping it strictly on one line with responsive ellipsis protection for unusually long names.
+- Shows the country flag immediately after the name.
+- Makes the flag larger and vertically aligned with the name.
+- Removes country-code and country-name text from the competitor identity line.
+- Preserves photo, BIB, role panels, page counts, responsive card grid, scoring and data logic.
 
-Branch: develop
+## Validation
+
+- PHP 8.1 syntax check on the live projector feed.
+- Regression assertions for first-name rendering, larger responsive name, larger flag, single-line protection, no country text, and preserved BIB output.
