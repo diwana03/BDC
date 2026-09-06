@@ -1,0 +1,21 @@
+name: Release dev691 Projector Safe Readable
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev691-projector-safe-readable.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev691-projector-safe-readable
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply hard safe area and readable adaptive matrix
+        run: bash .github/scripts/release-dev691-projector-safe-readable.sh
