@@ -470,7 +470,7 @@ if($splitRoleScreen){
 .matrix-heats thead{height:9%}.matrix-heats tbody{height:91%}.matrix-heats thead tr{height:100%}.matrix-heats tbody tr{height:auto}
 .matrix-heats th,.matrix-heats td{padding:0 .20em!important;white-space:nowrap}
 .matrix-heats th:first-child,.matrix-heats td:first-child{width:7%;font-size:.82em;font-weight:900;text-align:center}
-.matrix-heats th:nth-child(2),.matrix-heats td:nth-child(2){width:9%;font-size:.96em;font-weight:950;text-align:center}
+.matrix-heats th:nth-child(2),.matrix-heats td:nth-child(2){width:10%;font-weight:950;text-align:center}.matrix-heats th:nth-child(2){font-size:.72em}.matrix-heats td:nth-child(2){font-size:clamp(17px,1.16vw,28px)!important;letter-spacing:.025em}
 .matrix-heats th:nth-child(3),.matrix-heats td:nth-child(3){width:33%;text-align:left}
 .matrix-heats th:nth-child(n+4){font-size:.62em;letter-spacing:-.015em;text-align:center}.matrix-heats th:nth-child(n+4) small{font-size:.58em;display:block;overflow:hidden;text-overflow:ellipsis}
 .matrix-heats td:nth-child(n+4){font-size:.82em;font-weight:850;text-align:center}
