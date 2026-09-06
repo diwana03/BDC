@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev655",
-  "build": 3361,
+  "version": "2.3.3-dev656",
+  "build": 3362,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final Live Relative Placement Matrix readability: uses the available 16:9 space with substantially larger couple, judge and placement text while preserving all matrix data and heats layouts.",
     "Finalist Couples only: enlarges dancer names, positions the real country flag immediately after each name, visually removes country text, and keeps BIB below while preserving the separate Finalists screen and five-card couple grid.",
     "Restores the Finalists leader/follower projector presentation exactly as it was before dev653; Finalist Couples remains a separate renderer.",
     "Projector competitor cards now show first name only in a substantially larger single-line responsive label with the country flag immediately after the name; removes country-code/country-text clutter while preserving bib, photo, pagination, role split and responsive grid logic.",
