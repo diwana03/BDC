@@ -1,0 +1,11 @@
+const fs=require('fs');
+const assert=require('assert');
+const auth=fs.readFileSync('app/Core/Auth.php','utf8');
+assert(auth.includes("return 'bdc_trusted_device_'.$suffix"),'Trusted-device cookie must be environment-specific');
+assert(auth.includes("Config::get('app.base_path','/portal')"),'Trusted-device cookie must be scoped to the environment base path');
+assert(auth.includes('restoreRememberedLogin()'),'A remembered browser must be able to restore an expired PHP session');
+assert(auth.includes("DATE_ADD(NOW(),INTERVAL 30 DAY)"),'Remembered browser token must remain valid for 30 days');
+assert(auth.includes("return self::restoreRememberedLogin();"),'Missing or timed-out PHP sessions must restore from the remembered token');
+assert(auth.includes('revokeCurrentTrustedDevice()'),'Explicit logout must revoke the remembered token');
+assert(auth.includes("'secure'=>(bool)Config::get('security.secure_cookies',true)"),'Remembered cookie security must follow configured secure-cookie policy');
+console.log('Admin remembered-session v649 tests passed.');
