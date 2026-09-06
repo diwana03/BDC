@@ -9,149 +9,40 @@
   padding-right: 5cqw !important;
 }
 
-.stage > .projection-official {
-  top: 10cqh !important;
-}
+.stage > .projection-official { top: 10cqh !important; right: 5cqw !important; }
+.stage > .projection-official[data-fullscreen-ready="1"] { cursor:pointer;user-select:none;transition:color 140ms ease,border-color 140ms ease,background-color 140ms ease,transform 140ms ease; }
+.stage > .projection-official[data-fullscreen-ready="1"]:hover,.stage > .projection-official[data-fullscreen-ready="1"]:focus-visible { color:#fff !important;border-color:rgba(255,207,69,.9) !important;background:rgba(125,38,56,.92) !important;outline:none;transform:translateY(-1px); }
 
-.stage > .projection-official[data-fullscreen-ready="1"] {
-  cursor: pointer;
-  user-select: none;
-  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
-}
+/* Shared presentation heading: logo and event copy stay on the same header row,
+   then reserve a clear two-line breathing space before presentation content. */
+.projection-heading-row { flex:0 0 auto;display:grid;grid-template-columns:auto minmax(0,auto);align-items:center;justify-content:center;gap:max(22px,min(1.8cqw,3cqh));margin-bottom:clamp(18px,3.2cqh,38px) !important; }
+.projection-heading-row > .projection-brand { width:max(96px,min(10cqw,17cqh));position:static !important;display:grid;place-items:center;align-self:center;margin:0 !important; }
+.projection-heading-row > .projection-heading-copy { min-width:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(3px,.55cqh,8px); }
+.projection-heading-copy > .event { min-width:0; }
+.projection-heading-row > .projection-brand img { display:block;width:100% !important;height:auto;aspect-ratio:1;object-fit:contain;border-radius:max(8px,min(.7cqw,1.2cqh));background:#fff !important;padding:max(3px,min(.35cqw,.62cqh));box-shadow:0 max(4px,min(.7cqh,.4cqw)) max(12px,min(2cqh,1.2cqw)) rgba(0,0,0,.32); }
 
-.stage > .projection-official[data-fullscreen-ready="1"]:hover,
-.stage > .projection-official[data-fullscreen-ready="1"]:focus-visible {
-  color: #fff !important;
-  border-color: rgba(255, 207, 69, .9) !important;
-  background: rgba(125, 38, 56, .92) !important;
-  outline: none;
-  transform: translateY(-1px);
-}
+/* Judge identity: fixed rows, one flag strip, no country/scope collisions. */
+.stage .judge-card { grid-template-rows:minmax(0,1fr) auto auto minmax(42px,.72fr) !important; }
+.stage .judge-name { grid-column:3;grid-row:1;align-self:end !important; }
+.stage .judge-scope { grid-column:3;grid-row:2;align-self:center !important;margin-bottom:clamp(4px,1.2cqh,9px) !important; }
+.stage .judge-country { grid-column:3;grid-row:3 / 5;align-self:start !important;display:flex !important;flex-direction:row !important;flex-wrap:nowrap !important;align-items:flex-start !important;justify-content:center !important;gap:clamp(10px,3.2cqw,20px) !important;width:100% !important;max-width:100% !important;overflow:visible !important;padding-top:clamp(3px,.8cqh,7px) !important; }
+.stage .judge-country-entry,.stage .judge-country-entry:only-child { flex:0 0 auto !important;width:auto !important;min-width:34px !important;max-width:none !important;display:inline-flex !important;flex-direction:column !important;align-items:center !important;justify-content:flex-start !important;gap:clamp(3px,.55cqh,5px) !important;overflow:visible !important;text-align:center !important; }
+.stage .judge-country-name,.stage .judge-country-entry:only-child .judge-country-name { display:block !important;width:auto !important;max-width:none !important;min-width:3ch;white-space:nowrap !important;overflow:visible !important;overflow-wrap:normal !important;word-break:normal !important;text-overflow:clip !important;text-transform:uppercase !important;text-align:center !important;font-weight:900;letter-spacing:.04em;line-height:1 !important; }
+.stage .judge-country .judge-flag { flex:0 0 auto;width:clamp(28px,min(17cqw,16cqh),50px) !important;height:auto !important;aspect-ratio:3/2;object-fit:cover; }
+.stage .judge-country:has(.judge-country-entry:nth-child(4)) { gap:clamp(5px,1.4cqw,10px) !important; }
+.stage .judge-country:has(.judge-country-entry:nth-child(4)) .judge-flag { width:clamp(22px,min(12cqw,12cqh),38px) !important; }
+.stage .judge-country:has(.judge-country-entry:nth-child(5)) .judge-flag { width:clamp(20px,min(10cqw,11cqh),34px) !important; }
+.stage .list > .judge-card:only-child .judge-country { gap:clamp(14px,2.4cqw,30px) !important; }
+.stage .list > .judge-card:only-child .judge-country-entry { width:auto !important;min-width:0 !important;max-width:none !important; }
 
-.projection-heading-row {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: auto minmax(0, auto);
-  align-items: end;
-  justify-content: center;
-  gap: max(14px, min(1.35cqw, 2.4cqh));
-}
-
-.projection-heading-row > .projection-brand {
-  width: max(96px, min(10cqw, 17cqh));
-  position: static !important;
-  display: grid;
-  place-items: center;
-  align-self: end;
-  margin-top: max(6px, min(.7cqh, .4cqw));
-  margin-bottom: max(2px, min(.3cqh, .18cqw));
-}
-
-.projection-heading-row > .projection-heading-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.projection-heading-copy > .event {
-  min-width: 0;
-}
-
-.projection-heading-row > .projection-brand img {
-  display: block;
-  width: 100% !important;
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: contain;
-  border-radius: max(8px, min(.7cqw, 1.2cqh));
-  background: #fff !important;
-  padding: max(3px, min(.35cqw, .62cqh));
-  box-shadow: 0 max(4px, min(.7cqh, .4cqw)) max(12px, min(2cqh, 1.2cqw)) rgba(0, 0, 0, .32);
-}
-
-.stage > .projection-official {
-  right: 5cqw !important;
-}
-
-/* dev653: multi-country judge identity strip.
- * Keep every judge flag on one row and use a compact three-character label
- * below each flag so country names can never collide on venue screens.
- */
-.stage .judge-country {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: flex-start !important;
-  justify-content: center !important;
-  gap: clamp(5px, 2cqw, 12px) !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-.stage .judge-country-entry,
-.stage .judge-country-entry:only-child {
-  flex: 0 1 auto !important;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  display: inline-flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: clamp(2px, .45cqh, 4px) !important;
-  overflow: hidden !important;
-}
-
-.stage .judge-country-name,
-.stage .judge-country-entry:only-child .judge-country-name {
-  display: block !important;
-  width: 3ch !important;
-  max-width: 3ch !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  overflow-wrap: normal !important;
-  word-break: normal !important;
-  text-overflow: clip !important;
-  text-transform: uppercase !important;
-  text-align: left !important;
-  font-weight: 800;
-  letter-spacing: .02em;
-}
-
-.stage .judge-country .judge-flag {
-  flex: 0 0 auto;
-  width: clamp(28px, min(17cqw, 16cqh), 50px) !important;
-  height: auto !important;
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
-}
-
-.stage .judge-country:has(.judge-country-entry:nth-child(4)) {
-  gap: clamp(3px, 1cqw, 7px) !important;
-}
-
-.stage .judge-country:has(.judge-country-entry:nth-child(4)) .judge-flag {
-  width: clamp(22px, min(12cqw, 12cqh), 38px) !important;
-}
-
-.stage .judge-country:has(.judge-country-entry:nth-child(5)) .judge-flag {
-  width: clamp(20px, min(10cqw, 11cqh), 34px) !important;
-}
-
-.stage .list > .judge-card:only-child .judge-country {
-  gap: clamp(12px, 2.2cqw, 26px) !important;
-}
-
-.stage .list > .judge-card:only-child .judge-country-entry {
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: none !important;
-}
-
-.stage .list > .judge-card:only-child .judge-country-name {
-  width: 3ch !important;
-  max-width: 3ch !important;
-  white-space: nowrap !important;
-}
+/* Canonical venue labels for the countries in the active SBTA judge panel.
+   These deliberately override the old first-three-letters display logic. */
+.stage .judge-country-entry:has(.judge-flag[alt^="Dominican Republic"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Dominican Republic"]) .judge-country-name::after{content:"DOM";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Sweden"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Sweden"]) .judge-country-name::after{content:"SWE";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Spain"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Spain"]) .judge-country-name::after{content:"ESP";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Colombia"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Colombia"]) .judge-country-name::after{content:"COL";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Switzerland"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Switzerland"]) .judge-country-name::after{content:"SUI";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="South Korea"]),.stage .judge-country-entry:has(.judge-flag[alt^="Korea"]){--judge-code-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="South Korea"]) .judge-country-name,.stage .judge-country-entry:has(.judge-flag[alt^="Korea"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="South Korea"]) .judge-country-name::after,.stage .judge-country-entry:has(.judge-flag[alt^="Korea"]) .judge-country-name::after{content:"KOR";font-size:var(--judge-code-size)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Australia"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Australia"]) .judge-country-name::after{content:"AUS";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
+.stage .judge-country-entry:has(.judge-flag[alt^="Russia"]) .judge-country-name{font-size:0 !important}.stage .judge-country-entry:has(.judge-flag[alt^="Russia"]) .judge-country-name::after{content:"RUS";font-size:clamp(8px,min(6.2cqw,7.5cqh),14px)}
