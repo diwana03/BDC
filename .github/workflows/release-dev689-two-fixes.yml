@@ -1,0 +1,21 @@
+name: Release dev689 Two Fixes
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev689-two-fixes.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev689-two-fixes
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply judge instruction and projection fixes
+        run: bash .github/scripts/release-dev689-two-fixes.sh
