@@ -1,0 +1,77 @@
+name: Apply Projector Name and Flag Layout v653
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/apply-projector-name-flag-v653.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Apply guarded projector identity fix
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json, re
+
+          feed = Path('live-display/feed.php')
+          s = feed.read_text()
+
+          css_pattern = re.compile(r'\.competitor-name\{[^}]*\}\.competitor-bib\{[^}]*\}\.competitor-country\{[^}]*\}\.competitor-country-name\{[^}]*\}\.competitor-flag\{[^}]*\}')
+          css_new = '.competitor-identity{flex:0 0 auto;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;gap:clamp(6px,.55vw,12px);white-space:nowrap;overflow:hidden}.competitor-name{min-width:0;max-width:calc(100% - clamp(30px,2.3vw,50px));font-size:clamp(16px,1.35vw,30px);font-weight:950;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.competitor-bib{flex:0 0 auto;font-size:clamp(14px,1.1vw,24px);font-weight:950;line-height:1;color:#fff;letter-spacing:.025em}.competitor-flag{flex:0 0 auto;width:clamp(28px,2.05vw,44px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'
+          s, n = css_pattern.subn(css_new, s, count=1)
+          if n != 1:
+              raise SystemExit(f'competitor css: expected 1 match, found {n}')
+
+          markup_pattern = re.compile(r'<div class="competitor-identity"><div class="competitor-name"><\?=e\(\(string\)\$x\["display_name"\]\)\?></div><div class="competitor-country"><\?php if\(!empty\(\$x\["country"\]\)\):\$flagUrl=country_flag_url\(\(string\)\$x\["country"\]\);\?><\?php if\(\$flagUrl\):\?><img class="competitor-flag" src="<\?=e\(\$flagUrl\)\?>" alt="<\?=e\(\(string\)\$x\["country"\]\)\?> flag"><\?php endif;\?><span class="competitor-country-name"><\?=e\(\(string\)\$x\["country"\]\)\?></span><\?php else:\?><span class="competitor-country-name">Country not listed</span><\?php endif;\?></div></div>')
+          markup_new = '<div class="competitor-identity"><div class="competitor-name"><?=e(ProjectionNameService::firstName((string)$x["display_name"]))?></div><?php if(!empty($x["country"])&&($flagUrl=country_flag_url((string)$x["country"]))):?><img class="competitor-flag" src="<?=e($flagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?></div>'
+          s, n = markup_pattern.subn(markup_new, s, count=1)
+          if n != 1:
+              raise SystemExit(f'competitor markup: expected 1 match, found {n}')
+
+          feed.write_text(s)
+
+          version = Path('VERSION.json')
+          data = json.loads(version.read_text())
+          if data.get('version') != '2.3.3-dev652' or data.get('build') != 3358:
+              raise SystemExit(f'Unexpected VERSION.json {data.get("version")} build {data.get("build")}')
+          data['version'] = '2.3.3-dev653'
+          data['build'] = 3359
+          data['release_date'] = '2026-09-06'
+          data.setdefault('features', []).insert(0, 'Projector competitor cards now show first name only in a substantially larger single-line responsive label with the country flag immediately after the name; removes country-code/country-text clutter while preserving bib, photo, pagination, role split and responsive grid logic.')
+          version.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+
+          Path('tests/projector-name-flag-v653.php').write_text(r'''<?php
+          declare(strict_types=1);
+          $feed=file_get_contents(__DIR__.'/../live-display/feed.php');
+          if(!str_contains($feed,'ProjectionNameService::firstName((string)$x["display_name"])'))throw new RuntimeException('First-name projector rendering missing');
+          if(!str_contains($feed,'font-size:clamp(16px,1.35vw,30px)'))throw new RuntimeException('Larger responsive competitor name missing');
+          if(!str_contains($feed,'width:clamp(28px,2.05vw,44px)'))throw new RuntimeException('Larger competitor flag missing');
+          if(str_contains($feed,'competitor-country-name'))throw new RuntimeException('Country text still present on competitor cards');
+          if(!str_contains($feed,'white-space:nowrap'))throw new RuntimeException('Single-line protection missing');
+          if(!str_contains($feed,'competitor-bib'))throw new RuntimeException('Bib rendering missing');
+          echo "projector name flag v653: PASS\n";
+          ''')
+
+          Path('RELEASE-v2.3.3-dev653.md').write_text('''# BDC v2.3.3-dev653 — Projector name and flag layout\n\nBuild 3359\n\n## Changes\n\n- Competitor projector cards now use first name only.\n- Makes the name substantially larger while keeping it strictly on one line with responsive ellipsis protection for unusually long names.\n- Shows the country flag immediately after the name.\n- Makes the flag larger and vertically aligned with the name.\n- Removes country-code and country-name text from the competitor identity line.\n- Preserves photo, BIB, role panels, page counts, responsive card grid, scoring and data logic.\n\n## Validation\n\n- PHP 8.1 syntax check on the live projector feed.\n- Regression assertions for first-name rendering, larger responsive name, larger flag, single-line protection, no country text, and preserved BIB output.\n''')
+          PY
+          php -l live-display/feed.php
+          php tests/projector-name-flag-v653.php
+          git diff --check
+      - name: Commit verified release and remove temporary workflow
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/apply-projector-name-flag-v653.yml
+          git add live-display/feed.php tests/projector-name-flag-v653.php VERSION.json RELEASE-v2.3.3-dev653.md
+          git diff --cached --check
+          git commit -m 'Release dev653 projector name and flag layout'
+          git push origin HEAD:develop
