@@ -1,0 +1,21 @@
+name: Release dev678b Dance Cup Projection Recovery
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev678b-dancecup-projection.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev678b-dancecup-projection
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev678b recovery
+        run: bash .github/scripts/release-dev678b-dancecup-projection.sh
