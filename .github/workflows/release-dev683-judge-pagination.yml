@@ -1,0 +1,21 @@
+name: Release dev683 Judge Pagination
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev683-judge-pagination.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev683-judge-pagination
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev683 readable judge pagination
+        run: bash .github/scripts/release-dev683-judge-pagination.sh
