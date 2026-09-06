@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev662",
-  "build": 3368,
+  "version": "2.3.3-dev663",
+  "build": 3369,
   "status": "development",
   "release_date": "2026-09-06",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final projector matrix readability: keeps all 12 couples within the 16:9 safe area while substantially enlarging couple text and placement values; judge headings remain compact. Heats layout is unchanged.",
     "Heats projector hides judges who are not assigned to the displayed role instead of showing N/A columns; Leader and Follower panels show only applicable judges while preserving large competitor names, scores, pagination and admin data.",
     "Heats matrix fit: preserves and slightly strengthens competitor names while reducing provisional, judge header/name, mark, N/A and score typography and padding so both role panels fit cleanly on the 16:9 projector.",
     "Consolidated repair of dev657-dev659 projector changes: active Emcee matching_couples renderer, separated Final and Heats matrix layouts, and guaranteed 12-row Final fit.",

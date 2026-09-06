@@ -446,12 +446,12 @@ if($splitRoleScreen){
 .score-table.matrix th,.score-table.matrix td{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
 .score-table.matrix th.name,.score-table.matrix td.name{text-align:left}
 .score-table.matrix td.not-applicable{color:#94a3b8;background:rgba(148,163,184,.08);font-weight:850;letter-spacing:.04em}
-.matrix-final{flex:1;min-height:0;height:100%;font-size:max(11px,min(.98cqw,1.68cqh))}
+.matrix-final{flex:1;min-height:0;height:100%;font-size:max(15px,min(1.45cqw,3cqh))}
 .matrix-final thead{height:7%}.matrix-final tbody{height:93%}.matrix-final thead tr{height:100%}.matrix-final tbody tr{height:8.333%}
 .matrix-final th,.matrix-final td{padding:0 .3em!important}
-.matrix-final th:first-child,.matrix-final td:first-child{width:10%;font-size:1.02em;font-weight:900}
-.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:40%;font-size:1.04em;font-weight:950;text-align:left}
-.matrix-final th:nth-child(n+3){font-size:.8em}.matrix-final th:nth-child(n+3) small{font-size:.66em;display:block;overflow:hidden;text-overflow:ellipsis}.matrix-final td:nth-child(n+3){font-size:1.04em;font-weight:900}
+.matrix-final th:first-child,.matrix-final td:first-child{width:9%;font-size:1.12em;font-weight:950}
+.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:43%;font-size:1.10em;font-weight:950;text-align:left}
+.matrix-final th:nth-child(n+3){font-size:.60em;line-height:1.02}.matrix-final th:nth-child(n+3) small{font-size:.72em;display:block;overflow:hidden;text-overflow:ellipsis}.matrix-final td:nth-child(n+3){font-size:1.12em;font-weight:950}
 .matrix-split{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1%}
 .matrix-panel{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 .matrix-role{flex:0 0 auto;display:flex;justify-content:space-between;gap:.7em;background:#111827;border:1px solid rgba(255,255,255,.35);padding:.28em .42em;font-size:max(9px,min(.72cqw,1.22cqh));font-weight:950;letter-spacing:.055em;white-space:nowrap}
