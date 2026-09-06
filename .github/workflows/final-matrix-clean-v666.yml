@@ -1,0 +1,57 @@
+name: Final Matrix Clean v666
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/final-matrix-clean-v666.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Clean Final matrix identity renderer
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php'); s=p.read_text()
+          old='<td class="name">#<?=(int)$x["pair_number"]?> <?=e((string)$x["leader_name"])?> &amp; <?=e((string)$x["follower_name"])?></td>'
+          new='<td class="name"><div class="final-matrix-couple"><span class="final-matrix-person"><strong class="final-matrix-bib"><?= (int)$x["leader_bib"] ?></strong><?php if($leaderFlag=country_flag_url((string)($x["leader_country"]??""))):?><img class="final-matrix-flag" src="<?=e($leaderFlag)?>" alt="<?=e((string)$x["leader_country"])?> flag"><?php endif;?><span><?=e((string)$x["leader_name"])?></span></span><span class="final-matrix-amp">&amp;</span><span class="final-matrix-person"><strong class="final-matrix-bib"><?= (int)$x["follower_bib"] ?></strong><?php if($followerFlag=country_flag_url((string)($x["follower_country"]??""))):?><img class="final-matrix-flag" src="<?=e($followerFlag)?>" alt="<?=e((string)$x["follower_country"])?> flag"><?php endif;?><span><?=e((string)$x["follower_name"])?></span></span></div></td>'
+          if s.count(old)!=1: raise SystemExit('final couple cell anchor mismatch')
+          s=s.replace(old,new,1)
+          anchor='.matrix-final td:nth-child(n+3){font-size:1.12em;font-weight:950}'
+          css='''.matrix-final{font-size:clamp(13px,.9vw,21px)!important}\n.matrix-final th:first-child,.matrix-final td:first-child{width:12%!important;font-size:clamp(12px,.82vw,19px)!important}\n.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:44%!important;font-size:clamp(16px,1.05vw,25px)!important;padding-left:.45em!important;overflow:hidden}\n.matrix-final th:nth-child(n+3){font-size:clamp(8px,.5vw,12px)!important}.matrix-final th:nth-child(n+3) small{font-size:.72em!important}\n.matrix-final td:nth-child(n+3){font-size:clamp(12px,.8vw,19px)!important;font-weight:950}\n.final-matrix-couple{display:flex;align-items:center;gap:clamp(6px,.42vw,10px);min-width:0;width:100%;white-space:nowrap;overflow:hidden}\n.final-matrix-person{display:flex;align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;white-space:nowrap;overflow:hidden}\n.final-matrix-person>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.final-matrix-bib{flex:0 0 auto;display:inline-grid;place-items:center;min-width:2.5em;padding:.12em .3em;border:1px solid rgba(216,170,55,.65);background:rgba(216,170,55,.18);font-size:.92em}\n.final-matrix-flag{flex:0 0 auto;width:clamp(24px,1.45vw,35px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:2px}\n.final-matrix-amp{flex:0 0 auto;font-weight:950;color:#f4e7c1}'''
+          if s.count(anchor)!=1: raise SystemExit('final CSS anchor mismatch')
+          s=s.replace(anchor,anchor+'\n'+css,1)
+          # Remove legacy DOM text rewriting that duplicates BIB/country codes; retain rank labels and Sum removal.
+          old_js="cells[1].textContent=cells[1].textContent.replace(/^#(\\d+)\\s*/,'#P$1 · ');"
+          if old_js not in s: raise SystemExit('legacy final cell rewrite not found')
+          s=s.replace(old_js,'',1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev665' or d.get('build')!=3371: raise SystemExit('unexpected baseline')
+          d['version']='2.3.3-dev666'; d['build']=3372
+          d.setdefault('features',[]).insert(0,'Final Relative Placement Matrix clean identity renderer: one BIB per dancer, real flag beside each name, no country codes or duplicate BIB text, large readable couple identities, compact judge headers, and all 12 rows preserved.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev666.md').write_text('# BDC v2.3.3-dev666 — Final matrix clean identities\n\nBuild 3372\n\nRemoves duplicated BIB/country-code text from Final matrix and renders BIB + real flag + name for each dancer. Keeps 12 rows and compact judge columns.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/final-matrix-clean-v666.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev666.md
+          git diff --cached --check
+          git commit -m 'Release dev666 clean Final matrix identities'
+          git push origin HEAD:develop
