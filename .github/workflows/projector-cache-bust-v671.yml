@@ -1,0 +1,50 @@
+name: Projector Cache Bust v671
+on:
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/projector-cache-bust-v671.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply permanent projector CSS cache busting
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          p = Path('live-display/feed.php')
+          s = p.read_text()
+          old = '''<link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=344"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=355"><link id="bdc-projector-roster-fix" rel="stylesheet" href="../public/css/projector-roster-v615.css?v=644"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=650">'''
+          new = '''<link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-responsive-v344.css') ?>"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-themes-v352.css') ?>"><link id="bdc-projector-roster-fix" rel="stylesheet" href="../public/css/projector-roster-v615.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-roster-v615.css') ?>"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-safe-v616.css') ?>">'''
+          if s.count(old) != 1:
+              raise SystemExit('projector stylesheet link anchor mismatch')
+          p.write_text(s.replace(old, new, 1))
+
+          v = Path('VERSION.json')
+          d = json.loads(v.read_text())
+          if d.get('version') != '2.3.3-dev670' or d.get('build') != 3376:
+              raise SystemExit(f"unexpected VERSION baseline: {d.get('version')} build {d.get('build')}")
+          d['version'] = '2.3.3-dev671'
+          d['build'] = 3377
+          d.setdefault('features', []).insert(0, 'Projector CSS cache busting is now automatic from each deployed stylesheet modification time, so audience-display typography and layout fixes load immediately instead of being masked by stale hard-coded CSS query versions.')
+          v.write_text(json.dumps(d, indent=2, ensure_ascii=False) + '\n')
+
+          Path('RELEASE-v2.3.3-dev671.md').write_text('''# BDC v2.3.3-dev671 — Projector CSS cache delivery fix\n\nBuild 3377\n\nReplaces the hard-coded projector CSS query versions in live-display/feed.php with automatic file modification timestamps for responsive, theme, roster and safe-area stylesheets. This ensures the already-present dev670 audience-readable Heats typography is actually delivered after deployment and prevents future projector CSS changes from being hidden by browser or intermediary caches. No scoring or ranking logic changed.\n''')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/projector-cache-bust-v671.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev671.md
+          git diff --cached --check
+          git commit -m 'Release dev671 automatic projector CSS cache busting'
+          git push origin HEAD:develop
