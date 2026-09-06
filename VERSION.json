@@ -1,11 +1,12 @@
 {
-  "version": "2.3.3-dev683",
-  "build": 3390,
+  "version": "2.3.4-dev684",
+  "build": 3391,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Judge projection card-grid repair: renderer now explicitly chooses 1/2/3/4/5-column judge layouts after pagination, resets old horizontal judge positioning, and renders 7–8 judge pages as a readable 4×2 audience board with large photos, names, flags and country labels.",
     "Readable paged Judges projection: keeps up to eight judges per 16:9 audience page, automatically splits larger panels into balanced pages, lets Auto Page rotate those pages, and preserves large photos, names, flags and country labels instead of shrinking a large panel into unreadable strips.",
     "Approval-gated MCP competitor photo replacement: stages a validated JPG, PNG or WebP against one exact BDC or SDC identity, changes no profile or division fields, deduplicates retries, rechecks identity at approval, and publishes only after Super Admin review.",
     "Completes tier-aware Heats wording on the active judge scoring sheet as well as the criteria screen: each assigned role shows Tier, competitor count, “Choose N YES for your Top N best dancers,” dynamic A1/A2/A3 places, NO guidance and private-comment guidance.",
