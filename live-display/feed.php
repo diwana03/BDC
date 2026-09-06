@@ -376,6 +376,17 @@ if ($type === "score_matrix") {
     unset($projectionItem);
 }
 
+$judgeDisplayTotalPages=1;
+$judgeDisplayPage=1;
+if($type==="judges"){
+    // Audience readability wins over fit-at-any-cost. Keep at most eight judge
+    // cards on a 16:9 page and balance larger panels across multiple pages.
+    $judgeDisplayTotalPages=max(1,(int)ceil(count($items)/8));
+    $judgeDisplayPage=max(1,min($page,$judgeDisplayTotalPages));
+    $items=ProjectionLayoutService::balancedPageSlice($items,$judgeDisplayPage,$judgeDisplayTotalPages);
+    if($judgeDisplayTotalPages>1)$title="JUDGES · PAGE {$judgeDisplayPage} OF {$judgeDisplayTotalPages}";
+}
+
 $heatsScoreRoleItems=["leader"=>[],"follower"=>[]];
 $heatsScoreRoleTotals=["leader"=>0,"follower"=>0];
 $heatsScoreTotalPages=1;

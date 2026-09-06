@@ -363,3 +363,23 @@ body[data-screen-type="judges"] .list:has(>.judge-card:nth-child(7)) .judge-card
 body[data-screen-type="judges"] .list:has(>.judge-card:nth-child(7)) .judge-photo-frame{width:clamp(58px,min(32cqw,30cqh),112px)!important;height:clamp(58px,min(32cqw,30cqh),112px)!important}
 body[data-screen-type="judges"] .list:has(>.judge-card:nth-child(13)) .judge-photo-frame{width:clamp(48px,min(27cqw,25cqh),86px)!important;height:clamp(48px,min(27cqw,25cqh),86px)!important}
 
+/* dev683 readable paged Judges board */
+/* Never compress a large panel into unreadable strips. feed.php caps a judge
+   page at eight cards; these explicit count classes avoid browser :has()
+   dependency and keep every supported page audience-readable. */
+body[data-screen-type="judges"] .judge-list{grid-auto-rows:minmax(0,1fr)!important;align-content:stretch!important}
+body[data-screen-type="judges"] .judge-list.judge-count-1{grid-template-columns:minmax(0,.46fr)!important;justify-content:center!important}
+body[data-screen-type="judges"] .judge-list.judge-count-2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-4{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-6{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-7,
+body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-6 .judge-photo-frame,
+body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-photo-frame,
+body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(72px,min(34cqw,31cqh),126px)!important;height:clamp(72px,min(34cqw,31cqh),126px)!important}
+body[data-screen-type="judges"] .judge-list.judge-count-6 .judge-name,
+body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-name,
+body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-name{font-size:clamp(17px,min(9cqw,7.8cqh),30px)!important}
+
