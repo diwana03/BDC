@@ -1,0 +1,64 @@
+name: Heats Matrix Identity v665
+on:
+  push:
+    branches: [develop]
+    paths: [.github/workflows/heats-matrix-identity-v665.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: develop}
+      - uses: shivammathur/setup-php@v2
+        with: {php-version: '8.1', coverage: none}
+      - name: Apply readable Heats matrix identity layout
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('live-display/feed.php')
+          s=p.read_text()
+          old_css='''.matrix-heats{flex:1;min-height:0;height:100%;font-size:max(8px,min(.61cqw,1.08cqh))}
+.matrix-heats thead{height:8%}.matrix-heats tbody{height:92%}.matrix-heats thead tr{height:100%}.matrix-heats tbody tr{height:auto}
+.matrix-heats th,.matrix-heats td{padding:0 .13em!important}
+.matrix-heats th:first-child,.matrix-heats td:first-child{width:8%;font-size:.9em;font-weight:900}
+.matrix-heats th:nth-child(2),.matrix-heats td:nth-child(2){width:34%;font-size:1.18em;font-weight:950;text-align:left}
+.matrix-heats th:nth-child(n+3){font-size:.66em;letter-spacing:-.01em}.matrix-heats th:nth-child(n+3) small{font-size:.52em;display:block;overflow:hidden;text-overflow:ellipsis}.matrix-heats td:nth-child(n+3){font-size:.88em;font-weight:850}'''
+          new_css='''.matrix-heats{flex:1;min-height:0;height:100%;font-size:clamp(13px,.92vw,21px);table-layout:fixed}
+.matrix-heats thead{height:9%}.matrix-heats tbody{height:91%}.matrix-heats thead tr{height:100%}.matrix-heats tbody tr{height:auto}
+.matrix-heats th,.matrix-heats td{padding:0 .20em!important;white-space:nowrap}
+.matrix-heats th:first-child,.matrix-heats td:first-child{width:7%;font-size:.82em;font-weight:900;text-align:center}
+.matrix-heats th:nth-child(2),.matrix-heats td:nth-child(2){width:9%;font-size:.96em;font-weight:950;text-align:center}
+.matrix-heats th:nth-child(3),.matrix-heats td:nth-child(3){width:33%;text-align:left}
+.matrix-heats th:nth-child(n+4){font-size:.62em;letter-spacing:-.015em;text-align:center}.matrix-heats th:nth-child(n+4) small{font-size:.58em;display:block;overflow:hidden;text-overflow:ellipsis}
+.matrix-heats td:nth-child(n+4){font-size:.82em;font-weight:850;text-align:center}
+.matrix-heats .heats-competitor{display:flex;align-items:center;gap:clamp(7px,.48vw,12px);min-width:0;font-size:clamp(16px,1.12vw,27px);font-weight:950;line-height:1}
+.matrix-heats .heats-competitor-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.matrix-heats .heats-flag{flex:0 0 auto;width:clamp(28px,1.75vw,42px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}'''
+          if old_css not in s: raise SystemExit('Heats CSS anchor not found')
+          s=s.replace(old_css,new_css,1)
+          old_render='''<table class="score-table matrix matrix-heats"><thead><tr><th>Prov.</th><th class="name">Competitor</th><?php foreach($roleJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Score</th></tr></thead><tbody><?php foreach($matrixRows as $x):?><tr><td class="num"><?=(int)$x["rank_number"]?></td><td class="name">#<?=(int)$x["bib_number"]?> <?=e((string)$x["display_name"])?></td><?php foreach($roleJudges as $judge):?><td><?=e((string)($matrixMarks[(int)$x["id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=number_format((float)$x["total_score"],1)?></td></tr><?php endforeach;?></tbody></table>'''
+          new_render='''<table class="score-table matrix matrix-heats"><thead><tr><th>Prov.</th><th>BIB</th><th class="name">Competitor</th><?php foreach($roleJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Score</th></tr></thead><tbody><?php foreach($matrixRows as $x):$heatsFlagUrl=!empty($x["country"])?country_flag_url((string)$x["country"]):null;?><tr><td class="num"><?=(int)$x["rank_number"]?></td><td class="num"><?=!empty($x["bib_number"])?(int)$x["bib_number"]:"—"?></td><td><div class="heats-competitor"><?php if($heatsFlagUrl):?><img class="heats-flag" src="<?=e($heatsFlagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?><span class="heats-competitor-name"><?=e((string)$x["display_name"])?></span></div></td><?php foreach($roleJudges as $judge):?><td><?=e((string)($matrixMarks[(int)$x["id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=number_format((float)$x["total_score"],1)?></td></tr><?php endforeach;?></tbody></table>'''
+          if old_render not in s: raise SystemExit('Heats renderer anchor not found')
+          s=s.replace(old_render,new_render,1)
+          p.write_text(s)
+          v=Path('VERSION.json'); d=json.loads(v.read_text())
+          if d.get('version')!='2.3.3-dev664' or d.get('build')!=3370: raise SystemExit('unexpected version baseline')
+          d['version']='2.3.3-dev665'; d['build']=3371
+          d.setdefault('features',[]).insert(0,'Heats Live Score Matrix identity redesign: separate BIB column, real country flag beside a large competitor name, only applicable judge columns, compact supporting text, and no audience-facing N/A or country codes.')
+          v.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')
+          Path('RELEASE-v2.3.3-dev665.md').write_text('# BDC v2.3.3-dev665 — Heats matrix identity readability\n\nBuild 3371\n\nHeats projector now uses Prov. | BIB | Flag + Competitor | applicable judges | Score with large readable names and compact support columns. No scoring logic changes.\n')
+          PY
+          php -l live-display/feed.php
+          git diff --check
+      - name: Commit release
+        run: |
+          git config user.name 'BDC Release Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm -f .github/workflows/heats-matrix-identity-v665.yml
+          git add live-display/feed.php VERSION.json RELEASE-v2.3.3-dev665.md
+          git diff --cached --check
+          git commit -m 'Release dev665 readable Heats matrix identities'
+          git push origin HEAD:develop
