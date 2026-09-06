@@ -46,12 +46,19 @@ final class RoleYesConfigurationService
         self::ensure($pdo);$counts=self::counts($pdo,$roundId);$saved=[];
         $stmt=$pdo->prepare('SELECT dance_role,yes_count FROM bdc_scoring_role_yes_settings WHERE round_id=:round');$stmt->execute(['round'=>$roundId]);
         foreach($stmt->fetchAll() as $row)$saved[(string)$row['dance_role']]=(int)$row['yes_count'];
+        // Before judging starts, an unsaved role must still follow its real participant-count tier.
+        // Once judging has started, preserve the old shared yes_count for legacy rounds so a live event
+        // can never change quota underneath judges. Saved role settings always win.
+        $startedStmt=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_marks WHERE round_id=:round AND (mark_type<>'blank' OR weighted_score>0)");
+        $startedStmt->execute(['round'=>$roundId]);
+        $judgingStarted=(int)$startedStmt->fetchColumn()>0;
         $result=[];
         foreach(['leader','follower'] as $role){
             $recommend=self::recommended($counts[$role],$legacyYes);
             $has=array_key_exists($role,$saved);
-            // Backward compatibility: old rounds keep their shared yes_count until role settings are explicitly saved.
-            $yes=$has?max(1,$saved[$role]):max(1,$legacyYes);
+            $yes=$has
+                ? max(1,$saved[$role])
+                : ($judgingStarted ? max(1,$legacyYes) : max(1,$recommend['yes']));
             $result[$role]=['count'=>$counts[$role],'tier'=>$recommend['tier'],'yes'=>$yes,'saved'=>$has];
         }
         return $result;
