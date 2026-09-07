@@ -7,7 +7,7 @@ import json,re
 p=Path('admin/dance-cup/judge-scoring.php')
 s=p.read_text()
 pattern=r'<button class="btn btn-warning w-100" onclick="const f=this\.form,v=\[\.\.\.f\.querySelectorAll\(.*?">Confirm Tie Decision</button>'
-replacement='<button class="btn btn-warning w-100" onclick="return confirm(\'Confirm this final tie order? Scores will stay unchanged.\');">Confirm Tie Decision</button>'
+replacement='<button class="btn btn-warning w-100">Confirm Tie Decision</button>'
 ns,n=re.subn(pattern,replacement,s,count=1)
 if n!=1:
     raise SystemExit(f'Expected to replace one malformed tie button, replaced {n}')
@@ -25,9 +25,9 @@ php -l admin/dance-cup/judge-scoring.php
 python3 <<'PY'
 from pathlib import Path
 s=Path('admin/dance-cup/judge-scoring.php').read_text()
-assert 'Confirm Tie Decision</button>' in s
-assert 'querySelectorAll' not in s[s.index("$chiefTieHtml=''"):s.index("$q=$pdo->prepare(\"SELECT entry_id")]
-assert "return confirm(\\'Confirm this final tie order? Scores will stay unchanged.\\');" in s
+chunk=s[s.index("$chiefTieHtml=''"):s.index("$q=$pdo->prepare(\"SELECT entry_id")]
+assert '<button class="btn btn-warning w-100">Confirm Tie Decision</button>' in chunk
+assert 'querySelectorAll' not in chunk
 print('dev697 WDC tie button assertions passed')
 PY
 git config user.name 'BDC Release Bot'
