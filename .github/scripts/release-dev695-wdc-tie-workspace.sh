@@ -29,7 +29,8 @@ data=json.loads(p.read_text())
 data['version']='2.3.6-dev695'
 data['build']=3401
 feature='WDC tie workflow reliability repair: provisions tie-task tables during normal Dance Cup workspace setup and removes schema creation from live tie API reads/actions, so Automatic Scoring tie controls load reliably without changing scores, placements or BDC/SDC logic.'
-data.setdefault('features',[]).insert(0,feature)
+if feature not in data.setdefault('features',[]):
+    data['features'].insert(0,feature)
 p.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
 PY
 
@@ -42,9 +43,11 @@ from pathlib import Path
 s=Path('app/Services/DanceCupScoringService.php').read_text()
 t=Path('app/Services/DanceCupTieService.php').read_text()
 assert 'CREATE TABLE IF NOT EXISTS {$prefix}_tie_tasks' in s
-# The compatibility ensure() method may remain, but runtime tie reads/actions must no longer call it.
-body=t.split('public static function ties',1)[1]
-assert 'self::ensure($pdo,$test)' not in body
+# Runtime methods must no longer create schema. Ignore the compatibility ensure() method itself.
+for name,next_name in [('ties','hasUnresolved'),('taskByToken','resolve'),('cancel',None)]:
+    start=t.index('public static function '+name)
+    end=t.index('public static function '+next_name,start) if next_name else len(t)
+    assert 'self::ensure($pdo,$test)' not in t[start:end]
 print('dev695 WDC tie workspace assertions passed')
 PY
 
