@@ -19,3 +19,4 @@ jobs:
           fetch-depth: 0
       - name: Repair Chief Judge tie button markup
         run: bash .github/scripts/release-dev697-wdc-tie-button.sh
+      # rerun after removing fragile inline JavaScript
