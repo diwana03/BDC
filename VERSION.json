@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev686",
-  "build": 3393,
+  "version": "2.3.6-dev687",
+  "build": 3394,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Repairs the BDC Portal MCP execution path by preserving OAuth Bearer Authorization through Apache/FastCGI and accepting standards-compatible refresh requests while keeping exact resource binding on authorization, and fixes paged Judges projection auto-rotation by including the Judges board in the existing projector advance timer.",
     "Role tier resolution now actually checks each Lead/Follow participant count before judging: unsaved fresh rounds use the correct recommended YES quota (for example 23 Lead = 10, 32 Follow = 15), saved role settings remain authoritative, and already-started legacy rounds keep their existing shared quota to avoid mid-event changes.",
     "Judge-facing Heats instructions are action-only: no Lead/Follow tier or competitor-count logic is exposed; identical role quotas are shown once, with YES and A1/A2/A3 places in bold, while saved role-specific validation remains unchanged.",
     "Judge projection card-grid repair: renderer now explicitly chooses 1/2/3/4/5-column judge layouts after pagination, resets old horizontal judge positioning, and renders 7–8 judge pages as a readable 4×2 audience board with large photos, names, flags and country labels.",
