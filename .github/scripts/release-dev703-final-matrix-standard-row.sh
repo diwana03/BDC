@@ -93,7 +93,7 @@ python3 <<'PY'
 from pathlib import Path
 s=Path('live-display/feed.php').read_text(); c=Path('public/css/projector-safe-v616.css').read_text()
 assert 'class="final-couple-row"' in s
-assert 'final-matrix-couple-inner' not in s[s.find('matrix-final'):]
+assert '<td class="name final-matrix-couple"><div class="final-matrix-couple-inner">' not in s
 assert 'dev703 Final matrix: one normal table row' in c
 assert 'display:table-cell!important' in c
 print('dev703 standard row assertions passed')
