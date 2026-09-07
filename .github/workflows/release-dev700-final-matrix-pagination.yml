@@ -1,0 +1,21 @@
+name: Release dev700 Final Matrix Pagination
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev700-final-matrix-pagination.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev700-final-matrix-pagination
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Release Final Relative Placement pagination
+        run: bash .github/scripts/release-dev700-final-matrix-pagination.sh
