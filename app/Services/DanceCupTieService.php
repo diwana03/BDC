@@ -36,7 +36,7 @@ final class DanceCupTieService
     /** @return array<int,array<string,mixed>> */
     public static function ties(PDO $pdo,int $competitionId,bool $test=false):array
     {
-        self::ensure($pdo,$test);$p=self::prefix($test);
+         $p=self::prefix($test);
         $q=$pdo->prepare("SELECT total_score,MIN(placement) base_place,COUNT(*) qty FROM {$p}_scoring_results WHERE competition_id=:c GROUP BY total_score HAVING COUNT(*)>1 ORDER BY base_place,total_score DESC");
         $q->execute(['c'=>$competitionId]);$out=[];
         foreach($q->fetchAll() as $g){
@@ -69,7 +69,7 @@ final class DanceCupTieService
     /** @return array<string,mixed> */
     public static function taskByToken(PDO $pdo,string $token,bool $test=false):array
     {
-        self::ensure($pdo,$test);$p=self::prefix($test);$q=$pdo->prepare("SELECT t.*,c.category_name,c.round_name,e.name event_name,j.judge_name chief_name FROM {$p}_tie_tasks t JOIN ".DanceCupScoringService::tables($test)['competitions']." c ON c.id=t.competition_id JOIN ".DanceCupScoringService::tables($test)['events']." e ON e.id=c.event_id LEFT JOIN {$p}_judges j ON j.id=t.chief_judge_assignment_id WHERE t.token_hash=:h LIMIT 1");$q->execute(['h'=>hash('sha256',$token)]);$task=$q->fetch();if(!$task)throw new RuntimeException('Tie decision link is invalid.');if((string)$task['status']!=='pending')throw new RuntimeException('This tie decision is no longer pending.');if(empty($task['expires_at'])||strtotime((string)$task['expires_at'])<time())throw new RuntimeException('This tie decision link has expired.');
+        $p=self::prefix($test);$q=$pdo->prepare("SELECT t.*,c.category_name,c.round_name,e.name event_name,j.judge_name chief_name FROM {$p}_tie_tasks t JOIN ".DanceCupScoringService::tables($test)['competitions']." c ON c.id=t.competition_id JOIN ".DanceCupScoringService::tables($test)['events']." e ON e.id=c.event_id LEFT JOIN {$p}_judges j ON j.id=t.chief_judge_assignment_id WHERE t.token_hash=:h LIMIT 1");$q->execute(['h'=>hash('sha256',$token)]);$task=$q->fetch();if(!$task)throw new RuntimeException('Tie decision link is invalid.');if((string)$task['status']!=='pending')throw new RuntimeException('This tie decision is no longer pending.');if(empty($task['expires_at'])||strtotime((string)$task['expires_at'])<time())throw new RuntimeException('This tie decision link has expired.');
         $ids=json_decode((string)$task['entry_ids_json'],true);if(!is_array($ids)||!$ids)throw new RuntimeException('Tie task has no contestants.');$ph=implode(',',array_fill(0,count($ids),'?'));$q=$pdo->prepare("SELECT r.entry_id,r.total_score,r.placement,e.bib_number,e.display_name,e.competitor_id FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id AND e.competition_id=r.competition_id WHERE r.competition_id=? AND r.entry_id IN ({$ph}) ORDER BY e.bib_number,e.id");$q->execute(array_merge([(int)$task['competition_id']],array_map('intval',$ids)));$task['entries']=$q->fetchAll();return $task;
     }
 
@@ -81,6 +81,6 @@ final class DanceCupTieService
 
     public static function cancel(PDO $pdo,int $competitionId,string $tieKey,bool $test=false):void
     {
-        self::ensure($pdo,$test);$p=self::prefix($test);$pdo->prepare("UPDATE {$p}_tie_tasks SET status='cancelled',token_hash=NULL,cancelled_at=NOW() WHERE competition_id=:c AND tie_key=:k AND status='pending'")->execute(['c'=>$competitionId,'k'=>$tieKey]);
+        $p=self::prefix($test);$pdo->prepare("UPDATE {$p}_tie_tasks SET status='cancelled',token_hash=NULL,cancelled_at=NOW() WHERE competition_id=:c AND tie_key=:k AND status='pending'")->execute(['c'=>$competitionId,'k'=>$tieKey]);
     }
 }
