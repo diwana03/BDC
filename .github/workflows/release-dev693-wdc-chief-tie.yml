@@ -1,0 +1,21 @@
+name: Release dev693 WDC Chief Judge Tie
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev693-wdc-chief-tie.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev693-wdc-chief-tie
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply WDC Chief Judge tie workflow
+        run: bash .github/scripts/release-dev693-wdc-chief-tie.sh
