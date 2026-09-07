@@ -1,0 +1,21 @@
+name: Release dev688 Projection Page Reset
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev688-projection-page-reset.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev688-projection-page-reset
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply projector page reset and judge rotation repair
+        run: bash .github/scripts/release-dev688-projection-page-reset.sh
