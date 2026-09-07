@@ -1,0 +1,21 @@
+name: Release dev687 Connector and Judge Paging
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev687-connector-judge-paging.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev687-connector-judge-paging
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev687 connector and judge paging release
+        run: bash .github/scripts/release-dev687-connector-judge-paging.sh
