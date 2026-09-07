@@ -1,0 +1,21 @@
+name: Release MCP Auth Stability
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-mcp-auth-stability.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-mcp-auth-stability
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply MCP execution and OAuth stability repair
+        run: bash .github/scripts/release-mcp-auth-stability.sh
