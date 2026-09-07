@@ -1,0 +1,21 @@
+name: Release dev696 WDC Chief Tie Inline
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev696-wdc-chief-tie-inline.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev696-wdc-chief-tie-inline
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Release WDC Chief Judge inline tie workflow
+        run: bash .github/scripts/release-dev696-wdc-chief-tie-inline.sh
