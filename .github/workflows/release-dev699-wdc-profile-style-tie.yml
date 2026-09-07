@@ -1,0 +1,21 @@
+name: Release dev699 WDC Profile Style Tie
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev699-wdc-profile-style-tie.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev699-wdc-profile-style-tie
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Release WDC profile style correction and tie history
+        run: bash .github/scripts/release-dev699-wdc-profile-style-tie.sh
