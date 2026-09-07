@@ -216,6 +216,11 @@ final class LiveDisplaySessionService
             }
         }
         $page = max(1, (int) ($v["page_number"] ?? 1));
+        $screenChanged = $type !== (string)($current["screen_type"] ?? "holding");
+        $roundChanged = $requestedRoundId !== (int)($current["current_round_id"] ?? 0);
+        if ($screenChanged || $roundChanged) {
+            $page = 1;
+        }
         if ($type === "judge_call") {
             $roundId = (int) ($v["round_id"] ?? 0);
             $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
