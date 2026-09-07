@@ -134,6 +134,14 @@ if (
         $total=max(1,(int)$layout["pages"]);
     }
 }
+if ($roundId && $s["screen_type"] === "score_matrix" && $roundType === "final") {
+    $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
+    $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+    $judgeCountQuery->execute(["r" => $roundId]);
+    $judgeCount = max(0, (int) $judgeCountQuery->fetchColumn());
+    // Eight Final judges per page keeps names and relative placements audience-readable.
+    $total = max(1, (int) ceil($judgeCount / 8));
+}
 if ($roundId && $s["screen_type"] === "judges") {
     $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
     $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");

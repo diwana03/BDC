@@ -208,6 +208,14 @@ if ($type === "flights") {
     $jq=$pdo->prepare("SELECT id,judge_order,judge_name,is_chief,scoring_scope FROM {$judgeTable} WHERE round_id=:r ORDER BY is_chief DESC,judge_order,id");
     $jq->execute(["r"=>$roundId]);
     $matrixJudges=$jq->fetchAll();
+    $matrixJudgeTotal=count($matrixJudges);
+    $matrixJudgePageSize=$isFinalMatrix?8:max(1,$matrixJudgeTotal);
+    $matrixJudgeTotalPages=$isFinalMatrix?max(1,(int)ceil($matrixJudgeTotal/$matrixJudgePageSize)):1;
+    $matrixJudgePage=$isFinalMatrix?max(1,min($page,$matrixJudgeTotalPages)):1;
+    if($isFinalMatrix&&$matrixJudgeTotalPages>1){
+        $matrixJudges=array_slice($matrixJudges,($matrixJudgePage-1)*$matrixJudgePageSize,$matrixJudgePageSize);
+        $title="FINAL RELATIVE PLACEMENT · PAGE {$matrixJudgePage} OF {$matrixJudgeTotalPages}";
+    }
     if($isFinalMatrix){
         $q=$pdo->prepare("SELECT fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,COALESCE(fr.final_rank,0) rank_number,COALESCE(fr.placement_sum,0) total_score FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id LEFT JOIN {$finalResultTable} fr ON fr.round_id=fp.round_id AND fr.pair_id=fp.id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY CASE WHEN fr.final_rank IS NULL THEN 1 ELSE 0 END,fr.final_rank,fp.pair_number");
         $q->execute(["r"=>$roundId]);$items=$q->fetchAll();

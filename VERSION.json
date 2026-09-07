@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev699",
-  "build": 3405,
+  "version": "2.3.6-dev700",
+  "build": 3406,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final Relative Placement projector pagination: Final judge columns are limited to 8 per page, page count drives the existing projector auto-loop, every newly selected screen starts on Page 1, and Final matrices enforce the 10% vertical / 5% horizontal audience safe area with readable typography.",
     "WDC competitor profile registration-style correction: Super Admin can correct Salsa/Bachata/Cha Cha/Other per championship registration with audit logging while the permanent WDC ID stays unchanged.",
     "WDC competitor profile tie history: published result cards identify the Chief Judge tie winner or other resolved tied placement and show tied score, Chief Judge name and resolution time; public projection is unchanged.",
     "WDC admin tie-resolution audit: resolved exact-score ties show the Chief Judge-selected winner/order, Chief Judge name and resolution timestamp on Automatic Scoring results while public projection remains unchanged.",

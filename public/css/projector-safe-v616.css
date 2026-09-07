@@ -607,3 +607,31 @@ body[data-screen-type="score_matrix"] .matrix-heats.matrix-judge-count-12 td:nth
   padding-left:.02em!important;
   padding-right:.02em!important;
 }
+
+
+/* dev700 Final Relative Placement: safe-area + readable judge pagination.
+   Final judge columns are paged in feed.php (8/page); never squeeze 20+ judges. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .stage{
+  padding-top:10cqh!important;
+  padding-bottom:10cqh!important;
+  padding-left:5cqw!important;
+  padding-right:5cqw!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-official{top:10cqh!important;right:5cqw!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-heading-row{margin-bottom:clamp(6px,.75cqh,11px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .projection-heading-row>.projection-brand{width:clamp(70px,7cqh,104px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .event{font-size:clamp(24px,1.7vw,40px)!important;line-height:1.02!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .meta{font-size:clamp(13px,.84vw,19px)!important}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .title{font-size:clamp(23px,1.72vw,40px)!important;line-height:1.02!important;margin:.08em 0!important}
+body[data-screen-type="score_matrix"] .matrix-final{font-size:clamp(14px,.88vw,20px)!important;table-layout:fixed!important}
+body[data-screen-type="score_matrix"] .matrix-final th,
+body[data-screen-type="score_matrix"] .matrix-final td{padding:.32em .22em!important}
+body[data-screen-type="score_matrix"] .matrix-final th:first-child,
+body[data-screen-type="score_matrix"] .matrix-final td:first-child{width:8%!important}
+body[data-screen-type="score_matrix"] .matrix-final th:nth-child(2),
+body[data-screen-type="score_matrix"] .matrix-final td:nth-child(2){width:36%!important}
+body[data-screen-type="score_matrix"] .matrix-final th:nth-child(n+3):not(:last-child){font-size:clamp(13px,.74vw,17px)!important;line-height:1!important}
+body[data-screen-type="score_matrix"] .matrix-final th:nth-child(n+3):not(:last-child) small{display:block!important;font-size:clamp(10px,.52vw,12px)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body[data-screen-type="score_matrix"] .matrix-final td:nth-child(n+3):not(:last-child){font-size:clamp(16px,.92vw,21px)!important;font-weight:900!important;text-align:center!important}
+body[data-screen-type="score_matrix"] .matrix-final th:last-child,
+body[data-screen-type="score_matrix"] .matrix-final td:last-child{width:8%!important;text-align:center!important}
