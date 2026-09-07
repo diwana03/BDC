@@ -1,0 +1,21 @@
+name: Release dev698 WDC Tie Audit
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev698-wdc-tie-audit.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev698-wdc-tie-audit
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Publish Chief Judge tie audit display
+        run: bash .github/scripts/release-dev698-wdc-tie-audit.sh
