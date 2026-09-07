@@ -1,0 +1,21 @@
+name: Release dev694 Automatic WDC Tie UI
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev694-automatic-tie-ui.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev694-automatic-tie-ui
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Wire WDC tie workflow into Automatic Scoring setup
+        run: bash .github/scripts/release-dev694-automatic-tie-ui.sh
