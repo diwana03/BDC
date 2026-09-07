@@ -193,6 +193,7 @@ final class DanceCupScoringService
     public static function calculateResults(PDO $pdo, int $competitionId, bool $test = false): array
     {
         self::ensureWorkspaceTables($pdo, $test);
+        DanceCupTieService::ensure($pdo, $test);
         $tables = self::tables($test);
         $prefix = $test ? 'bdc_test_dance_cup' : 'bdc_dance_cup';
         $count = $pdo->prepare("SELECT COUNT(*) FROM {$prefix}_marks WHERE competition_id=:competition");
@@ -206,6 +207,8 @@ final class DanceCupScoringService
 
         $pdo->beginTransaction();
         try {
+            // A recalculation invalidates every previous Chief Judge tie decision/link.
+            $pdo->prepare("UPDATE {$prefix}_tie_tasks SET status='cancelled',token_hash=NULL,cancelled_at=NOW() WHERE competition_id=:competition AND status IN ('pending','resolved')")->execute(['competition' => $competitionId]);
             $pdo->prepare("DELETE FROM {$prefix}_scoring_results WHERE competition_id=:competition")->execute(['competition' => $competitionId]);
             $insert = $pdo->prepare("INSERT INTO {$prefix}_scoring_results(competition_id,entry_id,total_score,placement) VALUES(:competition,:entry,:total,:placement)");
             $placement = 0;
@@ -241,6 +244,7 @@ final class DanceCupScoringService
         $competition->execute(['competition'=>$competitionId]);$row=$competition->fetch();
         if(!$row)throw new RuntimeException('Dance Cup category not found.');
         if((string)$row['status']!=='pending_approval')throw new RuntimeException('Only a submitted Dance Cup result awaiting approval can be published.');
+        if(DanceCupTieService::hasUnresolved($pdo,$competitionId,$test))throw new RuntimeException('WDC result contains an unresolved exact-score tie. The Chief Judge must confirm the final order before publication.');
         $results=$pdo->prepare("SELECT r.entry_id,r.total_score,r.placement,e.competitor_id,e.wdc_identity_id,e.display_name FROM {$prefix}_scoring_results r JOIN {$prefix}_entries e ON e.id=r.entry_id AND e.competition_id=r.competition_id WHERE r.competition_id=:competition AND e.status='active' ORDER BY r.placement,e.id");
         $results->execute(['competition'=>$competitionId]);$rows=$results->fetchAll();
         if(!$rows)throw new RuntimeException('No calculated Dance Cup results are available for approval.');

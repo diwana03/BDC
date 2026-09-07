@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev691",
-  "build": 3398,
+  "version": "2.3.6-dev693",
+  "build": 3399,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "WDC exact-score tie workflow: detects tied Dance Cup results, creates a 12-hour Chief Judge mobile decision link, preserves original scores, saves the CJ final order and audit state, invalidates tie decisions on recalculation, and blocks WDC publication until every exact-score tie is resolved.",
     "Judges projector now uses the same proven paging path as Competitors end to end: manual selection starts on Page 1, existing Auto Page advances through state/advance.php, and feed.php renders the correct eight-judge slice for each page instead of re-rendering the full judge list.",
     "Judges projector now uses the exact same existing Auto Page rotation path as Competitors: manual screen or round selection starts on Page 1, total judge pages are calculated at 8 per page, and the normal Auto Page checkbox plus delay drives Page 1 → Page 2 → Page 1 without any judge-only override.",
     "Judges projection always starts on Page 1 and forces Auto Page on for multi-page judge boards, so paged judge screens continuously rotate instead of inheriting a stale disabled auto-page state.",
