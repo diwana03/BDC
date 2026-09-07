@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev701",
-  "build": 3407,
+  "version": "2.3.6-dev702",
+  "build": 3408,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final Relative Placement couple identity repair: leader and follower each use a full half of the Couple column so BIB, flag and first name remain visible while retaining dev700 judge pagination and projector safe area.",
     "Final Relative Placement presentation: preserves dev700 8-judge pagination while enlarging couple identities, flags, judge headers and marks, and enforcing the 10% top/bottom plus 5% left/right projector safe area.",
     "Final Relative Placement projector pagination: Final judge columns are limited to 8 per page, page count drives the existing projector auto-loop, every newly selected screen starts on Page 1, and Final matrices enforce the 10% vertical / 5% horizontal audience safe area with readable typography.",
     "WDC competitor profile registration-style correction: Super Admin can correct Salsa/Bachata/Cha Cha/Other per championship registration with audit logging while the permanent WDC ID stays unchanged.",

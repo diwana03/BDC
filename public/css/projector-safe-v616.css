@@ -667,3 +667,60 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person st
 body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person>span:last-child{font-size:clamp(16px,1vw,23px)!important;font-weight:900!important;overflow:hidden!important;text-overflow:ellipsis!important}
 body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-flag{flex:0 0 auto!important;width:clamp(28px,1.65vw,40px)!important;height:auto!important;aspect-ratio:3/2!important;object-fit:cover!important}
 body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-amp{font-size:clamp(18px,1.1vw,26px)!important;font-weight:950!important;color:#f2cf72!important}
+
+
+
+/* dev702 Final Relative Placement couple identity repair.
+   Keep dev700 pagination/dev701 sizing, but make both people consume their full half-column. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-couple{
+  overflow:hidden!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-couple-inner{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  gap:clamp(7px,.5vw,12px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person{
+  display:grid!important;
+  grid-template-columns:auto auto minmax(0,1fr)!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  justify-self:stretch!important;
+  overflow:hidden!important;
+  gap:clamp(5px,.36vw,9px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person strong{
+  display:block!important;
+  flex:none!important;
+  width:auto!important;
+  max-width:none!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  font-size:clamp(14px,.86vw,20px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person .final-matrix-flag{
+  display:block!important;
+  width:clamp(28px,1.55vw,38px)!important;
+  min-width:clamp(28px,1.55vw,38px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-person>span:last-child{
+  display:block!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:clamp(16px,.98vw,22px)!important;
+  font-weight:950!important;
+  text-align:left!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-amp{
+  justify-self:center!important;
+  margin:0!important;
+}
