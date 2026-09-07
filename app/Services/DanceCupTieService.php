@@ -36,13 +36,13 @@ final class DanceCupTieService
     /** @return array<int,array<string,mixed>> */
     public static function ties(PDO $pdo,int $competitionId,bool $test=false):array
     {
-         $p=self::prefix($test);
+        $p=self::prefix($test);
         $q=$pdo->prepare("SELECT total_score,MIN(placement) base_place,COUNT(*) qty FROM {$p}_scoring_results WHERE competition_id=:c GROUP BY total_score HAVING COUNT(*)>1 ORDER BY base_place,total_score DESC");
         $q->execute(['c'=>$competitionId]);$out=[];
         foreach($q->fetchAll() as $g){
             $e=$pdo->prepare("SELECT r.entry_id,r.total_score,r.placement,e.bib_number,e.display_name,e.competitor_id FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id AND e.competition_id=r.competition_id WHERE r.competition_id=:c AND r.total_score=:s AND e.status='active' ORDER BY e.bib_number,e.id");
             $e->execute(['c'=>$competitionId,'s'=>$g['total_score']]);$entries=$e->fetchAll();$ids=array_map(static fn($x)=>(int)$x['entry_id'],$entries);sort($ids,SORT_NUMERIC);$key=hash('sha256',$competitionId.'|'.number_format((float)$g['total_score'],2,'.','').'|'.implode(',',$ids));
-            $t=$pdo->prepare("SELECT id,status,expires_at,resolved_order_json FROM {$p}_tie_tasks WHERE competition_id=:c AND tie_key=:k LIMIT 1");$t->execute(['c'=>$competitionId,'k'=>$key]);$task=$t->fetch()?:null;
+            $t=$pdo->prepare("SELECT t.id,t.status,t.expires_at,t.resolved_order_json,t.resolved_at,t.chief_judge_assignment_id,j.judge_name chief_name FROM {$p}_tie_tasks t LEFT JOIN {$p}_judges j ON j.id=t.chief_judge_assignment_id AND j.competition_id=t.competition_id WHERE t.competition_id=:c AND t.tie_key=:k LIMIT 1");$t->execute(['c'=>$competitionId,'k'=>$key]);$task=$t->fetch()?:null;
             $out[]=['tie_key'=>$key,'score'=>(float)$g['total_score'],'base_place'=>(int)$g['base_place'],'entries'=>$entries,'task'=>$task];
         }
         return $out;
