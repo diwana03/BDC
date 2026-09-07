@@ -11,7 +11,6 @@ use App\Services\PdfExportToken;
 
 $pdo=Database::connection();
 
-
 $roundId=(int)($_GET['round_id']??0);
 $isRepositorySnapshot=HtmlSnapshotToken::verify($pdo,'finals',$roundId,$_GET);
 if(!$isRepositorySnapshot){Auth::requireAdmin();}
@@ -63,7 +62,6 @@ $witnesses=[
  trim((string)($round['witness_3']??''))
 ];
 
-
 function decisionExplanation(array $pair,int $judgeCount):array{
  $decision=json_decode((string)($pair['decision_json']??''),true);
  $level=(int)($pair['majority_level']??0);
@@ -102,6 +100,31 @@ foreach($judges as $judge){
   break;
  }
 }
+
+// The final calculation audit is the authoritative time at which any
+// Chief Judge Relative Placement tie-break recorded in decision_json was resolved.
+$decisionTimestamp='';
+try{
+ $auditStmt=$pdo->prepare("SELECT created_at FROM bdc_scoring_audit WHERE round_id=:r AND action='final_relative_placement_calculated' ORDER BY id DESC LIMIT 1");
+ $auditStmt->execute(['r'=>$roundId]);
+ $decisionTimestamp=(string)($auditStmt->fetchColumn()?:'');
+}catch(Throwable $ignored){
+ $decisionTimestamp='';
+}
+
+// Collect only decisions where Relative Placement remained tied until the
+// Chief Judge ranking. Group rows sharing the same tied comparison metrics.
+$chiefTieGroups=[];
+foreach($pairs as $pair){
+ $decision=json_decode((string)($pair['decision_json']??''),true);
+ if(!is_array($decision) || (string)($decision['deciding_step']??'')!=='chief_judge')continue;
+ $key=(int)($pair['majority_level']??0).'|'.(int)($pair['majority_count']??0).'|'.(int)($pair['placement_sum']??0);
+ $chiefTieGroups[$key][]=$pair;
+}
+foreach($chiefTieGroups as &$tieGroup){
+ usort($tieGroup,fn($a,$b)=>(int)($a['final_rank']??999999)<=>(int)($b['final_rank']??999999));
+}
+unset($tieGroup);
 ?>
 <!doctype html>
 <html lang="en">
@@ -136,9 +159,20 @@ table{width:100%;border-collapse:collapse;table-layout:auto;font-size:8pt}
 th,td{border:1px solid #bfc5cc;padding:1.4mm;text-align:center}
 th{background:#eef1f4}
 .name-cell{text-align:left;font-size:9.2pt;font-weight:700;line-height:1.25;white-space:nowrap;width:45%}
-.judge-key{display:flex;flex-wrap:wrap;gap:2mm 5mm;margin-top:3mm;padding:2.5mm;border:1px solid #d8dde3;border-radius:2mm;background:#fafafa;font-size:8pt}
-.judge-key strong{width:100%}
-.judge-key span{white-space:nowrap}
+.judge-panel-details{margin-top:3mm;padding:3mm;border:1px solid #cbd2da;border-radius:2mm;background:#fafafa}
+.judge-panel-details h4{margin:0 0 2mm;font-size:9.5pt}
+.judge-panel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm 4mm}
+.judge-panel-item{display:flex;align-items:baseline;gap:1.5mm;min-width:0;font-size:8pt}
+.judge-panel-code{font-weight:800;white-space:nowrap}
+.judge-panel-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chief-badge{font-size:7pt;font-weight:800;white-space:nowrap}
+.tie-panel{margin-top:5mm;border:2px solid #111;border-radius:2mm;padding:3.5mm;background:#fff}
+.tie-panel h3{margin:0 0 2.5mm;font-size:11pt}
+.tie-card{margin-top:2.5mm;padding:3mm;border:1px solid #cfd4da;border-radius:2mm;background:#fafafa}
+.tie-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:2mm;margin-bottom:2.5mm;font-size:8pt}
+.tie-meta div{padding:2mm;border:1px solid #d8dde3;border-radius:1.5mm;background:#fff}
+.tie-order{margin:0;padding-left:5mm;font-size:8.5pt;line-height:1.6}
+.tie-order strong{font-size:9pt}
 .summary-list{margin:0;padding:0;list-style:none}
 .summary-list li{margin-bottom:2.5mm;padding:2.5mm;border:1px solid #d8dde3;border-radius:2mm}
 .summary-list strong{font-size:9pt}
@@ -206,15 +240,30 @@ th{background:#eef1f4}
     <?php endforeach;?>
     </tbody>
    </table>
-   <div class="judge-key">
-    <strong>Judge Key</strong>
-    <?php foreach($judges as $judgeIndex=>$judge):?>
-     <span><b>J<?=$judgeIndex+1?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span>
-    <?php endforeach;?>
+   <div class="judge-panel-details">
+    <h4>Judge Panel</h4>
+    <div class="judge-panel-grid">
+     <?php foreach($judges as $judgeIndex=>$judge):?>
+      <div class="judge-panel-item"><span class="judge-panel-code">J<?=$judgeIndex+1?></span><span class="judge-panel-name"><?=e($judge['judge_name'])?></span><?php if((int)$judge['is_chief']===1):?><span class="chief-badge">★ Chief Judge</span><?php endif;?></div>
+     <?php endforeach;?>
+    </div>
    </div>
   </section>
 
-  <?php else:?><section class="panel"><h3>Large Judge Panel</h3><p>Detailed judge rankings are available through <strong>View Final Judge Audit</strong>. The Final Ranking and Relative Placement summary remain below.</p></section><?php endif;?>
+  <?php else:?>
+  <section class="panel">
+   <h3>Large Judge Panel</h3>
+   <p>Detailed judge rankings are available through <strong>View Final Judge Audit</strong>. The Final Ranking and Relative Placement summary remain below.</p>
+   <div class="judge-panel-details">
+    <h4>Judge Panel</h4>
+    <div class="judge-panel-grid">
+     <?php foreach($judges as $judgeIndex=>$judge):?>
+      <div class="judge-panel-item"><span class="judge-panel-code">J<?=$judgeIndex+1?></span><span class="judge-panel-name"><?=e($judge['judge_name'])?></span><?php if((int)$judge['is_chief']===1):?><span class="chief-badge">★ Chief Judge</span><?php endif;?></div>
+     <?php endforeach;?>
+    </div>
+   </div>
+  </section>
+  <?php endif;?>
   <section class="panel">
    <h3>Relative Placement Counts</h3>
    <table class="placement-count-table">
@@ -240,6 +289,28 @@ th{background:#eef1f4}
    </table>
   </section>
  </div>
+
+ <?php if($chiefTieGroups):?>
+ <section class="tie-panel">
+  <h3>Chief Judge Tie Decision</h3>
+  <?php foreach($chiefTieGroups as $tieGroup):$firstTie=$tieGroup[0];?>
+   <div class="tie-card">
+    <div class="tie-meta">
+     <div><strong>Tied Score</strong><br>Placement sum <?=e((string)$firstTie['placement_sum'])?></div>
+     <div><strong>Relative Placement</strong><br><?=e((string)$firstTie['majority_count'])?> judges in Top <?=e((string)$firstTie['majority_level'])?></div>
+     <div><strong>Chief Judge</strong><br><?=e($chiefJudge?:'—')?></div>
+     <div><strong>Resolved</strong><br><?=e($decisionTimestamp!==''?date('j M Y H:i:s',strtotime($decisionTimestamp)):'Recorded with final calculation')?></div>
+    </div>
+    <strong>Selected Order</strong>
+    <ol class="tie-order">
+     <?php foreach($tieGroup as $tiePair):?>
+      <li><strong><?=ordinal((int)$tiePair['final_rank'])?> · Couple <?=e((string)$tiePair['pair_number'])?></strong> · <?=e($tiePair['leader_name'])?> &amp; <?=e((string)$tiePair['follower_name'])?> · Chief Judge rank <?=e((string)($tiePair['chief_rank']??'—'))?></li>
+     <?php endforeach;?>
+    </ol>
+   </div>
+  <?php endforeach;?>
+ </section>
+ <?php endif;?>
 
  <section class="panel" style="margin-top:5mm">
   <h3>Relative Placement Summary</h3>
