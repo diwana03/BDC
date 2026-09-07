@@ -1,0 +1,21 @@
+name: Release dev695 WDC Tie Workspace
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev695-wdc-tie-workspace.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev695-wdc-tie-workspace
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Repair WDC tie workspace loading
+        run: bash .github/scripts/release-dev695-wdc-tie-workspace.sh
