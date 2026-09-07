@@ -287,7 +287,7 @@ final class LiveDisplaySessionService
             "fx_bump" => $setEffect ? 1 : 0,
             "rp" => $reveal,
             "p" => $page,
-            "a" => !empty($v["auto_page"]) ? 1 : 0,
+            "a" => ($type === "judges" ? 1 : (!empty($v["auto_page"]) ? 1 : 0)),
             "d" => $delay,
             "lock" => $relock,
             "le" => $loopEnabled ? 1 : 0,
