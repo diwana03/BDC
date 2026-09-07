@@ -1,11 +1,13 @@
 {
-  "version": "2.3.6-dev698",
-  "build": 3404,
+  "version": "2.3.6-dev699",
+  "build": 3405,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "WDC competitor profile registration-style correction: Super Admin can correct Salsa/Bachata/Cha Cha/Other per championship registration with audit logging while the permanent WDC ID stays unchanged.",
+    "WDC competitor profile tie history: published result cards identify the Chief Judge tie winner or other resolved tied placement and show tied score, Chief Judge name and resolution time; public projection is unchanged.",
     "WDC admin tie-resolution audit: resolved exact-score ties show the Chief Judge-selected winner/order, Chief Judge name and resolution timestamp on Automatic Scoring results while public projection remains unchanged.",
     "WDC Chief Judge tie button markup repair: removes fragile inline selector JavaScript that leaked into the button label; server-side unique-order validation remains authoritative.",
     "WDC Chief Judge inline tie decision: unresolved exact-score ties appear inside the existing Chief Judge mobile scoring link, can be ordered and confirmed there, keep original scores unchanged, and remain hidden from normal judges.",
