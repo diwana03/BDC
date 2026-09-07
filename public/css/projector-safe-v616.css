@@ -724,3 +724,69 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .final-matrix-amp{
   justify-self:center!important;
   margin:0!important;
 }
+
+
+/* dev703 Final matrix: one normal table row, one normal Couple cell, no inner pseudo-cells. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-matrix-couple{
+  display:table-cell!important;
+  width:38%!important;
+  padding:.38em .55em!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  vertical-align:middle!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-row{
+  width:100%!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:clamp(7px,.42vw,11px)!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-row>*{
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  margin:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-row>strong{
+  flex:0 0 auto!important;
+  font-size:clamp(15px,.9vw,21px)!important;
+  font-weight:950!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-name{
+  flex:1 1 0!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:clamp(16px,1vw,23px)!important;
+  font-weight:950!important;
+  text-align:left!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-matrix-flag{
+  flex:0 0 auto!important;
+  display:block!important;
+  width:clamp(28px,1.6vw,39px)!important;
+  height:auto!important;
+  aspect-ratio:3/2!important;
+  object-fit:cover!important;
+  border:1px solid rgba(255,255,255,.72)!important;
+  border-radius:3px!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-matrix-amp{
+  flex:0 0 auto!important;
+  font-size:clamp(18px,1.1vw,26px)!important;
+  font-weight:950!important;
+  color:#f2cf72!important;
+  padding:0 clamp(2px,.18vw,5px)!important;
+}
