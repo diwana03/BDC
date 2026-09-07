@@ -79,6 +79,26 @@ final class DanceCupTieService
         $p=self::prefix($test);$pdo->beginTransaction();try{$lock=$pdo->prepare("SELECT status FROM {$p}_tie_tasks WHERE id=:id FOR UPDATE");$lock->execute(['id'=>$task['id']]);if((string)$lock->fetchColumn()!=='pending')throw new RuntimeException('This tie has already been resolved.');$base=(int)min(array_column($task['entries'],'placement'));$up=$pdo->prepare("UPDATE {$p}_scoring_results SET placement=:p WHERE competition_id=:c AND entry_id=:e");foreach($ordered as $i=>$entryId)$up->execute(['p'=>$base+$i,'c'=>$task['competition_id'],'e'=>$entryId]);$pdo->prepare("UPDATE {$p}_tie_tasks SET status='resolved',resolved_order_json=:o,resolved_at=NOW(),token_hash=NULL WHERE id=:id")->execute(['o'=>json_encode($ordered),'id'=>$task['id']]);$pdo->commit();}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
+    public static function resolveAsChief(PDO $pdo,int $competitionId,string $tieKey,array $orderedEntryIds,int $chiefAssignmentId,bool $test=false):void
+    {
+        $p=self::prefix($test);
+        $chief=$pdo->prepare("SELECT COUNT(*) FROM {$p}_judges WHERE id=:judge AND competition_id=:competition AND is_chief=1");
+        $chief->execute(['judge'=>$chiefAssignmentId,'competition'=>$competitionId]);
+        if((int)$chief->fetchColumn()!==1)throw new RuntimeException('Chief Judge authorization required.');
+        $target=null;foreach(self::ties($pdo,$competitionId,$test) as $tie)if(hash_equals((string)$tie['tie_key'],$tieKey)){$target=$tie;break;}
+        if(!$target)throw new RuntimeException('This tie is no longer current. Refresh the scoring page.');
+        $expected=array_map(static fn($x)=>(int)$x['entry_id'],$target['entries']);$ordered=array_map('intval',$orderedEntryIds);$a=$expected;$b=$ordered;sort($a);sort($b);
+        if(!$a||$a!==$b||count($ordered)!==count(array_unique($ordered)))throw new RuntimeException('Choose a complete final order for every tied contestant.');
+        $pdo->beginTransaction();try{
+            $base=(int)$target['base_place'];$up=$pdo->prepare("UPDATE {$p}_scoring_results SET placement=:place WHERE competition_id=:competition AND entry_id=:entry");
+            foreach($ordered as $i=>$entryId)$up->execute(['place'=>$base+$i,'competition'=>$competitionId,'entry'=>$entryId]);
+            $ids=$expected;sort($ids,SORT_NUMERIC);$existing=$pdo->prepare("SELECT id FROM {$p}_tie_tasks WHERE competition_id=:competition AND tie_key=:tie LIMIT 1");$existing->execute(['competition'=>$competitionId,'tie'=>$tieKey]);$taskId=(int)$existing->fetchColumn();
+            if($taskId>0){$pdo->prepare("UPDATE {$p}_tie_tasks SET status='resolved',resolved_order_json=:ordered,resolved_at=NOW(),token_hash=NULL,chief_judge_assignment_id=:chief WHERE id=:id")->execute(['ordered'=>json_encode($ordered),'chief'=>$chiefAssignmentId,'id'=>$taskId]);}
+            else{$pdo->prepare("INSERT INTO {$p}_tie_tasks(competition_id,tie_key,tied_score,entry_ids_json,status,resolved_order_json,chief_judge_assignment_id,resolved_at) VALUES(:competition,:tie,:score,:ids,'resolved',:ordered,:chief,NOW())")->execute(['competition'=>$competitionId,'tie'=>$tieKey,'score'=>$target['score'],'ids'=>json_encode($ids),'ordered'=>json_encode($ordered),'chief'=>$chiefAssignmentId]);}
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
+
     public static function cancel(PDO $pdo,int $competitionId,string $tieKey,bool $test=false):void
     {
         $p=self::prefix($test);$pdo->prepare("UPDATE {$p}_tie_tasks SET status='cancelled',token_hash=NULL,cancelled_at=NOW() WHERE competition_id=:c AND tie_key=:k AND status='pending'")->execute(['c'=>$competitionId,'k'=>$tieKey]);

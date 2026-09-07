@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev695",
-  "build": 3401,
+  "version": "2.3.6-dev696",
+  "build": 3402,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "WDC Chief Judge inline tie decision: unresolved exact-score ties appear inside the existing Chief Judge mobile scoring link, can be ordered and confirmed there, keep original scores unchanged, and remain hidden from normal judges.",
     "WDC tie workflow reliability repair: provisions tie-task tables during normal Dance Cup workspace setup and removes schema creation from live tie API reads/actions, so Automatic Scoring tie controls load reliably without changing scores, placements or BDC/SDC logic.",
     "WDC Chief Judge tie workflow is now loaded on the Automatic Scoring setup page used by Asia Dance Cup, so exact-score ties show the Send Tie Decision to Chief Judge action on the live automatic form without changing scoring totals.",
     "WDC exact-score tie workflow: detects tied Dance Cup results, creates a 12-hour Chief Judge mobile decision link, preserves original scores, saves the CJ final order and audit state, invalidates tie decisions on recalculation, and blocks WDC publication until every exact-score tie is resolved.",
