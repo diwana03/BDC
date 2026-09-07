@@ -161,6 +161,15 @@ if ($type === "flights") {
         $judgePage = max(1, min($page, max(1, $judgeTotal)));
         $items = $judgeTotal > 0 ? [$items[$judgePage - 1]] : [];
         $title = "CALLING JUDGE {$judgePage} OF " . max(1, $judgeTotal);
+    } else {
+        $judgeTotal = count($items);
+        $judgePageSize = 8;
+        $judgePages = max(1, (int) ceil($judgeTotal / $judgePageSize));
+        $judgePage = max(1, min($page, $judgePages));
+        $items = array_slice($items, ($judgePage - 1) * $judgePageSize, $judgePageSize);
+        if ($judgePages > 1) {
+            $title = "JUDGES · PAGE {$judgePage} OF {$judgePages}";
+        }
     }
 } elseif ($type === "competitors") {
     $isFinalRound = $r["round_type"] === "final";
