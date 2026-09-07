@@ -1,0 +1,21 @@
+name: Release dev691 Judge Renderer Pagination
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-dev691-judge-renderer-pagination.yml'
+permissions:
+  contents: write
+concurrency:
+  group: release-dev691-judge-renderer-pagination
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply judge renderer pagination fix
+        run: bash .github/scripts/release-dev691-judge-renderer-pagination.sh
