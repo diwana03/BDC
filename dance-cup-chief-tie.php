@@ -1,0 +1,19 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/bootstrap.php';
+use App\Core\Database;use App\Services\DanceCupTieService;
+$token=(string)($_GET['token']??$_POST['token']??'');$test=(string)($_GET['mode']??$_POST['mode']??'')==='test';$pdo=Database::connection();$error='';$done=false;$task=null;
+try{
+ if($token==='')throw new RuntimeException('Tie decision token is missing.');
+ if(($_SERVER['REQUEST_METHOD']??'GET')==='POST'){$order=$_POST['order']??[];if(!is_array($order))$order=[];DanceCupTieService::resolve($pdo,$token,$order,$test);$done=true;}else{$task=DanceCupTieService::taskByToken($pdo,$token,$test);}
+}catch(Throwable $e){$error=$e->getMessage();}
+if(!$done&&$error===''&&$task===null){try{$task=DanceCupTieService::taskByToken($pdo,$token,$test);}catch(Throwable $e){$error=$e->getMessage();}}
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WDC Tie Decision</title><style>body{margin:0;background:#0c1320;color:#fff;font:16px system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:620px;margin:auto;padding:22px}.card{background:#152236;border:1px solid #2a3c57;border-radius:18px;padding:20px;margin:14px 0}.muted{color:#a8b6c8}.score{font-size:42px;font-weight:900}.entry{display:flex;align-items:center;gap:12px;background:#0f1a2a;border:1px solid #31435d;border-radius:14px;padding:14px;margin:10px 0}.bib{font-size:24px;font-weight:900;min-width:54px}.name{font-size:20px;font-weight:800;flex:1}.move{display:flex;gap:8px}.move button{width:42px;height:42px;border:0;border-radius:10px;font-size:20px;font-weight:900}.confirm{width:100%;padding:16px;border:0;border-radius:13px;background:#f0b323;color:#111;font-size:18px;font-weight:900;margin-top:16px}.ok{background:#143d2a;border-color:#2b7d55}.bad{background:#4a1d28;border-color:#8f3b4e}h1{font-size:26px;margin:0 0 8px}</style></head><body><div class="wrap">
+<?php if($done): ?><div class="card ok"><h1>Tie Decision Confirmed</h1><p>The final order has been saved. The WDC admin result will update automatically.</p></div>
+<?php elseif($error!==''): ?><div class="card bad"><h1>Unable to open tie decision</h1><p><?=e($error)?></p></div>
+<?php else: ?><div class="card"><div class="muted">WDC · CHIEF JUDGE DECISION</div><h1><?=e((string)$task['event_name'])?></h1><div><?=e((string)$task['category_name'])?> · <?=e(ucfirst((string)$task['round_name']))?></div><div class="score"><?=e((string)$task['tied_score'])?></div><div class="muted">These contestants have the same calculated score. Put them in the final order you decide, then confirm.</div></div>
+<form method="post" id="tieForm"><input type="hidden" name="token" value="<?=e($token)?>"><input type="hidden" name="mode" value="<?=$test?'test':'live'?>"><div class="card"><div id="orderList">
+<?php foreach((array)$task['entries'] as $entry): ?><div class="entry" data-id="<?=(int)$entry['entry_id']?>"><div class="bib">#<?=e((string)$entry['bib_number'])?></div><div class="name"><?=e((string)$entry['display_name'])?></div><div class="move"><button type="button" onclick="move(this,-1)">↑</button><button type="button" onclick="move(this,1)">↓</button></div></div><?php endforeach; ?>
+</div><div id="hiddenOrder"></div><button class="confirm" type="submit">Confirm Final Order</button></div></form>
+<script>function sync(){const h=document.getElementById('hiddenOrder');h.innerHTML='';document.querySelectorAll('#orderList .entry').forEach(x=>{const i=document.createElement('input');i.type='hidden';i.name='order[]';i.value=x.dataset.id;h.appendChild(i)});}function move(btn,d){const x=btn.closest('.entry'),p=x.parentNode;if(d<0&&x.previousElementSibling)p.insertBefore(x,x.previousElementSibling);if(d>0&&x.nextElementSibling)p.insertBefore(x.nextElementSibling,x);sync();}sync();document.getElementById('tieForm').addEventListener('submit',sync);</script><?php endif; ?>
+</div></body></html>
