@@ -62,6 +62,19 @@ final class McpOAuthService
         if($resource!=='')self::requireResource($resource);self::ensure($pdo);$pdo->beginTransaction();try{$s=$pdo->prepare('SELECT * FROM bdc_mcp_oauth_tokens WHERE refresh_hash=:hash AND client_id=:client AND revoked_at IS NULL AND refresh_expires_at>=NOW() FOR UPDATE');$s->execute(['hash'=>hash('sha256',$refresh),'client'=>$clientId]);$row=$s->fetch();if(!$row)throw new RuntimeException('Invalid or expired refresh token.');$pdo->prepare('UPDATE bdc_mcp_oauth_tokens SET revoked_at=NOW() WHERE id=:id')->execute(['id'=>$row['id']]);$tokens=self::createTokens($pdo,$clientId,(int)$row['user_id'],(string)$row['scope']);$pdo->commit();return $tokens;}catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
 
+    public static function diagnoseAuthentication(PDO $pdo,string $bearer,string $requiredScope):array
+    {
+        self::ensure($pdo);
+        $out=['bearer_present'=>$bearer!=='','token_found'=>false,'token_active'=>false,'scope_ok'=>false,'user_id'=>null,'user_role'=>null,'user_status'=>null];
+        if($bearer==='')return $out;
+        $s=$pdo->prepare('SELECT t.user_id,t.scope,t.revoked_at,t.access_expires_at,t.refresh_expires_at,u.role,u.status FROM bdc_mcp_oauth_tokens t LEFT JOIN bdc_users u ON u.id=t.user_id WHERE t.access_hash=:hash LIMIT 1');
+        $s->execute(['hash'=>hash('sha256',$bearer)]);$row=$s->fetch();if(!$row)return $out;
+        $out['token_found']=true;$out['user_id']=(int)$row['user_id'];$out['user_role']=$row['role']??null;$out['user_status']=$row['status']??null;
+        $expiry=(string)($row['refresh_expires_at']?:$row['access_expires_at']);$out['token_active']=$row['revoked_at']===null&&$expiry!==''&&strtotime($expiry)>=time();
+        $scopes=preg_split('/\s+/',trim((string)$row['scope']))?:[];$out['scope_ok']=in_array($requiredScope,$scopes,true);
+        return $out;
+    }
+
     public static function authenticate(PDO $pdo,string $bearer,string $requiredScope):?array
     {
         self::ensure($pdo);if($bearer==='')return null;$s=$pdo->prepare('SELECT t.user_id,t.scope,u.email,u.full_name,u.role,u.status FROM bdc_mcp_oauth_tokens t JOIN bdc_users u ON u.id=t.user_id WHERE t.access_hash=:hash AND t.revoked_at IS NULL AND COALESCE(t.refresh_expires_at,t.access_expires_at)>=NOW() LIMIT 1');$s->execute(['hash'=>hash('sha256',$bearer)]);$row=$s->fetch();if(!$row||$row['status']!=='active'||$row['role']!=='super_admin'||!in_array($requiredScope,preg_split('/\s+/',trim((string)$row['scope']))?:[],true))return null;return $row;
