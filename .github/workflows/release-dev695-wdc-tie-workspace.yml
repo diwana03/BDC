@@ -19,4 +19,4 @@ jobs:
           fetch-depth: 0
       - name: Repair WDC tie workspace loading
         run: bash .github/scripts/release-dev695-wdc-tie-workspace.sh
-      # retry after tightening the runtime-only assertion
+      # run after exact CREATE TABLE detection fix
