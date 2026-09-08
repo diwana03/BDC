@@ -829,3 +829,76 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-ma
   margin:0!important;
   padding:0 clamp(2px,.18vw,5px)!important;
 }
+
+
+/* dev705 Final Relative Placement: one Couple cell, no visible inner cells.
+   The equal left/right tracks keep the gold ampersand on the exact geometric
+   centerline while BIB, real flag and first name remain a single identity row. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:clamp(8px,.48vw,13px)!important;
+  width:100%!important;
+  min-width:0!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person{
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:auto auto minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:clamp(6px,.38vw,10px)!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-leader{
+  grid-column:1!important;
+  justify-self:stretch!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-follower{
+  grid-column:3!important;
+  justify-self:stretch!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>strong,
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-matrix-flag{
+  min-width:0!important;
+  border-left:0!important;
+  border-right:0!important;
+  box-shadow:none!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-couple-name{
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-matrix-amp{
+  grid-column:2!important;
+  justify-self:center!important;
+  align-self:center!important;
+  width:auto!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0 clamp(3px,.2vw,6px)!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}

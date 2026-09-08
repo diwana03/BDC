@@ -1,11 +1,13 @@
 {
-  "version": "2.3.6-dev704",
-  "build": 3410,
+  "version": "2.3.6-dev705",
+  "build": 3411,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup Final Result tie evidence: the detailed final-result sheet now shows resolved Chief Judge tie score, Chief Judge name, final order and resolution time, while private comments remain excluded and scores are unchanged.",
+    "Final Relative Placement visual cleanup: keeps the proven eight-judge pagination, removes any visible inner Couple subcells, and locks the gold ampersand to the exact center between equal Lead and Follow identity tracks without changing scoring or result data.",
     "Final Relative Placement center alignment: the gold ampersand is locked to the exact center of the Couple column using equal leader/follower tracks, without changing scoring, judge values, BIBs, flags, names, pagination or matrix sizing.",
     "Final Relative Placement standard-row repair: removes the nested leader/follower pseudo-cell layout and renders BIB, flag, first name, ampersand, BIB, flag, first name in one normal Couple table cell while preserving 8-judge pagination and scoring.",
     "Final Relative Placement couple identity repair: leader and follower each use a full half of the Couple column so BIB, flag and first name remain visible while retaining dev700 judge pagination and projector safe area.",

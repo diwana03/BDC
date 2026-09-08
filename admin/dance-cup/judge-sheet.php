@@ -6,6 +6,7 @@ require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;
 use App\Core\Database;
 use App\Services\DanceCupScoringService;
+use App\Services\DanceCupTieService;
 
 Auth::requireAdmin();
 $pdo=Database::connection();
@@ -38,6 +39,31 @@ $query=$pdo->prepare("SELECT entry_id,placement,total_score FROM {$prefix}_scori
 $query->execute(['id'=>$competitionId]);
 $resultByEntry=[];
 foreach($query->fetchAll() as $result)$resultByEntry[(int)$result['entry_id']]=$result;
+
+// dev705: resolved Chief Judge tie decisions are official result evidence.
+// Never expose private judge/CJ comments in this summary.
+$resolvedTies=[];
+foreach(DanceCupTieService::ties($pdo,$competitionId,$test) as $tie){
+ $task=$tie['task']??null;
+ if((string)($task['status']??'')!=='resolved')continue;
+ $ordered=json_decode((string)($task['resolved_order_json']??''),true);
+ if(!is_array($ordered)||!$ordered)continue;
+ $entryById=[];
+ foreach(($tie['entries']??[]) as $tieEntry)$entryById[(int)$tieEntry['entry_id']]=$tieEntry;
+ $order=[];$basePlace=(int)($tie['base_place']??0);
+ foreach(array_values($ordered) as $index=>$entryId){
+  $tieEntry=$entryById[(int)$entryId]??null;if(!$tieEntry)continue;
+  $order[]='#'.($basePlace+$index).' · No. '.(int)$tieEntry['bib_number'].' · '.(string)$tieEntry['display_name'];
+ }
+ if(!$order)continue;
+ $resolvedAt=trim((string)($task['resolved_at']??''));
+ $resolvedTies[]=[
+  'score'=>(float)($tie['score']??0),
+  'chief_name'=>trim((string)($task['chief_name']??''))?:'Chief Judge',
+  'resolved_at'=>$resolvedAt!==''?date('j M Y H:i',strtotime($resolvedAt)):'',
+  'order'=>$order,
+ ];
+}
 $rankedEntries=$entries;
 usort($rankedEntries,static function(array $left,array $right)use($resultByEntry):int{
  $leftPlace=(int)($resultByEntry[(int)$left['id']]['placement']??PHP_INT_MAX);
@@ -90,6 +116,7 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
 .test{color:#b42318;font-weight:800}
 .comment-list{display:grid;gap:3mm;margin-top:5mm}.comment-item{border:1px solid #cbd5e1;border-left:4px solid var(--wine);border-radius:2mm;padding:3mm 4mm}.comment-item strong{display:block;font-size:10pt}.comment-item p{margin:1.5mm 0 0;white-space:pre-wrap;font-size:9pt;line-height:1.4}.confidential{margin-top:3mm;color:var(--wine);font-size:8pt;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
 .summary-table .contestant{width:52mm}.summary-table .number{width:18mm}.summary-table .placement{width:18mm;font-size:11pt;font-weight:900;color:var(--wine)}.summary-table .combined{width:24mm;font-weight:900;background:#fff8e8}.summary-intro{display:flex;justify-content:space-between;gap:8mm;margin:4mm 0 3mm;font-size:8pt;color:var(--muted)}
+.tie-audit{margin-top:4mm;border:1px solid #c7a45a;border-left:4px solid var(--wine);background:#fffaf0;padding:3mm 4mm}.tie-audit h3{margin:0 0 2mm;font-size:10pt;color:var(--wine);text-transform:uppercase;letter-spacing:.35px}.tie-row{display:grid;grid-template-columns:30mm 42mm 1fr;gap:4mm;align-items:start;padding:1.5mm 0;border-top:1px solid #e8dcc3;font-size:8pt}.tie-row:first-of-type{border-top:0}.tie-order{font-weight:700;line-height:1.35}.tie-meta{color:var(--muted);font-size:7.5pt;line-height:1.35}
 @page{size:A4 landscape;margin:0}
 @media print{html,body{background:#fff}.toolbar{display:none}.sheet{width:297mm;min-height:210mm;margin:0;box-shadow:none}.score-table thead{display:table-header-group}.score-table tr{break-inside:avoid;page-break-inside:avoid}}
 @media(max-width:900px){.sheet{transform-origin:top left}.toolbar{position:relative}}
@@ -109,6 +136,18 @@ html,body{margin:0;background:#e8edf3;color:var(--ink);font-family:Arial,Helveti
   <thead><tr><th>Contestant No.</th><th class="contestant">Participant / Team</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><span class="maximum"><?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' · Chief':''?></span></th><?php endforeach;?><th>Combined Score</th><th>Place</th></tr></thead>
   <tbody><?php foreach($rankedEntries as $entry):$entryId=(int)$entry['id'];?><tr><td><strong><?=e((string)$entry['bib_number'])?></strong></td><td class="contestant"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):$subtotal=0.0;$hasJudgeMark=false;foreach($criteria as $criterion){$value=$marks[(int)$judge['id']][$entryId][(int)$criterion['id']]??null;if($value!==null&&$value!==''){$subtotal+=(float)$value;$hasJudgeMark=true;}}?><td><?=$hasJudgeMark?e(dcSheetNumber($subtotal)):'—'?></td><?php endforeach;$official=$resultByEntry[$entryId]??null;?><td class="combined"><?=$official?e(dcSheetNumber((float)$official['total_score'])):'—'?></td><td class="placement"><?=$official?'#'.(int)$official['placement']:'—'?></td></tr><?php endforeach;?><?php if(!$rankedEntries):?><tr><td colspan="<?=count($judges)+4?>" class="contestant">No contestants available.</td></tr><?php endif;?></tbody>
  </table>
+ <?php if($resolvedTies):?>
+ <section class="tie-audit" aria-label="Chief Judge tie decisions">
+  <h3>Chief Judge Tie Decision</h3>
+  <?php foreach($resolvedTies as $tie):?>
+  <div class="tie-row">
+   <div><strong>Tied score</strong><br><?=e(dcSheetNumber((float)$tie['score']))?></div>
+   <div class="tie-meta"><strong><?=e($tie['chief_name'])?></strong><br>Chief Judge<?php if($tie['resolved_at']!==''):?><br><?=e($tie['resolved_at'])?><?php endif;?></div>
+   <div class="tie-order">Final order: <?=e(implode(' → ',$tie['order']))?></div>
+  </div>
+  <?php endforeach;?>
+ </section>
+ <?php endif;?>
  <footer class="footer"><div class="signature"><b>Scoring Administrator / Witness</b></div><div></div><div class="note">Final result. Individual judge criterion pages follow. <?=$test?'<span class="test">TEST DATA</span>':''?></div></footer>
 </section>
 <?php foreach($judges as $judge):foreach($pages as $pageIndex=>$pageEntries):?>
