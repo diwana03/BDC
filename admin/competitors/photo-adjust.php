@@ -100,7 +100,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 if(isset($_GET['background_removed']))$notice='Transparent background photo applied. The original remains available for restore.';
 if(isset($_GET['original_restored']))$notice='Original competitor photo restored.';
 
-$source=$c['original_photo_url']?:$c['photo_url']?:url('public/assets/img/default-competitor.svg');
+$source=$c['photo_url']?:$c['original_photo_url']?:url('public/assets/img/default-competitor.svg');
 ?>
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Adjust Competitor Photo</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>
 .crop{width:min(320px,100%);aspect-ratio:4/5;overflow:hidden;background:#ddd;border-radius:18px;position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
