@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev710",
-  "build": 3416,
+  "version": "2.3.6-dev711",
+  "build": 3417,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup projector universal safe layout: groups the BDC logo directly beside the event title, lowers the header into the 10 percent top safe area, enforces 10 percent vertical and 5 percent horizontal margins across every Dance Cup projection screen, and constrains boards, calls and podiums inside the safe canvas.",
     "BDC and SDC photo adjustment persistence: reopens the current adjusted competitor photo instead of resetting the editor to the preserved original, while keeping the original safely available for restore.",
     "Final score matrix natural couple spacing: applies the same A & B identity alignment to the legacy Final Relative Placement score-matrix screen, keeping the ampersand centered while Lead and Follow sit directly beside it without changing scoring.",
     "Final Full Results natural couple spacing: right-aligns the Lead identity toward the centered ampersand while the Follow identity begins immediately after it, so every pairing reads naturally as A & B without changing scoring or result data.",

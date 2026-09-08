@@ -9,9 +9,9 @@ assert(feed.includes('$entryIdentity[(int)$entry[\'id\']]'), 'feed must build id
 assert(feed.includes("if(empty($result['photo_url']))$result['photo_url']=$identity['photo_url']"), 'scoreboard fallback rows must recover the contestant photo');
 assert(feed.includes("if(empty($result['country']))$result['country']=$identity['country']"), 'scoreboard fallback rows must recover the contestant country');
 assert(display.includes('.screen-category{text-align:center;font-size:clamp(18px,1.7vw,32px)'), 'category heading must be larger and stronger');
-assert(display.includes('width:min(1720px,98vw)'), 'live scoreboard must use more projector width');
+assert(display.includes('width:min(1720px,100%)'), 'live scoreboard must use the full safe-area width without crossing it');
 assert(display.includes('.rank-photo{width:clamp(52px,5vw,90px)'), 'scoreboard contestant photos must be larger');
-assert(display.includes('.call-layout{width:100%;height:min(72vh,760px)'), 'three-section contestant presentation must remain intact');
+assert(display.includes('.call-layout{width:100%;height:min(100%,760px)'), 'three-section contestant presentation must remain inside the safe-area height');
 assert(/'&presentation=\d+'/.test(launch), 'projector launch must invalidate the previous presentation document');
 
 console.log('Dance Cup projector identity, scale and position v500 passed.');

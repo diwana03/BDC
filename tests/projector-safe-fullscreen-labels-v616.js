@@ -15,9 +15,9 @@ assert(!jjFeed.includes('requestFullscreen()'), 'Jack & Jill audience screen sti
 assert(!danceCup.includes('requestFullscreen()'), 'Dance Cup audience screen still contains fullscreen control');
 assert(jjControl.includes('data-fullscreen-control'), 'Jack & Jill control-panel fullscreen action missing');
 assert(danceCupControl.includes('data-fullscreen-control'), 'Dance Cup control-panel fullscreen action missing');
-assert(danceCup.includes('#app{width:100vw;height:100vh;padding:clamp(18px,2.6vh,34px) clamp(26px,2.8vw,54px) clamp(20px,2.7vh,36px)'), 'Dance Cup adaptive safe area missing');
+assert(danceCup.includes('#app{width:100vw;height:100vh;padding:10vh 5vw'), 'Dance Cup 10% vertical and 5% horizontal safe area missing');
 assert(jjFeed.includes("preg_replace('/(^|_)rising$/', '$1intermediate'"), 'Jack & Jill public Intermediate mapping missing');
 assert(danceCup.includes("replace(/\\brising\\b/gi,'Intermediate')"), 'Dance Cup public Intermediate mapping missing');
 assert(danceCup.includes("const category=label(latest?.state?.category_name"), 'Dance Cup category public-label mapping missing');
-assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3322, 'version predates projector safe-area release');
+assert(/^2\.3\.\d+-dev\d+$/.test(version.version) && Number(version.version.match(/dev(\d+)$/)?.[1] || 0) >= 616 && version.build >= 3322, 'version predates projector safe-area release');
 console.log('projector safe-area, fullscreen and public labels v616: PASS');
