@@ -57,6 +57,8 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
           coupleDisplay: style('.aud-couple').display,
           couple: box('.aud-couple'),
           amp: box('.aud-amp'),
+          lead: document.querySelectorAll('.aud-person')[0].getBoundingClientRect(),
+          follow: document.querySelectorAll('.aud-person')[1].getBoundingClientRect(),
           name: box('.aud-person span:last-child'),
           judge: box('th:nth-child(3)'),
           bibFont: parseFloat(style('.aud-person strong').fontSize),
@@ -71,6 +73,8 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
       const coupleCenter = measurements.couple.left + (measurements.couple.width / 2);
       const ampCenter = measurements.amp.left + (measurements.amp.width / 2);
       assert(Math.abs(ampCenter - coupleCenter) <= 1, 'Ampersand must be centered in the Couple column');
+      assert(measurements.amp.left - measurements.lead.right <= 24, 'Lead identity must sit naturally beside the ampersand');
+      assert(measurements.follow.left - measurements.amp.right <= 24, 'Follow identity must sit naturally beside the ampersand');
       assert(measurements.name.width > 20, 'Competitor name must have non-zero readable width');
       assert(measurements.judge.width > 30, 'Each paged judge column must remain readable');
       assert(measurements.bibFont > measurements.nameFont, 'BIB typography must be larger than competitor name typography');

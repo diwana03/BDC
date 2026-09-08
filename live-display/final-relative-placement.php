@@ -97,7 +97,7 @@ th:nth-child(n+3){font-size:clamp(13px,.8vw,19px);line-height:1.02}th:nth-child(
 td:nth-child(n+3){font-size:clamp(19px,1.18vw,28px);font-weight:950}
 .aud-couple{display:table-cell;overflow:hidden;vertical-align:middle}
 .aud-couple-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:clamp(34px,2.5vw,62px);width:100%;min-width:0;overflow:hidden}
-.aud-person{display:flex;align-items:center;gap:clamp(6px,.4vw,10px);min-width:0;overflow:hidden}.aud-person strong{flex:0 0 auto;font-size:clamp(18px,1.08vw,26px);white-space:nowrap}
+.aud-person{display:flex;align-items:center;gap:clamp(6px,.4vw,10px);min-width:0;overflow:hidden}.aud-person:first-child{justify-content:flex-end}.aud-person strong{flex:0 0 auto;font-size:clamp(18px,1.08vw,26px);white-space:nowrap}
 .aud-person img{flex:0 0 auto;width:clamp(30px,1.75vw,44px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}.aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(16px,.98vw,24px);font-weight:950}.aud-amp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;font-size:clamp(19px,1.1vw,27px);font-weight:950;color:#f2cf72;line-height:1}
 .nr{font-size:.72em;color:#b7c1d1;letter-spacing:.04em}.legend{display:block;margin-top:.28em;color:#cbd5e1;font-size:clamp(10px,.48em,15px);font-weight:700;letter-spacing:.05em}
 .test{position:absolute;top:10vh;left:5vw;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}

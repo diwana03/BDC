@@ -17,6 +17,7 @@ assert(matrix.includes('.aud-couple{display:table-cell;'), 'Couple TD must retai
 assert(matrix.includes('<td class="aud-couple"><div class="aud-couple-row">'), 'Grid layout must live inside the Couple TD');
 assert(!matrix.includes('.aud-couple{display:grid;'), 'Couple TD must never become a grid container');
 assert(matrix.includes('.aud-amp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)'), 'Ampersand must be pinned to the exact Couple-column center');
+assert(matrix.includes('.aud-person:first-child{justify-content:flex-end}'), 'Lead identity must hug the left side of the centered ampersand');
 assert(matrix.includes('NR = NOT RANKED BY THIS JUDGE'), 'Top-N omissions must be explained to the audience');
 assert(matrix.includes('<span class="nr">NR</span>'), 'Unselected judge ranks must render as NR');
 assert(matrix.includes("preg_replace('/\\s+_?TEST\\s*$/i'"), 'Redundant trailing TEST event text must be removed');
@@ -28,7 +29,7 @@ assert(advance.includes("'score_matrix', 'final_results', 'judges'"), 'Advance e
 assert(advance.includes("$screenType === 'final_results' || ($screenType === 'score_matrix' && $roundType === 'final')"), 'Final matrices must advance by judge count');
 assert(shell.includes("'score_matrix','final_results','judges'"), 'Projector shell must auto-advance Final Full Results');
 assert(control.includes('Live Score Matrix, Final Full Results and Live Contestant Scores'), 'Projection Control must describe Final Full Results paging');
-assert.strictEqual(version.version, '2.3.6-dev707');
-assert.strictEqual(version.build, 3413);
+assert.strictEqual(version.version, '2.3.6-dev708');
+assert.strictEqual(version.build, 3414);
 
 console.log('Final Full Results readability and pagination checks passed.');
