@@ -19,13 +19,18 @@ $roundTable = $test ? 'bdc_test_scoring_rounds' : 'bdc_scoring_rounds';
 $roundTypeQuery = $pdo->prepare("SELECT round_type FROM {$roundTable} WHERE id=:r LIMIT 1");
 $roundTypeQuery->execute(['r' => $roundId]);
 $roundType = (string) ($roundTypeQuery->fetchColumn() ?: '');
-$pagedTypes = ['competitors', 'callbacks', 'finalists', 'heats_scores', 'score_matrix', 'judges', 'judge_call'];
-if (!in_array($screenType, $pagedTypes, true) || ($screenType === 'score_matrix' && $roundType === 'final')) {
+$pagedTypes = ['competitors', 'callbacks', 'finalists', 'heats_scores', 'score_matrix', 'final_results', 'judges', 'judge_call'];
+if (!in_array($screenType, $pagedTypes, true)) {
     http_response_code(204);
     exit;
 }
 
-if (in_array($screenType, ['judges', 'judge_call'], true)) {
+if ($screenType === 'final_results' || ($screenType === 'score_matrix' && $roundType === 'final')) {
+    $judgeTable = $test ? 'bdc_test_scoring_judges' : 'bdc_scoring_judges';
+    $countQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+    $countQuery->execute(['r' => $roundId]);
+    $pages = max(1, (int) ceil((int) $countQuery->fetchColumn() / 8));
+} elseif (in_array($screenType, ['judges', 'judge_call'], true)) {
     $judgeTable = $test ? 'bdc_test_scoring_judges' : 'bdc_scoring_judges';
     $countQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
     $countQuery->execute(['r' => $roundId]);

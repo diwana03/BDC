@@ -142,6 +142,13 @@ if ($roundId && $s["screen_type"] === "score_matrix" && $roundType === "final") 
     // Eight Final judges per page keeps names and relative placements audience-readable.
     $total = max(1, (int) ceil($judgeCount / 8));
 }
+if ($roundId && $s["screen_type"] === "final_results") {
+    $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
+    $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
+    $judgeCountQuery->execute(["r" => $roundId]);
+    $judgeCount = max(0, (int) $judgeCountQuery->fetchColumn());
+    $total = max(1, (int) ceil($judgeCount / 8));
+}
 if ($roundId && $s["screen_type"] === "judges") {
     $judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
     $judgeCountQuery = $pdo->prepare("SELECT COUNT(*) FROM {$judgeTable} WHERE round_id=:r");
@@ -180,7 +187,7 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
     } catch (Throwable) { $dataVersion = (string) time(); }
 } elseif (
     $roundId &&
-    in_array(($s["screen_type"] ?? ""), ["scoring", "score_matrix", "heats_scores"], true)
+    in_array(($s["screen_type"] ?? ""), ["scoring", "score_matrix", "heats_scores", "final_results"], true)
 ) {
     try {
         $sessionTable = $test
@@ -204,6 +211,16 @@ if ($roundId && ($s["screen_type"] ?? "") === "matching") {
                 : "bdc_scoring_results";
             $q = $pdo->prepare(
                 "SELECT CONCAT(COALESCE(UNIX_TIMESTAMP(MAX(updated_at)),0),'-',COUNT(*)) FROM {$resultTable} WHERE round_id=:r",
+            );
+            $q->execute(["r" => $roundId]);
+            $parts[] = (string) $q->fetchColumn();
+        }
+        if (($s["screen_type"] ?? "") === "final_results") {
+            $finalResultTable = $test
+                ? "bdc_test_scoring_final_results"
+                : "bdc_scoring_final_results";
+            $q = $pdo->prepare(
+                "SELECT CONCAT(COALESCE(UNIX_TIMESTAMP(MAX(updated_at)),0),'-',COUNT(*)) FROM {$finalResultTable} WHERE round_id=:r",
             );
             $q->execute(["r" => $roundId]);
             $parts[] = (string) $q->fetchColumn();

@@ -40,6 +40,11 @@ foreach($judges as $judgeIndex=>$judge){$judgeProjectionNames[(string)$judgeInde
 $judgeProjectionNames=ProjectionNameService::abbreviateNames($judgeProjectionNames);
 foreach($judges as $judgeIndex=>&$judge){$judge['full_name']=$judgeProjectionNames[(string)$judgeIndex]??'';$judge['judge_name']=$judge['full_name'];}
 unset($judge);
+$judgePageSize=8;
+$judgeTotal=count($judges);
+$judgeTotalPages=max(1,(int)ceil($judgeTotal/$judgePageSize));
+$judgePage=max(1,min((int)($session['page_number']??1),$judgeTotalPages));
+$judges=array_slice($judges,($judgePage-1)*$judgePageSize,$judgePageSize);
 
 $competitorTable=$test?'bdc_test_competitors':'bdc_competitors';
 $q=$pdo->prepare("SELECT fp.id,fp.pair_number,le.bib_number leader_bib,le.display_name leader_name,fe.bib_number follower_bib,fe.display_name follower_name,lc.country leader_country,fc.country follower_country,fr.final_rank FROM {$pt} fp JOIN {$ent} le ON le.id=fp.leader_entry_id LEFT JOIN {$ent} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id LEFT JOIN {$frt} fr ON fr.pair_id=fp.id AND fr.round_id=fp.round_id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY COALESCE(fr.final_rank,999999),fp.pair_number");
@@ -61,6 +66,8 @@ $cleanFinalProjectionName = static function (mixed $value, mixed $bib = null): s
 
 $marks=[];
 foreach($q->fetchAll() as $m){$marks[(int)$m['pair_id']][(int)$m['judge_id']]=$m['rank_value'];}
+$eventDisplayName=trim((string)(preg_replace('/\s+_?TEST\s*$/i','',(string)$round['event_name'])??$round['event_name']));
+if($eventDisplayName==='')$eventDisplayName=(string)$round['event_name'];
 
 ob_start(static fn(string $html):string=>str_replace(
     ['</title>','<body>','<div class="stage">'],
@@ -82,19 +89,22 @@ ob_start(static fn(string $html):string=>str_replace(
 h1{text-align:center;font-size:clamp(28px,2.35vw,58px);margin:.18em 0 .32em;line-height:1}
 .wrap{flex:1;min-height:0;display:flex;align-items:stretch;justify-content:center}
 table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;background:rgba(17,24,39,.88);font-size:clamp(13px,.92vw,22px)}
-thead{height:7%}tbody{height:93%}tbody tr{height:8.333%}
+thead{height:9%}tbody{height:91%}tbody tr{height:calc(100% / var(--row-count))}
 th,td{border:1px solid rgba(255,255,255,.28);padding:0 .28em;text-align:center}
-th{background:#7d2638}th:first-child,td:first-child{width:10%;font-size:clamp(14px,.9vw,21px);font-weight:950}
-th:nth-child(2),td:nth-child(2){width:36%;text-align:left;padding-left:.45em}
-th:nth-child(n+3){font-size:clamp(10px,.62vw,15px);line-height:1.02}th:nth-child(n+3) small{display:block;font-size:clamp(7px,.42vw,10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td:nth-child(n+3){font-size:clamp(15px,.94vw,22px);font-weight:950}
-.aud-couple{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(7px,.5vw,12px);font-size:clamp(15px,1vw,23px);overflow:hidden}
-.aud-person{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;overflow:hidden}.aud-person strong{font-size:.9em;white-space:nowrap}
-.aud-person img{width:clamp(25px,1.5vw,36px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}.aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950}.aud-amp{font-weight:950}
+th{background:#7d2638}th:first-child,td:first-child{width:9%;font-size:clamp(18px,1.18vw,28px);font-weight:950}
+th:nth-child(2),td:nth-child(2){width:51%;text-align:left;padding-left:.55em;padding-right:.55em}
+th:nth-child(n+3){font-size:clamp(13px,.8vw,19px);line-height:1.02}th:nth-child(n+3) small{display:block;font-size:clamp(10px,.58vw,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.2em}
+td:nth-child(n+3){font-size:clamp(19px,1.18vw,28px);font-weight:950}
+.aud-couple{display:table-cell;overflow:hidden;vertical-align:middle}
+.aud-couple-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(8px,.55vw,14px);width:100%;min-width:0;overflow:hidden}
+.aud-person{display:flex;align-items:center;gap:clamp(6px,.4vw,10px);min-width:0;overflow:hidden}.aud-person strong{flex:0 0 auto;font-size:clamp(18px,1.08vw,26px);white-space:nowrap}
+.aud-person img{flex:0 0 auto;width:clamp(30px,1.75vw,44px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.75);border-radius:3px}.aud-person span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(16px,.98vw,24px);font-weight:950}.aud-amp{font-size:clamp(19px,1.1vw,27px);font-weight:950;color:#f2cf72}
+.nr{font-size:.72em;color:#b7c1d1;letter-spacing:.04em}.legend{display:block;margin-top:.28em;color:#cbd5e1;font-size:clamp(10px,.48em,15px);font-weight:700;letter-spacing:.05em}
 .test{position:absolute;top:10vh;left:5vw;background:#ffc107;color:#111;padding:.35em .7em;border-radius:6px;font-weight:900}
+@media(max-aspect-ratio:3/4){.event{font-size:clamp(20px,4vw,34px)}h1{font-size:clamp(20px,4.4vw,38px)}th:first-child,td:first-child{width:10%}th:nth-child(2),td:nth-child(2){width:50%}.aud-person strong{font-size:clamp(12px,2.2vw,20px)}.aud-person span{font-size:clamp(11px,2vw,18px)}.aud-person img{width:clamp(20px,3.5vw,34px)}th:nth-child(n+3){font-size:clamp(9px,1.7vw,14px)}th:nth-child(n+3) small{font-size:clamp(7px,1.35vw,11px)}td:nth-child(n+3){font-size:clamp(12px,2.2vw,20px)}}
 </style></head><body><div class="stage">
 <?php if($test):?><div class="test">TEST MODE</div><?php endif;?>
-<div class="event"><?=e($round['event_name'])?></div><div class="meta"><?=e(strtoupper(str_replace('_',' ',$round['division'])))?> · FINAL</div><h1>FINAL RELATIVE PLACEMENT</h1>
-<div class="wrap"><table><thead><tr><th>Final</th><th>Couple</th><?php foreach($judges as $j):?><th>J<?=(int)$j['judge_order']?><?=(int)$j['is_chief']?'★':''?><br><small><?=e((string)($j['full_name']?:$j['judge_name']))?></small></th><?php endforeach;?></tr></thead><tbody>
-<?php foreach($pairs as $p):?><tr><td><?=isset($p['final_rank'])?'#'.(int)$p['final_rank']:'—'?></td><td class="aud-couple"><span class="aud-person"><strong>BIB <?=(int)$p['leader_bib']?></strong><?php if($lf=country_flag_url((string)($p['leader_country']??''))):?><img src="<?=e($lf)?>" alt="<?=e((string)$p['leader_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['leader_name'] ?? '', $p['leader_bib'] ?? null))?></span></span><span class="aud-amp">&amp;</span><span class="aud-person"><strong>BIB <?=(int)$p['follower_bib']?></strong><?php if($ff=country_flag_url((string)($p['follower_country']??''))):?><img src="<?=e($ff)?>" alt="<?=e((string)$p['follower_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['follower_name'] ?? '', $p['follower_bib'] ?? null))?></span></span></td><?php foreach($judges as $j):?><td><?=e((string)($marks[(int)$p['id']][(int)$j['id']]??''))?></td><?php endforeach;?></tr><?php endforeach;?>
+<div class="event"><?=e($eventDisplayName)?></div><div class="meta"><?=e(strtoupper(str_replace('_',' ',$round['division'])))?> · FINAL</div><h1>FINAL RELATIVE PLACEMENT<?php if($judgeTotalPages>1):?> · PAGE <?=$judgePage?> OF <?=$judgeTotalPages?><?php endif;?><span class="legend">NR = NOT RANKED BY THIS JUDGE</span></h1>
+<div class="wrap"><table style="--row-count:<?=max(1,count($pairs))?>"><thead><tr><th>Final</th><th>Couple</th><?php foreach($judges as $j):?><th>J<?=(int)$j['judge_order']?><?=(int)$j['is_chief']?'★':''?><br><small><?=e((string)($j['full_name']?:$j['judge_name']))?></small></th><?php endforeach;?></tr></thead><tbody>
+<?php foreach($pairs as $p):?><tr><td><?=isset($p['final_rank'])?'#'.(int)$p['final_rank']:'—'?></td><td class="aud-couple"><div class="aud-couple-row"><span class="aud-person"><strong>BIB <?=(int)$p['leader_bib']?></strong><?php if($lf=country_flag_url((string)($p['leader_country']??''))):?><img src="<?=e($lf)?>" alt="<?=e((string)$p['leader_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['leader_name'] ?? '', $p['leader_bib'] ?? null))?></span></span><span class="aud-amp">&amp;</span><span class="aud-person"><strong>BIB <?=(int)$p['follower_bib']?></strong><?php if($ff=country_flag_url((string)($p['follower_country']??''))):?><img src="<?=e($ff)?>" alt="<?=e((string)$p['follower_country'])?> flag"><?php endif;?><span><?=e($cleanFinalProjectionName($p['follower_name'] ?? '', $p['follower_bib'] ?? null))?></span></span></div></td><?php foreach($judges as $j):?><?php $rank=$marks[(int)$p['id']][(int)$j['id']]??null;?><td><?=$rank!==null?e((string)$rank):'<span class="nr">NR</span>'?></td><?php endforeach;?></tr><?php endforeach;?>
 </tbody></table></div></div></body></html>
