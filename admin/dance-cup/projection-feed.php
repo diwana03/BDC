@@ -37,13 +37,20 @@ $revisionQuery=$pdo->prepare("SELECT
  (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',r.entry_id,r.total_score,r.placement))),0) FROM {$p}_scoring_results r WHERE r.competition_id=:c15) result_signature");
 $revisionParams=[];for($revisionIndex=1;$revisionIndex<=15;$revisionIndex++)$revisionParams['c'.$revisionIndex]=$competition;
 $revisionQuery->execute($revisionParams);$revisionParts=$revisionQuery->fetch()?:[];
-$revision=hash('sha256',json_encode([(int)($state['state_version']??0),$revisionParts],JSON_UNESCAPED_SLASHES));
+$photoRevision=0;
+try{
+    $photoRevisionQuery=$pdo->prepare("SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',e.id,COALESCE(e.wdc_identity_id,0),COALESCE(w.photo_url,''),COALESCE(c.photo_url,'')))),0) FROM {$p}_entries e LEFT JOIN bdc_wdc_identities w ON w.id=e.wdc_identity_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition");
+    $photoRevisionQuery->execute(['competition'=>$competition]);
+    $photoRevision=(int)$photoRevisionQuery->fetchColumn();
+}catch(Throwable $e){error_log('BDC Dance Cup projector photo revision fallback: '.$e->getMessage());}
+$revision=hash('sha256',json_encode([(int)($state['state_version']??0),$revisionParts,$photoRevision],JSON_UNESCAPED_SLASHES));
 $clientRevision=preg_replace('/[^a-f0-9]/','',(string)($_GET['since']??''));
 if(strlen($clientRevision)===64&&hash_equals($revision,$clientRevision)){
  echo json_encode(['ok'=>true,'unchanged'=>true,'revision'=>$revision],JSON_UNESCAPED_SLASHES);exit;
 }
 $fetch=function(string $sql,string $scope,array $params=[])use($pdo,$competition):array{try{$q=$pdo->prepare($sql);$q->execute(['competition'=>$competition]+$params);return $q->fetchAll();}catch(Throwable $e){error_log('BDC Dance Cup projector '.$scope.' feed fallback: '.$e->getMessage());return [];}};
-$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.countries_json,c.photo_url FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant');
+$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.countries_json,COALESCE(NULLIF(w.photo_url,''),c.photo_url) photo_url FROM {$p}_entries e LEFT JOIN bdc_wdc_identities w ON w.id=e.wdc_identity_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant-wdc');
+if(!$entries)$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,c.country,c.countries_json,c.photo_url FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant');
 if(!$entries)$entries=$fetch("SELECT e.id,e.bib_number contestant_number,e.display_name,NULL country,NULL photo_url FROM {$p}_entries e WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'contestant-minimal');
 $activeEntryId=(int)($state['active_entry_id']??0);
 if(!$activeEntryId&&$entries)$activeEntryId=(int)$entries[0]['id'];
@@ -70,9 +77,11 @@ foreach($judges as &$judge){
     $judge['criteria_required']=$criteriaRequired;
 }
 unset($judge);
-$results=$fetch("SELECT r.placement,r.total_score,1 has_score,e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number",'result');
+$results=$fetch("SELECT r.placement,r.total_score,1 has_score,e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,COALESCE(NULLIF(w.photo_url,''),c.photo_url) photo_url FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id LEFT JOIN bdc_wdc_identities w ON w.id=e.wdc_identity_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number",'result-wdc');
+if(!$results)$results=$fetch("SELECT r.placement,r.total_score,1 has_score,e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url FROM {$p}_scoring_results r JOIN {$p}_entries e ON e.id=r.entry_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id WHERE r.competition_id=:competition ORDER BY r.placement,e.bib_number",'result');
 if(!$results){
-    $results=$fetch("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url,COALESCE(SUM(m.points),0) total_score,COUNT(m.criterion_id) mark_count FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id,e.bib_number,e.display_name,c.country,c.photo_url ORDER BY (COUNT(m.criterion_id)>0) DESC,total_score DESC,e.bib_number",'mark-result');
+    $results=$fetch("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,COALESCE(NULLIF(w.photo_url,''),c.photo_url) photo_url,COALESCE(SUM(m.points),0) total_score,COUNT(m.criterion_id) mark_count FROM {$p}_entries e LEFT JOIN bdc_wdc_identities w ON w.id=e.wdc_identity_id LEFT JOIN bdc_competitors c ON c.id=e.competitor_id LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id,e.bib_number,e.display_name,c.country,w.photo_url,c.photo_url ORDER BY (COUNT(m.criterion_id)>0) DESC,total_score DESC,e.bib_number",'mark-result-wdc');
+    if(!$results)$results=$fetch("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,c.country,c.photo_url,COALESCE(SUM(m.points),0) total_score,COUNT(m.criterion_id) mark_count FROM {$p}_entries e LEFT JOIN bdc_competitors c ON c.id=e.competitor_id LEFT JOIN {$p}_marks m ON m.entry_id=e.id AND m.competition_id=e.competition_id WHERE e.competition_id=:competition AND e.status='active' GROUP BY e.id,e.bib_number,e.display_name,c.country,c.photo_url ORDER BY (COUNT(m.criterion_id)>0) DESC,total_score DESC,e.bib_number",'mark-result');
     if(!$results)$results=$fetch("SELECT e.id entry_id,e.bib_number contestant_number,e.display_name,NULL country,NULL photo_url,0 total_score,0 mark_count FROM {$p}_entries e WHERE e.competition_id=:competition AND e.status='active' ORDER BY e.bib_number,e.id",'result-minimal');
     $place=0;$rankedCount=0;$lastTotal=null;foreach($results as &$row){$row['has_score']=(int)$row['mark_count']>0?1:0;if(!$row['has_score']){$row['placement']=null;continue;}$rankedCount++;$total=(float)$row['total_score'];if($lastTotal===null||$total<$lastTotal)$place=$rankedCount;$row['placement']=$place;$lastTotal=$total;}unset($row);
 }
@@ -90,7 +99,7 @@ unset($entry);
 foreach($results as &$result){
     $identity=$entryIdentity[(int)($result['entry_id']??0)]??null;
     if($identity){
-        if(empty($result['photo_url']))$result['photo_url']=$identity['photo_url'];
+        if(!empty($identity['photo_url']))$result['photo_url']=$identity['photo_url'];
         if(empty($result['country']))$result['country']=$identity['country'];
         $result['countries']=$identity['countries'];$result['flags']=$identity['flags'];$result['country_codes']=$identity['country_codes'];
     }
