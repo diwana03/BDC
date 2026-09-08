@@ -165,5 +165,9 @@ git diff --check
 git config user.name 'BDC Release Bot'
 git config user.email 'actions@users.noreply.github.com'
 git add public/css/projector-safe-v616.css admin/dance-cup/judge-sheet.php VERSION.json
+if git diff --cached --quiet; then
+  echo 'dev705 already applied; validation passed; nothing to commit.'
+  exit 0
+fi
 git commit -m 'Release dev705 fix Final matrix and add CJ tie report'
 git push origin HEAD:develop
