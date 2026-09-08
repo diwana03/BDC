@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev706",
-  "build": 3412,
+  "version": "2.3.6-dev707",
+  "build": 3413,
   "status": "development",
   "release_date": "2026-09-07",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Final Full Results ampersand alignment: pins the gold ampersand to the exact 50 percent center of the Couple column, independent of Lead and Follow BIB, flag or name widths, without changing scoring or result data.",
     "Final Full Results projector repair: keeps Couple as a real table cell so BIBs, flags and names remain visible, pages Final judges eight at a time through the existing Auto Page controls, labels unselected Top-N marks as NR, removes redundant trailing TEST text and refreshes when Final data changes.",
     "Dance Cup Final Result tie evidence: the detailed final-result sheet now shows resolved Chief Judge tie score, Chief Judge name, final order and resolution time, while private comments remain excluded and scores are unchanged.",
     "Final Relative Placement visual cleanup: keeps the proven eight-judge pagination, removes any visible inner Couple subcells, and locks the gold ampersand to the exact center between equal Lead and Follow identity tracks without changing scoring or result data.",

@@ -56,6 +56,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
           scrollHeight: document.documentElement.scrollHeight,
           coupleDisplay: style('.aud-couple').display,
           couple: box('.aud-couple'),
+          amp: box('.aud-amp'),
           name: box('.aud-person span:last-child'),
           judge: box('th:nth-child(3)'),
           bibFont: parseFloat(style('.aud-person strong').fontSize),
@@ -67,6 +68,9 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
       assert(measurements.scrollHeight <= viewport.height, `${viewport.width}x${viewport.height} must not scroll vertically`);
       assert.strictEqual(measurements.coupleDisplay, 'table-cell');
       assert(measurements.couple.width >= viewport.width * 0.44, 'Couple column must retain readable width');
+      const coupleCenter = measurements.couple.left + (measurements.couple.width / 2);
+      const ampCenter = measurements.amp.left + (measurements.amp.width / 2);
+      assert(Math.abs(ampCenter - coupleCenter) <= 1, 'Ampersand must be centered in the Couple column');
       assert(measurements.name.width > 20, 'Competitor name must have non-zero readable width');
       assert(measurements.judge.width > 30, 'Each paged judge column must remain readable');
       assert(measurements.bibFont > measurements.nameFont, 'BIB typography must be larger than competitor name typography');
