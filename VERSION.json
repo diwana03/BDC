@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev712",
-  "build": 3418,
+  "version": "2.3.6-dev713",
+  "build": 3419,
   "status": "development",
   "release_date": "2026-09-08",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup legacy adjusted-photo repair: resolves saved WDC crops through the linked WDC identity or its shared competitor link for older roster rows, enlarges All Contestants portraits again, and revisions the projector launch URL so the new inline layout cannot remain hidden by an already-open display.",
     "Dance Cup adjusted-photo projection: prioritises each WDC identity's saved zoomed photo on Contestant Call, All Contestants, Live Scoreboard and Winner Podium, refreshes open projectors when that photo changes, and enlarges contestant portraits while retaining the universal safe canvas.",
     "Dance Cup projector universal safe layout: groups the BDC logo directly beside the event title, lowers the header into the 10 percent top safe area, enforces 10 percent vertical and 5 percent horizontal margins across every Dance Cup projection screen, and constrains boards, calls and podiums inside the safe canvas.",
     "BDC and SDC photo adjustment persistence: reopens the current adjusted competitor photo instead of resetting the editor to the preserved original, while keeping the original safely available for restore.",

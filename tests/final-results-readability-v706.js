@@ -29,7 +29,7 @@ assert(advance.includes("'score_matrix', 'final_results', 'judges'"), 'Advance e
 assert(advance.includes("$screenType === 'final_results' || ($screenType === 'score_matrix' && $roundType === 'final')"), 'Final matrices must advance by judge count');
 assert(shell.includes("'score_matrix','final_results','judges'"), 'Projector shell must auto-advance Final Full Results');
 assert(control.includes('Live Score Matrix, Final Full Results and Live Contestant Scores'), 'Projection Control must describe Final Full Results paging');
-assert.strictEqual(version.version, '2.3.6-dev712');
-assert.strictEqual(version.build, 3418);
+assert.strictEqual(version.version, '2.3.6-dev713');
+assert.strictEqual(version.build, 3419);
 
 console.log('Final Full Results readability and pagination checks passed.');

@@ -65,7 +65,7 @@ body{background:radial-gradient(circle at 50% -15%,var(--bg2),var(--bg) 68%)}
   align-content:stretch!important;
 }
 .grid:has(>.contestant-card)>.contestant-card{min-height:0!important;padding:clamp(7px,.72vw,13px)!important}
-.grid:has(>.contestant-card) .profile-photo{width:clamp(88px,min(8vw,12vh),132px)!important;height:clamp(88px,min(8vw,12vh),132px)!important;margin-bottom:clamp(2px,.32vh,5px)!important}
+.grid:has(>.contestant-card) .profile-photo{width:clamp(96px,min(8.6vw,13vh),148px)!important;height:clamp(96px,min(8.6vw,13vh),148px)!important;margin-bottom:clamp(2px,.32vh,5px)!important}
 .grid:has(>.contestant-card) .kicker{font-size:clamp(9px,.58vw,13px)!important;line-height:1!important}
 .grid:has(>.contestant-card) .bib{font-size:clamp(40px,4.1vw,78px)!important;line-height:.9!important}
 .grid:has(>.contestant-card) .contestant-name{font-size:clamp(16px,1.2vw,25px)!important;line-height:1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
