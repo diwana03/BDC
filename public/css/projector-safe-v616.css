@@ -879,6 +879,7 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-co
   border-right:0!important;
   box-shadow:none!important;
 }
+
 body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-couple-name{
   min-width:0!important;
   width:100%!important;
@@ -901,4 +902,22 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-ma
   outline:0!important;
   background:transparent!important;
   box-shadow:none!important;
+}
+
+/* dev709 Final score matrix: keep the centered ampersand, but make each
+   identity sit beside it so the Couple cell reads naturally as A & B. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person{
+  display:flex!important;
+  align-items:center!important;
+  column-gap:clamp(6px,.38vw,10px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-leader{
+  justify-content:flex-end!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-follower{
+  justify-content:flex-start!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-couple-name{
+  flex:0 1 auto!important;
+  width:auto!important;
 }
