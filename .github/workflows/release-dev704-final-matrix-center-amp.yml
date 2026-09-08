@@ -1,0 +1,18 @@
+name: Release dev704 Final Matrix Center Ampersand
+on:
+  push:
+    paths:
+      - '.github/scripts/release-dev704-final-matrix-center-amp.sh'
+      - '.github/workflows/release-dev704-final-matrix-center-amp.yml'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply dev704
+        run: bash .github/scripts/release-dev704-final-matrix-center-amp.sh
