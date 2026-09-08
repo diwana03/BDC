@@ -20,7 +20,7 @@ final class DanceCupCategoryDuplicateService
         $prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup';
         try{
             $pdo->beginTransaction();
-            $entries=$pdo->prepare("INSERT INTO {$prefix}_entries(competition_id,competitor_id,bib_number,display_name,status) SELECT :new_id,competitor_id,bib_number,display_name,status FROM {$prefix}_entries WHERE competition_id=:source_id ORDER BY id");
+            $entries=$pdo->prepare("INSERT INTO {$prefix}_entries(competition_id,competitor_id,wdc_identity_id,bib_number,display_name,status) SELECT :new_id,competitor_id,wdc_identity_id,bib_number,display_name,status FROM {$prefix}_entries WHERE competition_id=:source_id ORDER BY id");
             $entries->execute(['new_id'=>$newId,'source_id'=>$competitionId]);
             $judges=$pdo->prepare("INSERT INTO {$prefix}_judges(competition_id,judge_id,judge_name,judge_order,is_chief) SELECT :new_id,judge_id,judge_name,judge_order,is_chief FROM {$prefix}_judges WHERE competition_id=:source_id ORDER BY judge_order,id");
             $judges->execute(['new_id'=>$newId,'source_id'=>$competitionId]);

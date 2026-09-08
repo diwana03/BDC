@@ -55,6 +55,14 @@ $finalPairTable = $test
     ? "bdc_test_scoring_final_pairs"
     : "bdc_scoring_final_pairs";
 $competitorTable = $test ? "bdc_test_competitors" : "bdc_competitors";
+$linkedCompetitorPhoto=static function(string $alias)use($test):string{
+    if(!$test)return $alias.'.photo_url';
+    // Test roster identities mirror the official BDC or SDC council code, but
+    // their disposable photo copy may be stale. Resolve the current adjusted
+    // shared-person photo by council identity without changing Test scores.
+    return "COALESCE(NULLIF((SELECT oc.photo_url FROM bdc_competitors oc LEFT JOIN bdc_sdc_competitors os ON os.competitor_id=oc.id AND os.status='active' WHERE (UPPER({$alias}.bdc_id) LIKE 'BDC-%' AND UPPER(oc.bdc_id)=UPPER({$alias}.bdc_id)) OR (UPPER({$alias}.bdc_id) LIKE 'SDC-%' AND UPPER(os.sdc_id)=UPPER({$alias}.bdc_id)) ORDER BY oc.id LIMIT 1),''),{$alias}.photo_url)";
+};
+$photoC=$linkedCompetitorPhoto('c');$photoLc=$linkedCompetitorPhoto('lc');$photoFc=$linkedCompetitorPhoto('fc');
 $s = $pdo->prepare(
     "SELECT r.*,e.name event_name,e.status event_status FROM {$roundTable} r JOIN {$eventTable} e ON e.id=r.event_id WHERE r.id=:id LIMIT 1",
 );
@@ -127,19 +135,19 @@ if ($type === "flights") {
     ScoringFlightService::ensure($pdo, $test);
     $assignmentTable = $test ? 'bdc_test_scoring_flight_assignments' : 'bdc_scoring_flight_assignments';
     if ((string)$r['round_type'] === 'final') {
-        $q = $pdo->prepare("SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,lc.photo_url leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,fc.photo_url follower_photo FROM {$assignmentTable} fa JOIN {$finalPairTable} fp ON fp.id=fa.subject_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fa.round_id=:r AND fa.subject_type='pair' AND fa.flight_number=:flight ORDER BY fa.position_number");
+        $q = $pdo->prepare("SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,{$photoLc} leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,{$photoFc} follower_photo FROM {$assignmentTable} fa JOIN {$finalPairTable} fp ON fp.id=fa.subject_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fa.round_id=:r AND fa.subject_type='pair' AND fa.flight_number=:flight ORDER BY fa.position_number");
         $q->execute(['r'=>$roundId,'flight'=>$flight]);
         $items = $q->fetchAll();
         $type = 'final_couples';
     } else {
-        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
+        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
         $q->execute(['r'=>$roundId,'flight'=>$flight]);
         $items = $q->fetchAll();
         $type = 'flight_competitors';
     }
 } elseif ($type === "matching") {
     $title = "RANDOM FINAL MATCH";
-    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,lc.photo_url leader_photo,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country,fc.photo_url follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
+    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,{$photoLc} leader_photo,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country,{$photoFc} follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
     $q->execute(["r" => $roundId]);
     $items = $q->fetchAll();
     $type = "matching_couples";
@@ -176,11 +184,11 @@ if ($type === "flights") {
     $title = $isFinalRound ? "FINALIST COUPLES" : "COMPETITORS";
     if ($isFinalRound) {
         $q = $pdo->prepare(
-            "SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,lc.photo_url leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,fc.photo_url follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number",
+            "SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,{$photoLc} leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,{$photoFc} follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number",
         );
     } else {
         $q = $pdo->prepare(
-            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
         );
     }
     $q->execute(["r" => $roundId]);
@@ -193,11 +201,11 @@ if ($type === "flights") {
     $title = $type === "callbacks" ? "CALLBACKS" : "FINALISTS";
     if ($type === "finalists" && (string) $r["round_type"] === "final") {
         $q = $pdo->prepare(
-            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,c.photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 WHEN 'follower' THEN 2 ELSE 3 END,se.bib_number IS NULL,se.bib_number,se.display_name",
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 WHEN 'follower' THEN 2 ELSE 3 END,se.bib_number IS NULL,se.bib_number,se.display_name",
         );
     } else {
         $q = $pdo->prepare(
-            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.photo_url,sr.rank_number FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') ORDER BY sr.rank_number,se.display_name",
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,{$photoC} photo_url,sr.rank_number FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') ORDER BY sr.rank_number,se.display_name",
         );
     }
     $q->execute(["r" => $roundId]);
@@ -260,7 +268,7 @@ if ($type === "flights") {
         $rankLimit =
             $type === "winners" ? " AND fr.final_rank BETWEEN 1 AND 5" : "";
         $q = $pdo->prepare(
-            "SELECT fr.final_rank,fr.placement_sum AS total_score,fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib,lc.country leader_country,lc.photo_url leader_photo,fc.country follower_country,fc.photo_url follower_photo FROM {$finalResultTable} fr JOIN {$finalPairTable} fp ON fp.id=fr.pair_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fr.round_id=:r{$rankLimit} ORDER BY fr.final_rank ASC",
+            "SELECT fr.final_rank,fr.placement_sum AS total_score,fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib,lc.country leader_country,{$photoLc} leader_photo,fc.country follower_country,{$photoFc} follower_photo FROM {$finalResultTable} fr JOIN {$finalPairTable} fp ON fp.id=fr.pair_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fr.round_id=:r{$rankLimit} ORDER BY fr.final_rank ASC",
         );
         $q->execute(["r" => $roundId]);
         $items = $q->fetchAll();

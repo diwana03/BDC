@@ -19,7 +19,7 @@ $q=$pdo->prepare("SELECT p.*,e.name event_name,c.category_name,c.round_name,c.da
 $q->execute(['token'=>$token]);$state=$q->fetch();
 if(!$state){http_response_code(404);echo json_encode(['ok'=>false]);exit;}
 $competition=(int)$state['active_competition_id'];
-$wdcPhoto="COALESCE(NULLIF(w.photo_url,''),NULLIF((SELECT wi.photo_url FROM bdc_wdc_identities wi WHERE wi.solo_competitor_id=e.competitor_id AND wi.status='active' AND wi.photo_url IS NOT NULL AND wi.photo_url<>'' ORDER BY wi.id LIMIT 1),''),c.photo_url)";
+$wdcPhoto="COALESCE(NULLIF(w.photo_url,''),NULLIF((SELECT wi.photo_url FROM bdc_wdc_identities wi WHERE wi.solo_competitor_id=e.competitor_id AND wi.status='active' AND wi.photo_url IS NOT NULL AND wi.photo_url<>'' ORDER BY wi.id LIMIT 1),''),NULLIF((SELECT CASE WHEN COUNT(*)=1 THEN MAX(NULLIF(wi.photo_url,'')) ELSE NULL END FROM bdc_wdc_identities wi WHERE wi.status='active' AND LOWER(TRIM(wi.display_name))=LOWER(TRIM(e.display_name))),''),c.photo_url)";
 $revisionQuery=$pdo->prepare("SELECT
  (SELECT COUNT(*) FROM {$p}_entries e WHERE e.competition_id=:c1) entry_count,
  (SELECT COALESCE(SUM(CRC32(CONCAT_WS('|',e.id,e.bib_number,e.display_name,e.status,COALESCE(e.competitor_id,0)))),0) FROM {$p}_entries e WHERE e.competition_id=:c2) entry_signature,

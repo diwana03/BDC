@@ -33,6 +33,7 @@ $tables=DanceCupScoringService::tables($test);
 $prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup';
 $error='';$notice='';$whatsappRedirect='';
 $directoryCompetitorId=(int)($_POST['competitor_id']??0);
+$directoryWdcIdentityId=(int)($_POST['wdc_identity_id']??0);
 $directoryJudgeId=(int)($_POST['judge_id']??0);
 try{
     DanceCupScoringService::assertScoringMode($pdo,$id,'automatic',$test);
@@ -45,7 +46,17 @@ try{
         if(in_array($currentStatus,['submitted','pending_approval','approved'],true)&&!in_array($action,['checkpoint','reset_projection','send_email','open_whatsapp'],true))throw new RuntimeException('This Automatic round is submitted and locked.');
         if($action==='add_competitor'){
             $name=trim((string)($_POST['display_name']??''));$number=(int)($_POST['bib_number']??0);
-            if($directoryCompetitorId>0){
+            if($directoryWdcIdentityId>0){
+                $directory=$pdo->prepare("SELECT display_name,solo_competitor_id FROM bdc_wdc_identities WHERE id=:id AND status='active' LIMIT 1");
+                $directory->execute(['id'=>$directoryWdcIdentityId]);
+                $wdcIdentity=$directory->fetch();
+                if(!$wdcIdentity)throw new RuntimeException('The selected WDC identity is no longer available. Search and choose again.');
+                $directoryCompetitorId=(int)($wdcIdentity['solo_competitor_id']??0);
+                $name=trim((string)$wdcIdentity['display_name']);
+                $duplicate=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND wdc_identity_id=:identity AND status='active'");
+                $duplicate->execute(['competition'=>$id,'identity'=>$directoryWdcIdentityId]);
+                if((int)$duplicate->fetchColumn()>0)throw new RuntimeException('This WDC identity is already assigned to this category.');
+            }elseif($directoryCompetitorId>0){
                 DanceCupScoringService::assertDanceCupEligibility($pdo,$directoryCompetitorId,$id,$test);
                 $directory=$pdo->prepare("SELECT exact_name FROM bdc_competitors WHERE id=:id AND status<>'archived' LIMIT 1");
                 $directory->execute(['id'=>$directoryCompetitorId]);
@@ -57,9 +68,9 @@ try{
                 $name=$directoryName;
             }
             if($name===''||$number<1)throw new RuntimeException('Contestant name and number are required.');
-            if($directoryCompetitorId<1){$duplicateName=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active' AND LOWER(TRIM(display_name))=LOWER(TRIM(:name))");$duplicateName->execute(['competition'=>$id,'name'=>$name]);if((int)$duplicateName->fetchColumn()>0)throw new RuntimeException('This contestant is already assigned to this category.');}
-            $q=$pdo->prepare("INSERT INTO {$prefix}_entries(competition_id,competitor_id,bib_number,display_name) VALUES(:competition,:directory,:number,:name)");
-            $q->execute(['competition'=>$id,'directory'=>$directoryCompetitorId?:null,'number'=>$number,'name'=>$name]);$notice='Contestant added to Automatic Scoring.';
+            if($directoryCompetitorId<1&&$directoryWdcIdentityId<1){$duplicateName=$pdo->prepare("SELECT COUNT(*) FROM {$prefix}_entries WHERE competition_id=:competition AND status='active' AND LOWER(TRIM(display_name))=LOWER(TRIM(:name))");$duplicateName->execute(['competition'=>$id,'name'=>$name]);if((int)$duplicateName->fetchColumn()>0)throw new RuntimeException('This contestant is already assigned to this category.');}
+            $q=$pdo->prepare("INSERT INTO {$prefix}_entries(competition_id,competitor_id,wdc_identity_id,bib_number,display_name) VALUES(:competition,:directory,:wdc,:number,:name)");
+            $q->execute(['competition'=>$id,'directory'=>$directoryCompetitorId?:null,'wdc'=>$directoryWdcIdentityId?:null,'number'=>$number,'name'=>$name]);$notice='Contestant added to Automatic Scoring.';
         }elseif($action==='add_judge'){
             $name=trim((string)($_POST['judge_name']??''));
             if($directoryJudgeId>0){
@@ -161,7 +172,7 @@ ob_start(static function(string $html)use($test,$automaticWorkspace,$id,$suffix)
     );
     $html=str_replace(
         '<input class="form-control" name="display_name" placeholder="Contestant or team name" required>',
-        '<div class="dc-directory-field"><input class="form-control" name="display_name" placeholder="Type competitor name or BDC ID" data-directory-type="competitor" data-directory-target="dcAutomaticCompetitorId" autocomplete="off" required><input id="dcAutomaticCompetitorId" type="hidden" name="competitor_id" value=""><span class="dc-directory-hint">Choose a suggestion to link the existing BDC profile.</span></div>',
+        '<div class="dc-directory-field"><input class="form-control" name="display_name" placeholder="Type name, WDC ID or BDC ID" data-directory-type="competitor" data-directory-target="dcAutomaticCompetitorId" data-directory-wdc-target="dcAutomaticWdcIdentityId" autocomplete="off" required><input id="dcAutomaticCompetitorId" type="hidden" name="competitor_id" value=""><input id="dcAutomaticWdcIdentityId" type="hidden" name="wdc_identity_id" value=""><span class="dc-directory-hint">Choose a suggestion to link the WDC identity and adjusted photo.</span></div>',
         $html
     );
     $html=str_replace(
