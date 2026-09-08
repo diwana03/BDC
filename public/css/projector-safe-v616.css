@@ -790,3 +790,42 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-ma
   color:#f2cf72!important;
   padding:0 clamp(2px,.18vw,5px)!important;
 }
+
+
+/* dev704 Final matrix: keep the ampersand on the exact visual centerline.
+   Equal leader/follower tracks prevent different name/BIB widths from shifting it. */
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:clamp(7px,.42vw,11px)!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person{
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:clamp(7px,.42vw,11px)!important;
+  overflow:hidden!important;
+  white-space:nowrap!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-leader{
+  justify-self:stretch!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-follower{
+  justify-self:stretch!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>strong,
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-matrix-flag{
+  flex:0 0 auto!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-couple-person>.final-couple-name{
+  flex:1 1 auto!important;
+  min-width:0!important;
+}
+body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-matrix-amp{
+  grid-column:2!important;
+  justify-self:center!important;
+  align-self:center!important;
+  margin:0!important;
+  padding:0 clamp(2px,.18vw,5px)!important;
+}
