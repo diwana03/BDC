@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Trigger dev705 release: Final matrix cleanup and Chief Judge tie report.
 
 python3 <<'PY'
 from pathlib import Path
