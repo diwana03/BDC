@@ -9,6 +9,8 @@ Tools:
 - `list_event_rounds` lists exact draft Jack & Jill event and round IDs in Test or Live.
 - `list_division_competitors` lists eligible council identities for an exact dance and division.
 - `stage_competitor_additions` submits an idempotent proposal to the existing Event Integration Review workflow. It never writes a roster directly.
+- `stage_competitor_removals` stages recoverable withdrawal of selected active Jack & Jill entries from one exact draft round.
+- `stage_competitor_bib_updates` stages collision-safe atomic bib amendments for selected active Jack & Jill entries, including bib swaps.
 - `get_staged_batch_status` reads validation and approval status.
 - `diagnose_projection` performs read-only Jack & Jill or Dance Cup projection integrity checks in Test or Live. It reports event and round/category selection, display session state, rosters, bibs, profile links, judges, country/flag/photo completeness, flights, pagination, results and reveal safety. It never returns projector access tokens and never changes projection or scoring data.
 
