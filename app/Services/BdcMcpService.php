@@ -87,12 +87,23 @@ final class BdcMcpService
     {
         $mode=self::mode($a);$event=(int)($a['target_event_id']??0);$round=(int)($a['target_round_id']??0);$competitors=$a['competitors']??null;
         if($event<1||$round<1||!is_array($competitors)||$competitors===[])throw new RuntimeException('Exact target_event_id, target_round_id and competitors are required.');
+        $source=substr(trim((string)($a['source_key']??'')),0,191);
+        if(str_starts_with($source,'withdraw-all-active:')){
+            $marker=$competitors[0]??null;
+            $validMarker=count($competitors)===1&&is_array($marker)&&strtoupper(trim((string)($marker['identity_code']??'')))==='WITHDRAW-ALL-ACTIVE'&&(string)($marker['role']??'')==='leader'&&(int)($marker['bib_number']??0)===1;
+            if(!$validMarker)throw new RuntimeException('The withdraw-all compatibility request requires the exact WITHDRAW-ALL-ACTIVE confirmation marker.');
+            $current=self::eventRoster($pdo,['data_mode'=>$mode,'event_id'=>$event,'round_id'=>$round]);
+            if(!$current['roster'])throw new RuntimeException('The selected round has no active competitors to withdraw.');
+            $result=self::stageRosterChange($pdo,['data_mode'=>$mode,'event_id'=>$event,'round_id'=>$round,'entry_ids'=>array_map(static fn(array $row):int=>(int)$row['entry_id'],$current['roster']),'source_key'=>$source],'remove_competitors');
+            $result['preview']=['event_name'=>$current['event']['event_name'],'round_id'=>$round,'active_competitors_to_withdraw'=>$current['count'],'leaders_to_withdraw'=>$current['leaders'],'followers_to_withdraw'=>$current['followers'],'approval_required'=>true];
+            return $result;
+        }
         $normalized=[];
         foreach($competitors as $competitor){
             if(!is_array($competitor))throw new RuntimeException('Every competitor selection must be an object.');
             $normalized[]=['council_id'=>(string)($competitor['identity_code']??''),'role'=>(string)($competitor['role']??''),'bib'=>$competitor['bib_number']??0];
         }
-        $source=substr(trim((string)($a['source_key']??'')),0,191);if($source==='')$source='round-'.$mode.'-'.$event.'-'.$round.'-'.substr(hash('sha256',json_encode($normalized)),0,16);$batch='chatgpt-'.gmdate('Ymd').'-'.substr(hash('sha256',$source),0,20);return EventIntegrationService::submitBatch($pdo,['batch_key'=>$batch,'source_system'=>'chatgpt_mcp','items'=>[['event_system'=>'jack_jill','data_mode'=>$mode,'source_key'=>$source,'operation'=>'add_competitors','payload'=>['target_event_id'=>$event,'target_round_id'=>$round,'competitors'=>$normalized]]]]);
+        if($source==='')$source='round-'.$mode.'-'.$event.'-'.$round.'-'.substr(hash('sha256',json_encode($normalized)),0,16);$batch='chatgpt-'.gmdate('Ymd').'-'.substr(hash('sha256',$source),0,20);return EventIntegrationService::submitBatch($pdo,['batch_key'=>$batch,'source_system'=>'chatgpt_mcp','items'=>[['event_system'=>'jack_jill','data_mode'=>$mode,'source_key'=>$source,'operation'=>'add_competitors','payload'=>['target_event_id'=>$event,'target_round_id'=>$round,'competitors'=>$normalized]]]]);
     }
     private static function status(PDO $pdo,array $a):array{$key=trim((string)($a['batch_key']??''));if($key==='')throw new RuntimeException('batch_key is required.');$row=EventIntegrationService::batchStatus($pdo,$key);if(!$row)throw new RuntimeException('Batch not found.');return ['batch'=>$row];}
     private static function stagePhoto(PDO $pdo,array $a):array

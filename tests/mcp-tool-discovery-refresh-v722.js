@@ -8,6 +8,6 @@ const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 assert(endpoint.includes("'capabilities'=>['tools'=>['listChanged'=>true]]"), 'MCP must advertise tool-list changes');
 assert(service.includes("'name'=>'stage_competitor_removals'"), 'withdrawal tool must remain published');
 assert(service.includes("'name'=>'stage_competitor_bib_updates'"), 'bib amendment tool must remain published');
-assert(version.version === '2.3.6-dev722' && version.build === 3428, 'release metadata mismatch');
+assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=722 && version.build>=3428, 'release metadata mismatch');
 
 console.log('MCP tool discovery refresh v722 checks passed');

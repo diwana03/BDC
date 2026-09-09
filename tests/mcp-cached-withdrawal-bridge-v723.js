@@ -1,0 +1,11 @@
+const fs=require('fs');const assert=(value,message)=>{if(!value)throw new Error(message)};const read=file=>fs.readFileSync(file,'utf8');
+const mcp=read('app/Services/BdcMcpService.php');const integration=read('app/Services/EventIntegrationService.php');const endpoint=read('mcp/index.php');
+for(const token of ["str_starts_with($source,'withdraw-all-active:')","'WITHDRAW-ALL-ACTIVE'",'count($competitors)===1','eventRoster($pdo','active_competitors_to_withdraw','approval_required'])assert(mcp.includes(token),'missing cached-client withdrawal bridge contract: '+token);
+for(const token of ["self::stageRosterChange($pdo",'array_map(static fn(array $row):int=>(int)$row[\'entry_id\']',"'remove_competitors'"])assert(mcp.includes(token),'withdraw-all bridge must route through the normal approval-gated removal path: '+token);
+const stageMethod=mcp.slice(mcp.indexOf('private static function stage(PDO'),mcp.indexOf('private static function status(PDO'));
+assert(stageMethod.indexOf("str_starts_with($source,'withdraw-all-active:')")<stageMethod.indexOf('$normalized=[]'),'compatibility request must be intercepted before addition normalization');
+for(const token of ['before_roster_hash','Roster changes are locked because scoring has started',"entry_status='withdrawn'"])assert(integration.includes(token),'existing atomic withdrawal safety must remain active: '+token);
+for(const token of ["'stage_competitor_additions'","'stage_competitor_removals'"])assert(endpoint.includes(token),'both cached and current MCP mutation names must retain staging scope: '+token);
+assert(!integration.includes('DELETE FROM {$entries}'),'withdrawal must remain recoverable and never delete entries');
+const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev723'&&version.build===3429,'release metadata mismatch');
+console.log('MCP cached-client withdrawal bridge v723 checks passed');
