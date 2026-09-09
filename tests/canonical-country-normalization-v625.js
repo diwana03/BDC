@@ -18,7 +18,7 @@ for(const token of ["'Japan, Tokyo'=>'Japan'","'Korea/Seoul'=>'South Korea'","'T
   assert.ok(migration.includes(token),'existing country cleanup missing '+token);
 }
 assert.ok(migration.includes('bdc_country_normalization_archive'),'country cleanup must remain recoverable');
-const countryRelease=/^2\.3\.3-dev(\d+)$/.exec(version.version);assert.ok(countryRelease&&Number(countryRelease[1])>=625&&version.build>=3331,'country normalization requires dev625/build3331 or newer');
+const countryRelease=/^2\.3\.\d+-dev(\d+)$/.exec(version.version);assert.ok(countryRelease&&Number(countryRelease[1])>=625&&version.build>=3331,'country normalization requires dev625/build3331 or newer');
 
 const php=[
   "require 'app/Services/CountryFlagService.php';",

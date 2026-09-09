@@ -14,5 +14,5 @@ for(const token of ["action IN ('competitor_created','competitor_updated')",'det
 if(service.includes('bdc_participant_results')||service.includes('bdc_point_transactions')||service.includes('bdc_scoring_entries'))throw new Error('Manual recovery must not infer from competitions');
 if(!migration.includes('SpecialCategoryRecoveryService::recoverManualAssignments($pdo,true)'))throw new Error('Migration does not apply audited recovery');
 if(!list.includes('special-category-recovery.php')||(!report.includes('RECOVERY AUDIT')&&!report.includes('TARGETED RECOVERY')))throw new Error('Super Admin recovery report is not connected');
-if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3105)throw new Error('VERSION.json predates dev399 build 3105');
+if(!/^2\.3\.\d+-dev\d+$/.test(version.version)||version.build<3105)throw new Error('VERSION.json predates dev399 build 3105');
 console.log('PASS audited manual Special Category recovery v399');

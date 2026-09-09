@@ -1,12 +1,14 @@
 {
-  "version": "2.3.6-dev719",
-  "build": 3425,
+  "version": "2.3.6-dev720",
+  "build": 3426,
   "status": "development",
   "release_date": "2026-09-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
     "Jack & Jill judge portrait enlargement: increases judge photos responsively on Salsa and Bachata audience boards, including the full eight-judge 4 by 2 page, while preserving names, flags, both rows, pagination and the 10 percent vertical plus 5 percent horizontal projector safe area.",
+    "Approval-gated Jack & Jill roster synchronization: lists exact active event rosters, merges newly registered division competitors without removing existing entries, and deterministically reassigns all Lead and Follow bibs inside caller-specified ranges with overflow, scoring-lock and stale-roster protection.",
+    "BDC MCP complete event administration: lists every Test or Live Jack & Jill event across Draft, Published, Completed and Cancelled states, including events without rounds, and stages allowlisted event or round edits with conflict detection and Super Admin approval.",
     "Jack & Jill completed-event duplication: completed Salsa and Bachata events remain selectable, archived source rounds can be copied, and the duplicate starts as a clean Draft with competitors and judges but without scores, results, approvals or projection state.",
     "Dance Cup Super Admin rejection: the confidential result review now offers explicit Approve and Reject decisions in both Test and Live, requires a rejection reason, preserves judge marks and private comments, cancels stale tie-break links, discards the stale calculated ranking, reopens submitted judge sessions, returns the category to Draft, and records an audit entry.",
     "WDC category visibility repair: the competitor workspace merges formal registrations with linked Live and isolated Test Dance Cup roster assignments, derives Salsa/Bachata from the saved category dance_style, labels Test assignments clearly, and safely recovers legacy unlinked rows only when the active WDC display name is unique.",

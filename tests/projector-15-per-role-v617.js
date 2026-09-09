@@ -23,5 +23,5 @@ assert.match(feed, /array_slice\(\$roleItems,\(\$competitorRolePage-1\)\*\$compe
 assert.match(feed, /\$competitorRolePage=\$isFlightRoster\?min\(\$flightDisplayPage,\$competitorRoleTotalPages\):/);
 assert.match(state, /\$roleCapacity=in_array\(\$s\["screen_type"\],\["heats_scores","score_matrix"\],true\)\?12:15;/);
 assert.match(service, /function balancedPageSlice\(array \$items,int \$page,int \$pages\):array/);
-assert(/^2\.3\.3-dev\d+$/.test(version.version) && version.build >= 3323, 'version predates 15-per-role release');
+assert(/^2\.3\.\d+-dev\d+$/.test(version.version) && version.build >= 3323, 'version predates 15-per-role release');
 console.log('15-per-role projector pagination v636: PASS');

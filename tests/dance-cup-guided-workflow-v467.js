@@ -9,6 +9,6 @@ for(const marker of ['What do you want to set up?','Create a new event','Add cat
 assert(source.includes('This is optional.'),'shared judging panels must be presented as optional');
 for(const marker of ['.advanced-tools>div{position:relative;display:flex','.advanced-tools a{margin-left:auto','box-shadow:0 12px 28px'])assert(source.includes(marker),'missing premium shared-panel treatment '+marker);
 assert(!source.includes('>Judging Panels</a>'),'judging panels must not compete as a primary top action');
-const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+const releaseNumber=Number(version.version.match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0);
 assert(releaseNumber>=469&&version.build>=3175,'release must retain the dev469 guided premium workflow');
 console.log('Dance Cup guided workflow v469+ checks passed.');

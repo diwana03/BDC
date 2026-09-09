@@ -9,6 +9,6 @@ assert(workflow.includes("$category['status']==='draft'"),'only Draft categories
 assert(workflow.includes('@media(max-width:1050px)')&&workflow.includes('@media(max-width:700px)'),'workspace must adapt for PC, tablet and mobile');
 assert(workflow.includes("$workflow!=='projection'")&&workflow.includes("c.scoring_mode=:mode"),'workflow isolation must remain');
 assert(workflow.includes("$test?'&data_mode=test':''"),'Test isolation must remain');
-const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+const releaseNumber=Number(version.version.match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0);
 assert(releaseNumber>=461&&version.build>=3167,'release must retain event-first workspace');
 console.log('dev461 event-first Dance Cup workspace checks passed');

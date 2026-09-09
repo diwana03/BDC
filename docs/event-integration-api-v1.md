@@ -1,6 +1,6 @@
 # BDC Event Setup Integration API v1
 
-This API stages complete Jack & Jill and Dance Cup event setup packages for Super Admin bulk review. It also stages competitor additions to an existing Jack & Jill draft round. It does not write scoring data when a package is submitted. Approval applies the requested package atomically.
+This API stages complete Jack & Jill and Dance Cup event setup packages for Super Admin bulk review. It also stages competitor additions and allowlisted edits to existing Jack & Jill events. It does not write scoring data when a package is submitted. Approval applies the requested package atomically.
 
 ## Authorization and signing
 
@@ -81,6 +81,16 @@ Set `operation` to `add_competitors`, identify the existing event and round, and
 
 The server reads dance style and division from the target round and revalidates them at approval time. The event and round must both remain `draft`. Existing competitor assignments, duplicate council ID and role pairs, cross council IDs, division ineligible profiles, and duplicate bibs within a role are rejected atomically. This operation never changes event settings, judges, scores, results, or publication state.
 
+## List and edit existing Jack & Jill events through MCP
+
+`list_event_rounds` returns Test or Live Jack & Jill events in every event state: `draft`, `published`, `completed`, and `cancelled`. It includes events with no scoring round and supports `name_query`, `event_status`, `round_status`, and `scoring_mode` filters.
+
+`stage_event_edit` requires an exact `event_id`, optional `round_id`, and an allowlisted `changes` object. Event fields are `event_name`, `event_date`, `location`, `venue`, and `event_status`. Round fields are `scheduled_at`, `dance_style`, `division`, `round_type`, and `scoring_mode`; `round_id` is mandatory for round fields.
+
+Submitting an edit does not change the database. The package records the current event and round as a baseline and is applied atomically only after Super Admin approval. Approval fails if the event or round changed after submission. Structural round edits are rejected after any judge scoring exists; schedule-only and event metadata proposals remain available regardless of event state.
+
+`list_event_roster` returns every active competitor, council identity, role and bib for an exact Jack & Jill round. `stage_division_roster_sync` merges the matching registered division directory into that roster, preserves existing active competitors, assigns deterministic alphabetical bibs from separate Lead and Follow starts, and stages the complete result for approval. The caller supplies the reserved range size; overflow is rejected before staging. Approval rechecks the full roster fingerprint and refuses stale or scored rounds.
+
 ## Directory and status
 
 - `GET /api/event-sync/v1/directory.php?type=competitor&q=BDC-000101&data_mode=live`
@@ -93,4 +103,4 @@ Directory responses intentionally exclude email, phone, WhatsApp, private notes,
 
 Super Admin reviews packages at `/admin/integration-review/events.php`. “Select all shown” supports one bulk decision across many packages. Each package is atomic and produces only draft configuration.
 
-Out of scope: scores, marks, points, placements, results, publication, leaderboard changes, payments, registrations, automatic progression, deletion, changing existing event or round settings, and sending judge links.
+Out of scope: scores, marks, points, placements, results, result publication, leaderboard changes, payments, registrations, automatic progression, deletion, unrestricted database fields, and sending judge links.

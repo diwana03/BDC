@@ -1,0 +1,13 @@
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+const mcp=read('app/Services/BdcMcpService.php');
+const integration=read('app/Services/EventIntegrationService.php');
+const endpoint=read('mcp/index.php');
+const review=read('admin/integration-review/events.php');
+for(const token of ["'name'=>'list_event_rounds'","LEFT JOIN {$rounds}","event_status'=>['type'=>'string'",'events_and_rounds',"'name'=>'stage_event_edit'",'event_name','event_date','location','venue','event_status','scheduled_at','dance_style','division','round_type','scoring_mode'])assert(mcp.includes(token),'missing all-event MCP behavior: '+token);
+assert(!mcp.includes("WHERE e.status='draft' AND r.status='draft'"),'event listing must not be draft-only');
+for(const token of ["'edit_event'",'existingJackJillEditPayload','jackJillEditSnapshot','jackJillRoundHasScoring','assertUniqueJackJillRoundConfiguration','applyExistingJackJillEdit','Submit a fresh package','Structural round fields are locked because scoring has started'])assert(integration.includes(token),'missing approval-safe event edit behavior: '+token);
+assert(endpoint.includes("'stage_event_edit'"),'event edit must require the MCP staging scope');
+for(const token of ['Apply every selected event package?','$isEdit','Apply the listed event/round edits atomically','Edit fields'])assert(review.includes(token),'missing event-edit review UI: '+token);
+console.log('MCP all-event listing and approval-gated editing v717 checks passed');

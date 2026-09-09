@@ -15,7 +15,7 @@ assert(setup.includes("$prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup'"), 'Au
 assert(setup.includes("$_POST['competitor_id']") && setup.includes("$_POST['judge_id']"), 'Automatic setup must receive canonical directory IDs.');
 assert(setup.includes("FROM bdc_competitors WHERE id=:id AND status<>'archived'"), 'Selected competitors must be revalidated against the BDC Database.');
 assert(setup.includes("FROM bdc_judges WHERE id=:id AND status='active'"), 'Selected judges must be revalidated against the Judge Database.');
-assert(setup.includes('INSERT INTO {$prefix}_entries(competition_id,competitor_id,bib_number,display_name)'), 'Automatic entries must persist the competitor profile link.');
+assert(setup.includes('INSERT INTO {$prefix}_entries(competition_id,competitor_id,wdc_identity_id,bib_number,display_name)'), 'Automatic entries must persist the competitor and WDC identity links.');
 assert(setup.includes('INSERT INTO {$prefix}_judges(competition_id,judge_id,judge_name,judge_order,is_chief)'), 'Automatic judges must persist the judge profile link.');
 assert(setup.includes('This BDC competitor is already assigned') && setup.includes('This Judge Database profile is already assigned'), 'Canonical duplicates must be blocked before insert.');
 assert(setup.includes('data-directory-type="competitor"') && setup.includes('data-directory-type="judge"'), 'Both Automatic roster fields must activate type-ahead.');
