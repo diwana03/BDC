@@ -1,0 +1,21 @@
+const assert=require('assert');
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const feed=read('live-display/feed.php');
+const safe=read('public/css/projector-safe-v616.css');
+const shell=read('live-display/index.php');
+const version=JSON.parse(read('VERSION.json'));
+
+const general='width:clamp(118px,min(13.8vw,21vh),210px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important';
+const fullPage='width:clamp(118px,min(13.8vw,21vh),205px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important';
+const safeFullPage='width:clamp(118px,min(54cqw,58cqh),205px)!important;height:clamp(118px,min(54cqw,58cqh),205px)!important';
+assert(feed.includes(general),'shared Salsa/Bachata judge renderer must enlarge general judge portraits');
+assert(feed.includes(fullPage),'eight-judge renderer must enlarge portraits inside the 4 by 2 grid');
+assert(safe.includes(safeFullPage),'late projector safety stylesheet must retain the enlarged eight-judge portrait size');
+assert(safe.includes('padding-top:10cqh!important')&&safe.includes('padding-bottom:10cqh!important'),'judge screen must preserve 10 percent vertical safe margins');
+assert(safe.includes('padding-left:5cqw!important')&&safe.includes('padding-right:5cqw!important'),'judge screen must preserve 5 percent horizontal safe margins');
+assert(feed.includes('judge-count-7,body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}'),'seven and eight judges must remain a four-column paged board');
+assert(shell.includes("projector-safe-v616.css?v=676"),'open projectors must load the enlarged portrait CSS immediately');
+assert.strictEqual(version.version,'2.3.6-dev719');
+assert.strictEqual(version.build,3425);
+console.log('dev719 shared judge portrait sizing checks passed');

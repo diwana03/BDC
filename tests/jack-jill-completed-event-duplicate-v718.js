@@ -14,6 +14,6 @@ assert(live.includes('data-saved-round-duplicate')&&test.includes('data-saved-ro
 assert(live.includes('action="duplicate-event.php"')&&test.includes('action="duplicate-event.php"'),'Saved Rounds duplicate controls must use the protected endpoints');
 for(const safe of ["status']='draft'",'chief_judge_id','scheduled_at'])assert(service.includes(safe),`fresh Draft reset missing: ${safe}`);
 for(const forbidden of ['bdc_scoring_marks','bdc_scoring_results','bdc_scoring_publications','bdc_scoring_final_marks','bdc_scoring_final_results'])assert(!service.includes(forbidden),`completed-event copy must not carry ${forbidden}`);
-assert.strictEqual(version.version,'2.3.6-dev718');
-assert.strictEqual(version.build,3424);
+assert.strictEqual(version.version,'2.3.6-dev719');
+assert.strictEqual(version.build,3425);
 console.log('dev718 completed J&J event duplication checks passed');

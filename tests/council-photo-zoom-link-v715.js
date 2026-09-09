@@ -34,6 +34,6 @@ assert((jackJillFeed.match(/\{\$photoC\} photo_url/g) || []).length >= 3, 'solo/
 assert((jackJillFeed.match(/\{\$photoLc\} leader_photo/g) || []).length >= 3, 'Jack & Jill leader screens must use the live adjusted photo');
 assert((jackJillFeed.match(/\{\$photoFc\} follower_photo/g) || []).length >= 3, 'Jack & Jill follower screens must use the live adjusted photo');
 
-assert.strictEqual(version.version, '2.3.6-dev718');
-assert.strictEqual(version.build, 3424);
+assert.strictEqual(version.version, '2.3.6-dev719');
+assert.strictEqual(version.build, 3425);
 console.log('dev715 council photo zoom linkage checks passed');

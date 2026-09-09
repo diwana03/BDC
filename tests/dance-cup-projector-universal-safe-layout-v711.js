@@ -19,7 +19,7 @@ assert(projector.includes('.podium-card{height:var(--podium-height);max-height:1
 for (const screen of ['Holding Screen','Contestant Call','All Contestants','Judges','Scoring Progress','Live Scoreboard','Winner Podium']) {
   assert(projector.includes(screen), `Shared safe shell must retain ${screen}`);
 }
-assert.strictEqual(version.version, '2.3.6-dev718');
-assert.strictEqual(version.build, 3424);
+assert.strictEqual(version.version, '2.3.6-dev719');
+assert.strictEqual(version.build, 3425);
 
 console.log('Dance Cup universal projector safe-layout checks passed.');

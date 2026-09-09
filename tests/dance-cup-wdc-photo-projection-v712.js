@@ -15,7 +15,7 @@ assert(feed.includes("if(!empty($identity['photo_url']))$result['photo_url']=$id
 assert(projector.includes('.contestant-grid.rows-2 .contestant-photo-frame{width:clamp(82px,min(7.2vw,10.5vh),118px)'), 'Two-row contestant portraits must fit the vertical safe area');
 assert(projector.includes('.rank-photo{width:clamp(58px,5.5vw,104px)'), 'scoreboard portraits must be enlarged');
 assert(projector.includes('.podium-photo{width:clamp(88px,8vw,156px)'), 'podium portraits must be enlarged');
-assert.strictEqual(version.version, '2.3.6-dev718');
-assert.strictEqual(version.build, 3424);
+assert.strictEqual(version.version, '2.3.6-dev719');
+assert.strictEqual(version.build, 3425);
 
 console.log('Dance Cup adjusted WDC photo projection checks passed.');

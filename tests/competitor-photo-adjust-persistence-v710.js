@@ -18,7 +18,7 @@ assert(
   source.includes("$original=trim((string)($c['original_photo_url']??''));"),
   'The preserved original must remain available to restore'
 );
-assert.strictEqual(version.version, '2.3.6-dev718');
-assert.strictEqual(version.build, 3424);
+assert.strictEqual(version.version, '2.3.6-dev719');
+assert.strictEqual(version.build, 3425);
 
 console.log('Competitor photo adjustment persistence checks passed.');

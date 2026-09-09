@@ -1,7 +1,9 @@
-# BDC v2.3.6-dev718
+# BDC v2.3.6-dev719
 
 ## Scope
 
+- Enlarges judge portraits responsively across the shared Salsa and Bachata audience projector, with a stronger size increase on seven and eight judge pages.
+- Preserves the existing 4 by 2 eight-judge grid, names, flags, country labels, pagination, and the 10 percent top/bottom plus 5 percent left/right safe area.
 - Restores Jack & Jill event duplication for completed Salsa and Bachata events by allowing archived source rounds to be copied.
 - Keeps completed events visible in the Live duplication selector while retaining Draft event support.
 - Adds a direct Duplicate Event action to every Saved Rounds row in both Test and Live, so the event can be copied from the screen shown during scoring operations.
@@ -22,6 +24,7 @@
 
 ## Validation
 
+- Focused shared judge portrait sizing and safe-area regression: passed.
 - Focused completed Jack & Jill event duplication regression for Salsa and Bachata parity: passed.
 - Existing safe Dance Cup and Jack & Jill duplication workflow regression: passed.
 - Focused Super Admin Dance Cup rejection regression for Test and Live: passed.
@@ -29,7 +32,7 @@
 - Existing WDC consolidated dashboard, premium workspace, registration integration and participant-first query regressions: passed.
 - Focused council photo-link regression: passed.
 - Existing adaptive portrait, WDC projection, photo persistence, universal safe-layout, final-result readability, matrix-spacing, projection identity/recovery/scale, roster, flight, finalists, BDC/SDC dashboard isolation, and Test/Live projection parity regressions: passed.
-- Full JavaScript regression inventory: 217 of 250 passed. The remaining 33 legacy version/fixture failures are unchanged from dev717 and outside this change.
+- Full JavaScript regression inventory: 218 of 251 passed. The remaining 33 legacy version/fixture failures are unchanged from dev718 and outside this projector-only change.
 - JavaScript syntax and final diff whitespace validation: passed.
 - PHP syntax: not runtime-tested locally because PHP CLI is unavailable in this workspace.
 
@@ -38,8 +41,8 @@
 - Testing Score Dashboard: shared Jack & Jill Test projection photo resolution checked statically for both BDC and SDC identities.
 - Live Scoring Dashboard: official competitor photo write path and live projection read path checked statically; no scoring data or calculation path changed.
 - Projector: Dance Cup contestant/results photo queries and Jack & Jill competitor, flight, matching, callback, finalist, result, and winner photo queries checked statically.
-- Candidate/static validation: passed the focused duplication suites and completed the full 250-test JavaScript inventory.
-- Staging/runtime validation: not runtime-tested; deploy the exact dev718 `develop` candidate to Staging, duplicate one completed Salsa or Bachata J&J event and confirm the copy is Draft with competitors and judges but no scores/results, then rerun the dev717 rejection check.
+- Candidate/static validation: passed the focused shared projector checks and completed the full 251-test JavaScript inventory.
+- Staging/runtime validation: not runtime-tested; deploy the exact dev719 `develop` candidate to Staging and confirm the eight-judge Salsa and Bachata boards show larger portraits while all cards, names, flags and both rows remain inside the safe canvas.
 - Production: untouched and blocked pending successful Staging runtime verification and separate approval.
 
 ## Migration

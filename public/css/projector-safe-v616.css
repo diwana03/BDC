@@ -378,7 +378,7 @@ body[data-screen-type="judges"] .judge-list.judge-count-7,
 body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 body[data-screen-type="judges"] .judge-list.judge-count-6 .judge-photo-frame,
 body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-photo-frame,
-body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(72px,min(34cqw,31cqh),126px)!important;height:clamp(72px,min(34cqw,31cqh),126px)!important}
+body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(118px,min(54cqw,58cqh),205px)!important;height:clamp(118px,min(54cqw,58cqh),205px)!important}
 body[data-screen-type="judges"] .judge-list.judge-count-6 .judge-name,
 body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-name,
 body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-name{font-size:clamp(17px,min(9cqw,7.8cqh),30px)!important}
@@ -421,7 +421,7 @@ body[data-screen-type="judges"] .stage .list.judge-list > .judge-card{
   padding:clamp(10px,1cqh,16px)!important;
   overflow:hidden!important;
 }
-body[data-screen-type="judges"] .stage .judge-photo-frame{grid-column:1!important;grid-row:1!important;width:clamp(110px,min(11vw,17vh),175px)!important;height:clamp(110px,min(11vw,17vh),175px)!important}
+body[data-screen-type="judges"] .stage .judge-photo-frame{grid-column:1!important;grid-row:1!important;width:clamp(118px,min(13.8vw,21vh),210px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important}
 body[data-screen-type="judges"] .stage .judge-name{grid-column:1!important;grid-row:2!important;align-self:center!important;font-size:clamp(24px,min(2vw,3.2vh),40px)!important;text-align:center!important;width:100%!important}
 body[data-screen-type="judges"] .stage .judge-position,
 body[data-screen-type="judges"] .stage .judge-scope{display:none!important}
