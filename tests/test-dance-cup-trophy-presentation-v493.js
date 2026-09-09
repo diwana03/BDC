@@ -14,7 +14,7 @@ for (const marker of [
   'sbta-dance-cup-champion-trophy.png',
   "const eventLabel=latest?.state?.event_name||'Dance Cup'",
   "<strong>'+esc(eventLabel)+'</strong>",
-  'width:clamp(230px,19vw,360px)',
+  'width:clamp(184px,15.2vw,288px);height:clamp(230px,19vw,360px)',
   '.call .identity-meta{font-size:clamp(34px,3vw,56px)',
   '.call .identity-meta .flag{font-size:1.75em',
   '@media(max-width:640px){.call-layout{height:auto;grid-template-columns:minmax(105px,.55fr) minmax(0,1.45fr)}.trophy-showcase{display:none}'

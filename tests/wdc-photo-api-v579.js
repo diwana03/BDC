@@ -11,7 +11,7 @@ for(const marker of [
   "SELECT id FROM bdc_wdc_identities WHERE identity_code=:code AND status='active'",
   "hash_equals((string)$identity['identity_code'],(string)$p['wdc_id'])",
   "publishPhoto($u,'wdc','wdc-'.$id)",
-  'UPDATE bdc_wdc_identities SET photo_url=:photo WHERE id=:id',
+  'UPDATE bdc_wdc_identities SET photo_url=:photo,original_photo_url=:original WHERE id=:id',
 ])assert(service.includes(marker),'missing WDC photo-only safeguard: '+marker);
 
 const applyStart=service.indexOf("if(($p['operation']??'upsert')==='photo_replace'){",service.indexOf('private static function applyWdc'));

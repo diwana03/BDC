@@ -6,11 +6,11 @@ const safe=read('public/css/projector-safe-v616.css');
 const shell=read('live-display/index.php');
 const version=JSON.parse(read('VERSION.json'));
 
-const general='width:clamp(118px,min(13.8vw,21vh),210px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important';
-const fullPage='width:clamp(118px,min(13.8vw,21vh),205px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important';
-const safeFullPage='width:clamp(118px,min(54cqw,58cqh),205px)!important;height:clamp(118px,min(54cqw,58cqh),205px)!important';
-assert(feed.includes(general),'shared Salsa/Bachata judge renderer must enlarge general judge portraits');
-assert(feed.includes(fullPage),'eight-judge renderer must enlarge portraits inside the 4 by 2 grid');
+const general='width:clamp(94px,min(11.04vw,16.8vh),168px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important';
+const fullPage='width:clamp(94px,min(11.04vw,16.8vh),164px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important';
+const safeFullPage='width:clamp(94px,min(43.2cqw,46.4cqh),164px)!important;height:clamp(118px,min(54cqw,58cqh),205px)!important';
+assert(feed.includes(general),'shared Salsa/Bachata judge renderer must retain large 4:5 judge portraits');
+assert(feed.includes(fullPage),'eight-judge renderer must retain large 4:5 portraits inside the 4 by 2 grid');
 assert(safe.includes(safeFullPage),'late projector safety stylesheet must retain the enlarged eight-judge portrait size');
 assert(safe.includes('padding-top:10cqh!important')&&safe.includes('padding-bottom:10cqh!important'),'judge screen must preserve 10 percent vertical safe margins');
 assert(safe.includes('padding-left:5cqw!important')&&safe.includes('padding-right:5cqw!important'),'judge screen must preserve 5 percent horizontal safe margins');

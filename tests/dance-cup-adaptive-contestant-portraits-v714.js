@@ -13,10 +13,10 @@ for (const marker of [
   '.contestant-grid.rows-2{grid-template-rows:repeat(2,minmax(0,1fr))!important}',
   '.contestant-grid>.contestant-card>div{height:100%;min-height:0;display:flex',
   '.contestant-photo-frame{flex:0 0 auto;display:block',
-  'overflow:hidden;border-radius:50%',
-  'transform:scale(1.16)',
-  'object-position:50% 30%',
-  '.contestant-grid.rows-2 .contestant-photo-frame{width:clamp(82px,min(7.2vw,10.5vh),118px)'
+  'overflow:hidden;border-radius:clamp(10px,.8vw,15px)',
+  'transform:none',
+  'object-position:center',
+  '.contestant-grid.rows-2 .contestant-photo-frame{width:clamp(66px,min(5.76vw,8.4vh),94px);height:clamp(82px,min(7.2vw,10.5vh),118px)'
 ]) assert(projector.includes(marker), `missing adaptive portrait marker: ${marker}`);
 
 assert(projector.includes('#app{width:100vw;height:100vh;padding:10vh 5vw'), 'universal projector safe area must remain unchanged');

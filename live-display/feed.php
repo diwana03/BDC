@@ -497,7 +497,7 @@ body[data-screen-type="judges"] .judge-list.judge-count-5{grid-template-columns:
 body[data-screen-type="judges"] .judge-list.judge-count-6{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 body[data-screen-type="judges"] .judge-list.judge-count-7,body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 body[data-screen-type="judges"] .judge-card{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto auto!important;place-items:center!important;gap:clamp(4px,.62cqh,8px)!important;padding:clamp(8px,1.05cqh,14px)!important;min-width:0!important;min-height:0!important}
-body[data-screen-type="judges"] .judge-photo-frame{grid-column:1!important;grid-row:1!important;align-self:center!important;width:clamp(118px,min(13.8vw,21vh),210px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important}
+body[data-screen-type="judges"] .judge-photo-frame{grid-column:1!important;grid-row:1!important;align-self:center!important;width:clamp(94px,min(11.04vw,16.8vh),168px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important}
 body[data-screen-type="judges"] .judge-photo,body[data-screen-type="judges"] .judge-photo-fallback{border-radius:clamp(10px,1.1cqw,18px)!important}
 body[data-screen-type="judges"] .judge-name{grid-column:1!important;grid-row:2!important;align-self:center!important;width:100%!important;font-size:clamp(21px,min(2.05vw,3.45vh),40px)!important;line-height:1!important;text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-weight:950!important}
 body[data-screen-type="judges"] .judge-position,body[data-screen-type="judges"] .judge-scope{display:none!important}
@@ -505,8 +505,17 @@ body[data-screen-type="judges"] .judge-country{grid-column:1!important;grid-row:
 body[data-screen-type="judges"] .judge-country-entry{display:inline-flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:clamp(2px,.35cqh,4px)!important;min-width:0!important}
 body[data-screen-type="judges"] .judge-country .judge-flag{width:clamp(42px,min(4.2vw,6.8vh),72px)!important;height:auto!important;border-radius:4px!important}
 body[data-screen-type="judges"] .judge-country-name{display:block!important;font-size:clamp(13px,min(1.05vw,1.75vh),21px)!important;line-height:1!important;font-weight:900!important;text-transform:uppercase!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-align:center!important}
-body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-photo-frame,body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(118px,min(13.8vw,21vh),205px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important}
+body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-photo-frame,body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(94px,min(11.04vw,16.8vh),164px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important}
 body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-name,body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-name{font-size:clamp(20px,min(1.9vw,3.05vh),36px)!important}
+/* Display the exact 4:5 preview saved by the photo studio. No projector-only
+   circle mask, face offset, or second crop. */
+.stage .competitor-photo-frame{width:clamp(46px,min(30.4cqw,62.4cqh),109px)!important;height:clamp(58px,min(38cqw,78cqh),136px)!important;aspect-ratio:4/5!important}
+.stage .competitor-card .photo,.stage .judge-photo,.stage .judge-photo-fallback{border-radius:clamp(7px,2cqw,12px)!important;object-position:center!important}
+.stage img.photo:not(.matching-photo){width:min(6.4vw,8.8vh)!important;height:min(8vw,11vh)!important;border-radius:clamp(7px,.65vw,12px)!important;object-position:center!important}
+.stage .matching-list img.matching-photo{width:min(4.48vw,5.44vh)!important;height:min(5.6vw,6.8vh)!important;border-radius:clamp(6px,.5vw,10px)!important;object-position:center!important}
+body[data-screen-type="final_couples"] .stage .final-couple-person>img.photo{width:clamp(42px,5.36cqh,74px)!important;height:clamp(52px,6.7cqh,92px)!important}
+.stage .podium-photos{height:min(8.75vw,12.5vh)!important}
+.stage .podium-photo{width:min(4.8vw,7.2vh)!important;height:min(6vw,9vh)!important;border-radius:clamp(6px,.5vw,10px)!important;object-position:center!important}
 </style></head><body data-projector-theme="<?=e($projectorTheme)?>" data-custom-background="<?=$hasCustomHolding?'1':'0'?>" data-screen-type="<?=e($type)?>"><div class="viewport"><div class="stage"><div class="projection-official">BDC · Official Live Display</div><div class="projection-heading-row"><div class="projection-brand"><img src="<?=e(url('public/assets/bdc-logo.png'))?>" alt="Bachata Dance Council"></div><div class="projection-heading-copy"><div class="event"><?= e(
     $r["event_name"],
 ) ?></div><div class="meta"><?= e(

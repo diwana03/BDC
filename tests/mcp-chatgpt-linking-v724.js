@@ -23,5 +23,5 @@ for(const name of ['list_event_rounds','list_event_roster','stage_competitor_rem
     assert(block.includes("'securitySchemes'=>[['type'=>'oauth2'"),name+' must declare OAuth securitySchemes');
 }
 
-assert(/^2\.3\.6-dev(?:724|725)$/.test(version.version)&&version.build>=3430,'release metadata must retain or follow the dev724 connector-linking release');
+assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=724&&version.build>=3430,'release metadata mismatch');
 console.log('MCP ChatGPT linking v724 checks passed');
