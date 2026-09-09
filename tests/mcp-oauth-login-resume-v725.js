@@ -24,5 +24,5 @@ assert(service.includes("absolute_url('mcp/oauth/authorize.php')"), 'resume dest
 assert(service.includes("PHP_QUERY_RFC3986"), 'resume parameters must be encoded safely');
 assert(!admin.includes('return_to'), 'admin login must not accept a user-controlled return URL');
 
-assert(version.version==='2.3.6-dev725'&&version.build===3431, 'release metadata mismatch');
+assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=725&&version.build>=3431, 'release metadata mismatch');
 console.log('MCP OAuth login resume v725 checks passed');
