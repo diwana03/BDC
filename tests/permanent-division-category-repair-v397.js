@@ -46,6 +46,6 @@ forbidText(hook,'if(!$isDesk&&!$create)return','legacy create-only bypass');
 // registration/progression gates above still prevent automatic promotion.
 for(const special of ['bachata_rising','bachata_open','bachata_invitational','salsa_rising','salsa_open'])requireText(editor,special,'manual special category editor');
 
-if(!/^2\.3\.3-dev\d+$/.test(version.version)||version.build<3103)throw new Error('VERSION.json predates dev397 build 3103');
+if(!/^2\.3\.\d+-dev\d+$/.test(version.version)||version.build<3103)throw new Error('VERSION.json predates dev397 build 3103');
 requireText(release,'Production: **blocked','release deployment gate');
 console.log('PASS permanent division category repair v397');

@@ -17,8 +17,8 @@ assert(authorize.includes("$resource=(string)($_GET['resource']??$_POST['resourc
 assert(authorize.includes("'resource'=>$resource"),'authorization consent must preserve resource');
 assert(authorize.includes('issueCode(')&&authorize.includes('$resource);'),'authorization code issuance must validate resource');
 assert(token.includes("$resource=(string)($_POST['resource']??'')"),'token endpoint must receive resource');
-assert(token.includes('exchangeCode(')&&token.includes('$resource);'),'authorization code exchange must validate resource');
-assert(token.includes('refresh(')&&token.includes('$resource);'),'refresh grant must validate resource');
+assert(/exchangeCode\([\s\S]*?\$resource\s*\)/.test(token),'authorization code exchange must validate resource');
+assert(/refresh\([\s\S]*?\$resource\s*\)/.test(token),'refresh grant must validate resource');
 assert(resource.includes("'resource'=>McpOAuthService::resource()"),'protected-resource metadata must use the canonical OAuth service resource');
 assert(endpoint.includes("$versionManifest")&&endpoint.includes("'version'=>$serverVersion"),'MCP server must advertise the current VERSION.json release');
 console.log('MCP OAuth resource and routing checks passed');

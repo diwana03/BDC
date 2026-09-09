@@ -1,0 +1,14 @@
+const fs=require('fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const assert=(condition,message)=>{if(!condition)throw new Error(message)};
+const mcp=read('app/Services/BdcMcpService.php');
+const integration=read('app/Services/EventIntegrationService.php');
+const endpoint=read('mcp/index.php');
+const review=read('admin/integration-review/events.php');
+for(const token of ["'name'=>'list_event_roster'","'name'=>'stage_division_roster_sync'",'leader_bib_start','follower_bib_start','range_size','eventRoster','stageRosterSync','previous_count','new_count'])assert(mcp.includes(token),'missing roster sync MCP behavior: '+token);
+for(const token of ["'sync_competitors'",'existingJackJillRosterSyncPayload','activeJackJillRoster','rosterHash','applyExistingJackJillRosterSync','cannot remove an existing active competitor','Roster and bib synchronization is locked because scoring has started','active roster changed after this synchronization'])assert(integration.includes(token),'missing atomic roster sync safety: '+token);
+assert(endpoint.includes("'stage_division_roster_sync'"),'roster sync must require staging scope');
+for(const token of ['$isSync','complete roster sync','reassign every active bib'])assert(review.includes(token),'missing roster sync approval explanation: '+token);
+assert(!integration.includes("DELETE FROM {$entries}"),'roster sync must never delete event entries');
+const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev719'&&version.build===3425,'release metadata mismatch');
+console.log('MCP division roster sync v719 checks passed');

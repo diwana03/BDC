@@ -68,7 +68,7 @@ if($header===''){
     }
 }
 $bearer=preg_match('/^Bearer\s+(.+)$/i',$header,$m)?trim($m[1]):'';
-$mutatingTools=['stage_competitor_additions','stage_competitor_photo_update'];
+$mutatingTools=['stage_event_edit','stage_division_roster_sync','stage_competitor_additions','stage_competitor_photo_update'];
 $required=$method==='tools/call'&&in_array($toolName,$mutatingTools,true)
     ?McpOAuthService::STAGE_SCOPE
     :McpOAuthService::READ_SCOPE;

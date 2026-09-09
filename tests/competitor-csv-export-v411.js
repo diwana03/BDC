@@ -19,6 +19,6 @@ for(const safety of ['text/csv; charset=UTF-8','X-Content-Type-Options: nosniff'
 }
 assert(page.includes("Auth::isSuperAdmin()): ?><a class=\"btn btn-outline-success\""),'export button is visible outside Super Admin guard');
 assert(page.includes("queryUrl(['export' => 'csv', 'page' => null])"),'export button does not preserve active filters');
-const dev=Number(String(version.version).match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+const dev=Number(String(version.version).match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0);
 assert(dev>=411&&version.build>=3117,'VERSION.json predates dev411 build 3117');
 console.log('PASS Super Admin filtered competitor CSV export v411');
