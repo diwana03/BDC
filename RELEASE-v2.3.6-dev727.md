@@ -18,6 +18,7 @@ The unique bib constraint remains enabled. Events, rounds, scores and withdrawal
 - Focused executable regression check: Pass
 - Existing cached withdrawal bridge regression: Pass
 - Existing OAuth login-resume regression updated to accept dev725 and later release metadata
+- Existing draft-addition regression updated to follow the active shared lifecycle service
 - PHP syntax check: Not Runtime Tested because PHP is unavailable in the local Codex runtime
 - Staging browser workflow: Not Runtime Tested until this exact candidate is deployed
 
