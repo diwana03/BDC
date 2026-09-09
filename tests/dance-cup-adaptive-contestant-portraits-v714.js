@@ -20,7 +20,7 @@ for (const marker of [
 ]) assert(projector.includes(marker), `missing adaptive portrait marker: ${marker}`);
 
 assert(projector.includes('#app{width:100vw;height:100vh;padding:10vh 5vw'), 'universal projector safe area must remain unchanged');
-assert.strictEqual(version.version, '2.3.6-dev716');
-assert.strictEqual(version.build, 3422);
+assert.strictEqual(version.version, '2.3.6-dev717');
+assert.strictEqual(version.build, 3423);
 
 console.log('Dance Cup adaptive contestant portrait checks passed.');

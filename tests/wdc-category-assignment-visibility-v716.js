@@ -13,6 +13,6 @@ assert(source.includes("$mode==='test'?'TEST · ':'"),'Test category assignments
 assert(source.includes("!in_array($style,$r['dance_styles'],true)"),'style filtering must use explicit assigned styles');
 assert(source.includes("implode(' / ',array_map('wdcpLabel',$r['dance_styles']))"),'the profile row must render explicit assigned styles');
 assert(!source.includes("str_contains($r['search'],'salsa')"),'style must not be inferred from free text');
-assert(version.version==='2.3.6-dev716','release version must be dev716');
-assert(version.build===3422,'release build must be 3422');
+assert(version.version==='2.3.6-dev717','release version must be dev716');
+assert(version.build===3423,'release build must be 3423');
 console.log('dev716 WDC category assignment visibility checks passed');

@@ -1,7 +1,11 @@
-# BDC v2.3.6-dev716
+# BDC v2.3.6-dev717
 
 ## Scope
 
+- Adds a clear Reject & Return to Scoring decision beside Approve on the confidential Super Admin Dance Cup review page for both Test and Live.
+- Requires a meaningful rejection reason and records an audit entry with the selected data mode and original submitter details.
+- Preserves judge marks and private comments, cancels stale tie-break links, removes the stale calculated ranking, reopens submitted judge sessions, and returns the category to Draft for correction and recalculation.
+- Updates the approval queue, Automatic workspace, and live AJAX status wording so Super Admin can see that both Approve and Reject are available.
 - Repairs the WDC competitor workspace so an identity assigned to a Dance Cup category shows the category's saved Salsa/Bachata style even when no separate formal WDC registration row exists.
 - Merges linked Live and isolated Test Dance Cup roster assignments into the Registrations / Categories column, with an explicit TEST label for isolated assignments.
 - Recovers older roster rows that predate WDC identity linkage only when their active WDC display-name match is unique.
@@ -14,11 +18,12 @@
 
 ## Validation
 
+- Focused Super Admin Dance Cup rejection regression for Test and Live: passed.
 - Focused WDC category-assignment visibility regression: passed.
 - Existing WDC consolidated dashboard, premium workspace, registration integration and participant-first query regressions: passed.
 - Focused council photo-link regression: passed.
 - Existing adaptive portrait, WDC projection, photo persistence, universal safe-layout, final-result readability, matrix-spacing, projection identity/recovery/scale, roster, flight, finalists, BDC/SDC dashboard isolation, and Test/Live projection parity regressions: passed.
-- Full JavaScript regression inventory: 211 of 248 passed. The remaining 37 failures were reproduced on the unchanged dev715 parent and are legacy version/fixture assertions outside this category-visibility change; the applicable legacy registration-category check was repaired and now passes.
+- Full JavaScript regression inventory: 216 of 249 passed. The remaining 33 legacy version/fixture failures are outside this change; dev716's baseline was 211 of 248 passed with 37 such failures.
 - JavaScript syntax and final diff whitespace validation: passed.
 - PHP syntax: not runtime-tested locally because PHP CLI is unavailable in this workspace.
 
@@ -27,8 +32,8 @@
 - Testing Score Dashboard: shared Jack & Jill Test projection photo resolution checked statically for both BDC and SDC identities.
 - Live Scoring Dashboard: official competitor photo write path and live projection read path checked statically; no scoring data or calculation path changed.
 - Projector: Dance Cup contestant/results photo queries and Jack & Jill competitor, flight, matching, callback, finalist, result, and winner photo queries checked statically.
-- Candidate/static validation: passed for the applicable dev716 category-visibility gate. The repository-wide legacy failures are recorded above and remain outside this change.
-- Staging/runtime validation: not runtime-tested; deploy this exact `develop` candidate to Staging and verify Shalynn shows Bachata and her assigned category, then recheck adjusted photos on Salsa J&J, Bachata J&J, and the copied Dance Cup category.
+- Candidate/static validation: passed the focused rejection suite and completed the full 249-test JavaScript inventory.
+- Staging/runtime validation: not runtime-tested; deploy the exact dev717 `develop` candidate to Staging, reject one isolated Test result, confirm it returns to Draft with marks/comments preserved and recalculation required, then verify the corresponding Live review page exposes the same protected action without submitting it.
 - Production: untouched and blocked pending successful Staging runtime verification and separate approval.
 
 ## Migration

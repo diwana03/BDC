@@ -266,6 +266,23 @@ final class DanceCupScoringService
         $pdo->prepare("UPDATE {$tables['competitions']} SET status='approved',approved_by=:user,approved_at=NOW(),approval_notes=:notes WHERE id=:competition")->execute(['user'=>$userId,'notes'=>$notes,'competition'=>$competitionId]);
     }
 
+    /** Return a pending result to scoring without losing judge marks or private comments. */
+    public static function rejectResults(PDO $pdo,int $competitionId,int $userId,string $reason,bool $test=false):void
+    {
+        $reason=trim($reason);$reasonLength=function_exists('mb_strlen')?mb_strlen($reason):strlen($reason);
+        if($reasonLength<8)throw new RuntimeException('Enter a clear rejection reason of at least 8 characters.');
+        $tables=self::tables($test);$prefix=$test?'bdc_test_dance_cup':'bdc_dance_cup';
+        $competition=$pdo->prepare("SELECT id,status,submitted_by,submitted_at FROM {$tables['competitions']} WHERE id=:competition FOR UPDATE");
+        $competition->execute(['competition'=>$competitionId]);$row=$competition->fetch();
+        if(!$row)throw new RuntimeException('Dance Cup category not found.');
+        if((string)$row['status']!=='pending_approval')throw new RuntimeException('Only a Dance Cup result awaiting approval can be rejected.');
+        $pdo->prepare("UPDATE {$tables['competitions']} SET status='draft',submitted_by=NULL,submitted_at=NULL,approved_by=NULL,approved_at=NULL,approval_notes=:notes WHERE id=:competition")->execute(['notes'=>'REJECTED: '.$reason,'competition'=>$competitionId]);
+        $pdo->prepare("UPDATE {$prefix}_judge_sessions SET status=CASE WHEN status='submitted' THEN 'scoring' ELSE status END,submitted_at=NULL WHERE competition_id=:competition")->execute(['competition'=>$competitionId]);
+        $pdo->prepare("UPDATE {$prefix}_tie_tasks SET status='cancelled',token_hash=NULL,cancelled_at=NOW() WHERE competition_id=:competition AND status IN ('pending','resolved')")->execute(['competition'=>$competitionId]);
+        $pdo->prepare("DELETE FROM {$prefix}_scoring_results WHERE competition_id=:competition")->execute(['competition'=>$competitionId]);
+        \App\Core\Auth::audit($userId,'dance_cup_result_rejected',['reason'=>$reason,'data_mode'=>$test?'test':'live','submitted_by'=>$row['submitted_by'],'submitted_at'=>$row['submitted_at'],'marks_preserved'=>true,'comments_preserved'=>true],'dance_cup_competition',$competitionId);
+    }
+
     /** @return array<string,mixed> */
     public static function workflowState(PDO $pdo, int $competitionId, bool $test = false): array
     {

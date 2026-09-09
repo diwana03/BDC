@@ -24,7 +24,7 @@ assert(report.includes('$rankedEntries=$entries') && report.includes('usort($ran
 assert(report.includes('foreach($rankedEntries as $entry)'), 'consolidated result must render official ranking order');
 
 assert(approvals.includes('private_comments'), 'approval list must expose a private comment count to Super Admin');
-assert(approvals.includes('Review Result, Comments &amp; Accept'), 'approval queue must link to dedicated confidential review');
+assert(approvals.includes('Review, Approve or Reject'), 'approval queue must link to the protected decision review');
 assert(approvals.includes('approval-review.php'), 'approval must continue on the dedicated Super Admin screen');
 assert(approvals.includes('Projection reveal is controlled separately'), 'publication must be distinguished from projection reveal');
 
@@ -35,7 +35,7 @@ for (const ui of [workspace, category]) {
 assert(workspace.includes('Calculate &amp; Preview Result'), 'calculate must be described as a preview');
 assert(workspace.includes('Submit Results for Approval &amp; Lock'), 'submit must describe approval and locking');
 assert(workspace.includes('it does not publish or reveal the result'), 'submit consequences must be explicit');
-assert(Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0)>=537);
+assert(Number(version.version.match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0)>=537);
 assert(version.build>=3243);
 
 console.log('dev521 Dance Cup detailed result and confidential comment checks passed');

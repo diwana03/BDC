@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev716",
-  "build": 3422,
+  "version": "2.3.6-dev717",
+  "build": 3423,
   "status": "development",
   "release_date": "2026-09-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup Super Admin rejection: the confidential result review now offers explicit Approve and Reject decisions in both Test and Live, requires a rejection reason, preserves judge marks and private comments, cancels stale tie-break links, discards the stale calculated ranking, reopens submitted judge sessions, returns the category to Draft, and records an audit entry.",
     "WDC category visibility repair: the competitor workspace merges formal registrations with linked Live and isolated Test Dance Cup roster assignments, derives Salsa/Bachata from the saved category dance_style, labels Test assignments clearly, and safely recovers legacy unlinked rows only when the active WDC display name is unique.",
     "Adaptive Dance Cup contestant portraits: sizes the All Contestants board by its real one-row or two-row page, applies a contained audience close-up inside each circular portrait, and keeps every card fully inside the 10 percent top/bottom and 5 percent left/right safe canvas.",
     "Dance Cup legacy adjusted-photo repair: resolves saved WDC crops through the linked WDC identity or its shared competitor link for older roster rows, enlarges All Contestants portraits again, and revisions the projector launch URL so the new inline layout cannot remain hidden by an already-open display.",
