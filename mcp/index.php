@@ -96,7 +96,7 @@ if($method==='initialize'){
     mcpAudit($userId?:null,'mcp_initialize_ok',['diagnostic_id'=>$diagnosticId,'server_version'=>$serverVersion,'protocol'=>$protocol,'header_source'=>$headerSource]);
     mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>[
         'protocolVersion'=>$protocol,
-        'capabilities'=>['tools'=>['listChanged'=>false]],
+        'capabilities'=>['tools'=>['listChanged'=>true]],
         'serverInfo'=>['name'=>'BDC Portal','version'=>$serverVersion],
     ]]);
 }

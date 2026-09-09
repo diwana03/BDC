@@ -5,5 +5,5 @@ for(const token of ['existingJackJillRosterChangePayload','applyExistingJackJill
 for(const token of ["'stage_competitor_removals'","'stage_competitor_bib_updates'"])assert(endpoint.includes(token),'roster amendment must require staging scope: '+token);
 for(const token of ['$isRemoval','$isBibUpdate','Withdraw selected competitors, atomically','Amend selected bibs, atomically'])assert(review.includes(token),'missing Integration Review explanation: '+token);
 assert(!integration.includes('DELETE FROM {$entries}'),'roster removal must remain recoverable and never delete entries');
-const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev721'&&version.build===3427,'release metadata mismatch');
+const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev722'&&version.build===3428,'release metadata mismatch');
 console.log('MCP roster amendments v721 checks passed');
