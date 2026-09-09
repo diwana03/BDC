@@ -1,7 +1,11 @@
-# BDC v2.3.6-dev717
+# BDC v2.3.6-dev718
 
 ## Scope
 
+- Restores Jack & Jill event duplication for completed Salsa and Bachata events by allowing archived source rounds to be copied.
+- Keeps completed events visible in the Live duplication selector while retaining Draft event support.
+- Adds a direct Duplicate Event action to every Saved Rounds row in both Test and Live, so the event can be copied from the screen shown during scoring operations.
+- Resets every copied event and round to Draft and continues copying only setup, competitors, and judges; scores, results, approvals, live state, and projection state remain excluded.
 - Adds a clear Reject & Return to Scoring decision beside Approve on the confidential Super Admin Dance Cup review page for both Test and Live.
 - Requires a meaningful rejection reason and records an audit entry with the selected data mode and original submitter details.
 - Preserves judge marks and private comments, cancels stale tie-break links, removes the stale calculated ranking, reopens submitted judge sessions, and returns the category to Draft for correction and recalculation.
@@ -18,12 +22,14 @@
 
 ## Validation
 
+- Focused completed Jack & Jill event duplication regression for Salsa and Bachata parity: passed.
+- Existing safe Dance Cup and Jack & Jill duplication workflow regression: passed.
 - Focused Super Admin Dance Cup rejection regression for Test and Live: passed.
 - Focused WDC category-assignment visibility regression: passed.
 - Existing WDC consolidated dashboard, premium workspace, registration integration and participant-first query regressions: passed.
 - Focused council photo-link regression: passed.
 - Existing adaptive portrait, WDC projection, photo persistence, universal safe-layout, final-result readability, matrix-spacing, projection identity/recovery/scale, roster, flight, finalists, BDC/SDC dashboard isolation, and Test/Live projection parity regressions: passed.
-- Full JavaScript regression inventory: 216 of 249 passed. The remaining 33 legacy version/fixture failures are outside this change; dev716's baseline was 211 of 248 passed with 37 such failures.
+- Full JavaScript regression inventory: 217 of 250 passed. The remaining 33 legacy version/fixture failures are unchanged from dev717 and outside this change.
 - JavaScript syntax and final diff whitespace validation: passed.
 - PHP syntax: not runtime-tested locally because PHP CLI is unavailable in this workspace.
 
@@ -32,8 +38,8 @@
 - Testing Score Dashboard: shared Jack & Jill Test projection photo resolution checked statically for both BDC and SDC identities.
 - Live Scoring Dashboard: official competitor photo write path and live projection read path checked statically; no scoring data or calculation path changed.
 - Projector: Dance Cup contestant/results photo queries and Jack & Jill competitor, flight, matching, callback, finalist, result, and winner photo queries checked statically.
-- Candidate/static validation: passed the focused rejection suite and completed the full 249-test JavaScript inventory.
-- Staging/runtime validation: not runtime-tested; deploy the exact dev717 `develop` candidate to Staging, reject one isolated Test result, confirm it returns to Draft with marks/comments preserved and recalculation required, then verify the corresponding Live review page exposes the same protected action without submitting it.
+- Candidate/static validation: passed the focused duplication suites and completed the full 250-test JavaScript inventory.
+- Staging/runtime validation: not runtime-tested; deploy the exact dev718 `develop` candidate to Staging, duplicate one completed Salsa or Bachata J&J event and confirm the copy is Draft with competitors and judges but no scores/results, then rerun the dev717 rejection check.
 - Production: untouched and blocked pending successful Staging runtime verification and separate approval.
 
 ## Migration

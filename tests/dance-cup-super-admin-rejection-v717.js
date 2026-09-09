@@ -30,6 +30,6 @@ for(const marker of [
 ])assert(service.includes(marker),`protected rejection workflow missing ${marker}`);
 assert(!service.includes('DELETE FROM {$prefix}_marks'),'rejection must preserve judge marks');
 assert(!service.includes('DELETE FROM {$prefix}_judge_comments'),'rejection must preserve private comments');
-assert.strictEqual(version.version,'2.3.6-dev717');
-assert.strictEqual(version.build,3423);
+assert.strictEqual(version.version,'2.3.6-dev718');
+assert.strictEqual(version.build,3424);
 console.log('dev717 Super Admin Dance Cup rejection checks passed');

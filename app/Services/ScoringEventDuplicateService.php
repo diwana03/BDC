@@ -23,7 +23,7 @@ final class ScoringEventDuplicateService
     {
         $eventTable=$test?'bdc_test_events':'bdc_events';$roundTable=$test?'bdc_test_scoring_rounds':'bdc_scoring_rounds';
         $event=$pdo->prepare("SELECT * FROM `{$eventTable}` WHERE id=:id LIMIT 1");$event->execute(['id'=>$eventId]);$sourceEvent=$event->fetch();if(!$sourceEvent)throw new RuntimeException('Jack & Jill event not found.');
-        $rounds=$pdo->prepare("SELECT * FROM `{$roundTable}` WHERE event_id=:event AND status<>'archived' ORDER BY id");$rounds->execute(['event'=>$eventId]);$sourceRounds=$rounds->fetchAll();if(!$sourceRounds)throw new RuntimeException('This event has no active Jack & Jill scoring setup to duplicate.');
+        $rounds=$pdo->prepare("SELECT * FROM `{$roundTable}` WHERE event_id=:event ORDER BY id");$rounds->execute(['event'=>$eventId]);$sourceRounds=$rounds->fetchAll();if(!$sourceRounds)throw new RuntimeException('This event has no Jack & Jill scoring setup to duplicate.');
         $eventColumns=self::columns($pdo,$eventTable);$roundColumns=self::columns($pdo,$roundTable);
         $base=trim((string)$sourceEvent['name']).' Copy';$name=$base;$number=2;$check=$pdo->prepare("SELECT COUNT(*) FROM `{$eventTable}` WHERE name=:name");do{$check->execute(['name'=>$name]);if(!(int)$check->fetchColumn())break;$name=$base.' '.$number++;}while($number<1000);
         $slugBase=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$name),'-'))?:'event-copy';$slug=$slugBase;$slugNumber=2;if(in_array('slug',$eventColumns,true)){$slugCheck=$pdo->prepare("SELECT COUNT(*) FROM `{$eventTable}` WHERE slug=:slug");do{$slugCheck->execute(['slug'=>$slug]);if(!(int)$slugCheck->fetchColumn())break;$slug=$slugBase.'-'.$slugNumber++;}while($slugNumber<1000);}
