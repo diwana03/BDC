@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev723",
-  "build": 3429,
+  "version": "2.3.6-dev724",
+  "build": 3430,
   "status": "development",
   "release_date": "2026-09-09",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "ChatGPT connector installation repair: allows unauthenticated MCP initialization and tool discovery so ChatGPT can inspect per-tool OAuth security schemes, then returns the standards-compatible mcp/www_authenticate challenge for protected tool calls while retaining Super Admin authentication and exact read/stage scopes for every BDC data action.",
     "MCP cached-client withdrawal bridge: lets the already-published approval-gated competitor-additions action safely stage withdrawal of every active competitor from one exact draft Jack & Jill round when supplied with the explicit WITHDRAW-ALL-ACTIVE compatibility marker, while preserving scoring locks, roster fingerprints, recoverable withdrawal status and Super Admin review.",
     "MCP tool discovery refresh: advertises that the BDC Portal tool list can change so connected clients refresh newly deployed roster actions such as approval-gated competitor withdrawals and bib amendments instead of retaining a stale cached tool list.",
     "Approval-gated Jack & Jill roster amendments: stages recoverable competitor withdrawals and atomic bib changes for exact active entries in one Test or Live draft round, with scoring locks, stale-roster protection, role-specific duplicate-bib validation and Super Admin review.",

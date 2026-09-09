@@ -10,7 +10,7 @@ assert(fs.existsSync('mcp/.well-known/oauth-protected-resource/index.php'),'phys
 assert(read('mcp/oauth/.well-known/oauth-authorization-server/index.php').includes("/metadata.php"),'authorization discovery must serve metadata');
 assert(read('mcp/.well-known/oauth-protected-resource/index.php').includes("/oauth/resource.php"),'resource discovery must serve resource metadata');
 assert(oauth.includes("rtrim(\\absolute_url('mcp'),'/').'/'"),'canonical MCP resource must use the working trailing-slash URL');
-assert(endpoint.includes('scope="bdc.events.read bdc.events.stage"'),'HTTP OAuth challenge must advertise scopes');
+assert(endpoint.includes("scope=\"'.$required.'\"")&&endpoint.includes("'mcp/www_authenticate'"),'OAuth challenge must advertise the exact required tool scope in HTTP and MCP metadata');
 assert(endpoint.includes("$versionManifest")&&endpoint.includes("'version'=>$serverVersion"),'MCP server must advertise the current VERSION.json release');
 const toolCount=(tools.match(/\['name'=>'/g)||[]).length;
 assert(toolCount>=5&&(tools.match(/'securitySchemes'=>/g)||[]).length===toolCount,'every MCP tool must declare OAuth security schemes');

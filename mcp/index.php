@@ -48,6 +48,31 @@ $toolName=$method==='tools/call'?(string)($req['params']['name']??''):'';
 $diagnosticId='mcp-'.gmdate('Ymd-His').'-'.substr(bin2hex(random_bytes(6)),0,12);
 header('X-BDC-MCP-Diagnostic: '.$diagnosticId);
 
+/*
+ * ChatGPT must be able to initialize the Streamable HTTP server and inspect
+ * each tool's securitySchemes before an account has been linked. Protected
+ * tool calls remain OAuth-only and are challenged below.
+ */
+if($method==='initialize'){
+    $requested=(string)($req['params']['protocolVersion']??'');
+    $supported=['2025-11-25','2025-06-18','2025-03-26','2024-11-05'];
+    $protocol=in_array($requested,$supported,true)?$requested:'2025-06-18';
+    header('MCP-Protocol-Version: '.$protocol);
+    mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>[
+        'protocolVersion'=>$protocol,
+        'capabilities'=>['tools'=>['listChanged'=>true]],
+        'serverInfo'=>['name'=>'BDC Portal','version'=>$serverVersion],
+    ]]);
+}
+
+$requestProtocol=trim((string)($_SERVER['HTTP_MCP_PROTOCOL_VERSION']??''));
+if($requestProtocol!=='')header('MCP-Protocol-Version: '.$requestProtocol);
+
+if($method==='notifications/initialized')mcpAccepted();
+if(str_starts_with($method,'notifications/'))mcpAccepted();
+if($method==='ping')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>(object)[]]);
+if($method==='tools/list')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>['tools'=>BdcMcpService::tools()]]);
+
 $header='';$headerSource='none';
 foreach(['HTTP_AUTHORIZATION','REDIRECT_HTTP_AUTHORIZATION'] as $serverKey){
     $candidate=trim((string)($_SERVER[$serverKey]??''));
@@ -82,35 +107,16 @@ try{$user=McpOAuthService::authenticate($pdo,$bearer,$required);}catch(Throwable
 }
 if(!$user){
     mcpAudit(isset($authDiag['user_id'])&&$authDiag['user_id']? (int)$authDiag['user_id']:null,'mcp_execution_auth_rejected',['diagnostic_id'=>$diagnosticId,'server_version'=>$serverVersion,'method'=>$method,'tool'=>$toolName,'header_source'=>$headerSource,'header_present'=>$header!=='','required_scope'=>$required,'auth'=>$authDiag]);
-    $resource=absolute_url('mcp/oauth/resource.php');
-    header('WWW-Authenticate: Bearer resource_metadata="'.$resource.'", scope="bdc.events.read bdc.events.stage"');
-    mcpError($id,-32001,'Authorization required. Diagnostic '.$diagnosticId.'.',401);
-}
-$userId=(int)($user['user_id']??0);
-
-if($method==='initialize'){
-    $requested=(string)($req['params']['protocolVersion']??'');
-    $supported=['2025-11-25','2025-06-18','2025-03-26','2024-11-05'];
-    $protocol=in_array($requested,$supported,true)?$requested:'2025-06-18';
-    header('MCP-Protocol-Version: '.$protocol);
-    mcpAudit($userId?:null,'mcp_initialize_ok',['diagnostic_id'=>$diagnosticId,'server_version'=>$serverVersion,'protocol'=>$protocol,'header_source'=>$headerSource]);
+    $resource=absolute_url('mcp/.well-known/oauth-protected-resource/');
+    $challenge='Bearer resource_metadata="'.$resource.'", scope="'.$required.'"';
+    header('WWW-Authenticate: '.$challenge);
     mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>[
-        'protocolVersion'=>$protocol,
-        'capabilities'=>['tools'=>['listChanged'=>true]],
-        'serverInfo'=>['name'=>'BDC Portal','version'=>$serverVersion],
+        'content'=>[['type'=>'text','text'=>'Connect BDC Portal as Super Admin to use this tool. Diagnostic '.$diagnosticId.'.']],
+        '_meta'=>['mcp/www_authenticate'=>[$challenge]],
+        'isError'=>true,
     ]]);
 }
-
-$requestProtocol=trim((string)($_SERVER['HTTP_MCP_PROTOCOL_VERSION']??''));
-if($requestProtocol!=='')header('MCP-Protocol-Version: '.$requestProtocol);
-
-if($method==='notifications/initialized')mcpAccepted();
-if(str_starts_with($method,'notifications/'))mcpAccepted();
-if($method==='ping')mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>(object)[]]);
-if($method==='tools/list'){
-    mcpAudit($userId?:null,'mcp_tools_list_ok',['diagnostic_id'=>$diagnosticId,'server_version'=>$serverVersion,'header_source'=>$headerSource]);
-    mcpOut(['jsonrpc'=>'2.0','id'=>$id,'result'=>['tools'=>BdcMcpService::tools()]]);
-}
+$userId=(int)($user['user_id']??0);
 if($method==='tools/call'){
     try{
         $args=$req['params']['arguments']??[];

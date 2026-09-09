@@ -7,5 +7,5 @@ assert(stageMethod.indexOf("str_starts_with($source,'withdraw-all-active:')")<st
 for(const token of ['before_roster_hash','Roster changes are locked because scoring has started',"entry_status='withdrawn'"])assert(integration.includes(token),'existing atomic withdrawal safety must remain active: '+token);
 for(const token of ["'stage_competitor_additions'","'stage_competitor_removals'"])assert(endpoint.includes(token),'both cached and current MCP mutation names must retain staging scope: '+token);
 assert(!integration.includes('DELETE FROM {$entries}'),'withdrawal must remain recoverable and never delete entries');
-const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev723'&&version.build===3429,'release metadata mismatch');
+const version=JSON.parse(read('VERSION.json'));assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=723&&version.build>=3429,'release metadata mismatch');
 console.log('MCP cached-client withdrawal bridge v723 checks passed');
