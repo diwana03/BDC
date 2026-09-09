@@ -16,6 +16,6 @@ assert(safe.includes('padding-top:10cqh!important')&&safe.includes('padding-bott
 assert(safe.includes('padding-left:5cqw!important')&&safe.includes('padding-right:5cqw!important'),'judge screen must preserve 5 percent horizontal safe margins');
 assert(feed.includes('judge-count-7,body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}'),'seven and eight judges must remain a four-column paged board');
 assert(shell.includes("projector-safe-v616.css?v=676"),'open projectors must load the enlarged portrait CSS immediately');
-assert(Number(version.version.match(/^2\\.3\\.6-dev(\\d+)$/)?.[1]||0)>=719);
+assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=719);
 assert(version.build>=3425);
 console.log('dev719 shared judge portrait sizing checks passed');
