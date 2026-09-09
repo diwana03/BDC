@@ -10,6 +10,8 @@ final class McpOAuthService
 {
     public const READ_SCOPE='bdc.events.read';
     public const STAGE_SCOPE='bdc.events.stage';
+    private const AUTHORIZATION_RESUME_SESSION_KEY='bdc_mcp_oauth_authorization_resume';
+    private const AUTHORIZATION_RESUME_TTL=600;
 
     public static function resource():string
     {
@@ -21,6 +23,29 @@ final class McpOAuthService
         $expected=self::resource();
         if($resource===''||!hash_equals($expected,$resource))throw new RuntimeException('The OAuth resource must exactly match '.$expected.'.');
         return $expected;
+    }
+
+    public static function rememberAuthorizationRequest(array $params):void
+    {
+        $_SESSION[self::AUTHORIZATION_RESUME_SESSION_KEY]=[
+            'params'=>$params,
+            'expires_at'=>time()+self::AUTHORIZATION_RESUME_TTL,
+        ];
+    }
+
+    public static function authorizationResumeUrl():?string
+    {
+        $resume=$_SESSION[self::AUTHORIZATION_RESUME_SESSION_KEY]??null;
+        if(!is_array($resume)||!is_array($resume['params']??null)||(int)($resume['expires_at']??0)<time()){
+            unset($_SESSION[self::AUTHORIZATION_RESUME_SESSION_KEY]);
+            return null;
+        }
+        return \absolute_url('mcp/oauth/authorize.php').'?'.http_build_query($resume['params'],'','&',PHP_QUERY_RFC3986);
+    }
+
+    public static function forgetAuthorizationRequest():void
+    {
+        unset($_SESSION[self::AUTHORIZATION_RESUME_SESSION_KEY]);
     }
 
     public static function ensure(PDO $pdo):void
