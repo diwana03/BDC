@@ -10,5 +10,5 @@ for(const token of ["'sync_competitors'",'existingJackJillRosterSyncPayload','ac
 assert(endpoint.includes("'stage_division_roster_sync'"),'roster sync must require staging scope');
 for(const token of ['$isSync','complete roster sync','reassign every active bib'])assert(review.includes(token),'missing roster sync approval explanation: '+token);
 assert(!integration.includes("DELETE FROM {$entries}"),'roster sync must never delete event entries');
-const version=JSON.parse(read('VERSION.json'));assert(version.version==='2.3.6-dev719'&&version.build===3425,'release metadata mismatch');
+const version=JSON.parse(read('VERSION.json'));assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=720&&version.build>=3426,'release metadata mismatch');
 console.log('MCP division roster sync v719 checks passed');
