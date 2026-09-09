@@ -6,6 +6,6 @@ assert(source.includes('bdc_wdc_registrations'),'WDC registration category sourc
 assert(source.includes('WDC identities')&&source.includes('Category entries'),'WDC identity and registration summaries missing');
 assert(source.includes('Complete WDC identity and registration workspace.'),'identity-first explanation missing');
 assert(source.includes("status='registered'"),'approved WDC registration status missing');
-const releaseNumber=Number(version.version.match(/^2\.3\.3-dev(\d+)$/)?.[1]||0);
+const releaseNumber=Number(version.version.match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0);
 assert(releaseNumber>=449&&version.build>=3155,'release must retain dev449 registration-category support');
 console.log('Dance Cup registration categories dashboard v449 checks passed.');
