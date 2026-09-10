@@ -110,6 +110,7 @@ $matrixMarks = [];
 $scoringSubmittedJudges = [];
 $scoringPendingJudges = [];
 $scoringTimingJudges = [];
+$judgePaginated = false;
 $scoringComplete =
     in_array(
         (string) ($r["event_status"] ?? ""),
@@ -173,6 +174,7 @@ if ($type === "flights") {
         $judgeTotal = count($items);
         $judgePageSize = 8;
         $judgePages = max(1, (int) ceil($judgeTotal / $judgePageSize));
+        $judgePaginated = $judgePages > 1;
         $judgePage = max(1, min($page, $judgePages));
         $items = array_slice($items, ($judgePage - 1) * $judgePageSize, $judgePageSize);
         if ($judgePages > 1) {
@@ -641,7 +643,7 @@ foreach ($people as $person) {
 }
 ?></div></div><div class="block p<?= $rank ?>"><?= $rank ?></div><?php
 endif; ?></div><?php
-endforeach; ?></div><?php else: ?><div class="list<?= $type === 'judges' ? ' judge-list judge-count-' . count($items) : '' ?>"><?php if (
+endforeach; ?></div><?php else: ?><div class="list<?= $type === 'judges' ? ' judge-list judge-count-' . count($items) . ($judgePaginated ? ' judge-paginated' : '') : '' ?>"><?php if (
     $type === "scoring"
 ):
     $x = $items[0];
