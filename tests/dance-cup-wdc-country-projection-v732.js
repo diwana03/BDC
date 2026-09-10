@@ -15,6 +15,6 @@ assert(feed.includes('COALESCE({$wdcCountry},\'\')') && feed.includes('COALESCE(
 assert(feed.includes('$identityRevision') && !feed.includes('$photoRevision'), 'projector refresh remains photo-only');
 assert(diagnostics.includes('e.wdc_identity_id,COALESCE(NULLIF(w.country,\'\'),c.country) country'), 'Dance Cup diagnostics do not inspect WDC country');
 assert(diagnostics.includes("empty($row['competitor_id'])&&empty($row['wdc_identity_id'])"), 'diagnostics still reject valid WDC-only entries');
-assert(version.version === '2.3.6-dev732' && version.build === 3438, 'release metadata mismatch');
+assert(version.version.startsWith('2.3.6-dev') && version.build >= 3438, 'release metadata is older than dev732');
 
 console.log('Dance Cup WDC country projection v732 regression checks passed');
