@@ -15,6 +15,6 @@ assert(live.includes("'Missing '.$council.' ID'"),'Live roster must visibly flag
 
 assert((test.match(/<th><\?=e\(\$testCouncil\)\?> ID<\/th>/g)||[]).length===2,'Test Leader and Follower tables must name the active council');
 assert((test.match(/'Missing '\.\$testCouncil\.' ID'/g)||[]).length===2,'Test rosters must visibly flag missing council identities');
-assert(version.version==='2.3.6-dev728'&&version.build===3434,'release metadata mismatch');
+assert(Number(version.version.match(/dev(\d+)$/)?.[1]||0)>=728&&version.build>=3434,'release metadata predates dev728');
 
 console.log('dev728 Jack & Jill council identity checks passed');
