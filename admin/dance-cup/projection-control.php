@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
 use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\DanceCupScoringService;
-Auth::requireAdmin();$pdo=Database::connection();$test=(string)($_GET['data_mode']??$_POST['data_mode']??'')==='test';if($test&&!Auth::isSuperAdmin()){http_response_code(403);exit('Super Admin required.');}$id=(int)($_GET['id']??$_POST['id']??0);$t=DanceCupScoringService::tables($test);$p=$test?'bdc_test_dance_cup':'bdc_dance_cup';DanceCupScoringService::ensureAutomation($pdo,$id,$test);$q=$pdo->prepare("SELECT c.*,e.name event_name FROM {$t['competitions']} c JOIN {$t['events']} e ON e.id=c.event_id WHERE c.id=:id");$q->execute(['id'=>$id]);$c=$q->fetch();if(!$c){http_response_code(404);exit('Dance Cup category not found.');}$eventId=(int)$c['event_id'];$error='';
+Auth::requireAdmin();$pdo=Database::connection();$test=(string)($_GET['data_mode']??$_POST['data_mode']??'')==='test';if($test&&!Auth::isSuperAdmin()){http_response_code(403);exit('Super Admin required.');}$id=(int)($_GET['id']??$_POST['id']??0);$t=DanceCupScoringService::tables($test);$p=$test?'bdc_test_dance_cup':'bdc_dance_cup';DanceCupScoringService::ensureAutomation($pdo,$id,$test);$q=$pdo->prepare("SELECT c.*,e.name event_name FROM {$t['competitions']} c JOIN {$t['events']} e ON e.id=c.event_id WHERE c.id=:id");$q->execute(['id'=>$id]);$c=$q->fetch();if(!$c){http_response_code(404);exit('Dance Cup category not found.');}$eventId=(int)$c['event_id'];$judgeQuery=$pdo->prepare("SELECT id,judge_name,judge_order,is_chief FROM {$p}_judges WHERE competition_id=:competition ORDER BY is_chief DESC,judge_order,id");$judgeQuery->execute(['competition'=>$id]);$judges=$judgeQuery->fetchAll();$judgePositions=[];foreach($judges as $judgeIndex=>$judgeRow)$judgePositions[(int)$judgeRow['id']]=$judgeIndex+1;$error='';
 try{
 if($_SERVER['REQUEST_METHOD']==='POST'){
     if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
@@ -24,6 +24,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         $valid->execute(['entry'=>$entry,'competition'=>$id]);
         if(!(int)$valid->fetchColumn())throw new RuntimeException('Contestant is not in this category.');
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,active_entry_id=:entry,screen_type='contestant',auto_cycle=0,state_version=state_version+1 WHERE event_id=:event")->execute(['competition'=>$id,'entry'=>$entry,'event'=>$eventId]);
+    }elseif($action==='show_judge'){
+        $judgeId=(int)($_POST['judge_id']??0);
+        if(!isset($judgePositions[$judgeId]))throw new RuntimeException('Judge is not assigned to this category.');
+        $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type='judge_call',page_number=:page,auto_page=0,auto_cycle=0,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'page'=>$judgePositions[$judgeId],'user'=>$user,'event'=>$eventId]);
+    }elseif($action==='show_judge_page'){
+        if(!$judges)throw new RuntimeException('Assign judges before starting Judge Call.');
+        $page=max(1,min(count($judges),(int)($_POST['judge_page']??1)));
+        $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type='judge_call',page_number=:page,auto_page=0,auto_cycle=0,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'page'=>$page,'user'=>$user,'event'=>$eventId]);
     }elseif($action==='start_cycle'){
         $first=$pdo->prepare("SELECT id FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id LIMIT 1");
         $first->execute(['competition'=>$id]);$entry=(int)$first->fetchColumn();
@@ -52,7 +60,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!in_array($theme,['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'],true))throw new RuntimeException('Invalid projection theme.');
         $pdo->prepare("UPDATE {$p}_event_projection SET theme=:theme,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['theme'=>$theme,'user'=>$user,'event'=>$eventId]);
     }else{
-        $allowed=['holding','contestant','judges','contestants','scoring','results','podium'];$themes=['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'];
+        $allowed=['holding','contestant','judge_call','judges','contestants','scoring','results','podium'];$themes=['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'];
         if(!in_array($screen,$allowed,true)||!in_array($theme,$themes,true))throw new RuntimeException('Invalid projection setting.');
         if($screen==='results'){$lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before sending scores live.');}
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type=:screen,theme=:theme,auto_cycle=0,page_number=1,reveal_place=NULL,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'screen'=>$screen,'theme'=>$theme,'user'=>$user,'event'=>$eventId]);
@@ -61,7 +69,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     header('Location: ?id='.$id.($test?'&data_mode=test':'').($changed?'&changed='.$changed:''),true,303);exit;
 }
 }catch(Throwable $e){$error=$e->getMessage();}
-$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judges'=>'Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();$changed=(string)($_GET['changed']??'');
+$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judge_call'=>'Call Judges One by One','judges'=>'All Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();$changed=(string)($_GET['changed']??'');
 ?>
 <!doctype html>
 <html>
@@ -160,6 +168,25 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 </select>
 <button class="btn btn-primary px-4" name="action" value="show_entry">Call Contestant</button>
 </form>
+<hr>
+<h3 class="h6">Call judges one by one</h3>
+<p class="small text-muted">Shows one judge in a large audience card. Select any judge, use Previous or Next, or turn on Auto Page below for a timed introduction sequence.</p>
+<?php $judgePage=max(1,min(max(1,count($judges)),(int)($state['page_number']??1)));?>
+<form method="post" class="contestant-call mb-2">
+<input type="hidden" name="_csrf" value="<?=e($csrf)?>">
+<input type="hidden" name="id" value="<?=$id?>">
+<input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
+<select class="form-select" name="judge_id" aria-label="Choose judge" <?=$judges?'':'disabled'?>>
+<?php foreach($judges as $judgeIndex=>$judge):?>
+<option value="<?=(int)$judge['id']?>" <?=($judgeIndex+1)===$judgePage?'selected':''?>>J<?=(int)$judge['judge_order']?> · <?=e($judge['judge_name'])?><?=!empty($judge['is_chief'])?' · Chief Judge':''?></option>
+<?php endforeach;?>
+</select>
+<button class="btn btn-warning px-4" name="action" value="show_judge" <?=$judges?'':'disabled'?>>Call Judge</button>
+</form>
+<div class="d-grid gap-2" style="grid-template-columns:1fr 1fr">
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="judge_page" value="<?=max(1,$judgePage-1)?>"><button class="btn btn-outline-dark w-100" name="action" value="show_judge_page" <?=$judgePage<=1?'disabled':''?>>← Previous Judge</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="judge_page" value="<?=min(max(1,count($judges)),$judgePage+1)?>"><button class="btn btn-dark w-100" name="action" value="show_judge_page" <?=$judgePage>=count($judges)?'disabled':''?>>Next Judge →</button></form>
+</div>
 </div>
 </section>
 <section id="sendScreenLive" class="card border-0 shadow-sm">
@@ -229,7 +256,7 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <section class="card border-0 shadow-sm mb-4">
 <div class="card-body">
 <h2 class="h4">Screen Paging</h2>
-<p class="text-muted">Controls Judges, All Contestants and Live Scoreboard pages.</p>
+<p class="text-muted">Controls Judge Call, All Judges, All Contestants and Live Scoreboard pages.</p>
 <form method="post" class="row g-2">
 <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
 <input type="hidden" name="id" value="<?=$id?>">
