@@ -34,6 +34,6 @@ for (const [name, body] of [['approval additions', additions], ['approval synchr
 assert(automatic.includes("ScoringEntryLifecycleService::restoreOrInsert($pdo,'bdc_scoring_entries'"), 'Live Automatic dashboard additions must use the same recovery path');
 
 const version = JSON.parse(read('VERSION.json'));
-assert(version.version === '2.3.6-dev727' && version.build === 3433, 'release metadata mismatch');
+assert(Number(version.version.match(/^2\.3\.6-dev(\d+)$/)?.[1]||0)>=727&&version.build>=3433, 'release metadata must retain or follow the dev727 bib recovery release');
 
 console.log('Orphaned scoring bib recovery v727 checks passed');

@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev727",
-  "build": 3433,
+  "version": "2.3.6-dev728",
+  "build": 3434,
   "status": "development",
-  "release_date": "2026-09-09",
+  "release_date": "2026-09-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Council-correct Jack & Jill roster identities: Salsa Automatic roster tables now resolve and display official SDC IDs while Bachata retains BDC IDs, with matching council-specific headers in both Live and isolated Test scoring.",
     "Permanent withdrawn-bib recovery: Test and Live Jack & Jill roster additions now atomically restore the same withdrawn competitor or release a conflicting withdrawn bib reservation before insertion, covering Super Admin integration approvals, roster synchronization and direct Live Automatic additions without deleting history or weakening the unique bib constraint.",
     "Projector photo-preview parity and reversible adjustment: J&J competitors, Dance Cup contestants and judges now use the saved 4:5 rounded-rectangle preview without a projector-only circular mask, face offset or hidden second zoom; all three photo studios provide Reset View and authorized Restore Original controls, with a new preserved-original field for Dance Cup identities.",
     "ChatGPT connector installation repair: allows unauthenticated MCP initialization and tool discovery so ChatGPT can inspect per-tool OAuth security schemes, then returns the standards-compatible mcp/www_authenticate challenge for protected tool calls while retaining Super Admin authentication and exact read/stage scopes for every BDC data action.",
