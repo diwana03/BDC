@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev729",
-  "build": 3435,
+  "version": "2.3.6-dev730",
+  "build": 3436,
   "status": "development",
   "release_date": "2026-09-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Holding Screen fullscreen control: renders the BDC Official Live Display badge at the safe top-right position on both default and custom holding backgrounds and connects its click or keyboard activation to the existing audience fullscreen handler.",
     "Stable adaptive projector cards: paginated judge boards keep the same four-by-two card and portrait scale on every page, centre incomplete final rows without overlap, and sparse Jack & Jill competitor pages use available card width to show names instead of unnecessary ellipses.",
     "Council-correct Jack & Jill roster identities: Salsa Automatic roster tables now resolve and display official SDC IDs while Bachata retains BDC IDs, with matching council-specific headers in both Live and isolated Test scoring.",
     "Permanent withdrawn-bib recovery: Test and Live Jack & Jill roster additions now atomically restore the same withdrawn competitor or release a conflicting withdrawn bib reservation before insertion, covering Super Admin integration approvals, roster synchronization and direct Live Automatic additions without deleting history or weakening the unique bib constraint.",
