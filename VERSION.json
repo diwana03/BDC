@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev732",
-  "build": 3438,
+  "version": "2.3.6-dev733",
+  "build": 3439,
   "status": "development",
   "release_date": "2026-09-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup two-row projector fit: makes screen content use only the remaining grid row below the category heading and clips the contestant grid inside that allocation, keeping the complete second row above the fixed footer and within the audience safe area.",
     "Dance Cup WDC country projection repair: contestant call, all contestants, live scoreboard and podium now resolve country and multi-country flags from the linked WDC identity before the optional BDC profile, and live projectors refresh when WDC country data changes.",
     "Dance Cup judge call sequence: adds a separate one-by-one judge introduction screen with a large 4:5 portrait, full judge identity and countries, direct judge selection, bounded Previous and Next controls, and optional timed Auto Page rotation while preserving the existing All Judges and scoring screens.",
     "Holding Screen fullscreen control: renders the BDC Official Live Display badge at the safe top-right position on both default and custom holding backgrounds and connects its click or keyboard activation to the existing audience fullscreen handler.",
