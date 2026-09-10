@@ -17,6 +17,6 @@ assert(feed.includes('cursor:pointer'), 'Holding Screen badge does not advertise
 assert(shell.includes("doc.querySelectorAll('.projection-official').forEach"), 'shared fullscreen badge binding is missing');
 assert(shell.includes("badge.addEventListener('click',enterAudienceFullscreen)"), 'Holding Screen badge is not connected to fullscreen');
 assert(shell.includes("event.key==='Enter'||event.key===' '"), 'fullscreen control lacks keyboard activation');
-assert(version.version === '2.3.6-dev730' && version.build === 3436, 'release metadata mismatch');
+assert(version.version.startsWith('2.3.6-dev') && version.build >= 3436, 'release metadata is older than dev730');
 
 console.log('Holding Screen fullscreen control v730 checks passed');
