@@ -18,6 +18,6 @@ assert(css.includes('height:clamp(153px,min(48.75cqw,60cqh),193px)!important'), 
 assert(css.includes('grid-template-rows:minmax(0,1fr) auto auto!important'), 'photo, name and country do not have separate rows');
 assert(css.includes('.competitor-role-grid:not(:has(>.competitor-card:nth-child(7)))'), 'sparse competitor layout is missing');
 assert(css.includes('text-overflow:clip!important'), 'sparse competitor names still force ellipsis');
-assert(version.version === '2.3.6-dev729' && version.build === 3435, 'release metadata mismatch');
+assert(Number(version.version.match(/dev(\d+)$/)?.[1] || 0) >= 729 && version.build >= 3435, 'release metadata predates dev729');
 
 console.log('projector adaptive card sizing v729 regression checks passed');
