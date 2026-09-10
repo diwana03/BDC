@@ -921,3 +921,81 @@ body[data-screen-type="score_matrix"]:has(.matrix-final) .matrix-final .final-co
   flex:0 1 auto!important;
   width:auto!important;
 }
+
+/* dev729 stable paginated projection cards.
+   A partial final page keeps the same four-card tracks as a full page. It may
+   centre unused slots, but it must never enlarge photos into the text rows. */
+html body[data-screen-type="judges"] .stage .list.judge-list.judge-paginated{
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+  grid-auto-rows:minmax(0,1fr)!important;
+  align-content:stretch!important;
+}
+html body[data-screen-type="judges"] .stage .list.judge-list.judge-paginated>.judge-card{
+  grid-column:span 2!important;
+  grid-row:auto!important;
+  grid-template-rows:minmax(0,1fr) auto auto!important;
+  row-gap:clamp(6px,.8cqh,10px)!important;
+  padding:clamp(10px,1.15cqh,17px)!important;
+}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated.judge-count-6>.judge-card:nth-last-child(2){grid-column:3/span 2!important}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated.judge-count-6>.judge-card:nth-last-child(1){grid-column:5/span 2!important}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated.judge-count-7>.judge-card:nth-last-child(3){grid-column:2/span 2!important}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated.judge-count-7>.judge-card:nth-last-child(2){grid-column:4/span 2!important}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated.judge-count-7>.judge-card:nth-last-child(1){grid-column:6/span 2!important}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated .judge-photo-frame{
+  width:clamp(122px,min(39cqw,48cqh),154px)!important;
+  height:clamp(153px,min(48.75cqw,60cqh),193px)!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  align-self:center!important;
+}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated .judge-name{
+  grid-row:2!important;
+  font-size:clamp(23px,min(7.8cqw,7.2cqh),32px)!important;
+  line-height:1!important;
+}
+html body[data-screen-type="judges"] .stage .judge-list.judge-paginated .judge-country{
+  grid-row:3!important;
+  align-self:start!important;
+  min-height:clamp(36px,5.2cqh,52px)!important;
+}
+
+/* Sparse competitor pages have enough height for a full-width identity below
+   the portrait. Use it instead of squeezing and ellipsising the name beside it. */
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:not(:has(>.competitor-card:nth-child(7)))>.competitor-card{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr) auto auto!important;
+  gap:clamp(4px,1cqh,10px)!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:not(:has(>.competitor-card:nth-child(7))) .competitor-photo-frame{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:clamp(82px,min(48cqw,42cqh),132px)!important;
+  height:clamp(103px,min(60cqw,52.5cqh),165px)!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:not(:has(>.competitor-card:nth-child(7))) .competitor-bib{
+  grid-column:1!important;
+  grid-row:2!important;
+  white-space:nowrap!important;
+  font-size:clamp(20px,min(10cqw,8cqh),30px)!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:not(:has(>.competitor-card:nth-child(7))) .competitor-identity{
+  grid-column:1!important;
+  grid-row:3!important;
+  align-self:start!important;
+  overflow:visible!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:not(:has(>.competitor-card:nth-child(7))) .competitor-name{
+  font-size:clamp(16px,min(8.2cqw,6.5cqh),24px)!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:has(>.competitor-card:only-child){
+  grid-template-columns:minmax(0,1fr)!important;
+  place-items:center!important;
+}
+html body:is([data-screen-type="competitors"],[data-screen-type="callbacks"],[data-screen-type="finalists"]) .stage .competitor-role-grid:has(>.competitor-card:only-child)>.competitor-card{
+  width:min(100%,360px)!important;
+  height:min(100%,430px)!important;
+}
