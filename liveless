@@ -1,0 +1,705 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__) . "/bootstrap.php";
+use App\Core\Database;
+use App\Services\LiveDisplaySessionService;
+use App\Services\ProjectionSettingsService;
+use App\Services\ProjectionLayoutService;
+use App\Services\CountryFlagService;
+use App\Services\CountrySetService;
+use App\Services\JudgeDirectoryService;
+use App\Services\ScoringFlightService;
+use App\Services\ProjectionNameService;
+$pdo = Database::connection();
+$token = trim((string) ($_GET["token"] ?? ""));
+$session = LiveDisplaySessionService::byToken($pdo, $token);
+if (!$session) {
+    http_response_code(404);
+    exit("Live Display link is invalid or disabled.");
+}
+$projectorTheme=(string)($session['screen_theme']??'midnight_burgundy');$hasCustomHolding=trim((string)($session['holding_background_url']??''))!=='';
+$test = $session["data_mode"] === "test";
+$roundId = (int) ($session["current_round_id"] ?? 0);
+$type = (string) ($session["screen_type"] ?? "holding");
+$page = max(1, (int) ($session["page_number"] ?? 1));
+$place = (string) ($session["reveal_place"] ?? "");
+$eventTable = $test ? "bdc_test_events" : "bdc_events";
+$eventStmt = $pdo->prepare(
+    "SELECT name FROM {$eventTable} WHERE id=:id LIMIT 1",
+);
+$activeEventId=(int)($session["active_event_id"]??$session["event_id"]);
+$eventStmt->execute(["id" => $activeEventId]);
+$eventName = (string) ($eventStmt->fetchColumn() ?: "BACHATA DANCE COUNCIL");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+$holdingBackground=trim((string)($session['holding_background_url']??''));
+if (
+    $type === "holding" ||
+    $roundId < 1
+) { ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif}.holding{width:100vw;height:100vh;display:grid;place-items:center;text-align:center;background-color:#030509;background-image:<?= $holdingBackground!==''?'url('.json_encode($holdingBackground).')':'radial-gradient(circle at top,#4a101e,#111827 55%,#030509)' ?>;background-size:cover;background-position:center;background-repeat:no-repeat}.holding-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(22px,3.2vh,48px);width:min(92vw,1800px);padding:5vh 4vw}.holding-logo{display:block;width:clamp(104px,10vw,190px);height:auto;aspect-ratio:1;object-fit:contain;border-radius:clamp(16px,1.4vw,28px);background:#fff;box-shadow:0 18px 55px rgba(0,0,0,.38)}.holding-title{max-width:100%;font-size:clamp(34px,4.65vw,96px);font-weight:900;line-height:1.08;text-wrap:balance;text-shadow:0 4px 22px rgba(0,0,0,.72)}@media(max-aspect-ratio:4/3){.holding-inner{gap:clamp(18px,2.6vh,34px)}.holding-logo{width:clamp(92px,17vw,150px)}.holding-title{font-size:clamp(30px,7vw,68px)}}</style></head><body><div class="holding"><div class="holding-inner"><img class="holding-logo" src="<?=e(url('public/assets/bdc-logo.png'))?>" alt="Bachata Dance Council"><?php if($holdingBackground===''):?><div class="holding-title"><?=e($eventName)?></div><?php endif;?></div></div></body></html><?php exit();}
+if (
+    in_array($type, ["final_results", "results", "winners"], true) &&
+    empty($session["results_unlocked"])
+) {
+    http_response_code(403);
+    exit("Results reveal is locked.");
+}
+$roundTable = $test ? "bdc_test_scoring_rounds" : "bdc_scoring_rounds";
+$entryTable = $test ? "bdc_test_scoring_entries" : "bdc_scoring_entries";
+$judgeTable = $test ? "bdc_test_scoring_judges" : "bdc_scoring_judges";
+$resultTable = $test ? "bdc_test_scoring_results" : "bdc_scoring_results";
+$markTable = $test ? "bdc_test_scoring_marks" : "bdc_scoring_marks";
+$finalResultTable = $test
+    ? "bdc_test_scoring_final_results"
+    : "bdc_scoring_final_results";
+$finalPairTable = $test
+    ? "bdc_test_scoring_final_pairs"
+    : "bdc_scoring_final_pairs";
+$competitorTable = $test ? "bdc_test_competitors" : "bdc_competitors";
+$linkedCompetitorPhoto=static function(string $alias)use($test):string{
+    if(!$test)return $alias.'.photo_url';
+    // Test roster identities mirror the official BDC or SDC council code, but
+    // their disposable photo copy may be stale. Resolve the current adjusted
+    // shared-person photo by council identity without changing Test scores.
+    return "COALESCE(NULLIF((SELECT oc.photo_url FROM bdc_competitors oc LEFT JOIN bdc_sdc_competitors os ON os.competitor_id=oc.id AND os.status='active' WHERE (UPPER({$alias}.bdc_id) LIKE 'BDC-%' AND UPPER(oc.bdc_id)=UPPER({$alias}.bdc_id)) OR (UPPER({$alias}.bdc_id) LIKE 'SDC-%' AND UPPER(os.sdc_id)=UPPER({$alias}.bdc_id)) ORDER BY oc.id LIMIT 1),''),{$alias}.photo_url)";
+};
+$photoC=$linkedCompetitorPhoto('c');$photoLc=$linkedCompetitorPhoto('lc');$photoFc=$linkedCompetitorPhoto('fc');
+$s = $pdo->prepare(
+    "SELECT r.*,e.name event_name,e.status event_status FROM {$roundTable} r JOIN {$eventTable} e ON e.id=r.event_id WHERE r.id=:id LIMIT 1",
+);
+$s->execute(["id" => $roundId]);
+$r = $s->fetch();
+if (!$r) {
+    http_response_code(404);
+    exit("Selected round is not available for this Live Display.");
+}
+$roundEventId = (int) $r["event_id"];
+if ($roundEventId !== $activeEventId) {
+    $roundBelongsToSession = $roundEventId === (int) $session["event_id"];
+    if (!$roundBelongsToSession) {
+        $memberQuery = $pdo->prepare("SELECT 1 FROM bdc_live_display_session_events WHERE session_id=:s AND event_id=:e LIMIT 1");
+        $memberQuery->execute(["s" => (int) $session["id"], "e" => $roundEventId]);
+        $roundBelongsToSession = (bool) $memberQuery->fetchColumn();
+    }
+    if (!$roundBelongsToSession) {
+        http_response_code(404);
+        exit("Selected round is not available for this Live Display.");
+    }
+    $activeEventId = $roundEventId;
+    $eventStmt->execute(["id" => $activeEventId]);
+    $eventName = (string) ($eventStmt->fetchColumn() ?: $r["event_name"] ?: "BACHATA DANCE COUNCIL");
+}
+$settings = ProjectionSettingsService::get($pdo, $roundId, $test);
+$cleanFinalProjectionName = static function (mixed $value, mixed $bib = null): string {
+    $name = trim((string) $value);
+    $bibNumber = (int) $bib;
+    if ($bibNumber > 0) {
+        $name = preg_replace('/^\s*(?:BIB\s*)?' . preg_quote((string) $bibNumber, '/') . '\b[\s·|:,-]*/iu', '', $name) ?? $name;
+    }
+    // Projection already renders the real flag, so strip any leading flag emoji/country token from stored display names.
+    $name = preg_replace('/^\s*(?:[\x{1F1E6}-\x{1F1FF}]{2}\s*)+/u', '', $name) ?? $name;
+    $name = preg_replace('/^\s*[A-Z]{2,3}(?:\s*[·|:,-]\s*|\s+)(?=\S)/u', '', $name) ?? $name;
+    $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+    return trim($name);
+};
+$items = [];
+$title = "";
+$finalJudges = [];
+$finalMarks = [];
+$matrixJudges = [];
+$matrixMarks = [];
+$scoringSubmittedJudges = [];
+$scoringPendingJudges = [];
+$scoringTimingJudges = [];
+$judgePaginated = false;
+$scoringComplete =
+    in_array(
+        (string) ($r["event_status"] ?? ""),
+        ["completed", "archived", "published"],
+        true,
+    ) ||
+    in_array(
+        (string) ($r["status"] ?? ""),
+        [
+            "awaiting_decision",
+            "scores_submitted",
+            "pending_approval",
+            "completed",
+            "archived",
+            "published",
+        ],
+        true,
+    );
+if ($type === "flights") {
+    $flightSummary = ScoringFlightService::summary($pdo, $roundId, $test);
+    $flight = max(1, $page);
+    $title = "ROUND {$flight} · NOW DANCING";
+    ScoringFlightService::ensure($pdo, $test);
+    $assignmentTable = $test ? 'bdc_test_scoring_flight_assignments' : 'bdc_scoring_flight_assignments';
+    if ((string)$r['round_type'] === 'final') {
+        $q = $pdo->prepare("SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,{$photoLc} leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,{$photoFc} follower_photo FROM {$assignmentTable} fa JOIN {$finalPairTable} fp ON fp.id=fa.subject_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fa.round_id=:r AND fa.subject_type='pair' AND fa.flight_number=:flight ORDER BY fa.position_number");
+        $q->execute(['r'=>$roundId,'flight'=>$flight]);
+        $items = $q->fetchAll();
+        $type = 'final_couples';
+    } else {
+        $q = $pdo->prepare("SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$assignmentTable} fa JOIN {$entryTable} se ON se.id=fa.subject_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE fa.round_id=:r AND fa.subject_type='entry' AND fa.flight_number=:flight ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 ELSE 2 END,fa.position_number");
+        $q->execute(['r'=>$roundId,'flight'=>$flight]);
+        $items = $q->fetchAll();
+        $type = 'flight_competitors';
+    }
+} elseif ($type === "matching") {
+    $title = "RANDOM FINAL MATCH";
+    $q = $pdo->prepare("SELECT fp.pair_number,l.bib_number leader_bib,l.display_name leader_name,lc.country leader_country,{$photoLc} leader_photo,f.bib_number follower_bib,f.display_name follower_name,fc.country follower_country,{$photoFc} follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} l ON l.id=fp.leader_entry_id LEFT JOIN {$entryTable} f ON f.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=l.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=f.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number");
+    $q->execute(["r" => $roundId]);
+    $items = $q->fetchAll();
+    $type = "matching_couples";
+} elseif (in_array($type, ["judges", "judge_call"], true)) {
+    $judgeCall = $type === "judge_call";
+    $title = $judgeCall ? "CALLING JUDGES" : "JUDGES";
+    try {
+        JudgeDirectoryService::ensure($pdo);
+        JudgeDirectoryService::backfillAssignments($pdo);
+    } catch (Throwable) {
+    }
+    $q = $pdo->prepare(
+        "SELECT sj.judge_name,sj.judge_order,sj.is_chief,sj.scoring_scope,j.full_name,j.country,j.countries_json,j.country_code,j.photo_url FROM {$judgeTable} sj LEFT JOIN bdc_judges j ON j.id=sj.judge_id WHERE sj.round_id=:r ORDER BY sj.is_chief DESC,sj.judge_order,sj.id",
+    );
+    $q->execute(["r" => $roundId]);
+    $items = $q->fetchAll();
+    if ($judgeCall) {
+        $judgeTotal = count($items);
+        $judgePage = max(1, min($page, max(1, $judgeTotal)));
+        $items = $judgeTotal > 0 ? [$items[$judgePage - 1]] : [];
+        $title = "CALLING JUDGE {$judgePage} OF " . max(1, $judgeTotal);
+    } else {
+        $judgeTotal = count($items);
+        $judgePageSize = 8;
+        $judgePages = max(1, (int) ceil($judgeTotal / $judgePageSize));
+        $judgePaginated = $judgePages > 1;
+        $judgePage = max(1, min($page, $judgePages));
+        $items = array_slice($items, ($judgePage - 1) * $judgePageSize, $judgePageSize);
+        if ($judgePages > 1) {
+            $title = "JUDGES · PAGE {$judgePage} OF {$judgePages}";
+        }
+    }
+} elseif ($type === "competitors") {
+    $isFinalRound = $r["round_type"] === "final";
+    $title = $isFinalRound ? "FINALIST COUPLES" : "COMPETITORS";
+    if ($isFinalRound) {
+        $q = $pdo->prepare(
+            "SELECT fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,{$photoLc} leader_photo,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,{$photoFc} follower_photo FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fp.round_id=:r ORDER BY fp.pair_number",
+        );
+    } else {
+        $q = $pdo->prepare(
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY se.dance_role,se.bib_number IS NULL,se.bib_number,se.display_name",
+        );
+    }
+    $q->execute(["r" => $roundId]);
+    $items = $q->fetchAll();
+    if ($isFinalRound) {
+        // Use the shared couple renderer, which includes both dancer flags.
+        $type = "final_couples";
+    }
+} elseif (in_array($type, ["callbacks", "finalists"], true)) {
+    $title = $type === "callbacks" ? "CALLBACKS" : "FINALISTS";
+    if ($type === "finalists" && (string) $r["round_type"] === "final") {
+        $q = $pdo->prepare(
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,c.countries_json,{$photoC} photo_url FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE se.round_id=:r AND se.entry_status='active' ORDER BY CASE se.dance_role WHEN 'leader' THEN 1 WHEN 'follower' THEN 2 ELSE 3 END,se.bib_number IS NULL,se.bib_number,se.display_name",
+        );
+    } else {
+        $q = $pdo->prepare(
+            "SELECT se.display_name,se.bib_number,se.dance_role,c.country,{$photoC} photo_url,sr.rank_number FROM {$resultTable} sr JOIN {$entryTable} se ON se.id=sr.entry_id LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id WHERE sr.round_id=:r AND sr.result_status IN('callback','alternate') ORDER BY sr.rank_number,se.display_name",
+        );
+    }
+    $q->execute(["r" => $roundId]);
+    $items = $q->fetchAll();
+} elseif ($type === "score_matrix") {
+    $isFinalMatrix=(string)$r["round_type"]==="final";
+    $title=$isFinalMatrix?"LIVE RELATIVE PLACEMENT MATRIX":"LIVE SCORE MATRIX · PROVISIONAL";
+    $jq=$pdo->prepare("SELECT id,judge_order,judge_name,is_chief,scoring_scope FROM {$judgeTable} WHERE round_id=:r ORDER BY is_chief DESC,judge_order,id");
+    $jq->execute(["r"=>$roundId]);
+    $matrixJudges=$jq->fetchAll();
+    $matrixJudgeTotal=count($matrixJudges);
+    $matrixJudgePageSize=$isFinalMatrix?8:max(1,$matrixJudgeTotal);
+    $matrixJudgeTotalPages=$isFinalMatrix?max(1,(int)ceil($matrixJudgeTotal/$matrixJudgePageSize)):1;
+    $matrixJudgePage=$isFinalMatrix?max(1,min($page,$matrixJudgeTotalPages)):1;
+    if($isFinalMatrix&&$matrixJudgeTotalPages>1){
+        $matrixJudges=array_slice($matrixJudges,($matrixJudgePage-1)*$matrixJudgePageSize,$matrixJudgePageSize);
+        $title="FINAL RELATIVE PLACEMENT · PAGE {$matrixJudgePage} OF {$matrixJudgeTotalPages}";
+    }
+    if($isFinalMatrix){
+        $q=$pdo->prepare("SELECT fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,lc.country leader_country,fe.display_name follower_name,fe.bib_number follower_bib,fc.country follower_country,COALESCE(fr.final_rank,0) rank_number,COALESCE(fr.placement_sum,0) total_score FROM {$finalPairTable} fp JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id LEFT JOIN {$finalResultTable} fr ON fr.round_id=fp.round_id AND fr.pair_id=fp.id WHERE fp.round_id=:r AND fp.pairing_status='confirmed' ORDER BY CASE WHEN fr.final_rank IS NULL THEN 1 ELSE 0 END,fr.final_rank,fp.pair_number");
+        $q->execute(["r"=>$roundId]);$items=$q->fetchAll();
+        $finalMarkTable=$test?"bdc_test_scoring_final_marks":"bdc_scoring_final_marks";
+        $mq=$pdo->prepare("SELECT pair_id,judge_id,rank_value FROM {$finalMarkTable} WHERE round_id=:r");
+        $mq->execute(["r"=>$roundId]);
+        foreach($mq->fetchAll() as $mark)$matrixMarks[(int)$mark["pair_id"]][(int)$mark["judge_id"]]=(int)$mark["rank_value"];
+    }else{
+        $q=$pdo->prepare("SELECT se.id,se.bib_number,se.display_name,se.dance_role,c.country,COALESCE(sr.rank_number,0) official_rank,COALESCE(SUM(m.weighted_score),0) total_score FROM {$entryTable} se LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id WHERE se.round_id=:r AND se.entry_status='active' GROUP BY se.id,se.bib_number,se.display_name,se.dance_role,c.country,sr.rank_number ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name");
+        $q->execute(["r"=>$roundId]);$items=$q->fetchAll();
+        $mq=$pdo->prepare("SELECT entry_id,judge_id,mark_type,alt_rank FROM {$markTable} WHERE round_id=:r");
+        $mq->execute(["r"=>$roundId]);
+        foreach($mq->fetchAll() as $mark){$label=$mark["mark_type"]==="yes"?"YES":($mark["mark_type"]==="alt"?"A".(int)$mark["alt_rank"]:"—");$matrixMarks[(int)$mark["entry_id"]][(int)$mark["judge_id"]]=$label;}
+        $roleRanks=[];foreach($items as &$matrixItem){$role=(string)$matrixItem["dance_role"];$roleRanks[$role]=($roleRanks[$role]??0)+1;$matrixItem["rank_number"]=!empty($matrixItem["official_rank"])?(int)$matrixItem["official_rank"]:$roleRanks[$role];}unset($matrixItem);
+    }
+} elseif ($type === "heats_scores") {
+    $title = "LIVE CONTESTANT SCORES";
+    $q = $pdo->prepare(
+        "SELECT sr.rank_number AS official_rank,COALESCE(SUM(m.weighted_score),sr.total_score,0) total_score,COALESCE(sr.result_status,'provisional') result_status,se.bib_number,se.display_name,se.dance_role,c.country,c.countries_json
+         FROM {$entryTable} se
+         LEFT JOIN {$competitorTable} c ON c.id=se.competitor_id
+         LEFT JOIN {$resultTable} sr ON sr.round_id=se.round_id AND sr.entry_id=se.id
+         LEFT JOIN {$markTable} m ON m.round_id=se.round_id AND m.entry_id=se.id
+         WHERE se.round_id=:r AND se.entry_status='active'
+         GROUP BY sr.rank_number,sr.total_score,sr.result_status,se.id,se.bib_number,se.display_name,se.dance_role,c.country,c.countries_json
+         ORDER BY se.dance_role,total_score DESC,se.bib_number,se.display_name",
+    );
+    $q->execute(["r" => $roundId]);
+    $items = $q->fetchAll();
+    $roleRanks = [];
+    foreach ($items as &$item) {
+        $role = (string) $item["dance_role"];
+        $roleRanks[$role] = ($roleRanks[$role] ?? 0) + 1;
+        $item["rank_number"] = !empty($item["official_rank"])
+            ? (int) $item["official_rank"]
+            : $roleRanks[$role];
+    }
+    unset($item);
+} elseif (in_array($type, ["final_results", "results", "winners"], true)) {
+    $title = $type === "winners" ? "WINNER PODIUM" : "FINAL FULL RESULTS";
+    try {
+        $rankLimit =
+            $type === "winners" ? " AND fr.final_rank BETWEEN 1 AND 5" : "";
+        $q = $pdo->prepare(
+            "SELECT fr.final_rank,fr.placement_sum AS total_score,fp.id pair_id,fp.pair_number,le.display_name leader_name,le.bib_number leader_bib,fe.display_name follower_name,fe.bib_number follower_bib,lc.country leader_country,{$photoLc} leader_photo,fc.country follower_country,{$photoFc} follower_photo FROM {$finalResultTable} fr JOIN {$finalPairTable} fp ON fp.id=fr.pair_id JOIN {$entryTable} le ON le.id=fp.leader_entry_id LEFT JOIN {$entryTable} fe ON fe.id=fp.follower_entry_id LEFT JOIN {$competitorTable} lc ON lc.id=le.competitor_id LEFT JOIN {$competitorTable} fc ON fc.id=fe.competitor_id WHERE fr.round_id=:r{$rankLimit} ORDER BY fr.final_rank ASC",
+        );
+        $q->execute(["r" => $roundId]);
+        $items = $q->fetchAll();
+    } catch (Throwable) {
+        $items = [];
+    }
+    if ($type === "final_results") {
+        $jq = $pdo->prepare(
+            "SELECT id,judge_order,judge_name,is_chief FROM {$judgeTable} WHERE round_id=:r ORDER BY judge_order,id",
+        );
+        $jq->execute(["r" => $roundId]);
+        $finalJudges = $jq->fetchAll();
+        $finalMarkTable = $test
+            ? "bdc_test_scoring_final_marks"
+            : "bdc_scoring_final_marks";
+        $mq = $pdo->prepare(
+            "SELECT pair_id,judge_id,rank_value FROM {$finalMarkTable} WHERE round_id=:r",
+        );
+        $mq->execute(["r" => $roundId]);
+        foreach ($mq->fetchAll() as $mark) {
+            $finalMarks[(int) $mark["pair_id"]][(int) $mark["judge_id"]] =
+                $mark["rank_value"];
+        }
+    }
+    if ($type === "winners" && $place !== "" && $place !== "all") {
+        $reveal = max(1, min(5, (int) $place));
+        $items = array_values(
+            array_filter($items, fn($x) => (int) $x["final_rank"] >= $reveal),
+        );
+    }
+} else {
+    $title = $scoringComplete ? "SCORING COMPLETED" : "SCORING IN PROGRESS";
+    try {
+        $sessionTable = $test
+            ? "bdc_test_scoring_judge_sessions"
+            : "bdc_scoring_judge_sessions";
+        $q = $pdo->prepare(
+            "SELECT j.id,j.judge_order,j.judge_name,j.is_chief,COALESCE(s.status,'not_started') session_status,
+                    s.opened_at,s.submitted_at,
+                    CASE WHEN s.opened_at IS NOT NULL AND s.submitted_at IS NOT NULL
+                         THEN GREATEST(0,TIMESTAMPDIFF(SECOND,s.opened_at,s.submitted_at)) ELSE NULL END elapsed_seconds
+             FROM {$judgeTable} j
+             LEFT JOIN {$sessionTable} s ON s.round_id=j.round_id AND s.judge_id=j.id
+             WHERE j.round_id=:r
+             ORDER BY j.is_chief DESC,j.judge_order,j.id",
+        );
+        $q->execute(["r" => $roundId]);
+        $scoringJudges = $q->fetchAll();
+        foreach ($scoringJudges as $scoringJudge) {
+            if ((string) $scoringJudge["session_status"] === "submitted") {
+                $scoringSubmittedJudges[] = $scoringJudge;
+            } else {
+                $scoringPendingJudges[] = $scoringJudge;
+            }
+        }
+        $items = [[
+            "total" => count($scoringJudges),
+            "submitted" => count($scoringSubmittedJudges),
+        ]];
+        if ($scoringJudges && !$scoringPendingJudges) {
+            $scoringTimingJudges = array_values(array_filter(
+                $scoringSubmittedJudges,
+                static fn(array $judge): bool => $judge["elapsed_seconds"] !== null,
+            ));
+            usort($scoringTimingJudges, static fn(array $a, array $b): int =>
+                ((int) $a["elapsed_seconds"] <=> (int) $b["elapsed_seconds"])
+                ?: ((int) $a["judge_order"] <=> (int) $b["judge_order"])
+            );
+        }
+    } catch (Throwable) {
+        $items = [["total" => 0, "submitted" => 0]];
+    }
+}
+
+// Audience screens use compact first names. When the same first name appears
+// more than once on the current screen, add the surname initial to both names.
+$items = ProjectionNameService::abbreviateRows(
+    $items,
+    ["display_name", "leader_name", "follower_name"],
+);
+$matrixJudges = ProjectionNameService::abbreviateRows($matrixJudges, ["judge_name"]);
+$finalJudges = ProjectionNameService::abbreviateRows($finalJudges, ["judge_name"]);
+if (in_array($type, ["judges", "judge_call"], true)) {
+    $judgeProjectionNames = [];
+    foreach ($items as $judgeIndex => $judgeItem) {
+        $judgeProjectionNames[(string) $judgeIndex] = trim((string) (
+            $judgeItem["full_name"] ?: $judgeItem["judge_name"]
+        ));
+    }
+    $judgeProjectionNames = ProjectionNameService::abbreviateNames($judgeProjectionNames);
+    foreach ($items as $judgeIndex => &$judgeItem) {
+        $judgeItem["full_name"] = $judgeProjectionNames[(string) $judgeIndex] ?? "";
+        $judgeItem["judge_name"] = $judgeItem["full_name"];
+    }
+    unset($judgeItem);
+}
+$animalPlaceholders = [
+    url("public/assets/img/projection-animals/rabbit.png"),
+    url("public/assets/img/projection-animals/baby-elephant.png"),
+    url("public/assets/img/projection-animals/panda.png"),
+];
+$animalPhoto = static function (string $key) use ($animalPlaceholders): string {
+    $index = abs((int) crc32($key)) % count($animalPlaceholders);
+    return $animalPlaceholders[$index];
+};
+// Projection identity is never optional: every scoring/status view carries the
+// contestant bib and country flag in both Test and Live modes.
+if ($type === "score_matrix") {
+    foreach ($items as &$projectionItem) {
+        if ((string) $r["round_type"] === "final") {
+            $leaderFlag = CountryFlagService::emoji($projectionItem["leader_country"] ?? null);
+            $followerFlag = CountryFlagService::emoji($projectionItem["follower_country"] ?? null);
+            $projectionItem["leader_name"] = "BIB " . ($projectionItem["leader_bib"] ?: "—") . ($leaderFlag !== "" ? " " . $leaderFlag : "") . " " . $projectionItem["leader_name"];
+            $projectionItem["follower_name"] = "BIB " . ($projectionItem["follower_bib"] ?: "—") . ($followerFlag !== "" ? " " . $followerFlag : "") . " " . $projectionItem["follower_name"];
+        } else {
+            // Heats matrix renders a real flag image beside the clean audience name.
+            // Do not prefix emoji/country-code text into display_name.
+        }
+    }
+    unset($projectionItem);
+} elseif (in_array($type, ["final_results", "results"], true)) {
+    foreach ($items as &$projectionItem) {
+        if (isset($projectionItem["pair_number"])) {
+            $leaderFlag = CountryFlagService::emoji($projectionItem["leader_country"] ?? null);
+            $followerFlag = CountryFlagService::emoji($projectionItem["follower_country"] ?? null);
+            $projectionItem["leader_name"] = "P" . (int) $projectionItem["pair_number"] . " · BIB " . ($projectionItem["leader_bib"] ?: "—") . ($leaderFlag !== "" ? " " . $leaderFlag : "") . " " . $projectionItem["leader_name"];
+            $projectionItem["follower_name"] = "BIB " . ($projectionItem["follower_bib"] ?: "—") . ($followerFlag !== "" ? " " . $followerFlag : "") . " " . $projectionItem["follower_name"];
+        }
+    }
+    unset($projectionItem);
+}
+
+$judgeDisplayTotalPages=1;
+$judgeDisplayPage=1;
+if($type==="judges"){
+    // Audience readability wins over fit-at-any-cost. Keep at most eight judge
+    // cards on a 16:9 page and balance larger panels across multiple pages.
+    $judgeDisplayTotalPages=max(1,(int)ceil(count($items)/8));
+    $judgeDisplayPage=max(1,min($page,$judgeDisplayTotalPages));
+    $items=ProjectionLayoutService::balancedPageSlice($items,$judgeDisplayPage,$judgeDisplayTotalPages);
+    if($judgeDisplayTotalPages>1)$title="JUDGES · PAGE {$judgeDisplayPage} OF {$judgeDisplayTotalPages}";
+}
+
+$heatsScoreRoleItems=["leader"=>[],"follower"=>[]];
+$heatsScoreRoleTotals=["leader"=>0,"follower"=>0];
+$heatsScoreTotalPages=1;
+$heatsScorePage=1;
+if(in_array($type,["heats_scores","score_matrix"],true)&&(string)$r["round_type"]!=="final"){
+    foreach($items as $scoreItem){
+        $scoreRole=(string)($scoreItem["dance_role"]??"");
+        if(isset($heatsScoreRoleItems[$scoreRole]))$heatsScoreRoleItems[$scoreRole][]=$scoreItem;
+    }
+    foreach($heatsScoreRoleItems as $scoreRole=>$scoreRows)$heatsScoreRoleTotals[$scoreRole]=count($scoreRows);
+    $heatsScoreTotalPages=max(1,(int)ceil(max($heatsScoreRoleTotals)/12));
+    $heatsScorePage=max(1,min($page,$heatsScoreTotalPages));
+    foreach($heatsScoreRoleItems as $scoreRole=>$scoreRows){
+        $heatsScoreRoleItems[$scoreRole]=ProjectionLayoutService::balancedPageSlice($scoreRows,$heatsScorePage,$heatsScoreTotalPages);
+    }
+}
+
+$layout = ProjectionLayoutService::resolve(
+    (string) $settings["screen_format"],
+    max(1, count($items)),
+    (string) $settings["density"],
+    $settings["custom_width"] ?: null,
+    $settings["custom_height"] ?: null,
+);
+$ratio = in_array($type, ["score_matrix", "heats_scores", "final_results", "results"], true)
+    ? 16 / 9
+    : $layout["ratio"];
+$cols = $layout["columns"];
+if ($type === "judges") {
+    // Judge pages are audience-first cards, not full-width rows.
+    $judgeCount = count($items);
+    $cols = $judgeCount <= 1 ? 1 : ($judgeCount === 2 ? 2 : ($judgeCount === 3 ? 3 : ($judgeCount === 4 ? 4 : ($judgeCount === 5 ? 5 : ($judgeCount === 6 ? 3 : 4)))));
+}
+$coupleProjection = in_array($type, ["final_couples", "matching_couples"], true);
+$coupleColumns = 5;
+$coupleRows = max(1, (int) ceil(count($items) / $coupleColumns));
+$competitorRoleItems=["leader"=>[],"follower"=>[]];
+$competitorRoleTotals=["leader"=>0,"follower"=>0];
+$isFlightRoster=$type==="flight_competitors";
+$flightDisplayPage=$isFlightRoster?max(1,(int)($_GET["display_page"]??1)):1;
+$competitorRolePaged=in_array($type,["competitors","callbacks","finalists"],true);
+$competitorRoleCols=($competitorRolePaged||$isFlightRoster)?3:max(1,(int)floor($cols/2));
+$competitorRoleCapacity=($competitorRolePaged||$isFlightRoster)?15:max(1,(int)$layout["rows"]*$competitorRoleCols);
+$splitRoleScreen=in_array($type,["competitors","callbacks","finalists","flight_competitors"],true)&&((string)$r["round_type"]!=="final"||$type==="finalists");
+if($splitRoleScreen){
+    foreach($items as $competitorItem){
+        $role=(string)($competitorItem["dance_role"]??"");
+        if(isset($competitorRoleItems[$role]))$competitorRoleItems[$role][]=$competitorItem;
+    }
+    foreach($competitorRoleItems as $role=>$roleItems)$competitorRoleTotals[$role]=count($roleItems);
+    $competitorRoleTotalPages=max(1,(int)ceil(max(array_map('count',$competitorRoleItems))/$competitorRoleCapacity));
+    $competitorRolePage=$isFlightRoster?min($flightDisplayPage,$competitorRoleTotalPages):max(1,min($page,$competitorRoleTotalPages));
+    foreach($competitorRoleItems as $role=>$roleItems){
+        $competitorRoleItems[$role]=array_slice($roleItems,($competitorRolePage-1)*$competitorRoleCapacity,$competitorRoleCapacity);
+    }
+} elseif (
+    in_array($type, ["callbacks", "finalists"], true) &&
+    !$splitRoleScreen &&
+    count($items) > $layout["capacity"]
+) {
+    $items = array_slice(
+        $items,
+        ($page - 1) * $layout["capacity"],
+        $layout["capacity"],
+    );
+}
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= e(
+    $title,
+) ?></title><link rel="stylesheet" href="../public/css/projector-responsive-v344.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-responsive-v344.css') ?>"><link rel="stylesheet" href="../public/css/projector-themes-v352.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-themes-v352.css') ?>"><link id="bdc-projector-roster-fix" rel="stylesheet" href="../public/css/projector-roster-v615.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-roster-v615.css') ?>"><link rel="stylesheet" href="../public/css/projector-safe-v616.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/public/css/projector-safe-v616.css') ?>"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,"Segoe UI Emoji","Apple Color Emoji",sans-serif;overflow:hidden}.viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}.stage{aspect-ratio:<?= e(
+    (string) $ratio,
+) ?>;width:min(100vw,calc(100vh * <?= e(
+    (string) $ratio,
+) ?>));height:min(100vh,calc(100vw / <?= e(
+    (string) $ratio,
+) ?>));background:radial-gradient(circle at top,#4a101e,#111827 50%,#030509);padding:1.35% 2.1% .8%;text-align:center;overflow:hidden;display:flex;flex-direction:column}.event{font-size:clamp(18px,1.8vw,46px);font-weight:900}.meta{font-size:clamp(12px,.95vw,24px);color:#ffb7c3}.title{font-size:clamp(22px,2.2vw,54px);font-weight:900;margin:.35% 0 .6%}.list{flex:1;display:grid;grid-template-columns:repeat(<?= $cols ?>,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.7%;min-height:0}.item{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:3%;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;overflow:hidden;font-size:clamp(11px,1.2vw,28px)}.photo{width:min(8vw,11vh);height:min(8vw,11vh);border-radius:50%;object-fit:cover;margin-bottom:.4em}.name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.big{font-size:clamp(60px,10vw,220px);font-weight:900}.small{font-size:.72em;color:#cbd5e1}.podium{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:1%;min-height:0}.podium-slot{width:18%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}.podium-person{min-height:27%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:2%;width:100%}.podium-photos{display:flex;justify-content:center;align-items:center;gap:.45vw;height:min(7vw,10vh)}.podium-photo{width:min(6vw,9vh);height:min(6vw,9vh);border-radius:50%;object-fit:cover;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}.podium-photo.blank{display:block}.podium-name{font-weight:900;font-size:clamp(11px,1.15vw,27px);max-width:100%;min-height:2.3em;display:flex;align-items:center;justify-content:center}.podium-country{font-size:clamp(9px,.75vw,18px);color:#ddd;min-height:1.4em}.block{width:100%;border-radius:12px 12px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:8%;font-size:clamp(30px,5vw,100px);font-weight:900;background:linear-gradient(#7d2638,#35101a);border:2px solid rgba(255,255,255,.18)}.p1{height:58%;background:linear-gradient(#d8aa37,#6e4d00)}.p2{height:46%;background:linear-gradient(#aeb5bf,#505866)}.p3{height:38%;background:linear-gradient(#a86c45,#56311d)}.p4{height:29%}.p5{height:23%}.score-table{width:100%;border-collapse:collapse;font-size:clamp(11px,1.15vw,25px);background:rgba(17,24,39,.82)}.score-table th,.score-table td{border:1px solid rgba(255,255,255,.24);padding:.42em .65em;text-align:left}.score-table th{background:#7d2638;text-transform:uppercase}.score-table .num{text-align:center;font-weight:900}.score-table.relative{font-size:clamp(8px,.82vw,18px);table-layout:fixed}.score-table.relative th:nth-child(2),.score-table.relative td:nth-child(2){text-align:left;width:22%}.score-table.relative th:not(:nth-child(2)),.score-table.relative td:not(:nth-child(2)){padding:.35em .2em}.stage>.score-table{flex:1;height:auto;margin-bottom:.2%}.judge-key{display:flex;flex-wrap:wrap;gap:.3em 1em;margin-top:.7em;font-size:clamp(7px,.65vw,14px);text-align:left}.competitor-split{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1%}.competitor-role-panel{min-width:0;min-height:0;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.28);border-radius:12px;overflow:hidden;background:rgba(5,10,20,.28)}.competitor-role-title{padding:.38em .7em;background:#111827;border-bottom:1px solid rgba(255,255,255,.35);font-size:clamp(14px,1.2vw,28px);font-weight:900;letter-spacing:.09em;display:flex;justify-content:space-between}.competitor-role-grid{flex:1;min-width:0;min-height:0;width:100%;overflow:hidden;display:grid;grid-template-columns:repeat(<?= $competitorRoleCols ?>,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.6%;padding:.6%}.competitor-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(2px,.25vh,4px);min-width:0;min-height:0;padding:clamp(4px,.38vw,8px);border:1px solid rgba(216,170,55,.32);border-radius:10px;background:linear-gradient(155deg,rgba(31,43,65,.96),rgba(12,20,35,.98));box-shadow:inset 0 1px rgba(255,255,255,.06);overflow:hidden;text-align:center}.competitor-photo-frame{flex:0 0 auto;width:clamp(46px,6.2vh,68px);height:clamp(46px,6.2vh,68px);display:grid;place-items:center}.competitor-card .photo{display:block;width:100%;height:100%;margin:0;border-radius:50%;object-fit:cover;object-position:center 24%;background:linear-gradient(145deg,#f8fafc,#dbe3ee);border:2px solid rgba(255,255,255,.92);box-shadow:0 4px 12px rgba(0,0,0,.42)}.competitor-name{flex:0 0 auto;width:100%;font-size:clamp(11px,.9vw,19px);font-weight:950;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.competitor-bib{flex:0 0 auto;font-size:clamp(14px,1.1vw,24px);font-weight:950;line-height:1;color:#fff;letter-spacing:.025em}.competitor-country{flex:0 0 auto;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;font-size:clamp(8px,.62vw,13px);line-height:1.05;color:#cbd5e1;white-space:nowrap;overflow:hidden}.competitor-country-name{overflow:hidden;text-overflow:ellipsis}.competitor-flag{flex:0 0 auto;width:clamp(16px,1.2vw,25px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:2px;box-shadow:0 2px 5px rgba(0,0,0,.35)}.judge-card{container-type:size;display:grid;grid-template-rows:minmax(70px,1fr) auto auto auto auto;place-items:center;gap:clamp(3px,.5vh,8px);min-width:0;min-height:0;padding:min(1.7cqh,1cqw);border:1px solid rgba(216,170,55,.32);border-radius:max(9px,min(1.25cqh,.78cqw));background:linear-gradient(155deg,rgba(31,43,65,.96),rgba(12,20,35,.98));box-shadow:inset 0 1px rgba(255,255,255,.06),0 .8cqh 2cqh rgba(0,0,0,.22);overflow:hidden}.judge-card.chief{border-color:rgba(255,207,69,.9);background:linear-gradient(155deg,rgba(83,58,15,.82),rgba(20,24,37,.98));box-shadow:inset 0 0 2cqh rgba(255,207,69,.1),0 .8cqh 2cqh rgba(0,0,0,.25)}.judge-photo-frame{position:relative;align-self:center;width:clamp(64px,min(8vw,13vh),170px);height:clamp(64px,min(8vw,13vh),170px);min-width:0;display:grid;place-items:center}.judge-photo,.judge-photo-fallback{grid-area:1/1;width:100%;height:100%;border-radius:50%;border:max(2px,min(.35cqw,.35cqh)) solid rgba(255,255,255,.92);box-shadow:0 min(.7cqh,.45cqw) min(1.7cqh,1.05cqw) rgba(0,0,0,.42)}.judge-photo{z-index:1;object-fit:cover;object-position:center 24%;background:linear-gradient(145deg,#f8fafc,#dbe3ee)}.judge-photo-fallback{display:grid;place-items:center;background:linear-gradient(145deg,#eef2f7,#cbd5e1);color:#17233a;font-size:clamp(18px,min(18cqw,18cqh),46px);font-weight:950}.judge-name{width:100%;font-size:clamp(12px,min(11cqw,13cqh),30px);font-weight:950;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.judge-position{display:flex;align-items:center;justify-content:center;gap:.38em;font-size:clamp(9px,min(7.8cqw,9cqh),19px);font-weight:950;letter-spacing:.055em;color:#dbe5f3}.judge-card.chief .judge-position{color:#ffcf45}.judge-scope{width:100%;font-size:clamp(8px,min(7cqw,8cqh),17px);font-weight:800;line-height:1.05;color:#aebbd0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.judge-country{width:100%;min-height:1.25em;display:flex;align-items:center;justify-content:center;gap:min(2.5cqw,.38em);font-size:clamp(8px,min(7cqw,8cqh),17px);line-height:1.05;color:#cbd5e1;white-space:nowrap;overflow:hidden}.judge-country-name{overflow:hidden;text-overflow:ellipsis}.judge-flag{flex:0 0 auto;width:clamp(18px,min(12cqw,12cqh),38px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}
+/* dev684 judge board: force true audience card grid in the renderer itself. */
+body[data-screen-type="judges"] .judge-list{display:grid!important;grid-auto-rows:minmax(0,1fr)!important;align-content:stretch!important;justify-content:stretch!important;gap:1.05%!important}
+body[data-screen-type="judges"] .judge-list.judge-count-1{grid-template-columns:minmax(0,.44fr)!important;justify-content:center!important}
+body[data-screen-type="judges"] .judge-list.judge-count-2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-4{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-5{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-6{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-list.judge-count-7,body[data-screen-type="judges"] .judge-list.judge-count-8{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-screen-type="judges"] .judge-card{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto auto!important;place-items:center!important;gap:clamp(4px,.62cqh,8px)!important;padding:clamp(8px,1.05cqh,14px)!important;min-width:0!important;min-height:0!important}
+body[data-screen-type="judges"] .judge-photo-frame{grid-column:1!important;grid-row:1!important;align-self:center!important;width:clamp(94px,min(11.04vw,16.8vh),168px)!important;height:clamp(118px,min(13.8vw,21vh),210px)!important}
+body[data-screen-type="judges"] .judge-photo,body[data-screen-type="judges"] .judge-photo-fallback{border-radius:clamp(10px,1.1cqw,18px)!important}
+body[data-screen-type="judges"] .judge-name{grid-column:1!important;grid-row:2!important;align-self:center!important;width:100%!important;font-size:clamp(21px,min(2.05vw,3.45vh),40px)!important;line-height:1!important;text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-weight:950!important}
+body[data-screen-type="judges"] .judge-position,body[data-screen-type="judges"] .judge-scope{display:none!important}
+body[data-screen-type="judges"] .judge-country{grid-column:1!important;grid-row:3!important;align-self:start!important;display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:flex-start!important;justify-content:center!important;gap:clamp(8px,.75cqw,14px)!important;width:100%!important;max-width:100%!important;overflow:hidden!important;padding:0!important}
+body[data-screen-type="judges"] .judge-country-entry{display:inline-flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:clamp(2px,.35cqh,4px)!important;min-width:0!important}
+body[data-screen-type="judges"] .judge-country .judge-flag{width:clamp(42px,min(4.2vw,6.8vh),72px)!important;height:auto!important;border-radius:4px!important}
+body[data-screen-type="judges"] .judge-country-name{display:block!important;font-size:clamp(13px,min(1.05vw,1.75vh),21px)!important;line-height:1!important;font-weight:900!important;text-transform:uppercase!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-align:center!important}
+body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-photo-frame,body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-photo-frame{width:clamp(94px,min(11.04vw,16.8vh),164px)!important;height:clamp(118px,min(13.8vw,21vh),205px)!important}
+body[data-screen-type="judges"] .judge-list.judge-count-7 .judge-name,body[data-screen-type="judges"] .judge-list.judge-count-8 .judge-name{font-size:clamp(20px,min(1.9vw,3.05vh),36px)!important}
+/* Display the exact 4:5 preview saved by the photo studio. No projector-only
+   circle mask, face offset, or second crop. */
+.stage .competitor-photo-frame{width:clamp(46px,min(30.4cqw,62.4cqh),109px)!important;height:clamp(58px,min(38cqw,78cqh),136px)!important;aspect-ratio:4/5!important}
+.stage .competitor-card .photo,.stage .judge-photo,.stage .judge-photo-fallback{border-radius:clamp(7px,2cqw,12px)!important;object-position:center!important}
+.stage img.photo:not(.matching-photo){width:min(6.4vw,8.8vh)!important;height:min(8vw,11vh)!important;border-radius:clamp(7px,.65vw,12px)!important;object-position:center!important}
+.stage .matching-list img.matching-photo{width:min(4.48vw,5.44vh)!important;height:min(5.6vw,6.8vh)!important;border-radius:clamp(6px,.5vw,10px)!important;object-position:center!important}
+body[data-screen-type="final_couples"] .stage .final-couple-person>img.photo{width:clamp(42px,5.36cqh,74px)!important;height:clamp(52px,6.7cqh,92px)!important}
+.stage .podium-photos{height:min(8.75vw,12.5vh)!important}
+.stage .podium-photo{width:min(4.8vw,7.2vh)!important;height:min(6vw,9vh)!important;border-radius:clamp(6px,.5vw,10px)!important;object-position:center!important}
+</style></head><body data-projector-theme="<?=e($projectorTheme)?>" data-custom-background="<?=$hasCustomHolding?'1':'0'?>" data-screen-type="<?=e($type)?>"><div class="viewport"><div class="stage"><div class="projection-official">BDC · Official Live Display</div><div class="projection-heading-row"><div class="projection-brand"><img src="<?=e(url('public/assets/bdc-logo.png'))?>" alt="Bachata Dance Council"></div><div class="projection-heading-copy"><div class="event"><?= e(
+    $r["event_name"],
+) ?></div><div class="meta"><?= e(
+    strtoupper(str_replace("_", " ", preg_replace('/(^|_)rising$/', '$1intermediate', (string) $r["division"]) ?? (string) $r["division"])),
+) ?> · <?= e(strtoupper($r["round_type"])) ?></div><div class="title"><?= e(
+    $title,
+) ?></div></div></div><?php if ($splitRoleScreen): ?><div class="competitor-split"><?php foreach(["leader"=>"LEADERS","follower"=>"FOLLOWERS"] as $competitorRole=>$competitorRoleLabel):$roleRows=$competitorRoleItems[$competitorRole];?><section class="competitor-role-panel"><div class="competitor-role-title"><span><?=e($competitorRoleLabel)?> · <?=$competitorRoleTotals[$competitorRole]?> COMPETITORS</span><span><?=e(strtoupper((string)$r["round_type"]))?> · PAGE <?=$competitorRolePage?> OF <?=$competitorRoleTotalPages?></span></div><div class="competitor-role-grid"><?php foreach($roleRows as $x):$fallbackPhoto=$animalPhoto((string)(($x["bib_number"]??"")."|".($x["display_name"]??"")));$displayPhoto=!empty($x["photo_url"])?(string)$x["photo_url"]:$fallbackPhoto;?><article class="competitor-card"><div class="competitor-photo-frame"><img class="photo" src="<?=e($displayPhoto)?>" onerror="this.onerror=null;this.src='<?=e($fallbackPhoto)?>'"></div><div class="competitor-bib"><?=!empty($x["bib_number"])?"BIB ".(int)$x["bib_number"]:"BIB —"?></div><div class="competitor-identity"><div class="competitor-name"><?=e((string)$x["display_name"])?></div><div class="competitor-country"><?php if(!empty($x["country"])):$flagUrl=country_flag_url((string)$x["country"]);?><?php if($flagUrl):?><img class="competitor-flag" src="<?=e($flagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?><span class="competitor-country-name"><?=e((string)$x["country"])?></span><?php else:?><span class="competitor-country-name">Country not listed</span><?php endif;?></div></div></article><?php endforeach;?></div></section><?php endforeach;?></div><?php elseif ($type === "competitors" && (string)$r["round_type"]==="final"): ?><div class="list"><?php foreach($items as $x):$leaderFallback=$animalPhoto((string)($x["leader_bib"]??$x["leader_name"]??"leader"));$followerFallback=$animalPhoto((string)($x["follower_bib"]??$x["follower_name"]??"follower"));?><div class="item"><div class="small">COUPLE <?= (int)($x["pair_number"]??0) ?></div><div style="display:flex;gap:.5em;justify-content:center"><img class="photo" src="<?=e(!empty($x["leader_photo"])?$x["leader_photo"]:$leaderFallback)?>" onerror="this.src='<?=e($leaderFallback)?>'"><img class="photo" src="<?=e(!empty($x["follower_photo"])?$x["follower_photo"]:$followerFallback)?>" onerror="this.src='<?=e($followerFallback)?>'"></div><div class="name"><?=e((string)$x["leader_name"])?> &amp; <?=e((string)$x["follower_name"])?></div><div class="small">BIB <?= (int)$x["leader_bib"] ?> + <?= (int)$x["follower_bib"] ?></div></div><?php endforeach;?></div><?php elseif (in_array($type, ["matching", "matching_couples"], true)): ?><style>.matching-list{display:flex!important;flex-wrap:wrap;align-content:stretch;justify-content:center;gap:.65%;padding-bottom:.45%}.matching-list .matching-card{box-sizing:border-box;flex:0 0 calc(20% - .65%);height:calc((100% - 1.3%)/3);padding:clamp(3px,.42vw,8px);justify-content:center;gap:clamp(2px,.28vh,5px);min-height:0;overflow:hidden}.matching-pair{font-size:clamp(12px,.9vw,22px)!important;font-weight:950;letter-spacing:.08em}.matching-people{display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.5vw,34px);width:100%;margin:.25em 0}.matching-person{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:44%}.matching-photo{width:min(5.6vw,6.8vh)!important;height:min(5.6vw,6.8vh)!important;margin:0 0 .12em!important}.matching-name-row{width:100%;display:flex;align-items:center;justify-content:center;gap:clamp(5px,.42vw,10px);white-space:nowrap;overflow:hidden}.matching-name{min-width:0;font-size:clamp(13px,.98vw,22px)!important;font-weight:950;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.matching-flag{flex:0 0 auto;width:clamp(24px,1.55vw,34px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78);border-radius:3px}.matching-bib{font-size:clamp(16px,1.18vw,28px)!important;font-weight:950;line-height:1;margin:.08em 0 0}@container (max-width:1100px){.matching-list .matching-card{flex-basis:calc(25% - .65%)}}@container (max-width:760px){.matching-list .matching-card{flex-basis:calc(33.333% - .65%)}}</style><div class="list matching-list"><?php foreach ($items as $x): ?><div class="item matching-card"><div class="small matching-pair">COUPLE <?= (int) $x["pair_number"] ?></div><div class="matching-people"><?php foreach([["name"=>$x["leader_name"],"bib"=>$x["leader_bib"],"country"=>$x["leader_country"]??""],["name"=>$x["follower_name"],"bib"=>$x["follower_bib"],"country"=>$x["follower_country"]??""]] as $person):$fallbackPhoto=$animalPhoto((string)(($person["bib"]??"")."|".($person["name"]??"")));$personPhoto="";foreach($items as $photoRow){if(($photoRow["leader_bib"]??null)===$person["bib"])$personPhoto=(string)($photoRow["leader_photo"]??"");if(($photoRow["follower_bib"]??null)===$person["bib"])$personPhoto=(string)($photoRow["follower_photo"]??"");} $displayPhoto=$personPhoto!==""?$personPhoto:$fallbackPhoto;?><div class="matching-person"><img class="photo matching-photo" src="<?=e($displayPhoto)?>" onerror="this.onerror=null;this.src='<?=e($fallbackPhoto)?>'"><div class="matching-name-row"><div class="name matching-name"><?=e((string)$person["name"])?></div><?php if(!empty($person["country"])&&($flagUrl=country_flag_url((string)$person["country"]))):?><img class="matching-flag" src="<?=e($flagUrl)?>" alt="<?=e((string)$person["country"])?> flag"><?php endif;?></div><div class="small matching-bib">BIB <?= (int)$person["bib"] ?></div></div><?php endforeach;?></div></div><?php endforeach; ?></div><?php elseif ($type === "score_matrix"): ?><style>
+.matrix-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 0 .15%;container-type:size}
+.provisional-label{flex:0 0 auto;color:#ffcf45;font-weight:900;letter-spacing:.08em;margin:0 0 .22em;font-size:max(9px,min(.7cqw,1.2cqh))}
+.score-table.matrix{width:100%;border-collapse:collapse;table-layout:fixed;background:rgba(17,24,39,.82)}
+.score-table.matrix th,.score-table.matrix td{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
+.score-table.matrix th.name,.score-table.matrix td.name{text-align:left}
+.score-table.matrix td.not-applicable{color:#94a3b8;background:rgba(148,163,184,.08);font-weight:850;letter-spacing:.04em}
+.matrix-final{flex:1;min-height:0;height:100%;font-size:max(15px,min(1.45cqw,3cqh))}
+.matrix-final thead{height:7%}.matrix-final tbody{height:93%}.matrix-final thead tr{height:100%}.matrix-final tbody tr{height:8.333%}
+.matrix-final th,.matrix-final td{padding:0 .3em!important}
+.matrix-final th:first-child,.matrix-final td:first-child{width:9%;font-size:1.12em;font-weight:950}
+.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:43%;font-size:1.10em;font-weight:950;text-align:left}
+.matrix-final th:nth-child(n+3){font-size:.60em;line-height:1.02}.matrix-final .final-matrix-couple{font-size:clamp(18px,1.24vw,30px)!important;white-space:nowrap;overflow:hidden}.final-matrix-person{display:inline-flex;align-items:center;gap:clamp(4px,.32vw,8px);min-width:0}.final-matrix-person strong{font-size:.82em;flex:0 0 auto}.final-matrix-person span{font-weight:950;overflow:hidden;text-overflow:ellipsis}.final-matrix-amp{display:inline-block;margin:0 clamp(5px,.38vw,10px);font-weight:950}.final-matrix-flag{display:inline-block;width:clamp(24px,1.55vw,38px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78);border-radius:3px;vertical-align:middle;flex:0 0 auto}.matrix-final th:nth-child(n+3) small{font-size:.72em;display:block;overflow:hidden;text-overflow:ellipsis}.matrix-final td:nth-child(n+3){font-size:1.12em;font-weight:950}
+.matrix-final{font-size:clamp(13px,.9vw,21px)!important}
+.matrix-final th:first-child,.matrix-final td:first-child{width:12%!important;font-size:clamp(12px,.82vw,19px)!important}
+.matrix-final th:nth-child(2),.matrix-final td:nth-child(2){width:44%!important;font-size:clamp(16px,1.05vw,25px)!important;padding-left:.45em!important;overflow:hidden}
+.matrix-final th:nth-child(n+3){font-size:clamp(8px,.5vw,12px)!important}.matrix-final th:nth-child(n+3) small{font-size:.72em!important}
+.matrix-final td:nth-child(n+3){font-size:clamp(12px,.8vw,19px)!important;font-weight:950}
+.matrix-final .final-matrix-couple{white-space:nowrap;overflow:hidden;vertical-align:middle!important}
+.matrix-final .final-matrix-couple-inner{display:flex;align-items:center;gap:clamp(6px,.42vw,10px);min-width:0;width:100%;height:100%;white-space:nowrap;overflow:hidden}
+.matrix-final .final-matrix-person{display:flex!important;align-items:center;gap:clamp(5px,.34vw,8px);min-width:0;white-space:nowrap;overflow:hidden}
+.matrix-final .final-matrix-person>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.matrix-final .final-matrix-person strong{flex:0 0 auto;font-size:.86em}
+.matrix-final .final-matrix-flag{flex:0 0 auto;width:clamp(24px,1.45vw,35px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:2px}
+.matrix-final .final-matrix-amp{flex:0 0 auto;font-weight:950;color:#f4e7c1}
+.matrix-split{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1%}
+.matrix-panel{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.matrix-role{flex:0 0 auto;display:flex;justify-content:space-between;gap:.7em;background:#111827;border:1px solid rgba(255,255,255,.35);padding:.28em .42em;font-size:max(9px,min(.72cqw,1.22cqh));font-weight:950;letter-spacing:.055em;white-space:nowrap}
+.matrix-heats{flex:1;min-height:0;height:100%;font-size:clamp(13px,.92vw,21px);table-layout:fixed}
+.matrix-heats thead{height:9%}.matrix-heats tbody{height:91%}.matrix-heats thead tr{height:100%}.matrix-heats tbody tr{height:auto}
+.matrix-heats th,.matrix-heats td{padding:0 .20em!important;white-space:nowrap}
+.matrix-heats th:first-child,.matrix-heats td:first-child{width:7%;font-size:.82em;font-weight:900;text-align:center}
+.matrix-heats th:nth-child(2),.matrix-heats td:nth-child(2){width:10%;font-weight:950;text-align:center}.matrix-heats th:nth-child(2){font-size:.72em}.matrix-heats td:nth-child(2){font-size:clamp(17px,1.16vw,28px)!important;letter-spacing:.025em}
+.matrix-heats th:nth-child(3),.matrix-heats td:nth-child(3){width:33%;text-align:left}
+.matrix-heats th:nth-child(n+4){font-size:.62em;letter-spacing:-.015em;text-align:center}.matrix-heats th:nth-child(n+4) small{font-size:.58em;display:block;overflow:hidden;text-overflow:ellipsis}
+.matrix-heats td:nth-child(n+4){font-size:.82em;font-weight:850;text-align:center}
+.matrix-heats .heats-competitor{display:flex;align-items:center;gap:clamp(7px,.48vw,12px);min-width:0;font-size:clamp(16px,1.12vw,27px);font-weight:950;line-height:1}
+.matrix-heats .heats-competitor-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.matrix-heats .heats-flag{flex:0 0 auto;width:clamp(28px,1.75vw,42px);height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}
+</style><div class="matrix-wrap"><div class="provisional-label">LIVE · PROVISIONAL</div><?php if((string)$r["round_type"]==="final"):?><table class="score-table matrix matrix-final"><thead><tr><th>Place</th><th>Couple</th><?php foreach($matrixJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Sum</th></tr></thead><tbody><?php foreach($items as $x):?><tr><td class="num"><?=!empty($x["rank_number"])?(int)$x["rank_number"]:"—"?></td><td class="name final-matrix-couple"><div class="final-couple-row"><span class="final-couple-person final-couple-leader"><strong>BIB <?=(int)$x["leader_bib"]?></strong><?php if($leaderFlag=country_flag_url((string)($x["leader_country"]??""))):?><img class="final-matrix-flag" src="<?=e($leaderFlag)?>" alt="<?=e((string)$x["leader_country"])?> flag"><?php endif;?><span class="final-couple-name"><?=e($cleanFinalProjectionName($x["leader_name"] ?? "", $x["leader_bib"] ?? null))?></span></span><span class="final-matrix-amp">&amp;</span><span class="final-couple-person final-couple-follower"><strong>BIB <?=(int)$x["follower_bib"]?></strong><?php if($followerFlag=country_flag_url((string)($x["follower_country"]??""))):?><img class="final-matrix-flag" src="<?=e($followerFlag)?>" alt="<?=e((string)$x["follower_country"])?> flag"><?php endif;?><span class="final-couple-name"><?=e($cleanFinalProjectionName($x["follower_name"] ?? "", $x["follower_bib"] ?? null))?></span></span></div></td><?php foreach($matrixJudges as $judge):?><td><?=e((string)($matrixMarks[(int)$x["pair_id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=e((string)$x["total_score"])?></td></tr><?php endforeach;?></tbody></table><?php else:?><div class="matrix-split"><?php foreach(["leader"=>"LEADERS","follower"=>"FOLLOWERS"] as $role=>$label):$matrixRows=$heatsScoreRoleItems[$role];$roleJudges=array_values(array_filter($matrixJudges,static function(array $judge)use($role):bool{$scope=(string)($judge["scoring_scope"]??"all");return $scope==="all"||$scope===$role;}));?><section class="matrix-panel"><div class="matrix-role"><span><?=e($label)?> · <?=$heatsScoreRoleTotals[$role]?> CONTESTANTS</span><span><?=e(strtoupper((string)$r["round_type"]))?> · PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?></span></div><table class="score-table matrix matrix-heats matrix-judge-count-<?=count($roleJudges)?>"><thead><tr><th>Prov.</th><th>BIB</th><th class="name">Competitor</th><?php foreach($roleJudges as $judge):?><th>J<?=(int)$judge["judge_order"]?><?=(int)$judge["is_chief"]?"★":""?><br><small><?=e((string)$judge["judge_name"])?></small></th><?php endforeach;?><th>Score</th></tr></thead><tbody><?php foreach($matrixRows as $x):$heatsFlagUrl=!empty($x["country"])?country_flag_url((string)$x["country"]):null;?><tr><td class="num"><?=(int)$x["rank_number"]?></td><td class="num"><?=!empty($x["bib_number"])?(int)$x["bib_number"]:"—"?></td><td><div class="heats-competitor"><?php if($heatsFlagUrl):?><img class="heats-flag" src="<?=e($heatsFlagUrl)?>" alt="<?=e((string)$x["country"])?> flag"><?php endif;?><span class="heats-competitor-name"><?=e((string)$x["display_name"])?></span></div></td><?php foreach($roleJudges as $judge):?><td><?=e((string)($matrixMarks[(int)$x["id"]][(int)$judge["id"]]??"—"))?></td><?php endforeach;?><td class="num"><?=number_format((float)$x["total_score"],1)?></td></tr><?php endforeach;?></tbody></table></section><?php endforeach;?></div><?php endif;?></div><?php elseif ($type === "heats_scores"): ?><style>.score-split{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1%}.score-panel{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}.score-role{display:flex;justify-content:space-between;gap:1em;background:#111827;border:1px solid rgba(255,255,255,.35);padding:.38em .55em;font-size:clamp(13px,1.15vw,26px);font-weight:900;letter-spacing:.08em}.stage .score-table.live-role{font-size:max(10px,min(1.02cqw,1.8cqh));table-layout:fixed;flex:1;height:auto}.score-table.live-role th,.score-table.live-role td{padding:.38em .48em}.score-table.live-role th:nth-child(1){width:12%}.score-table.live-role th:nth-child(2){width:15%}.score-table.live-role th:nth-child(4){width:18%}.live-score-contestant{display:flex;align-items:center;gap:.65em;min-width:0}.live-score-name{font-size:max(13px,min(1.28cqw,2.25cqh));font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.live-score-flags{display:inline-flex;align-items:center;gap:.24em;flex:0 0 auto}.live-score-flag{display:block;width:max(28px,min(1.85cqw,3.25cqh));height:auto;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.72);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.35)}</style><div class="score-split"><?php foreach (["leader" => "LEADERS", "follower" => "FOLLOWERS"] as $role => $roleLabel):$scoreRows=$heatsScoreRoleItems[$role]; ?><section class="score-panel"><div class="score-role"><span><?=e($roleLabel)?> · <?=$heatsScoreRoleTotals[$role]?> CONTESTANTS</span><span><?=e(strtoupper((string)$r["round_type"]))?> · PAGE <?=$heatsScorePage?> OF <?=$heatsScoreTotalPages?></span></div><table class="score-table live-role"><thead><tr><th>Place</th><th>Bib</th><th>Contestant</th><th>Score</th></tr></thead><tbody><?php foreach ($scoreRows as $x):$scoreCountries=CountrySetService::fromRow($x); ?><tr><td class="num"><?= (int) $x["rank_number"] ?></td><td class="num"><?= !empty($x["bib_number"]) ? (int) $x["bib_number"] : "—" ?></td><td><div class="live-score-contestant"><strong class="live-score-name"><?= e((string) $x["display_name"]) ?></strong><?php if($scoreCountries):?><span class="live-score-flags"><?php foreach($scoreCountries as $scoreCountry):$scoreFlagUrl=country_flag_url($scoreCountry);if(!$scoreFlagUrl)continue;?><img class="live-score-flag" src="<?=e($scoreFlagUrl)?>" alt="<?=e($scoreCountry)?> flag"><?php endforeach;?></span><?php endif;?></div></td><td class="num"><?= e((string) ($x["total_score"] ?? "0.00")) ?></td></tr><?php endforeach; ?></tbody></table></section><?php endforeach; ?></div><?php elseif (
+    in_array($type, ["final_results", "results"], true)
+): ?><table class="score-table"><thead><tr><th>Place</th><th>Bib</th><th>Competitor / Couple</th><th>Status</th><th>Score</th></tr></thead><tbody><?php foreach (
+    $items
+    as $x
+): ?><tr><td class="num"><?= (int) ($x["rank_number"] ??
+    ($x["final_rank"] ?? 0)) ?></td><td class="num"><?= !empty($x["bib_number"])
+    ? (int) $x["bib_number"]
+    : "—" ?></td><td><?= e(
+    (string) ($x["display_name"] ??
+        trim(
+            (string) ($x["leader_name"] ?? "") .
+                " & " .
+                (string) ($x["follower_name"] ?? ""),
+            " &",
+        )),
+) ?></td><td><?= e(
+    ucwords(
+        str_replace(
+            "_",
+            " ",
+            (string) ($x["dance_role"] ?? ($x["result_status"] ?? "Final")),
+        ),
+    ),
+) ?></td><td class="num"><?= e(
+    (string) ($x["total_score"] ?? "—"),
+) ?></td></tr><?php endforeach; ?></tbody></table><?php elseif (
+    $type === "winners"
+): ?><div class="podium"><?php foreach ([4, 2, 1, 3, 5] as $rank):
+
+    $x = null;
+    foreach ($items as $row) {
+        if ((int) $row["final_rank"] === $rank) {
+            $x = $row;
+            break;
+        }
+    }
+    ?><div class="podium-slot"><?php if ($x):
+
+    $people = [];
+    $people[] = [
+        "name" => $x["leader_name"] ?? "",
+        "photo" => $x["leader_photo"] ?? "",
+        "country" => $x["leader_country"] ?? "",
+    ];
+    if (!empty($x["follower_name"])) {
+        $people[] = [
+            "name" => $x["follower_name"],
+            "photo" => $x["follower_photo"] ?? "",
+            "country" => $x["follower_country"] ?? "",
+        ];
+    }
+    ?><div class="podium-person"><div class="podium-photos"><?php foreach (
+    $people
+    as $person
+):
+    $fallbackPhoto = $animalPhoto((string) $person["name"]);
+    $displayPhoto = !empty($person["photo"])
+        ? (string) $person["photo"]
+        : $fallbackPhoto;
+    ?><img class="podium-photo" src="<?= e(
+    $displayPhoto,
+) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'"><?php
+endforeach; ?></div><div class="podium-name"><?= e(
+    implode(" & ", array_column($people, "name")),
+) ?></div><div class="podium-country"><?php
+foreach ($people as $person) {
+    if (!empty($person["country"])) {
+        $country = (string) $person["country"];
+        echo '<span class="podium-country-entry" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;margin:0 .32em;vertical-align:middle">';
+        $flagUrl = country_flag_url($country);
+        if ($flagUrl) {
+            echo '<img src="' . e($flagUrl) . '" alt="' . e($country) . ' flag" style="width:clamp(52px,4vw,96px);height:clamp(35px,2.67vw,64px);object-fit:cover;border:2px solid rgba(255,255,255,.75);border-radius:5px;box-shadow:0 3px 12px rgba(0,0,0,.55)">';
+        }
+        echo '<span class="podium-country-name" style="font-size:clamp(8px,.62vw,15px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">' . e($country) . '</span>';
+        echo '</span>';
+    }
+}
+?></div></div><div class="block p<?= $rank ?>"><?= $rank ?></div><?php
+endif; ?></div><?php
+endforeach; ?></div><?php else: ?><div class="list<?= $type === 'judges' ? ' judge-list judge-count-' . count($items) . ($judgePaginated ? ' judge-paginated' : '') : '' ?>"><?php if (
+    $type === "scoring"
+):
+    $x = $items[0];
+    if ($scoringTimingJudges):
+        $fastestJudge = $scoringTimingJudges[0];
+        $slowestJudge = $scoringTimingJudges[count($scoringTimingJudges) - 1];
+        $formatJudgeTime = static function (int $seconds): string {
+            if ($seconds < 60) return $seconds . " sec";
+            $minutes = intdiv($seconds, 60);
+            $remainingSeconds = $seconds % 60;
+            return $minutes . " min" . ($remainingSeconds > 0 ? " " . $remainingSeconds . " sec" : "");
+        }; ?><style>
+.timing-celebration{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.86fr) minmax(260px,1.28fr) minmax(0,.86fr);gap:1.15%;align-items:stretch}.timing-award,.timing-board{border:1px solid rgba(255,255,255,.2);border-radius:max(8px,min(.8cqw,1.4cqh));overflow:hidden;box-shadow:0 1.2cqh 3cqh rgba(0,0,0,.23)}.timing-award{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4%;background:radial-gradient(circle at 50% 25%,rgba(255,255,255,.13),rgba(8,14,27,.78) 68%)}.timing-award.fastest{border-color:rgba(250,204,21,.68);background:radial-gradient(circle at 50% 28%,rgba(216,170,55,.34),rgba(68,40,7,.6) 50%,rgba(8,14,27,.9))}.timing-award.slowest{border-color:rgba(244,114,182,.5);background:radial-gradient(circle at 50% 28%,rgba(125,38,56,.4),rgba(55,19,38,.64) 52%,rgba(8,14,27,.9))}.timing-award-icon{font-size:max(38px,min(5cqw,8.8cqh));line-height:1}.timing-award-label{margin-top:.45em;color:#fde68a;font-size:max(10px,min(.96cqw,1.7cqh));font-weight:950;letter-spacing:.1em}.timing-award-name{max-width:100%;margin:.35em 0;font-size:max(17px,min(2cqw,3.55cqh));font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.timing-award-time{font-size:max(20px,min(2.7cqw,4.8cqh));font-weight:950}.timing-award-joke{margin-top:.7em;color:#dbe4f3;font-size:max(9px,min(.83cqw,1.48cqh));font-weight:700}.timing-board{display:flex;flex-direction:column;background:rgba(8,14,27,.7)}.timing-board-heading{padding:min(1.2cqh,.68cqw);background:linear-gradient(90deg,rgba(125,38,56,.55),rgba(216,170,55,.24));font-size:max(12px,min(1.25cqw,2.2cqh));font-weight:950;letter-spacing:.06em}.timing-list{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:min(.8cqh,.45cqw);padding:min(1cqh,.58cqw)}.timing-row{display:flex;align-items:center;justify-content:space-between;gap:.6em;min-width:0;padding:min(.85cqh,.5cqw);border:1px solid rgba(255,255,255,.12);border-radius:max(5px,min(.48cqw,.85cqh));background:rgba(255,255,255,.065);font-size:max(9px,min(.9cqw,1.6cqh));font-weight:850}.timing-row-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.timing-row-time{flex:0 0 auto;color:#fde7b0;font-weight:950}@container (aspect-ratio < 6/5){.timing-celebration{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,.72fr) minmax(0,1fr)}.timing-board{grid-column:1/-1;grid-row:2}.timing-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style><div class="timing-celebration"><section class="timing-award fastest"><div class="timing-award-icon">⚡🏆</div><div class="timing-award-label">SPEED STAR</div><div class="timing-award-name">J<?=(int)$fastestJudge["judge_order"]?> · <?=e((string)$fastestJudge["judge_name"])?></div><div class="timing-award-time"><?=e($formatJudgeTime((int)$fastestJudge["elapsed_seconds"]))?></div><div class="timing-award-joke">Fast eyes. Sharp scores. No coffee break needed.</div></section><section class="timing-board"><div class="timing-board-heading">ALL JUDGES FINISHED · SCORING TIMES</div><div class="timing-list"><?php foreach($scoringTimingJudges as $position=>$judge):?><div class="timing-row"><span class="timing-row-name"><?=($position+1)?> · J<?=(int)$judge["judge_order"]?> <?=e((string)$judge["judge_name"])?><?=(int)$judge["is_chief"]===1?" ★":""?></span><span class="timing-row-time"><?=e($formatJudgeTime((int)$judge["elapsed_seconds"]))?></span></div><?php endforeach;?></div></section><section class="timing-award slowest"><div class="timing-award-icon">🐢✨</div><div class="timing-award-label">SCENIC ROUTE AWARD</div><div class="timing-award-name">J<?=(int)$slowestJudge["judge_order"]?> · <?=e((string)$slowestJudge["judge_name"])?></div><div class="timing-award-time"><?=e($formatJudgeTime((int)$slowestJudge["elapsed_seconds"]))?></div><div class="timing-award-joke">Great care taken. Next round: same quality, fewer sightseeing stops.</div></section></div><?php elseif (
+        $scoringComplete
+    ): ?><div class="item"><div class="big">✓</div><div class="small">ROUND FINISHED</div></div><?php else:$x =
+            $items[0]; ?><style>
+.scoring-progress{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.54fr) minmax(0,1fr);gap:1.15%;align-items:stretch}
+.judge-status-panel{min-width:0;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.22);border-radius:max(8px,min(.8cqw,1.4cqh));overflow:hidden;background:rgba(8,14,27,.58);box-shadow:0 1.2cqh 3cqh rgba(0,0,0,.2)}
+.judge-status-heading{display:flex;align-items:center;justify-content:space-between;padding:min(1.15cqh,.65cqw) min(1.3cqh,.8cqw);font-size:max(11px,min(1.28cqw,2.25cqh));font-weight:950;letter-spacing:.055em;text-transform:uppercase}
+.judge-status-panel.complete{border-color:rgba(52,211,153,.5);background:linear-gradient(145deg,rgba(6,78,59,.42),rgba(8,14,27,.72))}.judge-status-panel.complete .judge-status-heading{background:linear-gradient(90deg,rgba(16,185,129,.32),rgba(16,185,129,.08));color:#a7f3d0}
+.judge-status-panel.pending{border-color:rgba(251,191,36,.48);background:linear-gradient(215deg,rgba(120,53,15,.34),rgba(8,14,27,.72))}.judge-status-panel.pending .judge-status-heading{background:linear-gradient(90deg,rgba(245,158,11,.26),rgba(245,158,11,.07));color:#fde68a}
+.judge-status-count{display:grid;place-items:center;min-width:1.8em;height:1.8em;border-radius:999px;background:rgba(255,255,255,.12);font-size:.8em}
+.judge-status-list{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:min(1cqh,.55cqw);padding:min(1.25cqh,.7cqw)}
+.judge-chip{min-width:0;display:flex;align-items:center;gap:min(1cqh,.55cqw);padding:min(1.05cqh,.58cqw);border-radius:max(6px,min(.56cqw,1cqh));background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);font-size:max(10px,min(1.05cqw,1.85cqh));font-weight:850;text-align:left}
+.judge-chip-icon{display:grid;place-items:center;flex:0 0 auto;width:1.75em;height:1.75em;border-radius:50%;font-weight:950}.complete .judge-chip-icon{background:#10b981;color:#052e22}.pending .judge-chip-icon{background:#f59e0b;color:#451a03}.judge-chip-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.judge-chip-chief{display:block;color:#fbd56a;font-size:.58em;letter-spacing:.07em}
+.scoring-progress-total{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:max(8px,min(.8cqw,1.4cqh));border:1px solid rgba(216,170,55,.48);background:radial-gradient(circle at 50% 35%,rgba(125,38,56,.42),rgba(17,24,39,.92) 68%);box-shadow:inset 0 0 4cqh rgba(216,170,55,.07),0 1.2cqh 3cqh rgba(0,0,0,.25)}
+.scoring-progress-total .big{font-size:max(42px,min(6.8cqw,12cqh));line-height:.95}.scoring-progress-total .small{margin-top:.75em;color:#fde7b0;font-weight:850;letter-spacing:.09em}.scoring-progress-bar{width:68%;height:max(5px,min(.42cqw,.72cqh));margin-top:1.1em;border-radius:999px;background:rgba(255,255,255,.13);overflow:hidden}.scoring-progress-bar>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#d8aa37,#34d399);box-shadow:0 0 1.4cqh rgba(52,211,153,.6)}
+@container (aspect-ratio < 6/5){.scoring-progress{grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr)}.scoring-progress-total{grid-column:1/-1;grid-row:1;min-height:15cqh}.judge-status-list{grid-template-columns:1fr}}
+</style><div class="scoring-progress"><section class="judge-status-panel complete"><div class="judge-status-heading"><span>✓ Completed</span><span class="judge-status-count"><?=count($scoringSubmittedJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringSubmittedJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringSubmittedJudges):?><div class="judge-chip"><span class="judge-chip-icon">—</span><span class="judge-chip-name">Waiting for first submission</span></div><?php endif;?></div></section><div class="scoring-progress-total"><div class="big"><?= (int) ($x["submitted"] ?? 0) ?> / <?= (int) ($x["total"] ?? 0) ?></div><div class="small">JUDGES SUBMITTED</div><div class="scoring-progress-bar"><span style="width:<?=((int)($x["total"]??0)>0?round(((int)($x["submitted"]??0)/(int)$x["total"])*100):0)?>%"></span></div></div><section class="judge-status-panel pending"><div class="judge-status-heading"><span>◷ Pending</span><span class="judge-status-count"><?=count($scoringPendingJudges)?></span></div><div class="judge-status-list"><?php foreach($scoringPendingJudges as $judge):?><div class="judge-chip"><span class="judge-chip-icon">…</span><span class="judge-chip-name">J<?=(int)$judge["judge_order"]?> · <?=e((string)$judge["judge_name"])?><?php if((int)$judge["is_chief"]===1):?><small class="judge-chip-chief">★ CHIEF JUDGE</small><?php endif;?></span></div><?php endforeach;?><?php if(!$scoringPendingJudges):?><div class="judge-chip"><span class="judge-chip-icon">✓</span><span class="judge-chip-name">All judges completed</span></div><?php endif;?></div></section></div><?php endif;
+elseif (in_array($type, ["judges", "judge_call"], true)):
+    foreach ($items as $x):
+        $country = trim((string) ($x["country"] ?? ""));
+        $countryCode = trim((string) ($x["country_code"] ?? ""));
+        $scope=(string)($x["scoring_scope"]??"all");
+        $scopeLabel=(string)$r["round_type"]==="final"?"JUDGING ALL COUPLES":($scope==="leader"?"JUDGING LEADERS":($scope==="follower"?"JUDGING FOLLOWERS":"JUDGING LEADERS & FOLLOWERS"));
+        $isChief=(int)($x["is_chief"]??0)===1;
+        $judgeName=(string)($x["full_name"]?:$x["judge_name"]);
+        $judgeOrder=(int)($x["judge_order"]??0);
+        $judgeCountries=CountrySetService::fromRow($x);
+        ?><article class="judge-card<?=$isChief?" chief":""?>"><div class="judge-photo-frame"><div class="judge-photo-fallback">J<?=$judgeOrder?></div><?php if(!empty($x["photo_url"])):?><img class="judge-photo" src="<?=e((string)$x["photo_url"])?>" alt="<?=e($judgeName)?>" onerror="this.remove()"><?php endif;?></div><div class="judge-name"><?=e($judgeName)?></div><div class="judge-position"><span>J<?=$judgeOrder?></span><span>·</span><span><?=$isChief?"★ CHIEF JUDGE":"JUDGE"?></span></div><div class="judge-scope"><?=e($scopeLabel)?></div><div class="judge-country"><?php if($judgeCountries):foreach($judgeCountries as $judgeCountry):$flagUrl=country_flag_url($judgeCountry);?><span class="judge-country-entry"><?php if($flagUrl):?><img class="judge-flag" src="<?=e($flagUrl)?>" alt="<?=e($judgeCountry)?> flag"><?php endif;?><span class="judge-country-name"><?=e($judgeCountry)?></span></span><?php endforeach;else:?><span class="judge-country-name">Country not listed</span><?php endif;?></div></article><?php
+    endforeach;
+else:
+    foreach ($items as $x):
+        if (array_key_exists("leader_name", $x)): ?><div class="item"><div class="small" style="font-weight:900;letter-spacing:.08em">COUPLE <?= (int) $x["pair_number"] ?></div><div style="display:flex;align-items:center;justify-content:center;gap:clamp(14px,1.5vw,34px);width:100%;margin:.35em 0"><?php foreach ([["name" => $x["leader_name"], "bib" => $x["leader_bib"], "photo" => $x["leader_photo"], "country" => $x["leader_country"]], ["name" => $x["follower_name"], "bib" => $x["follower_bib"], "photo" => $x["follower_photo"], "country" => $x["follower_country"]]] as $person): $fallbackPhoto = $animalPhoto((string) (($person["bib"] ?? "") . "|" . ($person["name"] ?? ""))); $displayPhoto = !empty($person["photo"]) ? (string) $person["photo"] : $fallbackPhoto; ?><div class="final-couple-person"><img class="photo" src="<?= e($displayPhoto) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'" style="margin-bottom:.25em"><div class="name" style="font-size:.86em"><?= e($person["name"] ?: "Partner pending") ?></div><div class="small">BIB <?= !empty($person["bib"]) ? (int) $person["bib"] : "—" ?></div><?php if (!empty($person["country"])): ?><div class="small flight-country"><?php if ($flagUrl = country_flag_url($person["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($person["country"]) ?> flag" style="width:clamp(30px,2.25vw,56px);height:clamp(20px,1.5vw,37px);object-fit:cover;border:1px solid rgba(255,255,255,.7);border-radius:4px"><?php endif; ?><?= e($person["country"]) ?></div><?php endif; ?></div><?php endforeach; ?></div></div><?php else:
+    $fallbackPhoto = $animalPhoto(
+        (string) (($x["bib_number"] ?? "") . "|" . ($x["display_name"] ?? "")),
+    );
+    $displayPhoto = !empty($x["photo_url"])
+        ? (string) $x["photo_url"]
+        : $fallbackPhoto;
+    ?><div class="item"><img class="photo" src="<?= e(
+    $displayPhoto,
+) ?>" onerror="this.onerror=null;this.src='<?= e($fallbackPhoto) ?>'"><div class="name"><?= e(
+    $x["display_name"],
+    ) ?></div><div class="small"><?=
+!empty($x["bib_number"]) ? "BIB " . (int) $x["bib_number"] : "BIB UNASSIGNED"
+?></div><?php if (!empty($x["country"])): ?><div class="small flight-country"><?php if ($flagUrl = country_flag_url($x["country"])): ?><img src="<?= e($flagUrl) ?>" alt="<?= e($x["country"]) ?> flag"><?php endif; ?><span><?= e($x["country"]) ?></span></div><?php endif; ?></div><?php endif; endforeach;
+endif; ?></div><?php endif; ?><?php if($coupleProjection):?><style>.list{display:flex;flex-wrap:wrap;align-content:stretch;justify-content:center;gap:.65%;padding-bottom:.45%}.list .item{box-sizing:border-box;flex:0 0 calc(<?=number_format(100/$coupleColumns,4,'.','')?>% - .65%);height:calc((100% - <?=number_format(max(0,$coupleRows-1)*.65,2,'.','')?>%)/<?=$coupleRows?>);padding:clamp(5px,.7vw,13px);justify-content:space-evenly;min-height:0}.list .item>.small:first-child{font-size:clamp(12px,.9vw,22px);font-weight:900;letter-spacing:.08em}.list .item>div:nth-child(2)>div{max-width:48%;padding-bottom:clamp(6px,.55vh,12px)}.list .item>div:nth-child(2)>div>.name{font-size:clamp(11px,.92vw,22px)}.list .item>div:nth-child(2)>div>div:nth-of-type(2){font-size:clamp(19px,1.55vw,38px);font-weight:950;line-height:1;color:#fff;margin:.04em 0}.final-couple-person{display:grid!important;grid-template-columns:minmax(0,auto) auto;grid-template-rows:auto auto auto;align-items:center;justify-content:center;column-gap:clamp(5px,.42vw,10px);row-gap:clamp(1px,.16vh,3px);min-width:0;max-width:48%!important;padding-bottom:clamp(6px,.55vh,12px)}.final-couple-person>.photo{grid-column:1/3;grid-row:1;justify-self:center}.final-couple-person>.name{grid-column:1;grid-row:2;min-width:0;max-width:100%;font-size:clamp(16px,1.18vw,28px)!important;font-weight:950;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.final-couple-person>.flight-country{grid-column:2;grid-row:2;display:flex!important;align-items:center;justify-content:flex-start;margin:0!important;padding:0!important;font-size:0!important;line-height:0!important;min-width:0}.final-couple-person>.flight-country img{width:clamp(27px,1.9vw,42px)!important;height:auto!important;aspect-ratio:3/2;object-fit:cover;border:1px solid rgba(255,255,255,.78)!important;border-radius:3px!important;box-shadow:0 2px 5px rgba(0,0,0,.3)}.final-couple-person>.small:not(.flight-country){grid-column:1/3;grid-row:3;font-size:clamp(19px,1.55vw,38px)!important;font-weight:950;line-height:1;color:#fff;margin:.08em 0 0}</style><?php endif;?><?php if($type==='score_matrix'&&(string)$r['round_type']==='final'):?><style>.matrix-wrap>.score-table.matrix{table-layout:fixed}.matrix-wrap>.score-table.matrix th:first-child,.matrix-wrap>.score-table.matrix td:first-child{text-align:center;font-weight:900}.matrix-wrap>.score-table.matrix th:nth-child(2),.matrix-wrap>.score-table.matrix td:nth-child(2){text-align:left;padding-left:.75em}.matrix-wrap>.score-table.matrix tbody tr{height:auto}</style><script>(function(){document.querySelector('.provisional-label')?.remove();const table=document.querySelector('.score-table.matrix');if(!table)return;const heading=table.querySelector('thead th:first-child');if(heading)heading.textContent='Result';const headers=table.querySelectorAll('thead th');if(headers.length&&headers[headers.length-1].textContent.trim().toLowerCase()==='sum')headers[headers.length-1].remove();const judgeCount=Math.max(1,headers.length-3),colgroup=document.createElement('colgroup');colgroup.innerHTML='<col style="width:10%"><col style="width:36%">'+Array.from({length:judgeCount},()=>'<col style="width:'+(54/judgeCount)+'%">').join('');table.insertBefore(colgroup,table.firstChild);table.querySelectorAll('tbody tr').forEach(row=>{const cells=row.querySelectorAll('td');if(cells.length<2)return;const rank=Number(cells[0].textContent.trim());cells[0].textContent=rank===1?'Champion':rank===2?'1st Runner-Up':rank===3?'2nd Runner-Up':rank>3?ordinal(rank):'—';const latest=row.querySelectorAll('td');if(latest.length>2&&latest.length===headers.length)latest[latest.length-1].remove()});function ordinal(value){const mod100=value%100;if(mod100>=11&&mod100<=13)return value+'th';return value+(value%10===1?'st':value%10===2?'nd':value%10===3?'rd':'th')}})();</script><?php endif;?></div></div></body></html>
