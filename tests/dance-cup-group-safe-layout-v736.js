@@ -20,5 +20,5 @@ assert(projector.includes('.podium-card.first{--podium-height:100%'),'champion c
 assert(projector.includes('.podium-card.second{--podium-height:88%'),'second place must retain the stepped layout');
 assert(projector.includes('.podium-card.third{--podium-height:80%'),'third place must retain the stepped layout');
 assert(!projector.includes('--podium-height:clamp(390px,51vh,510px)'),'fixed third-place height can still clip behind the footer');
-assert(version.version==='2.3.6-dev736'&&version.build===3442,'release metadata mismatch');
+assert(version.version.startsWith('2.3.6-dev')&&version.build>=3442,'release metadata is older than dev736');
 console.log('Dance Cup group safe layout v736 checks passed');

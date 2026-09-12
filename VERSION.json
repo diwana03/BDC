@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev736",
-  "build": 3442,
+  "version": "2.3.6-dev737",
+  "build": 3443,
   "status": "development",
   "release_date": "2026-09-10",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Dance Cup single-champion podium centering: assigns second, champion and third place cards to fixed podium columns so a category with only one scored competitor reveals the Champion in the center instead of the left side, while preserving two-person, full podium and portrait layouts.",
     "Dance Cup safe group projection: gives duet, couple, Pro Am and team entries wider cards and pages, preserves the full group photo without a second crop, keeps all names, flags and country labels visible on contestant, scoreboard and podium screens, and sizes podium steps from the available stage height so no winner card can disappear behind the live footer.",
     "Dance Cup partner-name projection: keeps both people visible in couple, duet, Pro Am and ampersand-named team entries by shortening each side independently, preserves named teams without an ampersand, and retains first-name projection for solo contestants across contestant call, all contestants, scoreboard and podium screens.",
     "Dance Cup two-row card readability: applies a dedicated compact vertical scale when ten contestants share a 5 by 2 board so portrait, contestant label, number, full first name, flags and country labels remain on separate visible lines without collision or footer clipping.",
