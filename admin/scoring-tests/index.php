@@ -1109,8 +1109,8 @@ try{
    $entry=$entryStmt->fetch();
    if(!$entry)throw new RuntimeException('Finalist not found.');
 
-   $pairStmt=$pdo->prepare("SELECT id FROM bdc_test_scoring_final_pairs WHERE round_id=:r AND (leader_entry_id=:e OR follower_entry_id=:e)");
-   $pairStmt->execute(['r'=>$roundId,'e'=>$entryId]);
+   $pairStmt=$pdo->prepare("SELECT id FROM bdc_test_scoring_final_pairs WHERE round_id=:r AND (leader_entry_id=:leader_entry OR follower_entry_id=:follower_entry)");
+   $pairStmt->execute(['r'=>$roundId,'leader_entry'=>$entryId,'follower_entry'=>$entryId]);
    $pairIds=array_map('intval',$pairStmt->fetchAll(PDO::FETCH_COLUMN));
 
    $pdo->beginTransaction();
