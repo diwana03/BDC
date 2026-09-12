@@ -6,9 +6,9 @@ const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 
 for (const marker of [
   'align-items:end',
-  '.podium-card.first{--podium-height:clamp(500px,69vh,690px)',
-  '.podium-card.second{--podium-height:clamp(430px,59vh,590px)',
-  '.podium-card.third{--podium-height:clamp(390px,51vh,510px)',
+  '.podium-card.first{--podium-height:100%',
+  '.podium-card.second{--podium-height:88%',
+  '.podium-card.third{--podium-height:80%',
   'function countdownToPodium(data)',
   'let seconds=5',
   "place==='1'?'Champion':place==='2'?'2nd Place':'3rd Place'",

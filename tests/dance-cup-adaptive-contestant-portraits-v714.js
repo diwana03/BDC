@@ -7,8 +7,8 @@ const projector = fs.readFileSync('admin/dance-cup/projector.php', 'utf8');
 const version = JSON.parse(fs.readFileSync('VERSION.json', 'utf8'));
 
 for (const marker of [
-  'rows=Math.max(1,Math.ceil(page.length/5))',
-  'contestant-grid rows-',
+  'rows=Math.max(1,Math.ceil(page.length/columnCount))',
+  "contestant-grid columns-'+columnCount+' rows-",
   '.contestant-grid.rows-1{grid-template-rows:minmax(0,1fr)!important}',
   '.contestant-grid.rows-2{grid-template-rows:repeat(2,minmax(0,1fr))!important}',
   '.contestant-grid>.contestant-card>div{height:100%;min-height:0;display:flex',

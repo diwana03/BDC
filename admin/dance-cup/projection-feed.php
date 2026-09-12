@@ -15,7 +15,7 @@ $p=$test?'bdc_test_dance_cup':'bdc_dance_cup';
 $t=DanceCupScoringService::tables($test);
 $token=preg_replace('/[^a-f0-9]/','',(string)($_GET['token']??''));
 if(strlen($token)!==64){http_response_code(404);echo json_encode(['ok'=>false]);exit;}
-$q=$pdo->prepare("SELECT p.*,e.name event_name,c.category_name,c.round_name,c.dance_style,c.competition_level,c.status competition_status FROM {$p}_event_projection p JOIN {$t['events']} e ON e.id=p.event_id JOIN {$t['competitions']} c ON c.id=p.active_competition_id WHERE p.access_token=:token LIMIT 1");
+$q=$pdo->prepare("SELECT p.*,e.name event_name,c.category_name,c.round_name,c.dance_style,c.entry_type,c.competition_level,c.status competition_status FROM {$p}_event_projection p JOIN {$t['events']} e ON e.id=p.event_id JOIN {$t['competitions']} c ON c.id=p.active_competition_id WHERE p.access_token=:token LIMIT 1");
 $q->execute(['token'=>$token]);$state=$q->fetch();
 if(!$state){http_response_code(404);echo json_encode(['ok'=>false]);exit;}
 $competition=(int)$state['active_competition_id'];
@@ -110,10 +110,16 @@ foreach($results as &$result){
 unset($result);
 foreach($judges as &$judge){$judge['countries']=CountrySetService::fromRow($judge);$judge['flags']=array_map(static fn(string $country):string=>CountryFlagService::emoji($country),$judge['countries']);$judge['country_codes']=array_map(static fn(string $country):string=>strtolower((string)(CountryFlagService::code($country)??'')),$judge['countries']);$judge['flag']=$judge['flags'][0]??'';}unset($judge);
 foreach($results as &$result)$result['flag']=$result['flags'][0]??CountryFlagService::emoji($result['country']??null);unset($result);
-// Match Jack and Jill projection naming: first name only, with a surname
-// initial when the current projected group contains duplicate first names.
-$entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
-$results=ProjectionNameService::abbreviateRows($results,['display_name']);
+// Solo projection uses first names. Partner categories retain both people,
+// shortening each side independently. Team identities remain complete.
+$entryType=strtolower(trim((string)($state['entry_type']??'solo')));
+if(in_array($entryType,['couple','duo','pro_am','team'],true)){
+    $entries=ProjectionNameService::abbreviatePartnerRows($entries,['display_name']);
+    $results=ProjectionNameService::abbreviatePartnerRows($results,['display_name']);
+}elseif($entryType==='solo'){
+    $entries=ProjectionNameService::abbreviateRows($entries,['display_name']);
+    $results=ProjectionNameService::abbreviateRows($results,['display_name']);
+}
 $judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
 $publicResults=!empty($state['results_unlocked'])?$results:[];
 $active=null;foreach($entries as $entry)if((int)$entry['id']===$activeEntryId){$active=$entry;break;}

@@ -15,7 +15,7 @@ assert(projector.includes('.board{width:min(1720px,100%)'), 'Scoreboard must res
 assert(projector.includes('.call{width:min(1680px,100%)'), 'Contestant Call must respect horizontal safe margins');
 assert(projector.includes('.call-layout{width:100%;height:min(100%,760px)'), 'Contestant Call must respect vertical safe margins');
 assert(projector.includes('.podium{width:min(1500px,100%)'), 'Podium must respect horizontal safe margins');
-assert(projector.includes('.podium-card{height:var(--podium-height);max-height:100%'), 'Podium cards must respect vertical safe margins');
+assert(projector.includes('.podium-card{height:var(--podium-height);min-height:0;max-height:100%'), 'Podium cards must respect vertical safe margins');
 for (const screen of ['Holding Screen','Contestant Call','All Contestants','Judges','Scoring Progress','Live Scoreboard','Winner Podium']) {
   assert(projector.includes(screen), `Shared safe shell must retain ${screen}`);
 }

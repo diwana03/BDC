@@ -41,6 +41,44 @@ final class ProjectionNameService
     }
 
     /**
+     * Shorten each person in a saved partner identity without dropping either
+     * side of the ampersand. A malformed identity without an ampersand is kept
+     * intact so projection never silently turns a duet into one contestant.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @param array<int,string> $fields
+     * @return array<int,array<string,mixed>>
+     */
+    public static function abbreviatePartnerRows(array $rows, array $fields): array
+    {
+        $people = [];
+        $rowParts = [];
+        foreach ($rows as $rowIndex => $row) {
+            foreach ($fields as $field) {
+                $name = trim((string) ($row[$field] ?? ''));
+                $parts = array_map('trim', preg_split('/\s*&\s*/u', $name) ?: []);
+                if (count($parts) < 2 || in_array('', $parts, true)) continue;
+                foreach ($parts as $partIndex => $part) {
+                    $key = $rowIndex . ':' . $field . ':' . $partIndex;
+                    $people[$key] = $part;
+                    $rowParts[$rowIndex][$field][] = $key;
+                }
+            }
+        }
+
+        $short = self::abbreviateNames($people);
+        foreach ($rowParts as $rowIndex => $fieldParts) {
+            foreach ($fieldParts as $field => $keys) {
+                $rows[$rowIndex][$field] = implode(' & ', array_map(
+                    static fn(string $key): string => $short[$key],
+                    $keys
+                ));
+            }
+        }
+        return $rows;
+    }
+
+    /**
      * @param array<string,string> $names
      * @return array<string,string>
      */

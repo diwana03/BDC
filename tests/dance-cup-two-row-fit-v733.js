@@ -12,6 +12,6 @@ assert(projector.includes('.screen-content{width:100%;height:auto;min-height:0;'
 assert(!projector.includes('.screen-content{width:100%;height:100%;'), 'legacy overflowing content height remains');
 assert(projector.includes('.contestant-grid{\n  min-height:0!important;\n  overflow:hidden!important;'), 'contestant grid is not bounded inside its assigned row');
 assert(projector.includes('.contestant-grid.rows-2{grid-template-rows:repeat(2,minmax(0,1fr))!important}'), 'five by two contestant layout changed');
-assert(version.version === '2.3.6-dev733' && version.build === 3439, 'release metadata mismatch');
+assert(version.version.startsWith('2.3.6-dev') && version.build >= 3439, 'release metadata is older than dev733');
 
 console.log('Dance Cup two row fit v733 regression checks passed');

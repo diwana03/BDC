@@ -12,7 +12,7 @@ for (const marker of ['data-dc-approval-link', 'data-approval-href=', 'data-dc-a
 for (const marker of ["state.competition_status==='pending_approval'", "approvalLink.href=pending?approvalLink.dataset.approvalHref:'#';", 'Pending Super Admin approval.']) {
   assert(live.includes(marker), `Missing live approval-state marker: ${marker}`);
 }
-assert(projector.includes('.podium-card.third .score{font-size:clamp(15px,1.25vw,23px)}'), 'Third-place score must fit inside the stepped card');
+assert(projector.includes('.podium-card.second .score,.podium-card.third .score{font-size:clamp(12px,min(1vw,1.65vh),19px)}'), 'Third-place score must fit inside the stepped card');
 assert(Number(version.version.match(/^2\.3\.\d+-dev(\d+)$/)?.[1]||0)>=537);
 assert(version.build>=3243);
 
