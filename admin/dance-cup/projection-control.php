@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__,2).'/bootstrap.php';
-use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\DanceCupScoringService;
+use App\Core\Auth;use App\Core\Csrf;use App\Core\Database;use App\Services\DanceCupScoringService;use App\Services\DanceCupTieService;
 Auth::requireAdmin();$pdo=Database::connection();$test=(string)($_GET['data_mode']??$_POST['data_mode']??'')==='test';if($test&&!Auth::isSuperAdmin()){http_response_code(403);exit('Super Admin required.');}$id=(int)($_GET['id']??$_POST['id']??0);$t=DanceCupScoringService::tables($test);$p=$test?'bdc_test_dance_cup':'bdc_dance_cup';DanceCupScoringService::ensureAutomation($pdo,$id,$test);$q=$pdo->prepare("SELECT c.*,e.name event_name FROM {$t['competitions']} c JOIN {$t['events']} e ON e.id=c.event_id WHERE c.id=:id");$q->execute(['id'=>$id]);$c=$q->fetch();if(!$c){http_response_code(404);exit('Dance Cup category not found.');}$eventId=(int)$c['event_id'];$judgeQuery=$pdo->prepare("SELECT id,judge_name,judge_order,is_chief FROM {$p}_judges WHERE competition_id=:competition ORDER BY is_chief DESC,judge_order,id");$judgeQuery->execute(['competition'=>$id]);$judges=$judgeQuery->fetchAll();$judgePositions=[];foreach($judges as $judgeIndex=>$judgeRow)$judgePositions[(int)$judgeRow['id']]=$judgeIndex+1;$error='';
 try{
 if($_SERVER['REQUEST_METHOD']==='POST'){
@@ -43,6 +43,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         $page=max(1,(int)($_POST['page_number']??1));$delay=max(5,min(120,(int)($_POST['page_delay']??10)));$auto=!empty($_POST['auto_page'])?1:0;
         $pdo->prepare("UPDATE {$p}_event_projection SET page_number=:page,auto_page=:auto,page_delay=:delay,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['page'=>$page,'auto'=>$auto,'delay'=>$delay,'user'=>$user,'event'=>$eventId]);
     }elseif($action==='unlock_results'){
+        if(DanceCupTieService::hasUnresolved($pdo,$id,$test))throw new RuntimeException('Resolve every exact-score tie through the Chief Judge before unlocking the official result reveal.');
         $pdo->prepare("UPDATE {$p}_event_projection SET results_unlocked=1,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['user'=>$user,'event'=>$eventId]);
     }elseif($action==='lock_results'){
         $pdo->prepare("UPDATE {$p}_event_projection SET results_unlocked=0,screen_type=CASE WHEN screen_type IN('results','podium') THEN 'holding' ELSE screen_type END,reveal_place=NULL,effect_type=NULL,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['user'=>$user,'event'=>$eventId]);
@@ -51,6 +52,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!in_array($place,['3','2','1','all'],true))throw new RuntimeException('Invalid winner reveal.');
         $lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);
         if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before revealing winners.');
+        if(DanceCupTieService::hasUnresolved($pdo,$id,$test))throw new RuntimeException('The podium is protected because an exact-score tie still needs the Chief Judge final order.');
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type='podium',reveal_place=:place,auto_cycle=0,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'place'=>$place,'user'=>$user,'event'=>$eventId]);
     }elseif($action==='effect'){
         $effect=(string)($_POST['effect_type']??'none');
@@ -62,14 +64,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }else{
         $allowed=['holding','contestant','judge_call','judges','contestants','scoring','results','podium'];$themes=['midnight_wine','obsidian_gold','ivory_wine','pearl_navy'];
         if(!in_array($screen,$allowed,true)||!in_array($theme,$themes,true))throw new RuntimeException('Invalid projection setting.');
-        if($screen==='results'){$lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before sending scores live.');}
+        if($screen==='results'){$lock=$pdo->prepare("SELECT results_unlocked FROM {$p}_event_projection WHERE event_id=:event");$lock->execute(['event'=>$eventId]);if(!(int)$lock->fetchColumn())throw new RuntimeException('Unlock official results before sending scores live.');if(DanceCupTieService::hasUnresolved($pdo,$id,$test))throw new RuntimeException('The live scoreboard is protected because an exact-score tie still needs the Chief Judge final order.');}
         $pdo->prepare("UPDATE {$p}_event_projection SET active_competition_id=:competition,screen_type=:screen,theme=:theme,auto_cycle=0,page_number=1,reveal_place=NULL,state_version=state_version+1,updated_by=:user WHERE event_id=:event")->execute(['competition'=>$id,'screen'=>$screen,'theme'=>$theme,'user'=>$user,'event'=>$eventId]);
     }
     $changed=in_array($action,['theme','effect'],true)?$action:'';
     header('Location: ?id='.$id.($test?'&data_mode=test':'').($changed?'&changed='.$changed:''),true,303);exit;
 }
 }catch(Throwable $e){$error=$e->getMessage();}
-$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judge_call'=>'Call Judges One by One','judges'=>'All Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();$changed=(string)($_GET['changed']??'');
+$q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q->execute(['event'=>$eventId]);$state=$q->fetch();$categories=$pdo->prepare("SELECT id,category_name,round_name,status FROM {$t['competitions']} WHERE event_id=:event ORDER BY category_name,id");$categories->execute(['event'=>$eventId]);$categories=$categories->fetchAll();$entries=$pdo->prepare("SELECT id,bib_number,display_name FROM {$p}_entries WHERE competition_id=:competition AND status='active' ORDER BY bib_number,id");$entries->execute(['competition'=>$id]);$entries=$entries->fetchAll();$suffix=$test?'&data_mode=test':'';$projector=url('admin/dance-cup/projector-launch.php?token='.rawurlencode($state['access_token']).($test?'&data_mode=test':''));$screens=['holding'=>'Holding Screen','judge_call'=>'Call Judges One by One','judges'=>'All Judges','contestants'=>'All Contestants','scoring'=>'Scoring Progress','results'=>'Live Scoreboard'];$themes=['midnight_wine'=>['Midnight Wine','Dark'],'obsidian_gold'=>['Obsidian Gold','Dark'],'ivory_wine'=>['Ivory Wine','Light'],'pearl_navy'=>['Pearl Navy','Light']];$csrf=Csrf::token();$changed=(string)($_GET['changed']??'');$unresolvedPodiumTies=DanceCupTieService::hasUnresolved($pdo,$id,$test);$resultRevealAuthorized=!empty($state['results_unlocked'])&&!$unresolvedPodiumTies;$tieResolutionUrl=((string)($c['scoring_mode']??'manual')==='automatic'?'automation.php':'category.php').'?id='.$id.$suffix;
 ?>
 <!doctype html>
 <html>
@@ -200,13 +202,13 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <input type="hidden" name="id" value="<?=$id?>">
 <input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
 <input type="hidden" name="theme" value="<?=e($state['theme'])?>">
-<button class="btn screen-btn w-100 <?=$state['screen_type']===$key?'btn-danger':'btn-outline-dark'?>" name="screen_type" value="<?=e($key)?>" <?=$key==='results'&&empty($state['results_unlocked'])?'disabled':''?>>
+<button class="btn screen-btn w-100 <?=$state['screen_type']===$key?'btn-danger':'btn-outline-dark'?>" name="screen_type" value="<?=e($key)?>" <?=$key==='results'&&!$resultRevealAuthorized?'disabled':''?>>
 <strong>
-<?=$key==='results'&&empty($state['results_unlocked'])?'🔒 ':''?>
+<?=$key==='results'&&!$resultRevealAuthorized?'🔒 ':''?>
 <?=e($label)?>
 </strong>
 <small class="d-block">
-<?=$state['screen_type']===$key?'LIVE NOW':($key==='results'&&empty($state['results_unlocked'])?'Unlock first':'Send to projector')?>
+<?=$state['screen_type']===$key&&$resultRevealAuthorized?'LIVE NOW':($key==='results'&&!$resultRevealAuthorized?($unresolvedPodiumTies?'Resolve tie first':'Unlock first'):'Send to projector')?>
 </small>
 </button>
 </form>
@@ -222,17 +224,18 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <h2 class="h4 mb-1">Official Results Reveal</h2>
 <p class="text-muted mb-2">Unlock only authorizes the controls. It does not change the projector screen or reveal any winner.</p>
 </div>
-<span class="badge text-bg-<?=!empty($state['results_unlocked'])?'success':'secondary'?> align-self-start">
-<?=!empty($state['results_unlocked'])?'UNLOCKED':'LOCKED'?>
+<span class="badge text-bg-<?=$resultRevealAuthorized?'success':($unresolvedPodiumTies?'warning':'secondary')?> align-self-start">
+<?=$resultRevealAuthorized?'UNLOCKED':($unresolvedPodiumTies?'TIE DECISION REQUIRED':'LOCKED')?>
 </span>
 </div>
+<?php if($unresolvedPodiumTies):?><div class="alert alert-warning"><strong>Chief Judge decision required.</strong> Two or more contestants have the same score, so the projector will remain on Holding until their final order is confirmed. Scores will not change. <a class="alert-link" href="<?=e($tieResolutionUrl)?>">Resolve the exact-score tie</a>.</div><?php endif;?>
 <div class="d-flex flex-wrap gap-2 mb-3">
 <form method="post">
 <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
 <input type="hidden" name="id" value="<?=$id?>">
 <input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>">
-<button class="btn <?=!empty($state['results_unlocked'])?'btn-success':'btn-warning'?>" name="action" value="unlock_results" <?=!empty($state['results_unlocked'])?'disabled':''?>>
-<?=!empty($state['results_unlocked'])?'Results Unlocked':'Unlock Results Reveal'?>
+<button class="btn <?=!empty($state['results_unlocked'])&&!$unresolvedPodiumTies?'btn-success':'btn-warning'?>" name="action" value="unlock_results" <?=(!empty($state['results_unlocked'])||$unresolvedPodiumTies)?'disabled':''?>>
+<?=$unresolvedPodiumTies?'Tie Decision Required':(!empty($state['results_unlocked'])?'Results Unlocked':'Unlock Results Reveal')?>
 </button>
 </form>
 <form method="post">
@@ -245,9 +248,9 @@ $q=$pdo->prepare("SELECT * FROM {$p}_event_projection WHERE event_id=:event");$q
 <div class="fw-bold mb-2">Winner Podium Reveal</div>
 <p class="small text-muted">Use these in order. Each button sends the podium screen live and preserves places already revealed.</p>
 <div class="podium-actions">
-<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="3"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>3</b></span>Reveal 3rd Place</button></form>
-<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="2"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>2</b></span>Reveal 2nd Place</button></form>
-<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="1"><button class="btn btn-warning" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])?'disabled':''?>><span class="step"><b>1</b></span>Reveal Champion</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="3"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])||$unresolvedPodiumTies?'disabled':''?>><span class="step"><b>3</b></span>Reveal 3rd Place</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="2"><button class="btn btn-outline-dark" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])||$unresolvedPodiumTies?'disabled':''?>><span class="step"><b>2</b></span>Reveal 2nd Place</button></form>
+<form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="data_mode" value="<?=$test?'test':'real'?>"><input type="hidden" name="reveal_place" value="1"><button class="btn btn-warning" name="action" value="reveal_podium" <?=empty($state['results_unlocked'])||$unresolvedPodiumTies?'disabled':''?>><span class="step"><b>1</b></span>Reveal Champion</button></form>
 </div>
 </div>
 </section>

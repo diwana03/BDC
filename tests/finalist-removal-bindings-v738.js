@@ -22,6 +22,6 @@ function verifyFinalistRemoval(source, pairTable, label) {
 
 verifyFinalistRemoval(live, 'bdc_scoring_final_pairs', 'Live');
 verifyFinalistRemoval(test, 'bdc_test_scoring_final_pairs', 'Test');
-assert(version.version === '2.3.6-dev738' && version.build === 3444, 'release metadata mismatch');
+assert(version.build >= 3444, 'release metadata must include the v738 repair');
 
 console.log('Finalist removal bindings v738 checks passed');

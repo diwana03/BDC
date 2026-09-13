@@ -75,8 +75,10 @@ final class ScoringBackupService
         self::create($pdo,$roundId,$test,$userId,'pre_restore','restore_backup','Automatic safety copy before restoring backup #'.$backupId);
         $rows=(array)($payload['tables']??[]);$tables=self::tables($test);
         $hasJudgeSnapshot=array_key_exists('judges',$rows);
+        $hasEntrySnapshot=array_key_exists('entries',$rows);
         $deleteOrder=['final_results','final_marks','final_pairs','results','marks','sessions'];
         $insertOrder=['marks','results','final_pairs','final_marks','final_results','sessions'];
+        if($hasEntrySnapshot){$deleteOrder[]='entries';array_unshift($insertOrder,'entries');}
         if($hasJudgeSnapshot){$deleteOrder[]='judges';array_unshift($insertOrder,'judges');}
         $pdo->beginTransaction();
         try{
@@ -187,7 +189,7 @@ final class ScoringBackupService
     private static function tables(bool $test):array
     {
         $p=$test?'bdc_test_scoring_':'bdc_scoring_';
-        return ['judges'=>$p.'judges','marks'=>$p.'marks','results'=>$p.'results','final_pairs'=>$p.'final_pairs','final_marks'=>$p.'final_marks','final_results'=>$p.'final_results','sessions'=>$p.'judge_sessions'];
+        return ['judges'=>$p.'judges','entries'=>$p.'entries','marks'=>$p.'marks','results'=>$p.'results','final_pairs'=>$p.'final_pairs','final_marks'=>$p.'final_marks','final_results'=>$p.'final_results','sessions'=>$p.'judge_sessions'];
     }
 
     private static function insertRows(PDO $pdo,string $table,array $rows,int $roundId):void

@@ -19,7 +19,7 @@ assert(!control.includes('Show Full Podium'), 'full-podium shortcut must not byp
 assert(control.includes('Unlock only authorizes the controls. It does not change the projector screen'), 'unlock must be explicitly neutral');
 assert(control.includes('class="contestant-call"'), 'contestant calling must use the compact responsive selector');
 assert(!control.includes('class="contestant-grid"'), 'wide contestant button wall must be removed');
-assert(feed.includes("$publicResults=!empty($state['results_unlocked'])?$results:[]"), 'locked feed must redact scores and winners');
+assert(feed.includes("$publicResults=!empty($state['results_unlocked'])") && feed.includes('?$results:[]'), 'locked feed must redact scores and winners');
 assert(projector.includes("type==='results'||type==='podium'"), 'projector must defend locked result screens');
 assert(projector.includes('function playEffect'), 'projector must render presentation effects');
 assert(projector.includes("reveal==='all'||Number(row.placement)>=Number(reveal)"), 'podium must progressively preserve revealed placements');

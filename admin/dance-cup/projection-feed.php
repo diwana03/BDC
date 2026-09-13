@@ -5,6 +5,7 @@ use App\Core\Database;
 use App\Services\CountryFlagService;
 use App\Services\CountrySetService;
 use App\Services\DanceCupScoringService;
+use App\Services\DanceCupTieService;
 use App\Services\ProjectionNameService;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -121,7 +122,8 @@ if(in_array($entryType,['couple','duo','pro_am','team'],true)){
     $results=ProjectionNameService::abbreviateRows($results,['display_name']);
 }
 $judges=ProjectionNameService::abbreviateRows($judges,['judge_name']);
-$publicResults=!empty($state['results_unlocked'])?$results:[];
+$resultRevealReady=!DanceCupTieService::hasUnresolved($pdo,$competition,$test);
+$publicResults=!empty($state['results_unlocked'])&&$resultRevealReady?$results:[];
 $active=null;foreach($entries as $entry)if((int)$entry['id']===$activeEntryId){$active=$entry;break;}
 $progress=null;foreach($entries as $entry)if((int)$entry['id']===$progressEntryId){$progress=$entry;break;}
-echo json_encode(['ok'=>true,'revision'=>$revision,'state'=>$state,'entries'=>$entries,'judges'=>$judges,'results'=>$publicResults,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);
+echo json_encode(['ok'=>true,'revision'=>$revision,'state'=>$state,'result_reveal_ready'=>$resultRevealReady?1:0,'entries'=>$entries,'judges'=>$judges,'results'=>$publicResults,'active_entry'=>$active,'progress_entry'=>$progress],JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE);

@@ -1,11 +1,14 @@
 {
-  "version": "2.3.6-dev738",
-  "build": 3444,
+  "version": "2.3.6-dev741",
+  "build": 3447,
   "status": "development",
-  "release_date": "2026-09-10",
+  "release_date": "2026-09-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Salsa publication approval binding repair: the publication finalization update now uses distinct native PDO parameters for published_by and approved_by in both Salsa publication routes, preventing SQLSTATE HY093 while preserving the transactional rollback safety, scores, rankings and points.",
+    "Dance Cup tie-safe podium reveal: official result unlock and 3rd/2nd/Champion reveal are blocked while an exact-score tie lacks a Chief Judge final order, the projection feed redacts unresolved winners and forces an already-open projector back to Holding, and the control links directly to the existing score-preserving tie workflow so resolved 1st, 2nd and 3rd placements display without duplicate labels.",
+    "Protected injured-Finalist recovery: Scorer, Master Scorer and Super Admin can safely resolve a scoring-locked Salsa or Bachata Jack & Jill Final in one audited Test/Live-parity action that snapshots the full Final roster and scoring state, withdraws only the injured finalist, optionally promotes the next-ranked same-role competitor, clears only the current Final's pairings and placements, reopens judge sessions, revokes the old Emcee link and returns projection to Holding while previous-round results remain untouched.",
     "Finalist injury withdrawal repair: uses distinct native prepared-statement bindings when locating a finalist's confirmed pair in both isolated Test and Live scoring, so an authorized Final-only removal no longer fails with SQLSTATE HY093 while preserving previous-round results and limiting score cleanup to the affected Final pair.",
     "Dance Cup single-champion podium centering: assigns second, champion and third place cards to fixed podium columns so a category with only one scored competitor reveals the Champion in the center instead of the left side, while preserving two-person, full podium and portrait layouts.",
     "Dance Cup safe group projection: gives duet, couple, Pro Am and team entries wider cards and pages, preserves the full group photo without a second crop, keeps all names, flags and country labels visible on contestant, scoreboard and podium screens, and sizes podium steps from the available stage height so no winner card can disappear behind the live footer.",

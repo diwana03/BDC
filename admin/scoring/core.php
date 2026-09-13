@@ -587,7 +587,7 @@ try{
   $action=(string)($_POST['action']??'');
   if($action!=='create_round' && !empty($_POST['round_id'])){
    $lockedRound=loadRound($pdo,(int)$_POST['round_id']);
-   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups'],true)){
+   if($lockedRound && in_array((string)$lockedRound['status'],['completed','pending_approval','archived'],true) && !in_array($action,['reopen_completed_round','recover_injured_finalist','create_scoring_backup','restore_scoring_backup','delete_scoring_backup','delete_selected_scoring_backups'],true)){
     $message=$lockedRound['status']==='completed'
       ? 'This completed round is locked. Only a Scorer, Master Scorer or Super Admin can confirm a resubmission override.'
       : ($lockedRound['status']==='pending_approval'
@@ -1244,6 +1244,11 @@ try{
    $result=App\Services\RandomPairingService::unlockForRematch($pdo,$roundId,false,$userId,trim((string)($_POST['rematch_reason']??'')),trim((string)($_POST['rematch_confirmation']??'')));
    auditScoring($pdo,$roundId,$userId,'final_random_match_emergency_unlocked',['reason'=>$result['reason'],'cleared_marks'=>$result['cleared_marks']]);
    $notice='Random Match unlocked. Existing Final placements were cleared and judge sessions reopened. Generate and confirm the replacement pairing before scoring resumes.';
+  }elseif($action==='recover_injured_finalist'){
+   if(!Auth::canOverrideCompletedScores())throw new RuntimeException('Only a Scorer, Master Scorer or Super Admin can run injured Finalist recovery.');
+   $roundId=(int)($_POST['round_id']??0);
+   $recovery=App\Services\InjuredFinalistRecoveryService::recover($pdo,$roundId,(int)($_POST['entry_id']??0),false,$userId,trim((string)($_POST['recovery_reason']??'')),trim((string)($_POST['recovery_confirmation']??'')),!empty($_POST['promote_next']));
+   $notice=$recovery['withdrawn'].' withdrawn from this Final. '.($recovery['replacement']?'Next ranked replacement promoted: '.$recovery['replacement'].'. ':'No replacement was promoted; balance the Final roster before rematching. ').'Final judges are reopened, old pairings are cleared, and the projector is safely on Holding.';
   }elseif($action==='confirm_final_pairing'){
    $roundId=(int)($_POST['round_id']??0);
    $missing=$pdo->prepare("SELECT COUNT(*) FROM bdc_scoring_final_pairs WHERE round_id=:r AND follower_entry_id IS NULL");
@@ -1585,12 +1590,12 @@ $csrf=Csrf::token();
 </tr>
 <?php endforeach;?></tbody></table></div></div></div><?php else:?>
 <div class="mb-3"><a href="?mode=<?=e($round['scoring_mode']??'manual')?>" class="btn btn-outline-secondary btn-sm">← All rounds</a> <strong><?=e($round['event_name'])?></strong> · <span class="text-nowrap"><?=e(!empty($round['scheduled_at'])?date('d M Y, g:i A',strtotime((string)$round['scheduled_at'])):($round['event_date']?date('d M Y',strtotime((string)$round['event_date'])).' · Time pending':'Date & time pending'))?></span> · <?=e(ucfirst($round['division']))?> · <?=e(ucfirst($round['round_type']))?></div>
-<?php if($round['status']==='completed'):?><div class="alert alert-warning"><strong>Completed round locked.</strong> Scores and callbacks remain visible, but changes and resubmission are blocked.<?php if(Auth::canOverrideCompletedScores()):?><form method="post" class="d-flex gap-2 flex-wrap mt-2 completed-round-reopen" onsubmit="return confirm('Unlock this completed round and allow its scores to be corrected and resubmitted? Existing child rounds will be preserved and resynchronised after resubmission.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="reopen_completed_round"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control form-control-sm" style="max-width:180px" name="resubmit_confirmation" placeholder="Type RESUBMIT" required><button class="btn btn-sm btn-warning">Unlock for Resubmission</button></form><?php endif;?></div><script>addEventListener('DOMContentLoaded',()=>document.querySelectorAll('form:not(.completed-round-reopen)').forEach(form=>form.querySelectorAll('button,input:not([type=hidden]),select,textarea').forEach(control=>control.disabled=true)));</script><?php endif;?>
+<?php if($round['status']==='completed'):?><div class="alert alert-warning"><strong>Completed round locked.</strong> Scores and callbacks remain visible, but changes and resubmission are blocked.<?php if(Auth::canOverrideCompletedScores()):?><form method="post" class="d-flex gap-2 flex-wrap mt-2 completed-round-reopen" onsubmit="return confirm('Unlock this completed round and allow its scores to be corrected and resubmitted? Existing child rounds will be preserved and resynchronised after resubmission.');"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="reopen_completed_round"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control form-control-sm" style="max-width:180px" name="resubmit_confirmation" placeholder="Type RESUBMIT" required><button class="btn btn-sm btn-warning">Unlock for Resubmission</button></form><?php endif;?></div><script>addEventListener('DOMContentLoaded',()=>document.querySelectorAll('form:not(.completed-round-reopen):not(.finalist-recovery-form)').forEach(form=>form.querySelectorAll('button,input:not([type=hidden]),select,textarea').forEach(control=>control.disabled=true)));</script><?php endif;?>
 <?php if($round['status']==='completed'&&$round['round_type']==='heats'):?>
 <div class="card shadow-sm mb-4 border-primary"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">Completed Heats Score Report</h2><p class="text-muted mb-0">The locked score sheet remains available for review, printing or saving as a PDF. Opening it does not reopen scoring.</p></div><a class="btn btn-primary" target="_blank" rel="noopener" href="result.php?round_id=<?=$roundId?>">View / Print Heats Scores</a></div></div>
 <?php endif;?>
 <?php if($round['round_type']==='final'):?>
-<?php $nextRankedState=NextRankedFinalistService::state($pdo,$roundId,false);?>
+<?php $nextRankedState=NextRankedFinalistService::state($pdo,$roundId,false);$finalRecoveryLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,false);?>
 <?php $finalDivisionSuggestions=array_values(array_filter($competitorSuggestions,function($suggestion)use($round){
  $check=DivisionProgressionService::eligibilityFor((string)$round['division'],(float)$suggestion['novice_points'],(float)$suggestion['intermediate_points'],(float)$suggestion['advanced_points'],(string)$suggestion['current_division'],!empty($suggestion['competed_intermediate']),!empty($suggestion['competed_advanced']),!empty($suggestion['competed_all_star']));
  return $check['eligible'];
@@ -1616,6 +1621,23 @@ $csrf=Csrf::token();
  <?php endif;?>
 </div>
 </div></div>
+
+<?php if($finalRecoveryLocked):?>
+<div class="card shadow-sm mb-4 border-danger"><div class="card-body">
+ <h2 class="h5 text-danger">Injured Finalist Recovery</h2>
+ <p class="text-muted">One protected action creates the normal scoring backup, clears only this Final's marks, results and pairings, withdraws the selected finalist, reopens every Final judge, revokes the old Emcee link and returns the projector to Holding. Previous-round results remain unchanged.</p>
+ <?php if(Auth::canOverrideCompletedScores()):?>
+ <form method="post" class="row g-2 finalist-recovery-form" onsubmit="return confirm('Withdraw this injured finalist and reset this Final for a new match? Previous-round results stay unchanged.');">
+  <input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="action" value="recover_injured_finalist"><input type="hidden" name="round_id" value="<?=$roundId?>">
+  <div class="col-lg-4"><label class="form-label fw-semibold">Injured finalist</label><select class="form-select" name="entry_id" required><option value="">Select finalist</option><?php foreach(['leader','follower'] as $recoveryRole):foreach($entries[$recoveryRole] as $recoveryEntry):?><option value="<?=(int)$recoveryEntry['id']?>"><?=e(ucfirst($recoveryRole).' · Bib '.$recoveryEntry['bib_number'].' · '.$recoveryEntry['display_name'])?></option><?php endforeach;endforeach;?></select></div>
+  <div class="col-lg-3"><label class="form-label fw-semibold">Recovery reason</label><input class="form-control" name="recovery_reason" minlength="8" maxlength="500" required placeholder="Competitor injured"></div>
+  <div class="col-lg-3"><label class="form-label fw-semibold">Type WITHDRAW FINALIST</label><input class="form-control" name="recovery_confirmation" required autocomplete="off"></div>
+  <div class="col-lg-2 d-flex align-items-end"><button class="btn btn-danger w-100">Recover Final</button></div>
+  <div class="col-12"><label class="form-check"><input class="form-check-input" type="checkbox" name="promote_next" value="1" checked> Automatically promote the next-ranked competitor of the same role when available</label></div>
+ </form>
+ <?php else:?><div class="alert alert-warning mb-0">A Scorer, Master Scorer or Super Admin must run the protected recovery.</div><?php endif;?>
+</div></div>
+<?php endif;?>
 
 <?php if(!empty($nextRankedState['callback_derived'])):?>
 <div class="card shadow-sm mb-4"><div class="card-body">
@@ -1725,7 +1747,7 @@ $csrf=Csrf::token();
 <?php endif;?>
 
 <div class="card shadow-sm mb-4"><div class="card-body">
- <?php $randomMatchLocked=App\Services\RandomPairingService::scoringStarted($pdo,$roundId,false);$emceeLink=App\Services\RandomPairingService::activeLink($pdo,$roundId,false);?>
+ <?php $randomMatchLocked=$finalRecoveryLocked;$emceeLink=App\Services\RandomPairingService::activeLink($pdo,$roundId,false);?>
  <div class="border border-danger-subtle rounded p-3 mb-3 bg-danger-subtle bg-opacity-10">
   <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
    <div><h2 class="h5 mb-1">Emcee Matching Link</h2><div class="text-muted small">Restricted link for the Emcee to randomize and reveal Final couples on this event's existing projector.</div></div>
