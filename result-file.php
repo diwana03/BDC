@@ -39,5 +39,5 @@ if(!isset($types[$ext])){http_response_code(403);exit;}
 header('Content-Type: '.$types[$ext]);
 header('Content-Length: '.filesize($path));
 header('Content-Disposition: inline; filename="'.str_replace('"','',basename($path)).'"');
-header('Cache-Control: public, max-age=300, nosniff');
+header('Cache-Control: '.($ext==='html'?'no-cache, must-revalidate, nosniff':'public, max-age=300, nosniff'));
 readfile($path);

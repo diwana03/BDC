@@ -93,7 +93,17 @@ function specialPublishHtml(string $title,string $subtitle,string $body):string{
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.htmlspecialchars($title,ENT_QUOTES,'UTF-8').'</title><style>body{font-family:Arial,sans-serif;color:#171717;margin:32px}h1{margin-bottom:4px}.sub{color:#666;margin-bottom:24px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #d7d7d7;padding:9px;text-align:left}th{background:#171717;color:#fff}.note{margin-top:20px;padding:14px;border-left:5px solid #c8102e;background:#fff4f5}.small{font-size:12px;color:#666}</style></head><body><h1>'.htmlspecialchars($title,ENT_QUOTES,'UTF-8').'</h1><div class="sub">'.htmlspecialchars($subtitle,ENT_QUOTES,'UTF-8').'</div>'.$body.'<div class="small" style="margin-top:24px">Bachata Dance Council · Special Category Scoring</div></body></html>';
 }
 
-function specialPublishArchives(PDO $pdo,array $round,array $pairs):array{
+function specialPublishPendingFinal(int $roundId):string{
+    $session=session_id()?:'no-session';
+    $safeSession=preg_replace('/[^A-Za-z0-9_-]/','',$session)?:'session';
+    $path=ResultStorageService::root().'/.pending-html/'.$safeSession.'/'.$roundId.'/finals.html';
+    if(!is_file($path)||filesize($path)<500)throw new RuntimeException('Generate the complete Final archive before approval.');
+    $html=(string)file_get_contents($path);
+    if(stripos($html,'<!doctype html')===false&&stripos($html,'<html')===false)throw new RuntimeException('The generated Final archive is not valid HTML.');
+    return $path;
+}
+
+function specialPublishArchives(PDO $pdo,array $round,array $pairs,string $pendingFinal):array{
     $label=SpecialCategoryService::label((string)$round['division']);
     $date=(string)($round['event_date']?:date('Y-m-d'));
     $base=specialPublishSafe((string)$round['event_name']).'-'.specialPublishSafe($label).'-'.$date;
@@ -111,10 +121,6 @@ function specialPublishArchives(PDO $pdo,array $round,array $pairs):array{
     foreach($heatsRows as $row)$heatsBody.='<tr><td>'.htmlspecialchars(ucfirst((string)$row['dance_role'])).'</td><td>'.(int)$row['bib_number'].'</td><td>'.htmlspecialchars((string)$row['bdc_id']).'</td><td>'.htmlspecialchars((string)$row['display_name']).'</td><td>'.htmlspecialchars((string)($row['rank_number']??'')).'</td><td>'.htmlspecialchars(ucwords(str_replace('_',' ',(string)($row['result_status']??'')))).'</td></tr>';
     $heatsBody.='</tbody></table>';
 
-    $finalBody='<table><thead><tr><th>Place</th><th>Leader</th><th>Follower</th></tr></thead><tbody>';
-    foreach($pairs as $pair)$finalBody.='<tr><td>'.htmlspecialchars(specialPublishOrdinal((int)$pair['final_rank'])).'</td><td>'.htmlspecialchars($pair['leader_name'].' ('.$pair['leader_bdc'].')').'</td><td>'.htmlspecialchars($pair['follower_name'].' ('.$pair['follower_bdc'].')').'</td></tr>';
-    $finalBody.='</tbody></table>';
-
     $pointsBody='<div class="note"><strong>Fixed special-category points.</strong> Participant-count BDC point tiers do not apply. Points are recorded under each dancer’s current role-specific BDC progression division.</div><table><thead><tr><th>Place</th><th>Competitor</th><th>Role</th><th>Points</th><th>Recorded Under</th></tr></thead><tbody>';
     foreach($pairs as $pair){
         foreach([
@@ -126,11 +132,22 @@ function specialPublishArchives(PDO $pdo,array $round,array $pairs):array{
     }
     $pointsBody.='</tbody></table>';
 
-    return [
+    $archives=[
         'heats'=>specialPublishWrite($base.'-Heats.html',specialPublishHtml($round['event_name'].' — '.$label.' Heats',$date,$heatsBody)),
-        'finals'=>specialPublishWrite($base.'-Final.html',specialPublishHtml($round['event_name'].' — '.$label.' Final',$date,$finalBody)),
         'points'=>specialPublishWrite($base.'-Points.html',specialPublishHtml($round['event_name'].' — '.$label.' Points',$date,$pointsBody)),
     ];
+    $finalFilename=$base.'-Final.html';
+    $finalPath=ResultStorageService::root().'/'.$finalFilename;
+    if(is_file($finalPath))@unlink($finalPath);
+    if(!rename($pendingFinal,$finalPath))throw new RuntimeException('Could not move the complete Final archive into the repository.');
+    if(!@chmod($finalPath,0644))throw new RuntimeException('Could not set repository permissions on the Final archive.');
+    @rmdir(dirname($pendingFinal));
+    $archives['finals']=[
+        'absolute_path'=>$finalPath,
+        'storage_path'=>ResultStorageService::relative($finalFilename),
+        'url'=>ResultStorageService::publicUrl($finalFilename),
+    ];
+    return $archives;
 }
 
 $isSuperAdmin=specialPublishIsSuperAdmin();
@@ -172,7 +189,9 @@ try{
             if(!$publication||$publication['status']!=='pending_approval')throw new RuntimeException('No pending approval was found.');
             if($round['status']!=='pending_approval')throw new RuntimeException('The Final round is not awaiting approval.');
 
-            $archives=specialPublishArchives($pdo,$round,$pairs);
+            if(empty($_POST['client_html_ready']))throw new RuntimeException('Generate the complete Final archive before approval.');
+            $pendingFinal=specialPublishPendingFinal($roundId);
+            $archives=specialPublishArchives($pdo,$round,$pairs,$pendingFinal);
             $pdo->beginTransaction();
             try{
                 $transactionStmt=$pdo->prepare("INSERT INTO bdc_point_transactions(competitor_id,event_id,division,dance_role,points,placement,notes,source_type,source_row_hash,created_by) VALUES(:competitor,:event,:division,:role,:points,:placement,:notes,'scoring_engine',:hash,:user)");
@@ -250,6 +269,34 @@ try{
             }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         }
 
+        if($action==='refresh_final_archive'){
+            if(!$isSuperAdmin)throw new RuntimeException('Only Super Admin can refresh a published Final archive.');
+            $publication=specialPublishRecord($pdo,$roundId);
+            if(!$publication||$publication['status']!=='published')throw new RuntimeException('Published competition not found.');
+            if(empty($_POST['client_html_ready']))throw new RuntimeException('Generate the complete Final archive before refreshing.');
+            $pendingFinal=specialPublishPendingFinal($roundId);
+            $documentStmt=$pdo->prepare("SELECT d.id,d.storage_path FROM bdc_scoring_publication_documents m JOIN bdc_result_documents d ON d.id=m.repository_document_id WHERE m.publication_id=:publication AND m.document_category='finals' LIMIT 1");
+            $documentStmt->execute(['publication'=>$publication['id']]);
+            $document=$documentStmt->fetch();
+            $target=$document?ResultStorageService::resolve((string)$document['storage_path']):null;
+            if(!$target||!is_file($target))throw new RuntimeException('The published Final repository file was not found.');
+            $backupDirectory=ResultStorageService::root().'/.archive-backups';
+            if(!is_dir($backupDirectory)&&!mkdir($backupDirectory,0700,true)&&!is_dir($backupDirectory))throw new RuntimeException('Could not create the protected archive backup folder.');
+            $backupPath=$backupDirectory.'/'.basename($target).'.'.gmdate('Ymd-His').'.bak';
+            if(!copy($target,$backupPath))throw new RuntimeException('Could not back up the current Final archive. Nothing was changed.');
+            @chmod($backupPath,0600);
+            try{
+                if(!rename($pendingFinal,$target))throw new RuntimeException('Could not replace the published Final archive.');
+                if(!@chmod($target,0644))throw new RuntimeException('Could not set repository permissions on the refreshed Final archive.');
+                @rmdir(dirname($pendingFinal));
+                specialPublishAudit($pdo,$roundId,$userId,'special_final_archive_refreshed',['publication_id'=>$publication['id'],'document_id'=>(int)$document['id'],'previous_checksum'=>hash_file('sha256',$backupPath)?:null,'new_checksum'=>hash_file('sha256',$target)?:null]);
+                $notice='The published Final archive was refreshed from the reviewed Final. Readable and landscape all-judge views are now included; scoring and points were unchanged.';
+            }catch(Throwable $e){
+                if(is_file($backupPath))copy($backupPath,$target);
+                throw $e;
+            }
+        }
+
         if($action==='rollback'){
             if(!$isSuperAdmin)throw new RuntimeException('Only Super Admin can roll back a published competition.');
             $reason=trim((string)($_POST['rollback_reason']??''));if($reason==='')throw new RuntimeException('Rollback reason is required.');
@@ -293,8 +340,116 @@ $label=isset($round)?SpecialCategoryService::label((string)$round['division']):'
 <div class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Point Preview</h2><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Place</th><th>Leader</th><th>Leader Bucket</th><th>Follower</th><th>Follower Bucket</th><th>Fixed Points</th></tr></thead><tbody><?php foreach($pairs as $pair):?><tr><td><?=e(specialPublishOrdinal((int)$pair['final_rank']))?></td><td><?=e($pair['leader_name'].' · '.$pair['leader_bdc'])?></td><td><?=e(ucfirst((string)$pair['leader_point_division']))?></td><td><?=e($pair['follower_name'].' · '.$pair['follower_bdc'])?></td><td><?=e(ucfirst((string)$pair['follower_point_division']))?></td><td><strong><?=e((string)(float)$pair['points'])?></strong></td></tr><?php endforeach;?></tbody></table></div></div></div>
 <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Publication Status</h2><p>Status: <strong><?=e(ucwords(str_replace('_',' ',(string)($publication['status']??'not submitted'))))?></strong></p>
 <?php if(!$publication||in_array($publication['status'],['rejected','rolled_back'],true)):?><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-primary" name="action" value="submit_for_approval">Submit for Super Admin Approval</button></form><?php endif;?>
-<?php if($publication&&$publication['status']==='pending_approval'&&$isSuperAdmin):?><div class="d-flex flex-wrap gap-2"><form method="post"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><button class="btn btn-success" name="action" value="approve_publication" onclick="return confirm('Approve and publish fixed special-category points?')">Approve &amp; Publish</button></form><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="rejection_reason" placeholder="Rejection reason" required><button class="btn btn-outline-danger" name="action" value="reject_approval">Reject</button></form></div><?php endif;?>
-<?php if($publication&&$publication['status']==='published'&&$isSuperAdmin):?><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="rollback_reason" placeholder="Rollback reason" required><button class="btn btn-danger" name="action" value="rollback" onclick="return confirm('Rollback this published special-category result and remove its points?')">Rollback Publication</button></form><?php endif;?>
+<?php if($publication&&$publication['status']==='pending_approval'&&$isSuperAdmin):?><div class="d-flex flex-wrap gap-2"><form method="post" id="specialArchiveForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="action" value="approve_publication"><input type="hidden" name="client_html_ready" id="clientHtmlReady" value="0"><button class="btn btn-success" id="specialArchiveButton" type="submit" onclick="return confirm('Approve and publish fixed special-category points?')">Approve &amp; Publish</button><div id="htmlGenerationStatus" class="small text-muted mt-2">The reviewed Final, including its landscape all-judge view, will be archived before publication.</div></form><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="rejection_reason" placeholder="Rejection reason" required><button class="btn btn-outline-danger" name="action" value="reject_approval">Reject</button></form></div><?php endif;?>
+<?php if($publication&&$publication['status']==='published'&&$isSuperAdmin):?><div class="d-flex flex-wrap gap-2"><form method="post" id="specialArchiveForm"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input type="hidden" name="action" value="refresh_final_archive"><input type="hidden" name="client_html_ready" id="clientHtmlReady" value="0"><button class="btn btn-primary" id="specialArchiveButton" type="submit" onclick="return confirm('Refresh only the published Final archive? Scoring and points will not change.')">Refresh Final Archive</button><div id="htmlGenerationStatus" class="small text-muted mt-2">Creates a protected backup, then adds readable and landscape all-judge views to the existing Final link.</div></form><form method="post" class="d-flex gap-2"><input type="hidden" name="_csrf" value="<?=e($csrf)?>"><input type="hidden" name="round_id" value="<?=$roundId?>"><input class="form-control" name="rollback_reason" placeholder="Rollback reason" required><button class="btn btn-danger" name="action" value="rollback" onclick="return confirm('Rollback this published special-category result and remove its points?')">Rollback Publication</button></form></div><?php endif;?>
 </div></div>
 <?php endif;?>
-</main></body></html>
+</main>
+<?php if($publication&&in_array($publication['status'],['pending_approval','published'],true)&&$isSuperAdmin):?>
+<script>
+const specialArchiveForm=document.getElementById('specialArchiveForm');
+const specialArchiveButton=document.getElementById('specialArchiveButton');
+const clientHtmlReady=document.getElementById('clientHtmlReady');
+const htmlGenerationStatus=document.getElementById('htmlGenerationStatus');
+let specialArchiveRunning=false;
+
+function removeArchiveControls(documentCopy){
+ documentCopy.querySelectorAll('nav,.toolbar,.no-print,form,script').forEach(element=>element.remove());
+}
+
+function makeSpecialFinalArchive(readableHtml,landscapeHtml,sourceUrl){
+ const parser=new DOMParser();
+ const readable=parser.parseFromString(readableHtml,'text/html');
+ const landscape=parser.parseFromString(landscapeHtml,'text/html');
+ removeArchiveControls(readable);
+ removeArchiveControls(landscape);
+
+ const base=readable.createElement('base');
+ base.href=new URL(sourceUrl,window.location.href).href;
+ readable.head.prepend(base);
+ readable.title=readable.title.replace(/Draft Result/gi,'Official Result').replace(/· Draft$/gi,'· Official');
+
+ const readableView=readable.createElement('div');
+ readableView.className='archive-readable-view';
+ while(readable.body.firstChild)readableView.appendChild(readable.body.firstChild);
+
+ const landscapeView=readable.createElement('div');
+ landscapeView.className='archive-landscape-view';
+ while(landscape.body.firstChild){
+  landscapeView.appendChild(readable.importNode(landscape.body.firstChild,true));
+  landscape.body.firstChild.remove();
+ }
+
+ const archiveStyle=readable.createElement('style');
+ archiveStyle.textContent=`
+  .repository-archive-banner{font-family:Arial,sans-serif;background:#111827;color:#fff;padding:10px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .repository-archive-banner strong{font-size:14px}
+  .archive-toolbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid #ccc;font-family:Arial,sans-serif}
+  .archive-toolbar button{min-height:36px;padding:7px 12px;border:1px solid #6c757d;border-radius:6px;background:#fff;color:#212529;font:600 14px Arial,sans-serif;cursor:pointer}
+  .archive-toolbar button[data-layout="print"]{background:#0d6efd;color:#fff;border-color:#0d6efd}
+  body:not(.archive-layout-fit) .archive-toolbar button[data-layout="readable"],body.archive-layout-fit .archive-toolbar button[data-layout="fit"]{background:#212529;color:#fff;border-color:#212529}
+  .archive-landscape-view{display:none}body.archive-layout-fit .archive-readable-view{display:none}body.archive-layout-fit .archive-landscape-view{display:block}
+  @media print{.repository-archive-banner,.archive-toolbar{display:none!important}body{background:#fff!important}}
+ `;
+ readable.head.appendChild(archiveStyle);
+
+ const banner=readable.createElement('div');
+ banner.className='repository-archive-banner';
+ banner.innerHTML='<strong>BDC Official Archived Result</strong><span>Read-only Final snapshot</span>';
+ const toolbar=readable.createElement('div');
+ toolbar.className='archive-toolbar';
+ toolbar.innerHTML='<button type="button" data-layout="readable">Readable Pages</button><button type="button" data-layout="fit">Landscape, All Judges</button><button type="button" data-layout="print">Print / Save as PDF</button>';
+ readable.body.append(banner,toolbar,readableView,landscapeView);
+
+ const archiveScript=readable.createElement('script');
+ archiveScript.textContent=`(()=>{const q=new URLSearchParams(location.search);const fit=q.get('layout')==='fit';document.body.classList.toggle('archive-layout-fit',fit);document.body.classList.toggle('fit-all',fit);document.body.classList.toggle('layout-fit',fit);if(fit){const s=document.createElement('style');s.textContent='@page{size:A3 landscape;margin:7mm}';document.head.appendChild(s)}document.querySelector('[data-layout="readable"]').onclick=()=>{const u=new URL(location.href);u.searchParams.delete('layout');location.href=u.href};document.querySelector('[data-layout="fit"]').onclick=()=>{const u=new URL(location.href);u.searchParams.set('layout','fit');location.href=u.href};document.querySelector('[data-layout="print"]').onclick=()=>window.print()})();`;
+ readable.body.appendChild(archiveScript);
+ return '<!doctype html>\n'+readable.documentElement.outerHTML.replace(/DRAFT RESULT/gi,'OFFICIAL RESULT').replace(/· DRAFT(?! RESULT)/gi,'· OFFICIAL');
+}
+
+async function fetchFinalPreview(url){
+ const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'X-BDC-Browser-Archive':'1'}});
+ if(!response.ok)throw new Error(`Could not open Final preview (${response.status}).`);
+ return response.text();
+}
+
+async function uploadSpecialFinal(html){
+ const form=new FormData();
+ form.append('_csrf','<?=e($csrf)?>');
+ form.append('round_id','<?=$roundId?>');
+ form.append('category','finals');
+ form.append('html',new Blob([html],{type:'text/html;charset=utf-8'}),'finals.html');
+ const response=await fetch('client-html-upload.php',{method:'POST',body:form,credentials:'same-origin'});
+ const result=await response.json();
+ if(!response.ok||!result.ok)throw new Error(result.error||'Final archive upload failed.');
+}
+
+if(specialArchiveForm){
+ specialArchiveForm.addEventListener('submit',async event=>{
+  if(clientHtmlReady.value==='1'||specialArchiveRunning)return;
+  event.preventDefault();
+  specialArchiveRunning=true;
+  specialArchiveButton.disabled=true;
+  try{
+   htmlGenerationStatus.className='small text-primary mt-2';
+   htmlGenerationStatus.textContent='Taking the reviewed Final snapshot…';
+   const source='final-result.php?round_id=<?=$roundId?>';
+   const [readable,landscape]=await Promise.all([fetchFinalPreview(source),fetchFinalPreview(source+'&layout=fit')]);
+   htmlGenerationStatus.textContent='Saving readable and landscape Final views…';
+   await uploadSpecialFinal(makeSpecialFinalArchive(readable,landscape,source));
+   clientHtmlReady.value='1';
+   htmlGenerationStatus.className='small text-success mt-2';
+   htmlGenerationStatus.textContent='Complete Final archive ready. Publishing…';
+   specialArchiveForm.requestSubmit();
+  }catch(error){
+   clientHtmlReady.value='0';
+   specialArchiveRunning=false;
+   specialArchiveButton.disabled=false;
+   htmlGenerationStatus.className='small text-danger mt-2';
+   htmlGenerationStatus.textContent=error.message||'Could not archive the reviewed Final.';
+  }
+ });
+}
+</script>
+<?php endif;?>
+</body></html>

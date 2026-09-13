@@ -13,6 +13,6 @@ for (const [label, source] of [['special Salsa publication', special], ['standar
 
 assert(special.includes('$pdo->beginTransaction();try{'), 'special approval must remain transactional');
 assert(special.includes('if($pdo->inTransaction())$pdo->rollBack()'), 'special approval must preserve rollback safety');
-assert(version.version === '2.3.6-dev741' && version.build === 3447, 'release metadata mismatch');
+assert(version.build >= 3447, 'release metadata must include the v741 binding repair');
 
 console.log('Salsa publication approval binding v741 checks passed');
