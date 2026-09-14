@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev743",
-  "build": 3449,
+  "version": "2.3.6-dev744",
+  "build": 3450,
   "status": "development",
-  "release_date": "2026-09-13",
+  "release_date": "2026-09-14",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Detailed Heats archive with actual advancement: Test and Live Heats reports retain every judge mark, totals, judge key, Chief Judge, witnesses, readable pages and all-judge landscape output; the Advancement column follows the actual active Semifinal or Final roster so approved manual promotions display as FINALIST or SEMIFINALIST PROMOTED and removed automatic callbacks display as NOT ADVANCED. Special-category publication now snapshots and safely refreshes both detailed Heats and Final archives with protected backups while leaving scores, rankings and points unchanged.",
     "Council-standard detailed Final format: Test and Live Final reports now present the official event name with a clear public council level such as BDC INTERMEDIATE, BDC OPEN or SDC INTERMEDIATE across readable pages and all-judge landscape pages, while retaining finalist bibs, complete judge rankings, Relative Placement evidence, Chief Judge, judge key, witnesses and print output.",
     "Complete special-category Final archives: approval now snapshots the actual reviewed Final report instead of rebuilding a reduced placement list, preserves readable pages and an all-judge A3 landscape view behind the same authorized repository link, and lets Super Admin safely refresh an existing published Final after creating a protected checksum-backed copy without changing rankings, scoring or points.",
     "Salsa publication approval binding repair: the publication finalization update now uses distinct native PDO parameters for published_by and approved_by in both Salsa publication routes, preventing SQLSTATE HY093 while preserving the transactional rollback safety, scores, rankings and points.",

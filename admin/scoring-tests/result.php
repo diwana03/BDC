@@ -7,6 +7,8 @@ use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\HtmlSnapshotToken;
 use App\Services\PdfExportToken;
+use App\Services\ScoringReportAdvancementService;
+use App\Services\ScoringReportLabelService;
 
 $pdo=Database::connection();
 
@@ -40,7 +42,11 @@ $fitAll=(string)($_GET['layout']??'')==='fit';
 $summaryOnly=$judgeCount>30&&!$fitAll;
 $pageSize='A4 landscape';
 $entries=['leader'=>[],'follower'=>[]];
-foreach($entryStmt->fetchAll() as $entry)$entries[$entry['dance_role']][]=$entry;
+$actualRoster=ScoringReportAdvancementService::actualRoster($pdo,$round,true);
+foreach($entryStmt->fetchAll() as $entry){
+ $entry=ScoringReportAdvancementService::annotate($entry,$actualRoster);
+ $entries[$entry['dance_role']][]=$entry;
+}
 $largestRoleCount=max(count($entries['leader']),count($entries['follower']));
 $pageSize=(!$summaryOnly && $judgeCount<=7 && $largestRoleCount<=20)?'A4 portrait':'A4 landscape';
 $singleColumn=$pageSize==='A4 portrait';
@@ -62,12 +68,19 @@ function markLabel(?array $mark,bool $automatic=false,bool $assigned=true):strin
  return '—';
 }
 function resultLabel(array $entry):string{
+ if(!empty($entry['actual_advanced']))return (string)$entry['actual_advance_label'].(!empty($entry['manual_promotion'])?' · PROMOTED':'');
+ if(!empty($entry['not_advanced']))return 'NOT ADVANCED';
  $status=(string)($entry['result_status']??'');
  if($status==='callback')return 'CB #'.(int)$entry['rank_number'];
  if($status==='alternate')return 'ALT '.(int)$entry['alternate_rank'];
  if($status==='tie_pending')return 'TIE #'.(int)$entry['rank_number'];
  if($status==='eliminated')return '—';
  return '';
+}
+function resultRowClass(array $entry):string{
+ if(!empty($entry['actual_advanced']))return 'callback';
+ if(!empty($entry['not_advanced']))return 'eliminated';
+ return (string)($entry['result_status']??'');
 }
 function scoreTotalLabel(array $entry):string{
  return $entry['total_score']===null?'—':number_format((float)$entry['total_score'],1);
@@ -81,6 +94,10 @@ $witnesses=array_values(array_filter([
 ]));
 
 $reportStatus=$isRepositorySnapshot?'Official Result':'Draft Result';
+$publicDivision=ScoringReportLabelService::councilDivision($round);
+$advancementNote=(int)($actualRoster['round_id']??0)>0
+ ? 'Advancement reflects the actual active next-round roster, including approved manual promotions.'
+ : 'Advancement reflects the calculated callback result; no active next-round roster is available yet.';
 $chiefJudge='';
 foreach($judges as $judge){
  if((int)$judge['is_chief']===1){
@@ -93,7 +110,7 @@ foreach($judges as $judge){
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title><?=e($round['event_name'])?> · <?=e(ucfirst($round['round_type']))?> · <?=e($reportStatus)?></title>
+<title><?=e($round['event_name'])?> - <?=e($publicDivision)?> - <?=e(ucfirst($round['round_type']))?> - <?=e($reportStatus)?></title>
 <style>
 @page{size:<?=$fitAll?'A3 landscape':$pageSize?>;margin:7mm}
 *{box-sizing:border-box}
@@ -115,7 +132,7 @@ th{background:#eee;font-weight:700}
 th.name,td.name{text-align:left;width:35mm}
 th.bib,td.bib{width:12mm}
 th.total,td.total{width:15mm;font-weight:700}
-th.result,td.result{width:16mm;font-weight:700}
+th.result,td.result{width:28mm;font-weight:700}
 .callback{background:#dff4e6}
 .alternate{background:#fff2c7}
 .tie_pending{background:#f8d7da}
@@ -124,8 +141,8 @@ th.result,td.result{width:16mm;font-weight:700}
 .witnesses strong{display:block;margin-bottom:2mm}
 .witness-line{display:inline-block;min-width:48mm;margin:0 5mm 3mm 0;border-bottom:1px solid #111;padding-bottom:1mm}
 .version{text-align:right}
-.page-label{margin:3mm 0 2mm;font-size:9pt;font-weight:700}.paginated-table{font-size:8.4pt}.paginated-table th,.paginated-table td{height:6.5mm;padding:1.1mm .7mm}.paginated-table th.name,.paginated-table td.name{width:48mm}.paginated-table th.judge,.paginated-table td.judge{width:11mm}.paginated-key{font-size:8.5pt;margin-top:3mm}.compact-footer{margin-top:3mm;padding-top:2mm}
-.fit-shell{overflow-x:auto;padding:8mm}.fit-page{width:max-content;min-width:400mm}.fit-table{width:max-content;min-width:100%;font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-table th,.fit-table td{min-width:9mm;padding:.8mm .5mm;height:5mm}.fit-table th.name,.fit-table td.name{min-width:42mm}.fit-table th.bib,.fit-table td.bib{min-width:11mm}.fit-table th.total,.fit-table td.total{min-width:14mm}.fit-table th.result,.fit-table td.result{min-width:16mm}
+.page-label{margin:3mm 0 2mm;font-size:9pt;font-weight:700}.advancement-note{margin:2mm 0 0;padding:1.5mm 2mm;border-left:1mm solid #198754;background:#eef8f1;font-size:7.8pt}.paginated-table{font-size:8.4pt}.paginated-table th,.paginated-table td{height:6.5mm;padding:1.1mm .7mm}.paginated-table th.name,.paginated-table td.name{width:48mm}.paginated-table th.judge,.paginated-table td.judge{width:11mm}.paginated-key{font-size:8.5pt;margin-top:3mm}.compact-footer{margin-top:3mm;padding-top:2mm}
+.fit-shell{overflow-x:auto;padding:8mm}.fit-page{width:max-content;min-width:400mm}.fit-table{width:max-content;min-width:100%;font-size:<?=max(4.2,7.2-min(3.0,max(0,$judgeCount-12)*0.12))?>pt}.fit-table th,.fit-table td{min-width:9mm;padding:.8mm .5mm;height:5mm}.fit-table th.name,.fit-table td.name{min-width:42mm}.fit-table th.bib,.fit-table td.bib{min-width:11mm}.fit-table th.total,.fit-table td.total{min-width:14mm}.fit-table th.result,.fit-table td.result{min-width:28mm}
 @media print{
  body{background:#fff}
  .toolbar{display:none}
@@ -139,9 +156,10 @@ th.result,td.result{width:16mm;font-weight:700}
 <?php if($fitAll):?>
 <?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):?>
 <div class="fit-shell"><div class="page fit-page">
- <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e(strtoupper($label))?></h2></div><div class="meta"><strong>Judges:</strong> <?=count($judges)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e($publicDivision)?> · <?=e(strtoupper($label))?></h2></div><div class="meta"><strong>Judges:</strong> <?=count($judges)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <div class="advancement-note"><?=e($advancementNote)?></div>
  <div class="page-label"><?=e($label)?> · All Judges</div>
- <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic,in_array((string)($judge['scoring_scope']??'all'),['all',$role],true)))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
+ <table class="fit-table"><thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judges as $judge):?><th>J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Advancement</th></tr></thead><tbody><?php foreach($entries[$role] as $entry):?><tr class="<?=e(resultRowClass($entry))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic,in_array((string)($judge['scoring_scope']??'all'),['all',$role],true)))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody></table>
  <div class="judge-key"><strong>Judge Key</strong><?php foreach($judges as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
 </div></div>
 <?php endforeach;?>
@@ -150,13 +168,14 @@ th.result,td.result{width:16mm;font-weight:700}
 <div class="page">
  <header class="header">
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
-  <div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e(strtoupper($label))?></h2></div>
+  <div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e($publicDivision)?> · <?=e(strtoupper($label))?></h2></div>
   <div class="meta"><strong>Competitors:</strong> <?=$entryChunkIndex*20+1?>–<?=min(($entryChunkIndex+1)*20,count($entries[$role]))?><br><strong>Judge Group:</strong> <?=$judgeChunkIndex+1?>/<?=count($judgeChunks)?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div>
  </header>
+ <div class="advancement-note"><?=e($advancementNote)?></div>
  <div class="page-label"><?=e($label)?> · Judges <?=e(implode(', ',array_map(fn($judge):string=>'J'.(int)$judge['judge_order'],$judgeChunk)))?></div>
  <table class="paginated-table">
-  <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Result</th></tr></thead>
-  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e((string)($entry['result_status']??''))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic,in_array((string)($judge['scoring_scope']??'all'),['all',$role],true)))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
+  <thead><tr><th class="bib">Bib</th><th class="name">Competitor</th><?php foreach($judgeChunk as $judge):?><th class="judge">J<?=(int)$judge['judge_order']?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;?><th class="total"><?=$isAutomatic?'Average':'Total'?></th><th class="result">Advancement</th></tr></thead>
+  <tbody><?php foreach($entryChunk as $entry):?><tr class="<?=e(resultRowClass($entry))?>"><td class="bib"><?=(int)$entry['bib_number']?></td><td class="name"><?=e($entry['display_name'])?></td><?php foreach($judgeChunk as $judge):?><td class="judge"><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic,in_array((string)($judge['scoring_scope']??'all'),['all',$role],true)))?></td><?php endforeach;?><td class="total"><?=e(scoreTotalLabel($entry))?></td><td class="result"><?=e(resultLabel($entry))?></td></tr><?php endforeach;?></tbody>
  </table>
  <div class="judge-key paginated-key"><strong>Judge Key</strong><?php foreach($judgeChunk as $judge):?><span><b>J<?=(int)$judge['judge_order']?></b> · <?=e($judge['judge_name'])?><?=(int)$judge['is_chief']?' ★ Chief Judge':''?></span><?php endforeach;?></div>
  <footer class="footer compact-footer"><div class="witnesses"><strong>Scoring Witnesses</strong><?php if($witnesses):foreach($witnesses as $witness):?><span class="witness-line"><?=e($witness)?></span><?php endforeach;else:?><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><span class="witness-line">&nbsp;</span><?php endif;?></div><div class="version"><strong>Chief Judge:</strong><br><?=e($chiefJudge?:'—')?><br><br><strong>Scoring Administrator:</strong><br><?=e((string)($round['scoring_administrator']??''))?></div></footer>
@@ -168,7 +187,7 @@ th.result,td.result{width:16mm;font-weight:700}
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
   <div class="title">
    <h1><?=e($round['event_name'])?></h1>
-   <h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?></h2>
+   <h2><?=e(strtoupper($round['round_type']))?> · <?=e(strtoupper($reportStatus))?> · <?=e($publicDivision)?></h2>
   </div>
   <div class="meta">
    <strong>Chief Judge:</strong> <?=e($chiefJudge?:'—')?><br>
@@ -176,6 +195,7 @@ th.result,td.result{width:16mm;font-weight:700}
    <strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?>
   </div>
  </header>
+ <div class="advancement-note"><?=e($advancementNote)?></div>
 
  <div class="tables">
  <?php foreach(['leader'=>'Leaders','follower'=>'Followers'] as $role=>$label):?>
@@ -187,11 +207,11 @@ th.result,td.result{width:16mm;font-weight:700}
      <th class="name">Competitor</th>
      <?php if(!$summaryOnly):foreach($judges as $judge):?><th>J<?= (int)$judge['judge_order'] ?><?=(int)$judge['is_chief']?'★':''?></th><?php endforeach;endif;?>
      <th class="total"><?=$isAutomatic?'Average':'Total'?></th>
-     <th class="result">Result</th>
+     <th class="result">Advancement</th>
     </tr></thead>
     <tbody>
     <?php foreach($entries[$role] as $entry):?>
-     <tr class="<?=e((string)($entry['result_status']??''))?>">
+     <tr class="<?=e(resultRowClass($entry))?>">
       <td class="bib"><?= (int)$entry['bib_number'] ?></td>
       <td class="name"><?=e($entry['display_name'])?></td>
       <?php if(!$summaryOnly):foreach($judges as $judge):?><td><?=e(markLabel($marks[(int)$entry['id']][(int)$judge['id']]??null,$isAutomatic,in_array((string)($judge['scoring_scope']??'all'),['all',$role],true)))?></td><?php endforeach;endif;?>

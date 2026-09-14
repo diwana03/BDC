@@ -21,9 +21,9 @@ for (const [name, source] of [['Testing Final report', test], ['Live Final repor
 
 assert(labels.includes("'rising'=>'INTERMEDIATE'"), 'Rising must publish using the established Intermediate public level');
 assert(labels.includes("return ($dance==='salsa'?'SDC':'BDC').' '.$level"), 'report council must follow Salsa SDC and Bachata BDC identity');
-assert(specialPublish.includes("fetchFinalPreview(source+'&layout=fit')"), 'special publication must archive the detailed landscape report');
-assert(specialPublish.includes('makeSpecialFinalArchive(readable,landscape,source)'), 'special publication must archive both official report layouts');
-assert(version.version === '2.3.6-dev743' && version.build === 3449, 'release metadata mismatch');
+assert(specialPublish.includes("fetchReportPreview(finalSource+'&layout=fit')"), 'special publication must archive the detailed landscape report');
+assert(specialPublish.includes("makeSpecialReportArchive(finalViews[0],finalViews[1],finalSource,'Final')"), 'special publication must archive both official report layouts');
+assert(version.build >= 3449, 'detailed Final report requires build 3449 or newer');
 
 for (const marker of [
   'ScoringReportLabelService::councilDivision($round)',
