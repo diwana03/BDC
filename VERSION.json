@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev742",
-  "build": 3448,
+  "version": "2.3.6-dev743",
+  "build": 3449,
   "status": "development",
   "release_date": "2026-09-13",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Council-standard detailed Final format: Test and Live Final reports now present the official event name with a clear public council level such as BDC INTERMEDIATE, BDC OPEN or SDC INTERMEDIATE across readable pages and all-judge landscape pages, while retaining finalist bibs, complete judge rankings, Relative Placement evidence, Chief Judge, judge key, witnesses and print output.",
     "Complete special-category Final archives: approval now snapshots the actual reviewed Final report instead of rebuilding a reduced placement list, preserves readable pages and an all-judge A3 landscape view behind the same authorized repository link, and lets Super Admin safely refresh an existing published Final after creating a protected checksum-backed copy without changing rankings, scoring or points.",
     "Salsa publication approval binding repair: the publication finalization update now uses distinct native PDO parameters for published_by and approved_by in both Salsa publication routes, preventing SQLSTATE HY093 while preserving the transactional rollback safety, scores, rankings and points.",
     "Dance Cup tie-safe podium reveal: official result unlock and 3rd/2nd/Champion reveal are blocked while an exact-score tie lacks a Chief Judge final order, the projection feed redacts unresolved winners and forces an already-open projector back to Holding, and the control links directly to the existing score-preserving tie workflow so resolved 1st, 2nd and 3rd placements display without duplicate labels.",

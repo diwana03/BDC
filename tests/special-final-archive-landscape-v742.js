@@ -18,7 +18,7 @@ assert(publish.includes("previous_checksum") && publish.includes("new_checksum")
 assert(publish.includes("scoring and points were unchanged"), 'refresh confirmation must explicitly preserve result data');
 assert(!publish.includes("$finalBody='<table>"), 'special publication must not rebuild a reduced Final placement table');
 assert(resultFile.includes("$ext==='html'?'no-cache, must-revalidate, nosniff'"), 'refreshed HTML results must revalidate immediately');
-assert(version.version === '2.3.6-dev742' && version.build === 3448, 'release metadata mismatch');
+assert(version.build >= 3448, 'release metadata must include the v742 Final archive repair');
 
 const archivedUrl = new URL('https://bachatadancecouncil.com/portal/result-file.php?file=Special-Final.html');
 archivedUrl.searchParams.set('layout', 'fit');

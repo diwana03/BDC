@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Services\SchemaUpdater;
 use App\Services\HtmlSnapshotToken;
 use App\Services\PdfExportToken;
+use App\Services\ScoringReportLabelService;
 
 $pdo=Database::connection();
 
@@ -96,6 +97,7 @@ function ordinal(int $number):string{
 }
 
 $reportStatus=$isRepositorySnapshot?'Official Result':'Draft Result';
+$publicDivision=ScoringReportLabelService::councilDivision($round);
 $chiefJudge='';
 foreach($judges as $judge){
  if((int)$judge['is_chief']===1){
@@ -108,7 +110,7 @@ foreach($judges as $judge){
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title><?=e($round['event_name'])?> · Final · <?=e($reportStatus)?></title>
+<title><?=e($round['event_name'])?> - <?=e($publicDivision)?> - Final - <?=e($reportStatus)?></title>
 <style>
 @page{size:<?=$fitAll?'A3 landscape':'A4 landscape'?>;margin:7mm}
 *{box-sizing:border-box}
@@ -157,7 +159,7 @@ th{background:#eef1f4}
 <div class="toolbar"><?php if($largeJudgePanel):?><a href="final-audit.php?round_id=<?=$roundId?>" style="margin-right:10px">View Final Judge Audit</a><?php endif;?><a href="?round_id=<?=$roundId?>" style="margin-right:10px">Readable Pages</a><a href="?round_id=<?=$roundId?>&amp;layout=fit" style="margin-right:10px">Landscape, All Judges</a><button onclick="window.print()">Print / Save as PDF</button></div>
 <?php if($fitAll):?>
 <section class="page">
- <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2>FINAL · JUDGE RANKINGS · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Judges:</strong> <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e($publicDivision)?> · FINAL · JUDGE RANKINGS · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Judges:</strong> <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
  <section class="panel" style="margin-top:5mm"><h3>All Finalist Judge Rankings</h3>
   <table class="judge-ranking-table"><colgroup><col style="width:14mm"><col style="width:14mm"><col style="width:55mm"><?php foreach($judges as $judge):?><col style="width:9mm"><?php endforeach;?></colgroup>
    <thead><tr><th class="rank-col">Rank</th><th class="couple-col">Couple</th><th class="name-cell">Contestants</th><?php foreach($judges as $judgeIndex=>$judge):?><th>J<?=$judgeIndex+1?><?=(int)$judge['is_chief']?' ★':''?></th><?php endforeach;?></tr></thead>
@@ -167,7 +169,7 @@ th{background:#eef1f4}
  </section>
 </section>
 <section class="page">
- <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2>FINAL · RELATIVE PLACEMENT · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Majority:</strong> <?=$majority?> of <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
+ <header class="header"><img class="logo" src="<?=e($logo)?>" alt="BDC Logo"><div class="title"><h1><?=e($round['event_name'])?></h1><h2><?=e($publicDivision)?> · FINAL · RELATIVE PLACEMENT · <?=e(strtoupper($reportStatus))?></h2></div><div class="meta"><strong>Majority:</strong> <?=$majority?> of <?=$judgeCount?><br><strong>Couples:</strong> <?=$pairCount?><br><strong>Date:</strong> <?=e(date('j M Y',strtotime((string)$round['event_date'])))?></div></header>
  <section class="panel" style="margin-top:5mm"><h3>All Finalist Relative Placements</h3>
   <table class="placement-count-table"><colgroup><col style="width:14mm"><col style="width:14mm"><col style="width:55mm"><?php for($level=1;$level<=$pairCount;$level++):?><col style="width:11mm"><?php endfor;?><col style="width:18mm"><col style="width:18mm"></colgroup>
    <thead><tr><th class="rank-col">Rank</th><th class="couple-col">Couple</th><th class="name-cell">Contestants</th><?php for($level=1;$level<=$pairCount;$level++):?><th>Top <?=$level?></th><?php endfor;?><th class="summary-col">Majority</th><th class="summary-col">Sum</th></tr></thead>
@@ -182,7 +184,7 @@ th{background:#eef1f4}
   <img class="logo" src="<?=e($logo)?>" alt="BDC Logo">
   <div class="title">
    <h1><?=e($round['event_name'])?></h1>
-   <h2>FINAL · <?=e(strtoupper($reportStatus))?></h2>
+   <h2><?=e($publicDivision)?> · FINAL · <?=e(strtoupper($reportStatus))?></h2>
   </div>
   <div class="meta">
    <strong>Chief Judge:</strong> <?=e($chiefJudge?:'—')?><br>
@@ -193,7 +195,7 @@ th{background:#eef1f4}
  </header>
 
  <div class="details">
-  <div class="detail"><strong>Division</strong><br><?=e(ucfirst($round['division']))?></div>
+  <div class="detail"><strong>Division</strong><br><?=e($publicDivision)?></div>
   <div class="detail"><strong>Relative Placement Majority</strong><br><?=$majority?> of <?=$judgeCount?> judges</div>
  </div>
 
