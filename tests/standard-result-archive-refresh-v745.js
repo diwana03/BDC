@@ -12,8 +12,8 @@ for (const [name, source, documentTable] of [
   assert(source.includes("if($action==='refresh_result_archives')"), `${name} must handle detailed archive refresh`);
   assert(source.includes("refreshPublishedArchivedHtml($pdo,$roundId,(int)$publication['id'],$userId,'" + documentTable + "')"), `${name} must refresh its own result documents`);
   assert(source.includes('Refresh Detailed Result Archives'), `${name} must expose the Super Admin refresh control`);
-  assert(source.includes('Refresh Heats, Final &amp; Points'), `${name} must state the complete refresh scope`);
-  assert(source.includes("foreach(['heats','finals','points'] as $category)"), `${name} must validate all three replacement files before changing an archive`);
+  assert(source.includes('Refresh Heats &amp; Final Reports'), `${name} must state the report-only refresh scope`);
+  assert(source.includes("foreach(['heats','finals'] as $category)"), `${name} must validate both replacement reports before changing an archive`);
   assert(source.includes('d.storage_path,d.url'), `${name} must load the published URL for legacy archive recovery`);
   assert(source.includes("parse_url($url,PHP_URL_QUERY)") && source.includes("$urlParameters['file']"), `${name} must recover the exact filename from result-file.php URLs`);
   assert(source.includes('ResultStorageService::resolveFilename'), `${name} must confine legacy archive recovery to the protected result repository`);

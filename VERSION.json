@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev748",
-  "build": 3454,
+  "version": "2.3.6-dev749",
+  "build": 3455,
   "status": "development",
   "release_date": "2026-09-15",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Detailed report refresh for published Amateur, Open and historical J&J competitions: published Salsa and Bachata routes share Heats/Final regeneration with readable and landscape views, exclude Points from refresh, repair legacy main-result pointers to Final, and expose a past published reports directory. Original files are backed up and scores and Points documents remain unchanged.",
     "Legacy Salsa archive mapping recovery: standard Test and Live refresh uses exact document IDs recorded in the same round and publication approval audit when publication links are absent, with event, category, source and status checks before existing backup and replacement operations.",
     "Legacy published archive recovery: standard Test and Live J&J archive refresh now resolves older result documents from the exact filename already published through result-file.php when their stored database path predates protected-results storage. Resolution remains confined to the current environment repository, preserves the existing public URL, and keeps backups, scores, placements and points unchanged.",
     "Published archive refresh binding correction: the standard Test and Live J&J publication pages now give approval and refresh controls unique DOM identities, prioritize the visible published refresh form, scope readiness state to the active form and keep progress messages separate. Refresh can no longer bypass detailed Heats, Final and Points generation by accidentally binding to the hidden original approval modal.",

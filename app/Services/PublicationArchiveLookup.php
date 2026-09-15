@@ -7,14 +7,15 @@ use RuntimeException;
 
 final class PublicationArchiveLookup
 {
-    public static function recover(PDO $pdo, int $roundId, int $publicationId, string $documentTable, array $documents): array
+    public static function recover(PDO $pdo, int $roundId, int $publicationId, string $documentTable, array $documents, array $required=['heats','finals','points']): array
     {
         $prefix = match ($documentTable) {
             'bdc_result_documents' => 'bdc_',
             'bdc_test_result_documents' => 'bdc_test_',
             default => throw new RuntimeException('Invalid result document table.'),
         };
-        $missing = array_diff(['heats', 'finals', 'points'], array_keys($documents));
+        if (array_diff($required, ['heats','finals','points'])) throw new RuntimeException('Invalid report categories.');
+        $missing = array_diff($required, array_keys($documents));
         if (!$missing) return $documents;
 
         // The legacy Salsa special publisher saved exact document IDs in its

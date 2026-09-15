@@ -153,6 +153,8 @@ try{
     $round=specialPublishRound($pdo,$roundId);
     $pairs=specialPublishPairs($pdo,$round);
     $publication=specialPublishRecord($pdo,$roundId);
+if($_SERVER['REQUEST_METHOD']==='GET'&&$publication&&$publication['status']==='published'){header('Location: publish.php?round_id='.$roundId,true,303);exit;}
+
 
     if($_SERVER['REQUEST_METHOD']==='POST'){
         if(!Csrf::verify($_POST['_csrf']??null))throw new RuntimeException('Invalid security token.');
@@ -240,7 +242,7 @@ try{
                 }
 
                 $pdo->prepare("UPDATE bdc_scoring_publications SET status='published',repository_document_id=:document,report_url=:report,published_by=:user,approved_by=:user2,approved_at=NOW(),published_at=NOW(),updated_at=NOW() WHERE id=:publication")
-                    ->execute(['document'=>$docIds['finals'],'report'=>$archives['points']['url'],'user'=>$userId?:null,'user2'=>$userId?:null,'publication'=>$publication['id']]);
+                    ->execute(['document'=>$docIds['finals'],'report'=>$archives['finals']['url'],'user'=>$userId?:null,'user2'=>$userId?:null,'publication'=>$publication['id']]);
                 $pdo->prepare("UPDATE bdc_scoring_rounds SET status='archived',published_document_id=:document,locked_at=NOW(),locked_by=:user WHERE id=:round")
                     ->execute(['document'=>$docIds['finals'],'user'=>$userId?:null,'round'=>$roundId]);
                 $pdo->prepare("UPDATE bdc_events SET status='completed',updated_at=NOW() WHERE id=:event")->execute(['event'=>$round['event_id']]);

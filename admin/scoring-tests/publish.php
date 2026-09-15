@@ -282,7 +282,9 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
  }
  $temporaryDirectory=pendingHtmlDirectory($roundId);
  $pending=[];
- foreach(['heats','finals','points'] as $category){
+ $hasHeats=approvalHeatsId($pdo,loadApprovalRound($pdo,$roundId))>0;
+ foreach(['heats','finals'] as $category){
+  if($category==='heats'&&!$hasHeats)continue;
   $path=$temporaryDirectory.'/'.$category.'.html';
   validateArchivedHtml($path);
   $pending[$category]=$path;
@@ -291,14 +293,17 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
  $documentStmt=$pdo->prepare("SELECT m.document_category,d.id,d.storage_path,d.url
   FROM bdc_scoring_publication_documents m
   JOIN {$documentTable} d ON d.id=m.repository_document_id
+  JOIN bdc_test_scoring_publications p ON p.id=m.publication_id AND p.event_id=d.event_id
   WHERE m.publication_id=:publication_id
-    AND m.document_category IN('heats','finals','points')");
- $documentStmt->execute(['publication_id'=>$publicationId]);
+    AND p.final_round_id=:round_id AND p.status='published'
+    AND d.status='published' AND d.document_category=m.document_category
+    AND m.document_category IN('heats','finals')");
+ $documentStmt->execute(['publication_id'=>$publicationId,'round_id'=>$roundId]);
  $documents=[];
  foreach($documentStmt->fetchAll() as $document){
   $documents[(string)$document['document_category']]=$document;
  }
- $documents=\App\Services\PublicationArchiveLookup::recover($pdo,$roundId,$publicationId,$documentTable,$documents);
+ $documents=\App\Services\PublicationArchiveLookup::recover($pdo,$roundId,$publicationId,$documentTable,$documents,array_keys($pending));
  foreach(array_keys($pending) as $category){
   $target=null;
   if(isset($documents[$category])){
@@ -351,6 +356,7 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
  }
 
  try{
+  $pdo->beginTransaction();
   $checksums=[];
   foreach($pending as $category=>$pendingPath){
    $target=(string)$documents[$category]['target'];
@@ -366,14 +372,23 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
     'new'=>hash_file('sha256',$target)?:null,
    ];
   }
+  // Repair legacy main-result pointers only; never update the Points document or ledger.
+  $finalDocument=$documents['finals'];
+  $finalUrl=ResultStorageService::publicUrl(basename((string)$finalDocument['target']));
+  $pdo->prepare("UPDATE bdc_test_scoring_publications SET repository_document_id=:document_id,report_url=:report_url WHERE id=:publication_id AND final_round_id=:round_id AND status='published'")
+   ->execute(['document_id'=>$finalDocument['id'],'report_url'=>$finalUrl,'publication_id'=>$publicationId,'round_id'=>$roundId]);
+  $pdo->prepare("UPDATE bdc_test_scoring_rounds SET published_document_id=:document_id WHERE id=:round_id")
+   ->execute(['document_id'=>$finalDocument['id'],'round_id'=>$roundId]);
   approvalAudit($pdo,$roundId,$userId,'competition_result_archives_refreshed',[
    'publication_id'=>$publicationId,
    'archives'=>$checksums,
    'actual_final_roster'=>true,
   ]);
+  $pdo->commit();
   @rmdir($temporaryDirectory);
   return $checksums;
  }catch(Throwable $e){
+  if($pdo->inTransaction())$pdo->rollBack();
   foreach($backups as $category=>$backupPath){
    if(is_file($backupPath))copy($backupPath,(string)$documents[$category]['target']);
   }
@@ -644,7 +659,7 @@ try{
     }
 
     $documentId=$documentIds['finals'];
-    $reportUrl=$archivedFiles['points']['url'];
+    $reportUrl=$archivedFiles['finals']['url'];
 
     $pdo->prepare("
      UPDATE bdc_test_scoring_publications
@@ -754,10 +769,10 @@ try{
     throw new RuntimeException('An active published competition was not found.');
    }
    if(empty($_POST['client_html_ready'])){
-    throw new RuntimeException('Generate the detailed Heats, Final and Points archives before refreshing.');
+    throw new RuntimeException('Generate the detailed Heats and Final reports before refreshing.');
    }
    refreshPublishedArchivedHtml($pdo,$roundId,(int)$publication['id'],$userId,'bdc_test_result_documents');
-   $notice='The published Heats, Final and Points archives were refreshed from the detailed reports. Heats advancement follows the actual Final roster; scores, placements and points were unchanged.';
+   $notice='The published Heats and Final reports were refreshed from the detailed reports. Heats advancement follows the actual Final roster; scores, placements and points were unchanged.';
   }
 
   if($action==='rollback'){
@@ -1052,13 +1067,14 @@ body{background:#f5f6f8}
  <section class="card review-card approval-card mb-4">
   <div class="card-body">
    <h2 class="h5 text-success">Refresh Detailed Result Archives</h2>
-   <p>Rebuild the existing Heats, Final and Points links from the current reviewed reports. Scores, placements and points will not change.</p>
+   <p><a href="report-archives.php">All past published reports</a></p>
+   <p>Rebuild the existing detailed Heats and Final reports. The Points document is left unchanged. Scores, placements and points will not change.</p>
    <form method="post" id="refreshArchiveForm">
     <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
     <input type="hidden" name="action" value="refresh_result_archives">
     <input type="hidden" name="round_id" value="<?=$roundId?>">
     <input type="hidden" name="client_html_ready" id="refreshClientHtmlReady" value="0">
-    <button class="btn btn-success" id="refreshArchiveButton" type="submit">Refresh Heats, Final &amp; Points</button>
+    <button class="btn btn-success" id="refreshArchiveButton" type="submit">Refresh Heats &amp; Final Reports</button>
     <div id="refreshHtmlGenerationStatus" class="small text-muted mt-2">Protected backups are created before the detailed files replace the current archives.</div>
    </form>
   </div>
@@ -1292,16 +1308,16 @@ let approvalArchiveRunning=false;
 async function generateAllArchivedHtml(){
  const previews=[
   ['heats','result.php?round_id=<?=$heatsId?>',true],
-  ['finals','final-result.php?round_id=<?=$roundId?>',true],
-  ['points','publication-report.php?round_id=<?=$roundId?>',false]
- ];
+  ['finals','final-result.php?round_id=<?=$roundId?>',true]
+ ].filter(([,url])=>!url.endsWith('round_id=0'));
+ if(!refreshArchiveButton)previews.push(['points','publication-report.php?round_id=<?=$roundId?>',false]);
  for(let index=0;index<previews.length;index++){
   const [category,url,hasLandscape]=previews[index];
   htmlGenerationStatus.className='small mt-2 text-primary';
-  htmlGenerationStatus.textContent=`Preparing ${index+1} of 3: ${category}…`;
+  htmlGenerationStatus.textContent=`Preparing ${index+1} of ${previews.length}: ${category}…`;
   const views=await Promise.all(hasLandscape?[fetchPreviewHtml(url),fetchPreviewHtml(url+'&layout=fit')]:[fetchPreviewHtml(url)]);
   const archivedHtml=makeArchivedHtml(views[0],url,category,views[1]||'');
-  htmlGenerationStatus.textContent=`Saving ${index+1} of 3: ${category}…`;
+  htmlGenerationStatus.textContent=`Saving ${index+1} of ${previews.length}: ${category}…`;
   await uploadArchivedHtml(category,archivedHtml);
  }
 }

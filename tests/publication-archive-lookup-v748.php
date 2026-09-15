@@ -28,6 +28,10 @@ $complete=['heats'=>['id'=>11],'finals'=>['id'=>12],'points'=>['id'=>13]];
 $pdo=new ArchivePDO748([]);
 check748(PublicationArchiveLookup::recover($pdo,68,9,'bdc_result_documents',$complete)===$complete);
 check748($pdo->sql===[]);
+$reportsOnly=['heats'=>['id'=>11],'finals'=>['id'=>12]];
+$pdo=new ArchivePDO748([]);
+check748(PublicationArchiveLookup::recover($pdo,68,9,'bdc_result_documents',$reportsOnly,['heats','finals'])===$reportsOnly);
+check748($pdo->sql===[]);
 $audit=['details_json'=>json_encode(['publication_id'=>9,'documents'=>['heats'=>11,'finals'=>12,'points'=>13]]),'event_id'=>161];
 foreach (['bdc_result_documents','bdc_test_result_documents'] as $table) {
     $pdo=new ArchivePDO748([[$audit],[['id'=>11,'document_category'=>'heats']],[['id'=>12,'document_category'=>'finals']],[['id'=>13,'document_category'=>'points']]]);

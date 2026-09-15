@@ -2,7 +2,7 @@ const fs=require('fs'),assert=require('assert');
 for(const file of ['admin/scoring-tests/publish.php','admin/scoring/publish.php']) {
  const src=fs.readFileSync(file,'utf8');
  const start=src.indexOf('function refreshPublishedArchivedHtml(');
- const lookup=src.indexOf('PublicationArchiveLookup::recover($pdo,$roundId,$publicationId,$documentTable,$documents)',start);
+ const lookup=src.indexOf('PublicationArchiveLookup::recover($pdo,$roundId,$publicationId,$documentTable,$documents,array_keys($pending))',start);
  const backup=src.indexOf("$backupDirectory=",start);
  assert(lookup>start && lookup<backup,'lookup must run inside active refresh before backups or replacements');
 }

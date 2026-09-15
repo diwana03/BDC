@@ -243,6 +243,7 @@ $form=$editDoc?:['id'=>0,'event_id'=>0,'title'=>'','document_category'=>'other',
 </div>
 <?php endif; ?>
 <div class="d-flex justify-content-between mb-4"><div><h1 class="h3">Result Repository</h1><div class="text-muted">Add, edit, replace or delete PDF, CSV and World Result links</div></div><a class="btn btn-outline-secondary" href="../">Dashboard</a></div>
+<p><a class="btn btn-primary" href="../scoring/report-archives.php">Detailed Heats &amp; Final reports: Amateur, Open and past events</a></p>
 <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?>
 <?php if($notice):?><div class="alert alert-success"><?=e($notice)?></div><?php endif;?>
 <?php if($duplicateDates):?><div class="alert alert-warning"><strong>Duplicate event dates detected.</strong> Review these event records before publishing results:<ul class="mb-0 mt-2"><?php foreach(array_slice($duplicateDates,0,8) as $dupDate):?><li><strong><?=e((string)$dupDate['event_date'])?></strong>: <?=e((string)$dupDate['events'])?></li><?php endforeach;?></ul><?php if(count($duplicateDates)>8):?><div class="small mt-2">Plus <?=count($duplicateDates)-8?> more duplicate date group(s).</div><?php endif;?></div><?php endif;?>
