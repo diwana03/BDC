@@ -276,6 +276,82 @@ function consumeArchivedHtml(
  return $archivedFiles;
 }
 
+function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,int $userId,string $documentTable):array{
+ if(!in_array($documentTable,['bdc_result_documents','bdc_test_result_documents'],true)){
+  throw new RuntimeException('Invalid result document table.');
+ }
+ $temporaryDirectory=pendingHtmlDirectory($roundId);
+ $pending=[];
+ foreach(['heats','finals','points'] as $category){
+  $path=$temporaryDirectory.'/'.$category.'.html';
+  validateArchivedHtml($path);
+  $pending[$category]=$path;
+ }
+
+ $documentStmt=$pdo->prepare("SELECT m.document_category,d.id,d.storage_path
+  FROM bdc_scoring_publication_documents m
+  JOIN {$documentTable} d ON d.id=m.repository_document_id
+  WHERE m.publication_id=:publication_id
+    AND m.document_category IN('heats','finals','points')");
+ $documentStmt->execute(['publication_id'=>$publicationId]);
+ $documents=[];
+ foreach($documentStmt->fetchAll() as $document){
+  $documents[(string)$document['document_category']]=$document;
+ }
+ foreach(array_keys($pending) as $category){
+  $target=isset($documents[$category])?ResultStorageService::resolve((string)$documents[$category]['storage_path']):null;
+  if(!$target||!is_file($target)){
+   throw new RuntimeException('The published '.ucfirst($category).' repository file was not found. Nothing was changed.');
+  }
+  $documents[$category]['target']=$target;
+ }
+
+ $backupDirectory=ResultStorageService::root().'/.archive-backups';
+ if(!is_dir($backupDirectory)&&!mkdir($backupDirectory,0700,true)&&!is_dir($backupDirectory)){
+  throw new RuntimeException('Could not create the protected archive backup folder.');
+ }
+ $backups=[];$stamp=gmdate('Ymd-His');
+ foreach($pending as $category=>$pendingPath){
+  $target=(string)$documents[$category]['target'];
+  $backupPath=$backupDirectory.'/'.basename($target).'.'.$stamp.'.'.$category.'.bak';
+  if(!copy($target,$backupPath)){
+   throw new RuntimeException('Could not back up the current '.ucfirst($category).' archive. Nothing was changed.');
+  }
+  @chmod($backupPath,0600);
+  $backups[$category]=$backupPath;
+ }
+
+ try{
+  $checksums=[];
+  foreach($pending as $category=>$pendingPath){
+   $target=(string)$documents[$category]['target'];
+   if(!rename($pendingPath,$target)){
+    throw new RuntimeException('Could not replace the published '.ucfirst($category).' archive.');
+   }
+   if(!@chmod($target,0644)){
+    throw new RuntimeException('Could not set repository permissions on the refreshed '.ucfirst($category).' archive.');
+   }
+   $checksums[$category]=[
+    'document_id'=>(int)$documents[$category]['id'],
+    'previous'=>hash_file('sha256',$backups[$category])?:null,
+    'new'=>hash_file('sha256',$target)?:null,
+   ];
+  }
+  approvalAudit($pdo,$roundId,$userId,'competition_result_archives_refreshed',[
+   'publication_id'=>$publicationId,
+   'archives'=>$checksums,
+   'actual_final_roster'=>true,
+  ]);
+  @rmdir($temporaryDirectory);
+  return $checksums;
+ }catch(Throwable $e){
+  foreach($backups as $category=>$backupPath){
+   if(is_file($backupPath))copy($backupPath,(string)$documents[$category]['target']);
+  }
+  throw $e;
+ }
+}
+
 try{
  $round=loadApprovalRound($pdo,$roundId);
  $tierInfo=approvalTier($pdo,$round);
@@ -642,6 +718,19 @@ try{
    }
   }
 
+  if($action==='refresh_result_archives'){
+   if(!$isSuperAdmin)throw new RuntimeException('Only Super Admin can refresh published result archives.');
+   $publication=loadPublication($pdo,$roundId);
+   if(!$publication||$publication['status']!=='published'){
+    throw new RuntimeException('An active published competition was not found.');
+   }
+   if(empty($_POST['client_html_ready'])){
+    throw new RuntimeException('Generate the detailed Heats, Final and Points archives before refreshing.');
+   }
+   refreshPublishedArchivedHtml($pdo,$roundId,(int)$publication['id'],$userId,'bdc_test_result_documents');
+   $notice='The published Heats, Final and Points archives were refreshed from the detailed reports. Heats advancement follows the actual Final roster; scores, placements and points were unchanged.';
+  }
+
   if($action==='rollback'){
    if(!$isSuperAdmin)throw new RuntimeException('Only Super Admin can roll back a published competition.');
 
@@ -931,6 +1020,20 @@ body{background:#f5f6f8}
  </div>
 
  <?php if($isSuperAdmin):?>
+ <section class="card review-card approval-card mb-4">
+  <div class="card-body">
+   <h2 class="h5 text-success">Refresh Detailed Result Archives</h2>
+   <p>Rebuild the existing Heats, Final and Points links from the current reviewed reports. Scores, placements and points will not change.</p>
+   <form method="post" id="refreshArchiveForm">
+    <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
+    <input type="hidden" name="action" value="refresh_result_archives">
+    <input type="hidden" name="round_id" value="<?=$roundId?>">
+    <input type="hidden" name="client_html_ready" id="clientHtmlReady" value="0">
+    <button class="btn btn-success" id="refreshArchiveButton" type="submit">Refresh Heats, Final &amp; Points</button>
+    <div id="htmlGenerationStatus" class="small text-muted mt-2">Protected backups are created before the detailed files replace the current archives.</div>
+   </form>
+  </div>
+ </section>
  <section class="card review-card rollback-card">
   <div class="card-body">
    <h2 class="h5 text-danger">Super Admin Rollback</h2>
@@ -1031,15 +1134,18 @@ if(submitAccept&&openSubmitModal){
 
 const htmlGenerationStatus=document.getElementById('htmlGenerationStatus');
 const finalApproveButton=document.getElementById('finalApproveButton');
+const refreshArchiveButton=document.getElementById('refreshArchiveButton');
+const archiveButton=finalApproveButton||refreshArchiveButton;
 const clientHtmlReady=document.getElementById('clientHtmlReady');
 
-function makeArchivedHtml(sourceHtml,sourceUrl,officialLabel){
+function makeArchivedHtml(sourceHtml,sourceUrl,officialLabel,landscapeHtml=''){
  const parser=new DOMParser();
  const documentCopy=parser.parseFromString(sourceHtml,'text/html');
 
- documentCopy.querySelectorAll(
-  'nav,.toolbar,.no-print,button,form,script'
- ).forEach(element=>element.remove());
+ function removeInteractiveControls(target){
+  target.querySelectorAll('nav,.toolbar,.no-print,button,form,script').forEach(element=>element.remove());
+ }
+ removeInteractiveControls(documentCopy);
 
  const base=documentCopy.createElement('base');
  base.href=new URL(sourceUrl,window.location.href).href;
@@ -1067,16 +1173,46 @@ function makeArchivedHtml(sourceHtml,sourceUrl,officialLabel){
    gap:12px;
   }
   .repository-archive-banner strong{font-size:14px}
-  @media print{body{background:#fff!important}}
+  .archive-toolbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid #ccc;font-family:Arial,sans-serif}
+  .archive-toolbar button{min-height:36px;padding:7px 12px;border:1px solid #6c757d;border-radius:6px;background:#fff;color:#212529;font:600 14px Arial,sans-serif;cursor:pointer}
+  .archive-toolbar button[data-layout="print"]{background:#0d6efd;color:#fff;border-color:#0d6efd}
+  body:not(.archive-layout-fit) .archive-toolbar button[data-layout="readable"],body.archive-layout-fit .archive-toolbar button[data-layout="fit"]{background:#212529;color:#fff;border-color:#212529}
+  .archive-landscape-view{display:none}body.archive-layout-fit .archive-readable-view{display:none}body.archive-layout-fit .archive-landscape-view{display:block}
+  @media print{.repository-archive-banner,.archive-toolbar{display:none!important}body{background:#fff!important}}
  `;
  documentCopy.head.appendChild(style);
 
  const banner=documentCopy.createElement('div');
  banner.className='repository-archive-banner';
- banner.innerHTML='<strong>BDC Official Archived Result</strong><span>Read-only repository snapshot</span>';
- documentCopy.body.prepend(banner);
+ const reportLabel=officialLabel.charAt(0).toUpperCase()+officialLabel.slice(1);
+ banner.innerHTML='<strong>BDC Official Archived '+reportLabel+' Result</strong><span>Read-only repository snapshot</span>';
 
- return '<!doctype html>\n'+documentCopy.documentElement.outerHTML;
+ if(landscapeHtml){
+  const landscape=parser.parseFromString(landscapeHtml,'text/html');
+  removeInteractiveControls(landscape);
+  const readableView=documentCopy.createElement('div');
+  readableView.className='archive-readable-view';
+  while(documentCopy.body.firstChild)readableView.appendChild(documentCopy.body.firstChild);
+  const landscapeView=documentCopy.createElement('div');
+  landscapeView.className='archive-landscape-view';
+  while(landscape.body.firstChild){
+   landscapeView.appendChild(documentCopy.importNode(landscape.body.firstChild,true));
+   landscape.body.firstChild.remove();
+  }
+  const toolbar=documentCopy.createElement('div');
+  toolbar.className='archive-toolbar';
+  toolbar.innerHTML='<button type="button" data-layout="readable">Readable Pages</button><button type="button" data-layout="fit">Landscape, All Judges</button><button type="button" data-layout="print">Print / Save as PDF</button>';
+  documentCopy.body.append(banner,toolbar,readableView,landscapeView);
+  const archiveScript=documentCopy.createElement('script');
+  archiveScript.textContent=`(()=>{const q=new URLSearchParams(location.search);const fit=q.get('layout')==='fit';document.body.classList.toggle('archive-layout-fit',fit);document.body.classList.toggle('fit-all',fit);document.body.classList.toggle('layout-fit',fit);if(fit){const s=document.createElement('style');s.textContent='@page{size:A3 landscape;margin:7mm}';document.head.appendChild(s)}document.querySelector('[data-layout="readable"]').onclick=()=>{const u=new URL(location.href);u.searchParams.delete('layout');location.href=u.href};document.querySelector('[data-layout="fit"]').onclick=()=>{const u=new URL(location.href);u.searchParams.set('layout','fit');location.href=u.href};document.querySelector('[data-layout="print"]').onclick=()=>window.print()})();`;
+  documentCopy.body.appendChild(archiveScript);
+ }else{
+  documentCopy.body.prepend(banner);
+ }
+
+ return '<!doctype html>\n'+documentCopy.documentElement.outerHTML
+  .replace(/DRAFT RESULT/gi,'OFFICIAL RESULT')
+  .replace(/· DRAFT(?! RESULT)/gi,'· OFFICIAL');
 }
 
 async function fetchPreviewHtml(url){
@@ -1119,21 +1255,21 @@ async function uploadArchivedHtml(category,html){
  return result;
 }
 
-const approvalForm=finalApproveButton?finalApproveButton.closest('form'):null;
+const approvalForm=archiveButton?archiveButton.closest('form'):null;
 let approvalArchiveRunning=false;
 
 async function generateAllArchivedHtml(){
  const previews=[
-  ['heats','result.php?round_id=<?=$heatsId?>'],
-  ['finals','final-result.php?round_id=<?=$roundId?>'],
-  ['points','publication-report.php?round_id=<?=$roundId?>']
+  ['heats','result.php?round_id=<?=$heatsId?>',true],
+  ['finals','final-result.php?round_id=<?=$roundId?>',true],
+  ['points','publication-report.php?round_id=<?=$roundId?>',false]
  ];
  for(let index=0;index<previews.length;index++){
-  const [category,url]=previews[index];
+  const [category,url,hasLandscape]=previews[index];
   htmlGenerationStatus.className='small mt-2 text-primary';
   htmlGenerationStatus.textContent=`Preparing ${index+1} of 3: ${category}…`;
-  const sourceHtml=await fetchPreviewHtml(url);
-  const archivedHtml=makeArchivedHtml(sourceHtml,url,category);
+  const views=await Promise.all(hasLandscape?[fetchPreviewHtml(url),fetchPreviewHtml(url+'&layout=fit')]:[fetchPreviewHtml(url)]);
+  const archivedHtml=makeArchivedHtml(views[0],url,category,views[1]||'');
   htmlGenerationStatus.textContent=`Saving ${index+1} of 3: ${category}…`;
   await uploadArchivedHtml(category,archivedHtml);
  }
@@ -1144,18 +1280,18 @@ if(approvalForm){
   if(clientHtmlReady.value==='1' || approvalArchiveRunning)return;
   event.preventDefault();
   approvalArchiveRunning=true;
-  finalApproveButton.disabled=true;
+  archiveButton.disabled=true;
   try{
    await generateAllArchivedHtml();
    clientHtmlReady.value='1';
    htmlGenerationStatus.className='small mt-2 text-success';
-   htmlGenerationStatus.textContent='Archived results ready. Publishing competition…';
+   htmlGenerationStatus.textContent=refreshArchiveButton?'Detailed archives ready. Refreshing repository links…':'Archived results ready. Publishing competition…';
    approvalForm.requestSubmit();
   }catch(error){
    clientHtmlReady.value='0';
    htmlGenerationStatus.className='small mt-2 text-danger';
    htmlGenerationStatus.textContent=error.message||'Could not create archived HTML results.';
-   finalApproveButton.disabled=false;
+   archiveButton.disabled=false;
    approvalArchiveRunning=false;
   }
  });

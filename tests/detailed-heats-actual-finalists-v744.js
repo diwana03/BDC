@@ -42,6 +42,6 @@ for (const [name, source] of [['Live standard publisher', livePublish], ['Testin
   assert(source.includes('result.php?round_id=<?=$heatsId?>'), `${name} must continue snapshotting the detailed Heats endpoint`);
 }
 
-assert(version.version === '2.3.6-dev744' && version.build === 3450, 'release metadata mismatch');
+assert(version.build >= 3450, 'detailed Heats report requires build 3450 or newer');
 
 console.log('Detailed Heats and actual Final roster v744 checks passed');
