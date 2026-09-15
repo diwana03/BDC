@@ -299,6 +299,7 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
  foreach($documentStmt->fetchAll() as $document){
   $documents[(string)$document['document_category']]=$document;
  }
+ $documents=\App\Services\PublicationArchiveLookup::recover($pdo,$roundId,$publicationId,$documentTable,$documents);
  foreach(array_keys($pending) as $category){
   $target=null;
   if(isset($documents[$category])){

@@ -56,6 +56,6 @@ assert(resolveLegacyPublishedTarget(`/legacy/public/results/${heats}`, '')?.ends
 assert.strictEqual(resolveLegacyPublishedTarget('/legacy/missing.html', 'result-file.php?file=missing.html'), null, 'missing archives must remain blocked');
 assert.strictEqual(resolveLegacyPublishedTarget('/legacy/missing.html', 'result-file.php?file=..%2F..%2Fconfig%2Fconfig.php'), null, 'published query traversal must never escape the repository');
 
-assert(version.version === '2.3.6-dev747' && version.build === 3453, 'release metadata mismatch');
+assert(version.build >= 3453, 'legacy archive recovery requires build 3453 or newer');
 
 console.log('Standard result archive legacy path v747 checks passed');

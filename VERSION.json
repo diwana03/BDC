@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev747",
-  "build": 3453,
+  "version": "2.3.6-dev748",
+  "build": 3454,
   "status": "development",
   "release_date": "2026-09-15",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Legacy Salsa archive mapping recovery: standard Test and Live refresh uses exact document IDs recorded in the same round and publication approval audit when publication links are absent, with event, category, source and status checks before existing backup and replacement operations.",
     "Legacy published archive recovery: standard Test and Live J&J archive refresh now resolves older result documents from the exact filename already published through result-file.php when their stored database path predates protected-results storage. Resolution remains confined to the current environment repository, preserves the existing public URL, and keeps backups, scores, placements and points unchanged.",
     "Published archive refresh binding correction: the standard Test and Live J&J publication pages now give approval and refresh controls unique DOM identities, prioritize the visible published refresh form, scope readiness state to the active form and keep progress messages separate. Refresh can no longer bypass detailed Heats, Final and Points generation by accidentally binding to the hidden original approval modal.",
     "Standard J&J detailed archive refresh: Super Admin can rebuild already-published Salsa and Bachata Heats, Final and Points repository files from the current reviewed Test or Live reports, with readable and all-judge landscape views for Heats and Final, protected file backups, checksum audit evidence and automatic restoration on failure. Existing repository URLs remain unchanged, Heats advancement follows the actual active Final roster, and no scores, placements or points are recalculated or modified.",
