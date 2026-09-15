@@ -23,6 +23,10 @@ for (const [name, source, documentTable] of [
   assert(source.includes("fetchPreviewHtml(url+'&layout=fit')"), `${name} must capture the all-judge landscape layouts`);
   assert(source.includes('data-layout="readable"') && source.includes('data-layout="fit"'), `${name} archives must expose both report layouts`);
   assert(source.includes('scores, placements and points were unchanged'), `${name} must explicitly preserve official result data`);
+  assert(source.includes('const archiveButton=refreshArchiveButton||finalApproveButton;'), `${name} must bind the published refresh form before the hidden approval modal`);
+  assert(source.includes('approvalForm.querySelector(\'input[name="client_html_ready"]\')'), `${name} must use the readiness field belonging to the active form`);
+  assert(source.includes('refreshHtmlGenerationStatus') && source.includes('approvalHtmlGenerationStatus'), `${name} must keep refresh and approval progress messages separate`);
+  assert(!source.includes('id="clientHtmlReady"') && !source.includes('id="htmlGenerationStatus"'), `${name} must not retain duplicate archive element IDs`);
 
   const refreshBlock = source.slice(source.indexOf("if($action==='refresh_result_archives')"), source.indexOf("if($action==='rollback')"));
   assert(!refreshBlock.includes('bdc_point_transactions'), `${name} refresh must not touch points`);
@@ -30,6 +34,6 @@ for (const [name, source, documentTable] of [
   assert(!refreshBlock.includes('bdc_scoring_results'), `${name} refresh must not touch scoring results`);
 }
 
-assert(version.version === '2.3.6-dev745' && version.build === 3451, 'release metadata mismatch');
+assert(version.build >= 3451, 'standard detailed archive refresh requires build 3451 or newer');
 
 console.log('Standard detailed result archive refresh v745 checks passed');

@@ -1031,9 +1031,9 @@ body{background:#f5f6f8}
     <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
     <input type="hidden" name="action" value="refresh_result_archives">
     <input type="hidden" name="round_id" value="<?=$roundId?>">
-    <input type="hidden" name="client_html_ready" id="clientHtmlReady" value="0">
+    <input type="hidden" name="client_html_ready" id="refreshClientHtmlReady" value="0">
     <button class="btn btn-success" id="refreshArchiveButton" type="submit">Refresh Heats, Final &amp; Points</button>
-    <div id="htmlGenerationStatus" class="small text-muted mt-2">Protected backups are created before the detailed files replace the current archives.</div>
+    <div id="refreshHtmlGenerationStatus" class="small text-muted mt-2">Protected backups are created before the detailed files replace the current archives.</div>
    </form>
   </div>
  </section>
@@ -1102,7 +1102,7 @@ body{background:#f5f6f8}
     <div class="alert alert-warning">
      Approval stores permanent read-only HTML copies of the reviewed Heats, Final and Points pages in the existing Result Repository.
     </div>
-    <div id="htmlGenerationStatus" class="small mt-2 text-muted">
+    <div id="approvalHtmlGenerationStatus" class="small mt-2 text-muted">
      Archived Heats, Final and Points results will be created automatically when you approve.
     </div>
    </div>
@@ -1112,7 +1112,7 @@ body{background:#f5f6f8}
      <input type="hidden" name="_csrf" value="<?=e($csrf)?>">
      <input type="hidden" name="action" value="approve_publication">
      <input type="hidden" name="round_id" value="<?=$roundId?>">
-     <input type="hidden" name="client_html_ready" id="clientHtmlReady" value="0">
+     <input type="hidden" name="client_html_ready" id="approvalClientHtmlReady" value="0">
      <button class="btn btn-success" id="finalApproveButton" type="submit">
       Approve, Publish &amp; Update Points
      </button>
@@ -1135,11 +1135,14 @@ if(submitAccept&&openSubmitModal){
 }
 
 
-const htmlGenerationStatus=document.getElementById('htmlGenerationStatus');
 const finalApproveButton=document.getElementById('finalApproveButton');
 const refreshArchiveButton=document.getElementById('refreshArchiveButton');
-const archiveButton=finalApproveButton||refreshArchiveButton;
-const clientHtmlReady=document.getElementById('clientHtmlReady');
+const archiveButton=refreshArchiveButton||finalApproveButton;
+const approvalForm=archiveButton?archiveButton.closest('form'):null;
+const clientHtmlReady=approvalForm?approvalForm.querySelector('input[name="client_html_ready"]'):null;
+const htmlGenerationStatus=refreshArchiveButton
+ ? document.getElementById('refreshHtmlGenerationStatus')
+ : document.getElementById('approvalHtmlGenerationStatus');
 
 function makeArchivedHtml(sourceHtml,sourceUrl,officialLabel,landscapeHtml=''){
  const parser=new DOMParser();
@@ -1258,7 +1261,6 @@ async function uploadArchivedHtml(category,html){
  return result;
 }
 
-const approvalForm=archiveButton?archiveButton.closest('form'):null;
 let approvalArchiveRunning=false;
 
 async function generateAllArchivedHtml(){
@@ -1278,7 +1280,7 @@ async function generateAllArchivedHtml(){
  }
 }
 
-if(approvalForm){
+if(approvalForm&&clientHtmlReady&&htmlGenerationStatus){
  approvalForm.addEventListener('submit',async event=>{
   if(clientHtmlReady.value==='1' || approvalArchiveRunning)return;
   event.preventDefault();
