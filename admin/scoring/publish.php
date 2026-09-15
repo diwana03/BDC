@@ -289,7 +289,7 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
   $pending[$category]=$path;
  }
 
- $documentStmt=$pdo->prepare("SELECT m.document_category,d.id,d.storage_path
+ $documentStmt=$pdo->prepare("SELECT m.document_category,d.id,d.storage_path,d.url
   FROM bdc_scoring_publication_documents m
   JOIN {$documentTable} d ON d.id=m.repository_document_id
   WHERE m.publication_id=:publication_id
@@ -300,7 +300,35 @@ function refreshPublishedArchivedHtml(PDO $pdo,int $roundId,int $publicationId,i
   $documents[(string)$document['document_category']]=$document;
  }
  foreach(array_keys($pending) as $category){
-  $target=isset($documents[$category])?ResultStorageService::resolve((string)$documents[$category]['storage_path']):null;
+  $target=null;
+  if(isset($documents[$category])){
+   $storagePath=(string)$documents[$category]['storage_path'];
+   $target=ResultStorageService::resolve($storagePath);
+
+   // Publications created before protected-results:// storage may retain a
+   // legacy path even though result-file.php still serves the canonical file.
+   // Resolve only the exact published filename and keep lookup confined to the
+   // current environment's protected result repository.
+   if(!$target||!is_file($target)){
+    $candidateNames=[];
+    $url=(string)($documents[$category]['url']??'');
+    $query=(string)(parse_url($url,PHP_URL_QUERY)??'');
+    if($query!==''){
+     parse_str($query,$urlParameters);
+     if(isset($urlParameters['file'])&&is_string($urlParameters['file'])){
+      $candidateNames[]=$urlParameters['file'];
+     }
+    }
+    $urlPath=(string)(parse_url($url,PHP_URL_PATH)??'');
+    if($urlPath!=='')$candidateNames[]=basename($urlPath);
+    if($storagePath!=='')$candidateNames[]=basename(str_replace('\\','/',$storagePath));
+
+    foreach(array_unique($candidateNames) as $candidateName){
+     $target=ResultStorageService::resolveFilename((string)$candidateName);
+     if($target&&is_file($target))break;
+    }
+   }
+  }
   if(!$target||!is_file($target)){
    throw new RuntimeException('The published '.ucfirst($category).' repository file was not found. Nothing was changed.');
   }

@@ -14,6 +14,10 @@ for (const [name, source, documentTable] of [
   assert(source.includes('Refresh Detailed Result Archives'), `${name} must expose the Super Admin refresh control`);
   assert(source.includes('Refresh Heats, Final &amp; Points'), `${name} must state the complete refresh scope`);
   assert(source.includes("foreach(['heats','finals','points'] as $category)"), `${name} must validate all three replacement files before changing an archive`);
+  assert(source.includes('d.storage_path,d.url'), `${name} must load the published URL for legacy archive recovery`);
+  assert(source.includes("parse_url($url,PHP_URL_QUERY)") && source.includes("$urlParameters['file']"), `${name} must recover the exact filename from result-file.php URLs`);
+  assert(source.includes('ResultStorageService::resolveFilename'), `${name} must confine legacy archive recovery to the protected result repository`);
+  assert(source.includes("basename(str_replace('\\\\','/',$storagePath))"), `${name} must support legacy stored paths by filename only`);
   assert(source.includes("'/.archive-backups'"), `${name} must create protected backups`);
   assert(source.includes("'previous'=>hash_file") && source.includes("'new'=>hash_file"), `${name} must audit previous and new checksums`);
   assert(source.includes("copy($backupPath,(string)$documents[$category]['target'])"), `${name} must restore every previous archive on failure`);

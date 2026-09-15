@@ -1,11 +1,12 @@
 {
-  "version": "2.3.6-dev746",
-  "build": 3452,
+  "version": "2.3.6-dev747",
+  "build": 3453,
   "status": "development",
-  "release_date": "2026-09-14",
+  "release_date": "2026-09-15",
   "minimum_php": "8.1",
   "database_version": "2.3.0",
   "features": [
+    "Legacy published archive recovery: standard Test and Live J&J archive refresh now resolves older result documents from the exact filename already published through result-file.php when their stored database path predates protected-results storage. Resolution remains confined to the current environment repository, preserves the existing public URL, and keeps backups, scores, placements and points unchanged.",
     "Published archive refresh binding correction: the standard Test and Live J&J publication pages now give approval and refresh controls unique DOM identities, prioritize the visible published refresh form, scope readiness state to the active form and keep progress messages separate. Refresh can no longer bypass detailed Heats, Final and Points generation by accidentally binding to the hidden original approval modal.",
     "Standard J&J detailed archive refresh: Super Admin can rebuild already-published Salsa and Bachata Heats, Final and Points repository files from the current reviewed Test or Live reports, with readable and all-judge landscape views for Heats and Final, protected file backups, checksum audit evidence and automatic restoration on failure. Existing repository URLs remain unchanged, Heats advancement follows the actual active Final roster, and no scores, placements or points are recalculated or modified.",
     "Detailed Heats archive with actual advancement: Test and Live Heats reports retain every judge mark, totals, judge key, Chief Judge, witnesses, readable pages and all-judge landscape output; the Advancement column follows the actual active Semifinal or Final roster so approved manual promotions display as FINALIST or SEMIFINALIST PROMOTED and removed automatic callbacks display as NOT ADVANCED. Special-category publication now snapshots and safely refreshes both detailed Heats and Final archives with protected backups while leaving scores, rankings and points unchanged.",
